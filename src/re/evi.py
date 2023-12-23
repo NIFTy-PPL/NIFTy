@@ -88,7 +88,9 @@ def draw_linear_residual(
         te = f"`likelihood` of invalid type; got '{type(likelihood)}'"
         raise TypeError(te)
     if point_estimates:
-        lh, p_liquid = likelihood.freeze(point_estimates, pos)
+        lh, p_liquid = likelihood.freeze(
+            point_estimates=point_estimates, primals=pos
+        )
     else:
         lh = likelihood
         p_liquid = pos
@@ -147,7 +149,9 @@ def _nonlinearly_update_residual_functions(
         )
 
     def _residual_vg(e, lh_trafo_at_p, ms_at_p, x, *, point_estimates):
-        lh, e_liquid = likelihood.freeze(point_estimates, e)
+        lh, e_liquid = likelihood.freeze(
+            point_estimates=point_estimates, primals=e
+        )
 
         # t = likelihood.transformation(x) - lh_trafo_at_p
         t = tree_map(jnp.subtract, lh.transformation(x), lh_trafo_at_p)
@@ -160,14 +164,18 @@ def _nonlinearly_update_residual_functions(
         return (res, -ngrad)
 
     def _metric(e, primals, tangents, *, point_estimates):
-        lh, e_liquid = likelihood.freeze(point_estimates, e)
+        lh, e_liquid = likelihood.freeze(
+            point_estimates=point_estimates, primals=e
+        )
         lsm = lh.left_sqrt_metric
         rsm = lh.right_sqrt_metric
         tm = lsm(e_liquid, rsm(primals, tangents)) + tangents
         return lsm(primals, rsm(e_liquid, tm)) + tm
 
     def _sampnorm(e, natgrad, *, point_estimates):
-        lh, e_liquid = likelihood.freeze(point_estimates, e)
+        lh, e_liquid = likelihood.freeze(
+            point_estimates=point_estimates, primals=e
+        )
         fpp = lh.right_sqrt_metric(e_liquid, natgrad)
         return jnp.sqrt(vdot(natgrad, natgrad) + vdot(fpp, fpp))
 

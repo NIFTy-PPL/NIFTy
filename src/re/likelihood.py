@@ -1,25 +1,21 @@
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 
-from typing import Callable, Optional, TypeVar, Union
+from dataclasses import field
+from typing import Any, Callable, TypeVar
 
 import jax
-from jax import numpy as jnp
 from jax.tree_util import (
     Partial, tree_flatten, tree_leaves, tree_map, tree_structure, tree_unflatten
 )
 
-from .misc import doc_from, is1d, isiterable, split
+from .misc import is1d, isiterable
 from .model import LazyModel
 from .tree_math import (
-    ShapeWithDtype, Vector, conj, has_arithmetics, vdot, zeros_like
+    ShapeWithDtype, Vector, conj, has_arithmetics, zeros_like
 )
 
 Q = TypeVar("Q")
 P = TypeVar("P")
-
-
-class _NoInput:
-    pass
 
 
 def _functional_conj(func):
@@ -182,7 +178,7 @@ def _parse_swd(shape):
         if is1d(shape) or not isiterable(shape):
             shape = ShapeWithDtype(shape)
         else:
-            te = "`lsm_tangent_shapes` of invalid type"
+            te = "`lsm_tangents_shapes` of invalid type"
             raise TypeError(te)
     return shape
 
@@ -190,57 +186,32 @@ def _parse_swd(shape):
 class Likelihood(LazyModel):
     """Storage class for keeping track of the energy, the associated
     left-square-root of the metric and the metric.
+
+    Properties
+    ----------
+    energy : callable
+        Function evaluating the negative log-likelihood.
+    transformation : callable
+        Function evaluating the geometric transformation of the likelihood.
+    normalized_residual : callable
+        Function evaluating the data residual normalized by the standard
+        deviation of the likelihood.
+    left_sqrt_metric : callable
+        Function applying the left-square-root of the metric.
+    metric : callable
+        Function applying the metric.
+    domain : tree-like structure of ShapeWithDtype
+        Structure of the input/parameter space.
+    lsm_tangents_shape : tree-like structure of ShapeWithDtype
+        Structure of the data space.
     """
-    def __init__(
-        self,
-        energy: Callable[..., Union[jnp.ndarray, float]],
-        *,
-        normalized_residual: Optional[Callable[[Q], P]] = None,
-        transformation: Optional[Callable[[Q], P]] = None,
-        left_sqrt_metric: Optional[Callable[[Q, Q], P]] = None,
-        right_sqrt_metric: Optional[Callable[[Q, Q], P]] = None,
-        metric: Optional[Callable[[Q, Q], Q]] = None,
-        domain=None,
-        lsm_tangents_shape=None,
-    ):
-        """Instantiates a new likelihood.
+    _lsm_tan_shp: Any = None
 
-        Parameters
-        ----------
-        energy : callable
-            Function evaluating the negative log-likelihood.
-        transformation : callable, optional
-            Function evaluating the geometric transformation of the likelihood.
-        normalized_residual : callable, optional
-            Function evaluating the data residual normalized by the standard
-            deviation of the likelihood.
-        left_sqrt_metric : callable, optional
-            Function applying the left-square-root of the metric.
-        metric : callable, optional
-            Function applying the metric.
-        domain : tree-like structure of ShapeWithDtype, optional
-            Structure of the input/parameter space.
-        lsm_tangents_shape : tree-like structure of ShapeWithDtype, optional
-            Structure of the data space. Will be inferred from
-            `normalized_residual` and `domain` if not set.
-        """
-        # TODO: track forward model and build lsm, metric, residual only when
-        # called instead of always partially
-        self._energy = energy
-        self._transformation = transformation
-        self._normalized_residual = normalized_residual
-        self._left_sqrt_metric = left_sqrt_metric
-        self._metric = metric
-
-        # Derived quantities that one might want to "overload"
-        self._right_sqrt_metric = right_sqrt_metric
-
+    def __init__(self, *, domain=None, lsm_tangents_shape=None):
         self._domain = domain
         # NOTE, `lsm_tangents_shape` is not `normalized_residual` applied to
         # `domain` for e.g. models with a learnable covariance
-        if lsm_tangents_shape is not None:
-            lsm_tangents_shape = _parse_swd(lsm_tangents_shape)
-        self._lsm_tan_shp = lsm_tangents_shape
+        self._lsm_tan_shp = _parse_swd(lsm_tangents_shape)
 
     def __call__(self, primals, **primals_kw):
         """Convenience method to access the `energy` method of this instance.
@@ -262,7 +233,8 @@ class Likelihood(LazyModel):
         energy : float
             Energy at the position `primals`.
         """
-        return self._energy(primals, **primals_kw)
+        nie = "`energy` is not implemented"
+        raise NotImplementedError(nie)
 
     def normalized_residual(self, primals, **primals_kw):
         """Applies the normalized_residual to `primals`.
@@ -280,10 +252,8 @@ class Likelihood(LazyModel):
             Structure of the same type as lsm_tangents_shape for which the
             normalized_residual is computed.
         """
-        if self._normalized_residual is None:
-            nie = "`normalized_residual` is not implemented"
-            raise NotImplementedError(nie)
-        return self._normalized_residual(primals, **primals_kw)
+        nie = "`normalized_residual` is not implemented"
+        raise NotImplementedError(nie)
 
     def metric(self, primals, tangents, **primals_kw):
         """Applies the metric at `primals` to `tangents`.
@@ -303,12 +273,8 @@ class Likelihood(LazyModel):
             Tree-like structure of the same type as primals to which the metric
             has been applied to.
         """
-        if self._metric is None:
-            lsm_at_p = Partial(self.left_sqrt_metric, primals, **primals_kw)
-            return lsm_at_p(
-                self.right_sqrt_metric(primals, tangents, **primals_kw)
-            )
-        return self._metric(primals, tangents, **primals_kw)
+        lsm_at_p = Partial(self.left_sqrt_metric, primals, **primals_kw)
+        return lsm_at_p(self.right_sqrt_metric(primals, tangents, **primals_kw))
 
     def left_sqrt_metric(self, primals, tangents, **primals_kw):
         """Applies the left-square-root (LSM) of the metric at `primals` to
@@ -330,14 +296,10 @@ class Likelihood(LazyModel):
             Tree-like structure of the same type as primals to which
             the left-square-root of the metric has been applied to.
         """
-        if self._left_sqrt_metric is None:
-            _, bwd = jax.vjp(
-                Partial(self.transformation, **primals_kw), primals
-            )
-            bwd = _functional_conj(bwd)
-            res = bwd(tangents)
-            return res[0]
-        return self._left_sqrt_metric(primals, tangents, **primals_kw)
+        _, bwd = jax.vjp(Partial(self.transformation, **primals_kw), primals)
+        bwd = _functional_conj(bwd)
+        res = bwd(tangents)
+        return res[0]
 
     def right_sqrt_metric(self, primals, tangents, **primals_kw):
         """Applies the right-square-root (RSM) of the metric at `primals` to
@@ -359,14 +321,12 @@ class Likelihood(LazyModel):
             Tree-like structure of the same type as
             `left_sqrt_metric_tangents_shape`.
         """
-        if self._right_sqrt_metric is None:
-            lsm_at_p = Partial(self.left_sqrt_metric, primals, **primals_kw)
-            rsm_at_p = jax.linear_transpose(
-                lsm_at_p, self.left_sqrt_metric_tangents_shape
-            )
-            rsm_at_p = _functional_conj(rsm_at_p)
-            return rsm_at_p(tangents)[0]
-        return self._right_sqrt_metric(primals, tangents, **primals_kw)
+        lsm_at_p = Partial(self.left_sqrt_metric, primals, **primals_kw)
+        rsm_at_p = jax.linear_transpose(
+            lsm_at_p, self.left_sqrt_metric_tangents_shape
+        )
+        rsm_at_p = _functional_conj(rsm_at_p)
+        return rsm_at_p(tangents)[0]
 
     def transformation(self, primals, **primals_kw):
         """Applies the coordinate transformation that maps into a coordinate
@@ -385,10 +345,7 @@ class Likelihood(LazyModel):
             Structure of the same type as lsm_tangents_shape to which the
             geometric transformation has been applied to.
         """
-        if self._transformation is None:
-            nie = "`transformation` is not implemented"
-            raise NotImplementedError(nie)
-        return self._transformation(primals, **primals_kw)
+        raise NotImplementedError("`transformation` is not implemented")
 
     @property
     def left_sqrt_metric_tangents_shape(self):
@@ -399,113 +356,153 @@ class Likelihood(LazyModel):
 
     @property
     def lsm_tangents_shape(self):
-        # TODO: track domain and infer LSM tan shape from it and LSM
         """Alias for `left_sqrt_metric_tangents_shape`."""
         return self.left_sqrt_metric_tangents_shape
 
     @property
     def right_sqrt_metric_tangents_shape(self):
         """Retrieves the shape of the tangent domain of the
-        right-square-root of the metric.
+        right-square-root of the metric, a.k.a. the domain.
         """
-        return self._doamin
+        return self.domain
 
     @property
     def rsm_tangents_shape(self):
         """Alias for `right_sqrt_metric_tangents_shape`."""
         return self.right_sqrt_metric_tangents_shape
 
-    def replace(
+    def amend(self, f: Callable, /, *, domain=None, likelihood_argnames=None):
+        """Amend a forward model to the likelihood."""
+        return LikelihoodWithModel(
+            self, f, domain=domain, likelihood_argnames=likelihood_argnames
+        )
+
+    def __add__(self, other):
+        return LikelihoodSum(self, other)
+
+    def freeze(self, *, primals, point_estimates):
+        """Returns a new likelihood with partially inserted `primals` and the
+        remaining unfrozen/liquid `primals`.
+        """
+        if not point_estimates:
+            return self, primals
+        lp = LikelihoodPartial(
+            self, primals=primals, point_estimates=point_estimates
+        )
+        return lp, lp.splitx(primals)[0]
+
+
+class LikelihoodPartial(Likelihood):
+    """Likelihood with partially inserted `primals`."""
+    likelihood: Likelihood = field(metadata=dict(static=False))
+    primals_frozen: Any = field(metadata=dict(static=False))
+
+    def __init__(
         self,
-        energy: Callable,
+        likelihood,
+        /,
         *,
-        normalized_residual: Optional[Callable] = _NoInput,
-        transformation: Optional[Callable] = _NoInput,
-        left_sqrt_metric: Optional[Callable] = _NoInput,
-        right_sqrt_metric: Optional[Callable] = _NoInput,
-        metric: Optional[Callable] = _NoInput,
-        lsm_tangents_shape=_NoInput,
-        domain=_NoInput,
+        primals,
+        point_estimates,
     ):
-        """Instantiates a new likelihood with the same `lsm_tangents_shape`.
+        self.likelihood = likelihood
+        self.point_estimates = point_estimates
+        self.insert_axes, pl, self.primals_frozen = _parse_point_estimates(
+            self.point_estimates, primals
+        )
+        self.unflatten = Vector if self.insert_axes else None
+        super().__init__(
+            domain=jax.tree_map(ShapeWithDtype.from_leave, pl),
+            lsm_tangents_shape=self.likelihood.lsm_tangents_shape
+        )
+
+    @property
+    def energy(self):
+        return partial_insert_and_remove(
+            self.likelihood.energy,
+            insert_axes=(self.insert_axes, ),
+            flat_fill=(self.primals_frozen, ),
+            remove_axes=None
+        )
+
+    @property
+    def transformation(self):
+        return partial_insert_and_remove(
+            self.likelihood.transformation,
+            insert_axes=(self.insert_axes, ),
+            flat_fill=(self.primals_frozen, ),
+            remove_axes=None
+        )
+
+    @property
+    def left_sqrt_metric(self):
+        return partial_insert_and_remove(
+            self.likelihood.left_sqrt_metric,
+            insert_axes=(self.insert_axes, None),
+            flat_fill=(self.primals_frozen, None),
+            remove_axes=self.insert_axes,
+            unflatten=self.unflatten,
+        )
+
+    @property
+    def right_sqrt_metric(self):
+        return partial_insert_and_remove(
+            self.likelihood.right_sqrt_metric,
+            insert_axes=(self.insert_axes, self.insert_axes),
+            flat_fill=(self.primals_frozen, zeros_like(self.primals_frozen)),
+            remove_axes=None,
+        )
+
+    @property
+    def metric(self):
+        return partial_insert_and_remove(
+            self.likelihood.metric,
+            insert_axes=(self.insert_axes, self.insert_axes),
+            flat_fill=(self.primals_frozen, zeros_like(self.primals_frozen)),
+            remove_axes=self.insert_axes,
+            unflatten=self.unflatten,
+        )
+
+    @property
+    def normalized_residual(self):
+        return partial_insert_and_remove(
+            self.likelihood.normalized_residual,
+            insert_axes=(self.insert_axes, ),
+            flat_fill=(self.primals_frozen, ),
+            remove_axes=None
+        )
+
+    def splitx(self, primals):
+        """Split the primals into liquid and frozen.
 
         Parameters
         ----------
-        energy : callable
-            Function evaluating the negative log-likelihood.
-        normalized_residual : callable, optional
-            Function evaluating the data residual of the likelihood
-        transformation : callable, optional
-            Function evaluating the geometric transformation of the
-            log-likelihood.
-        left_sqrt_metric : callable, optional
-            Function applying the left-square-root of the metric.
-        metric : callable, optional
-            Function applying the metric.
+        primals : tree-like structure
+            Position at which to evaluate the energy.
+
+        Returns
+        -------
+        primals_liqud : tree-like structure
+            Liquid/dynamic part of the position at which to evaluate the energy.
+        primals_frozen : tree-like structure
+            Frozen/static part of the position at which to evaluate the energy.
         """
-        return Likelihood(
-            energy,
-            normalized_residual=normalized_residual if normalized_residual
-            is not _NoInput else self.normalized_residual,
-            transformation=transformation
-            if transformation is not _NoInput else self.transformation,
-            left_sqrt_metric=left_sqrt_metric
-            if left_sqrt_metric is not _NoInput else self.left_sqrt_metric,
-            right_sqrt_metric=right_sqrt_metric
-            if right_sqrt_metric is not _NoInput else self.right_sqrt_metric,
-            metric=metric if metric is not _NoInput else self.metric,
-            lsm_tangents_shape=lsm_tangents_shape
-            if lsm_tangents_shape is not _NoInput else self.lsm_tangents_shape,
-            domain=domain if domain is not _NoInput else self.domain
-        )
+        return _parse_point_estimates(self.point_estimates, primals)[1:]
 
-    def jit(self, **kwargs):
-        """Returns a new likelihood with jit-compiled energy, left-square-root
-        of metric and metric.
-        """
-        # TODO: ? move to `__init__` and only expose via `replace(jit=True)`
-        from jax import jit
 
-        j_r = (
-            jit(self.normalized_residual, **kwargs)
-            if self._normalized_residual is not None else None
-        )
+class LikelihoodWithModel(Likelihood):
+    likelihood: Likelihood = field(metadata=dict(static=False))
+    forward: Callable = field(metadata=dict(static=False))
+    likelihood_argnames: tuple = ()
 
-        if self._transformation is not None:
-            j_trafo = jit(self.transformation, **kwargs)
-            j_lsm = jit(self.left_sqrt_metric, **kwargs)
-            j_rsm = jit(self.right_sqrt_metric, **kwargs)
-            j_m = jit(self.metric, **kwargs)
-        elif self._left_sqrt_metric is not None:
-            j_trafo = None
-            j_lsm = jit(self.left_sqrt_metric, **kwargs)
-            j_rsm = jit(self.right_sqrt_metric, **kwargs)
-            j_m = jit(self.metric, **kwargs)
-        elif self._metric is not None:
-            j_trafo, j_lsm, j_rsm = None, None, None
-            j_m = jit(self.metric, **kwargs)
-        else:
-            j_trafo, j_lsm, j_rsm, j_m = None, None, None, None
-
-        return self.replace(
-            jit(self._energy, **kwargs),
-            normalized_residual=j_r,
-            transformation=j_trafo,
-            left_sqrt_metric=j_lsm,
-            right_sqrt_metric=j_rsm,
-            metric=j_m
-        )
-
-    def __matmul__(self, f: Callable):
-        return self.amend(f, left_argnames=(), right_argnames=None)
-
-    def amend(
+    def __init__(
         self,
+        likelihood: Likelihood,
         f: Callable,
+        /,
         *,
         domain=None,
-        left_argnames=(),
-        right_argnames=None
+        likelihood_argnames=None,
     ):
         """Amend the function `f` to the right of the likelihood.
 
@@ -513,14 +510,9 @@ class Likelihood(LazyModel):
         ----------
         f : Callable
             Function which to amend to the likelihood.
-        left_argnames : tuple or None
+        likelihood_argnames : tuple or None
             Keys of the keyword arguments of the joined likelihood which
             to pass to the original likelihood. Passing `None` indicates
-            the intent to absorb everything not explicitly absorbed by
-            the other call.
-        right_argnames : tuple or None
-            Keys of the keyword arguments of the joined likelihood which
-            to pass to the amended function. Passing `None` indicates
             the intent to absorb everything not explicitly absorbed by
             the other call.
 
@@ -528,131 +520,125 @@ class Likelihood(LazyModel):
         -------
         lh : Likelihood
         """
-        if (left_argnames is None and right_argnames is None) or \
-        (left_argnames is not None and right_argnames is not None):
-            ve = "only one of `left_argnames` and `right_argnames` can be (not) `None`"
-            raise ValueError(ve)
-
-        def split_kwargs(**kwargs):
-            if left_argnames is None:  # right_argnames must be not None
-                right_kw, left_kw = split(kwargs, right_argnames)
-            else:  # right_argnames must be None
-                left_kw, right_kw = split(kwargs, left_argnames)
-            return left_kw, right_kw
-
-        def energy_at_f(primals, **primals_kw):
-            kw_l, kw_r = split_kwargs(**primals_kw)
-            return self.energy(f(primals, **kw_r), **kw_l)
-
-        def normalized_residual_at_f(primals, **primals_kw):
-            kw_l, kw_r = split_kwargs(**primals_kw)
-            return self.normalized_residual(f(primals, **kw_r), **kw_l)
-
-        def transformation_at_f(primals, **primals_kw):
-            kw_l, kw_r = split_kwargs(**primals_kw)
-            return self.transformation(f(primals, **kw_r), **kw_l)
-
-        def metric_at_f(primals, tangents, **primals_kw):
-            kw_l, kw_r = split_kwargs(**primals_kw)
-            # Note, judging by a simple benchmark on a large problem,
-            # transposing the JVP seems faster than computing the VJP again. On
-            # small problems there seems to be no measurable difference.
-            y, fwd = jax.linearize(Partial(f, **kw_r), primals)
-            bwd = jax.linear_transpose(fwd, primals)
-            bwd = _functional_conj(bwd)
-            return bwd(self.metric(y, fwd(tangents), **kw_l))[0]
-
-        def left_sqrt_metric_at_f(primals, tangents, **primals_kw):
-            kw_l, kw_r = split_kwargs(**primals_kw)
-            y, bwd = jax.vjp(Partial(f, **kw_r), primals)
-            bwd = _functional_conj(bwd)
-            left_at_fp = self.left_sqrt_metric(y, tangents, **kw_l)
-            return bwd(left_at_fp)[0]
-
-        def right_sqrt_metric_at_f(primals, tangents, **primals_kw):
-            kw_l, kw_r = split_kwargs(**primals_kw)
-            y, fwd = jax.linearize(Partial(f, **kw_r), primals)
-            return self.right_sqrt_metric(y, fwd(tangents), **kw_l)
-
+        self.likelihood = likelihood
+        if not callable(f):
+            te = f"second argument to {self.__class__.__name__} must be callable; got {f!r}"
+            raise TypeError(te)
+        self.forward = f if isinstance(f, LazyModel) else Partial(f)
+        likelihood_argnames = (
+        ) if likelihood_argnames is None else likelihood_argnames
+        if not isinstance(likelihood_argnames, (tuple, list)):
+            te = f"invalid `likelihood_argnames` {self.likelihood_argnames!r}"
+            raise TypeError(te)
+        self.likelihood_argnames = likelihood_argnames
         domain = f.domain if domain is None and isinstance(
             f, LazyModel
         ) else domain
-
-        return self.replace(
-            energy_at_f,
-            normalized_residual=normalized_residual_at_f
-            if self._normalized_residual is not None else None,
-            transformation=transformation_at_f
-            if self._transformation is not None else None,
-            left_sqrt_metric=left_sqrt_metric_at_f
-            if self._left_sqrt_metric is not None else None,
-            right_sqrt_metric=right_sqrt_metric_at_f
-            if self._right_sqrt_metric is not None else None,
-            metric=metric_at_f if self._metric is not None else None,
+        super().__init__(
             domain=domain,
+            lsm_tangents_shape=self.likelihood.lsm_tangents_shape
         )
 
-    def __add__(self, other):
-        if not isinstance(other, Likelihood):
+    def _split_kwargs(self, **kwargs):
+        left = {k: kwargs.pop(k) for k in self.likelihood_argnames}
+        return left, kwargs
+
+    def energy(self, primals, **kwargs):
+        kw_l, kw_r = self._split_kwargs(**kwargs)
+        return self.likelihood(self.forward(primals, **kw_r), **kw_l)
+
+    def normalized_residual(self, primals, **kwargs):
+        kw_l, kw_r = self._split_kwargs(**kwargs)
+        return self.likelihood.normalized_residual(
+            self.forward(primals, **kw_r), **kw_l
+        )
+
+    def transformation(self, primals, **kwargs):
+        kw_l, kw_r = self._split_kwargs(**kwargs)
+        return self.likelihood.transformation(
+            self.forward(primals, **kw_r), **kw_l
+        )
+
+    def metric(self, primals, tangents, **kwargs):
+        kw_l, kw_r = self._split_kwargs(**kwargs)
+        # Note, judging by a simple benchmark on a large problem,
+        # transposing the JVP seems faster than computing the VJP again. On
+        # small problems there seems to be no measurable difference.
+        y, fwd = jax.linearize(Partial(self.forward, **kw_r), primals)
+        bwd = jax.linear_transpose(fwd, primals)
+        bwd = _functional_conj(bwd)
+        return bwd(self.likelihood.metric(y, fwd(tangents), **kw_l))[0]
+
+    def left_sqrt_metric(self, primals, tangents, **kwargs):
+        kw_l, kw_r = self._split_kwargs(**kwargs)
+        y, bwd = jax.vjp(Partial(self.forward, **kw_r), primals)
+        bwd = _functional_conj(bwd)
+        left_at_fp = self.likelihood.left_sqrt_metric(y, tangents, **kw_l)
+        return bwd(left_at_fp)[0]
+
+    def right_sqrt_metric(self, primals, tangents, **kwargs):
+        kw_l, kw_r = self._split_kwargs(**kwargs)
+        y, fwd = jax.linearize(Partial(self.forward, **kw_r), primals)
+        return self.likelihood.right_sqrt_metric(y, fwd(tangents), **kw_l)
+
+    def amend(
+        self,
+        f: Callable,
+        *,
+        domain=None,
+        left_argnames=None,
+        likelihood_argnames=None,
+    ):
+        left_argnames = () if left_argnames is None else left_argnames
+        likelihood_argnames = self.likelihood_argnames if likelihood_argnames is None else likelihood_argnames
+
+        def ff(primals, **kwargs):
+            kw_l = {k: kwargs.pop(k) for k in left_argnames}
+            kw_r = kwargs
+            return self.forward(f(primals, **kw_r), **kw_l)
+
+        return self.__class__(
+            self.likelihood,
+            ff,
+            domain=domain,
+            likelihood_argnames=likelihood_argnames,
+        )
+
+
+class LikelihoodSum(Likelihood):
+    left_likelihood: Likelihood = field(metadata=dict(static=False))
+    right_likelihood: Likelihood = field(metadata=dict(static=False))
+
+    def __init__(
+        self,
+        left,
+        right,
+        /,
+        domain=None,
+        _left_key="lh_left",
+        _right_key="lh_right",
+    ):
+        if not (isinstance(left, Likelihood) and isinstance(right, Likelihood)):
             te = (
                 "object which to add to this instance is of invalid type"
-                f" {type(other)!r}"
+                f" {type(right)!r}"
             )
             raise TypeError(te)
-
-        lkey = "lh_left"
-        rkey = "lh_right"
-
+        self._lkey, self._rkey = _left_key, _right_key
         joined_tangents_shape = {
-            lkey: self._lsm_tan_shp,
-            rkey: other._lsm_tan_shp
+            self._lkey: left._lsm_tan_shp,
+            self._rkey: right._lsm_tan_shp
         }
-        if isinstance(self._lsm_tan_shp,
-                      Vector) or isinstance(other._lsm_tan_shp, Vector):
+        if isinstance(left._lsm_tan_shp,
+                      Vector) or isinstance(right._lsm_tan_shp, Vector):
             joined_tangents_shape = Vector(joined_tangents_shape)
 
-        def joined_energy(p, **pkw):
-            return self.energy(p, **pkw) + other.energy(p, **pkw)
-
-        def joined_normalized_residual(p, **pkw):
-            lres = self.normalized_residual(p, **pkw)
-            rres = other.normalized_residual(p, **pkw)
-            lvec, rvec = isinstance(lres, Vector), isinstance(rres, Vector)
-            res = {lkey: lres, rkey: rres}
-            res = Vector(res) if lvec or rvec else res
-            return res
-
-        def joined_metric(p, t, **pkw):
-            return self.metric(p, t, **pkw) + other.metric(p, t, **pkw)
-
-        def joined_transformation(p, **pkw):
-            lres = self.transformation(p, **pkw)
-            rres = other.transformation(p, **pkw)
-            lvec, rvec = isinstance(lres, Vector), isinstance(rres, Vector)
-            res = {lkey: lres, rkey: rres}
-            res = Vector(res) if lvec or rvec else res
-            return res
-
-        def joined_left_sqrt_metric(p, t, **pkw):
-            return (
-                self.left_sqrt_metric(p, t[lkey], **pkw) +
-                other.left_sqrt_metric(p, t[rkey], **pkw)
-            )
-
-        def joined_right_sqrt_metric(p, t, **pkw):
-            lres = self.right_sqrt_metric(p, t, **pkw)
-            rres = other.right_sqrt_metric(p, t, **pkw)
-            lvec, rvec = isinstance(lres, Vector), isinstance(rres, Vector)
-            res = {lkey: lres, rkey: rres}
-            res = Vector(res) if lvec or rvec else res
-            return res
-
         domain = None
-        if self.domain is not None and other.domain is not None:
-            lvec = isinstance(self.domain, Vector)
-            rvec = isinstance(other.domain, Vector)
-            ldomain = self.domain.tree if lvec else self.domain
-            rdomain = other.domain.tree if rvec else other.domain
+        if left.domain is not None and right.domain is not None:
+            lvec = isinstance(left.domain, Vector)
+            rvec = isinstance(right.domain, Vector)
+            ldomain = left.domain.tree if lvec else left.domain
+            rdomain = right.domain.tree if rvec else right.domain
             domain = ldomain | rdomain
             domain = Vector(domain) if lvec or rvec else domain
             isswd = hasattr(domain, "shape") and hasattr(domain, "dtype")
@@ -664,152 +650,54 @@ class Likelihood(LazyModel):
                     " in `Vector`s"
                 )
                 raise ValueError(ve)
-
-        return Likelihood(
-            joined_energy,
-            normalized_residual=joined_normalized_residual,
-            transformation=joined_transformation,
-            left_sqrt_metric=joined_left_sqrt_metric,
-            right_sqrt_metric=joined_right_sqrt_metric,
-            metric=joined_metric,
-            lsm_tangents_shape=joined_tangents_shape,
-            domain=domain
+        self.left_likelihood = left
+        self.right_likelihood = right
+        super().__init__(
+            domain=domain, lsm_tangents_shape=joined_tangents_shape
         )
 
-    def freeze(self, point_estimates, primals):
-        """Returns a new likelihood with partially inserted `primals` and the
-        remaining unfrozen/liquid `primals`.
-        """
-        if not point_estimates:
-            return self, primals
+    def energy(self, primals, **kwargs):
+        return self.left_likelihood.energy(
+            primals, **kwargs
+        ) + self.right_likelihood.energy(primals, **kwargs)
 
-        insert_axes, primals_liquid, primals_frozen = _parse_point_estimates(
-            point_estimates, primals
+    def normalized_residual(self, primals, **kwargs):
+        lres = self.left_likelihood.normalized_residual(primals, **kwargs)
+        rres = self.right_likelihood.normalized_residual(primals, **kwargs)
+        lvec, rvec = isinstance(lres, Vector), isinstance(rres, Vector)
+        res = {self._lkey: lres, self._rkey: rres}
+        res = Vector(res) if lvec or rvec else res
+        return res
+
+    def metric(self, primals, tangents, **kwargs):
+        return self.left_likelihood.metric(
+            primals, tangents, **kwargs
+        ) + self.right_likelihood.metric(primals, tangents, **kwargs)
+
+    def transformation(self, primals, **kwargs):
+        lres = self.left_likelihood.transformation(primals, **kwargs)
+        rres = self.right_likelihood.transformation(primals, **kwargs)
+        lvec, rvec = isinstance(lres, Vector), isinstance(rres, Vector)
+        res = {self._lkey: lres, self._rkey: rres}
+        res = Vector(res) if lvec or rvec else res
+        return res
+
+    def left_sqrt_metric(self, primals, tangents, **kwargs):
+        return (
+            self.left_likelihood.
+            left_sqrt_metric(primals, tangents[self._lkey], **kwargs) +
+            self.right_likelihood.
+            left_sqrt_metric(primals, tangents[self._rkey], **kwargs)
         )
-        unflatten = Vector if insert_axes else None
 
-        energy = partial_insert_and_remove(
-            self.energy,
-            insert_axes=(insert_axes, ),
-            flat_fill=(primals_frozen, ),
-            remove_axes=None
+    def right_sqrt_metric(self, primals, tangents, **kwargs):
+        lres = self.left_likelihood.right_sqrt_metric(
+            primals, tangents, **kwargs
         )
-        transformation = None
-        left_sqrt_metric, right_sqrt_metric = None, None
-        metric = None
-        normalized_residual = None
-
-        do_insert = self._transformation is not None
-        if do_insert:
-            transformation = partial_insert_and_remove(
-                self.transformation,
-                insert_axes=(insert_axes, ),
-                flat_fill=(primals_frozen, ),
-                remove_axes=None
-            )
-        do_insert |= self._left_sqrt_metric is not None
-        if do_insert:
-            left_sqrt_metric = partial_insert_and_remove(
-                self.left_sqrt_metric,
-                insert_axes=(insert_axes, None),
-                flat_fill=(primals_frozen, None),
-                remove_axes=insert_axes,
-                unflatten=unflatten,
-            )
-            right_sqrt_metric = partial_insert_and_remove(
-                self.right_sqrt_metric,
-                insert_axes=(insert_axes, insert_axes),
-                flat_fill=(primals_frozen, zeros_like(primals_frozen)),
-                remove_axes=None,
-            )
-        do_insert |= self._metric is not None
-        if do_insert:
-            metric = partial_insert_and_remove(
-                self.metric,
-                insert_axes=(insert_axes, insert_axes),
-                flat_fill=(primals_frozen, zeros_like(primals_frozen)),
-                remove_axes=insert_axes,
-                unflatten=unflatten,
-            )
-
-        if self._normalized_residual is not None:
-            normalized_residual = partial_insert_and_remove(
-                self.normalized_residual,
-                insert_axes=(insert_axes, ),
-                flat_fill=(primals_frozen, ),
-                remove_axes=None
-            )
-
-        domain = jax.tree_map(ShapeWithDtype.from_leave, primals_liquid)
-
-        lh = self.replace(
-            energy,
-            transformation=transformation,
-            left_sqrt_metric=left_sqrt_metric,
-            right_sqrt_metric=right_sqrt_metric,
-            metric=metric,
-            normalized_residual=normalized_residual,
-            domain=domain,
+        rres = self.right_likelihood.right_sqrt_metric(
+            primals, tangents, **kwargs
         )
-        return lh, primals_liquid
-
-
-# TODO: prune/hide/(make simply add unit mat) in favor of just passing around
-# likelihood; we exclusively built hierarchical models anyways.
-class StandardHamiltonian():
-    """Joined object storage composed of a user-defined likelihood and a
-    standard normal likelihood as prior.
-    """
-    def __init__(
-        self,
-        likelihood: Likelihood,
-        _compile_joined: bool = False,
-        _compile_kwargs: dict = {}
-    ):
-        """Instantiates a new standardized Hamiltonian, i.e. a likelihood
-        joined with a standard normal prior.
-
-        Parameters
-        ----------
-        likelihood : Likelihood
-            Energy, left-square-root of metric and metric of the likelihood.
-        """
-        self._lh = likelihood
-
-        def joined_energy(primals, **primals_kw):
-            # Assume the first primals to be the parameters
-            return self._lh(primals, **
-                            primals_kw) + 0.5 * vdot(primals, primals)
-
-        def joined_metric(primals, tangents, **primals_kw):
-            return self._lh.metric(primals, tangents, **primals_kw) + tangents
-
-        if _compile_joined:
-            from jax import jit
-            joined_energy = jit(joined_energy, **_compile_kwargs)
-            joined_metric = jit(joined_metric, **_compile_kwargs)
-        self._energy = joined_energy
-        self._metric = joined_metric
-
-    @doc_from(Likelihood.__call__)
-    def __call__(self, primals, **primals_kw):
-        return self.energy(primals, **primals_kw)
-
-    @doc_from(Likelihood.energy)
-    def energy(self, primals, **primals_kw):
-        return self._energy(primals, **primals_kw)
-
-    @doc_from(Likelihood.metric)
-    def metric(self, primals, tangents, **primals_kw):
-        return self._metric(primals, tangents, **primals_kw)
-
-    @property
-    def likelihood(self):
-        return self._lh
-
-    def jit(self, **kwargs):
-        return StandardHamiltonian(
-            self.likelihood.jit(**kwargs),
-            _compile_joined=True,
-            _compile_kwargs=kwargs
-        )
+        lvec, rvec = isinstance(lres, Vector), isinstance(rres, Vector)
+        res = {self._lkey: lres, self._rkey: rres}
+        res = Vector(res) if lvec or rvec else res
+        return res

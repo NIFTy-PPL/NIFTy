@@ -16,6 +16,51 @@ import nifty8.re as jft
 pmp = pytest.mark.parametrize
 
 
+class _OverwriteableLikelihood(jft.Likelihood):
+    def __init__(
+        self,
+        energy=None,
+        *,
+        metric=None,
+        left_sqrt_metric=None,
+        right_sqrt_metric=None,
+        transformation=None,
+        domain=None,
+        lsm_tangents_shape=None,
+    ):
+        self._energy = energy
+        self._metric = metric
+        self._left_sqrt_metric = left_sqrt_metric
+        self._right_sqrt_metric = right_sqrt_metric
+        self._transformation = transformation
+        super().__init__(domain=domain, lsm_tangents_shape=lsm_tangents_shape)
+
+    def energy(self, *a, **k):
+        if self._energy is not None:
+            return self._energy(*a, **k)
+        return super().energy(*a, **k)
+
+    def metric(self, *a, **k):
+        if self._metric is not None:
+            return self._metric(*a, **k)
+        return super().metric(*a, **k)
+
+    def left_sqrt_metric(self, *a, **k):
+        if self._left_sqrt_metric is not None:
+            return self._left_sqrt_metric(*a, **k)
+        return super().left_sqrt_metric(*a, **k)
+
+    def right_sqrt_metric(self, *a, **k):
+        if self._right_sqrt_metric is not None:
+            return self._right_sqrt_metric(*a, **k)
+        return super().right_sqrt_metric(*a, **k)
+
+    def transformation(self, *a, **k):
+        if self._transformation is not None:
+            return self._transformation(*a, **k)
+        return super().transformation(*a, **k)
+
+
 def lst2fixt(lst):
     @pytest.fixture(params=lst)
     def fixt(request):
@@ -172,7 +217,7 @@ def test_sqrt_metric_vs_metric_consistency(seed, shape, lh_init):
     lh = lh_init_method(**init_kwargs)
 
     # Let NIFTy.re infer the metric from the left-square-root-metric
-    lh_mini1 = jft.Likelihood(
+    lh_mini1 = _OverwriteableLikelihood(
         lh.energy,
         left_sqrt_metric=lh.left_sqrt_metric,
         lsm_tangents_shape=lh.lsm_tangents_shape,
@@ -186,7 +231,7 @@ def test_sqrt_metric_vs_metric_consistency(seed, shape, lh_init):
 
     # Let NIFTy.re infer the metric from the left-square-root-metric and
     # right-sqrt-metric
-    lh_mini2 = jft.Likelihood(
+    lh_mini2 = _OverwriteableLikelihood(
         lh.energy,
         left_sqrt_metric=lh.left_sqrt_metric,
         right_sqrt_metric=lh.right_sqrt_metric,
@@ -216,13 +261,15 @@ def test_transformation_vs_sqrt_metric_consistency(seed, shape, lh_init):
         for (k, method), sk in zip(draw.items(), subkeys)
     }
     lh = lh_init_method(**init_kwargs)
-    if lh._transformation is None:
+    try:
+        lh.transformation(latent_init(key, shape=shape))
+    except NotImplementedError:
         pytest.skip("no transformation rule implemented yet")
 
     energy, lsm, lsm_shp = lh.energy, lh.left_sqrt_metric, lh.lsm_tangents_shape
     # Let NIFTy.re infer the left-square-root-metric and the metric from the
     # transformation
-    lh_mini = jft.Likelihood(
+    lh_mini = _OverwriteableLikelihood(
         energy, left_sqrt_metric=lsm, lsm_tangents_shape=lsm_shp
     )
 
@@ -295,7 +342,8 @@ def test_nifty_vcgaussian_vs_niftyre_vcgaussian_consistency(seed, iscomplex):
     def op_jft(x):
         return [val * x['res'], jnp.sqrt(jnp.exp(x['invcov']))]
 
-    varcov_jft = jft.VariableCovarianceGaussian(data.val, iscomplex) @ op_jft
+    varcov_jft = jft.VariableCovarianceGaussian(data.val,
+                                                iscomplex).amend(op_jft)
 
     def random_jft_ift_field(key):
         inp = jft.random_like(key, ift.nifty2jax.convert(op.domain))

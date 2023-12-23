@@ -149,8 +149,11 @@ def test_optimize_kl_sample_consistency(
     pos = latent_init(sk, shape=shape)
     jft.tree_math.assert_arithmetics(pos)
 
-    if lh._transformation is None and sample_mode == "nonlinear_resample":
-        pytest.skip("no transformation rule implemented yet")
+    if sample_mode == "nonlinear_resample":
+        try:
+            lh.transformation(pos)
+        except NotImplementedError:
+            pytest.skip("no transformation rule implemented yet")
 
     key, sk = random.split(key)
     delta = 1e-3
