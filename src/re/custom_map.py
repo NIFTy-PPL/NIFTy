@@ -136,10 +136,12 @@ def _lscan(f, init, xs, length=None, unroll=1):
         xs = [None] * length
     carry = init
     ys = None
-    first_leave = jax.tree_util.tree_leaves(xs)[0]
-    like_device = first_leave.device(
-    ) if hasattr(first_leave, "device") else None
-    length = first_leave.shape[0] if length is None else length
+    lvs = jax.tree_util.tree_leaves(xs)
+    # Only use the same device if a single device is used
+    lvs_d = [e.devices() for e in lvs if hasattr(e, "devices")]
+    like_device = list(set().union(*lvs_d))
+    like_device = like_device[0] if len(like_device) == 1 else None
+    length = lvs[0].shape[0] if length is None else length
     for i in range(length):
         carry, y = f(carry, jax.tree_map(lambda x: x[i], xs))
         if ys is None:
