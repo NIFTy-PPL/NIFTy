@@ -7,6 +7,7 @@ from .custom_map import lmap, smap
 from .evi import (
     Samples, draw_linear_residual, draw_residual, nonlinearly_update_residual
 )
+from .evidence_lower_bound import estimate_evidence_lower_bound
 from .extra import SamplingCartesianGridLOS
 from .gauss_markov import (
     GaussMarkovProcess, IntegratedWienerProcess, OrnsteinUhlenbeckProcess,
