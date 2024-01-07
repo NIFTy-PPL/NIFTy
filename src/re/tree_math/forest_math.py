@@ -32,8 +32,7 @@ def assert_arithmetics(obj, *args, **kwargs):
         ae = (
             f"input of type {type(obj)} does not support"
             " core arithmetic operations"
-            "\nmaybe you forgot to wrap your object in a"
-            " :class:`Vector` instance"
+            "\nmaybe you forgot to wrap your object in a `Vector`"
         )
         raise AssertionError(ae)
 
