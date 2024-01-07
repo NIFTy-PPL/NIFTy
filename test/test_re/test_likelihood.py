@@ -6,8 +6,8 @@ from functools import partial
 
 import jax
 import pytest
-from jax import random
 from jax import numpy as jnp
+from jax import random
 from numpy.testing import assert_allclose
 
 import nifty8.re as jft
@@ -68,7 +68,7 @@ def test_likelihood_partial(seed, forward):
     data = forward(jft.random_like(sk_d, domain))
 
     gaussian = jft.Gaussian(data)
-    gaussian = gaussian @ forward
+    gaussian = gaussian.amend(forward)
 
     gaussian_part, primals_liquid = gaussian.freeze(("b", ), primals)
     assert primals_liquid.tree[0].shape == domain["a"].shape
@@ -124,15 +124,17 @@ def test_nonvariable_likelihood_add(seed, likelihood, forward_a, forward_b):
     data_b = jft.random_like(k_b, swd_b)
     data_ab = jft.Vector({key_a: data_a, key_b: data_b})
 
-    lh_orig = likelihood(data_ab) @ forward
-    lh_a = likelihood(data_a).amend(fwd_a, domain={key_a: swd_a})
-    lh_b = likelihood(data_b).amend(fwd_b, domain={key_b: swd_b})
+    swd = jft.Vector({key_a: swd_a, key_b: swd_b})
+    lh_orig = likelihood(data_ab).amend(forward, domain=swd)
+    lh_a = likelihood(data_a).amend(fwd_a, domain=jft.Vector({key_a: swd_a}))
+    lh_b = likelihood(data_b).amend(fwd_b, domain=jft.Vector({key_b: swd_b}))
     lh_ab = lh_a + lh_b
 
     key, k_p, k_t, k_q = random.split(key, 4)
-    swd = jft.Vector({key_a: swd_a, key_b: swd_b})
     rl = jax.vmap(jft.random_like, in_axes=(0, None))
-    p, t, q = tuple(rl(random.split(k, N_TRIES), swd) for k in (k_p, k_t, k_q))
+    p, t, q = tuple(
+        rl(random.split(k, N_TRIES), lh_orig.domain) for k in (k_p, k_t, k_q)
+    )
 
     assert_allclose(jax.vmap(lh_orig)(p), jax.vmap(lh_ab)(p), equal_nan=False)
     rsm_orig = jax.vmap(lh_orig.right_sqrt_metric)(p, t)
@@ -191,19 +193,19 @@ def test_variable_likelihood_add(seed, likelihood, forward_a, forward_b):
     # Make input always a tuple for Variable* likelihoods
     data_shp_a = (3, 5)
     data_shp_b = (12, 5)
-    primals_swd_a = jft.Vector((jft.ShapeWithDtype(data_shp_a), ) * 2)
+    primals_swd_a = (jft.ShapeWithDtype(data_shp_a), ) * 2
     data_swd_a = jft.ShapeWithDtype(data_shp_a)
-    primals_swd_b = jft.Vector((jft.ShapeWithDtype(data_shp_b), ) * 2)
+    primals_swd_b = (jft.ShapeWithDtype(data_shp_b), ) * 2
     data_swd_b = jft.ShapeWithDtype(data_shp_b)
     key_a, key_b = "a", "b"
 
     def fwd_a(x):
         x1, x2 = jax.tree_map(forward_a, x[key_a])
-        return (x1, jnp.abs(x2))
+        return (x1, jax.tree_map(jnp.abs, x2))
 
     def fwd_b(x):
         x1, x2 = jax.tree_map(forward_b, x[key_b])
-        return (x1, jnp.abs(x2))
+        return (x1, jax.tree_map(jnp.abs, x2))
 
     def forward(x):
         a1, a2 = fwd_a(x)
@@ -217,15 +219,21 @@ def test_variable_likelihood_add(seed, likelihood, forward_a, forward_b):
     data_b = jft.random_like(k_b, data_swd_b)
     data_ab = jft.Vector({key_a: data_a, key_b: data_b})
 
-    lh_orig = likelihood(data_ab) @ forward
-    lh_a = likelihood(data_a).amend(fwd_a, domain={key_a: primals_swd_a})
-    lh_b = likelihood(data_b).amend(fwd_b, domain={key_b: primals_swd_b})
+    swd = jft.Vector({key_a: primals_swd_a, key_b: primals_swd_b})
+    lh_orig = likelihood(data_ab).amend(forward, domain=swd)
+    lh_a = likelihood(data_a).amend(
+        fwd_a, domain=jft.Vector({key_a: primals_swd_a})
+    )
+    lh_b = likelihood(data_b).amend(
+        fwd_b, domain=jft.Vector({key_b: primals_swd_b})
+    )
     lh_ab = lh_a + lh_b
 
     key, k_p, k_t, k_q = random.split(key, 4)
-    swd = jft.Vector({key_a: primals_swd_a, key_b: primals_swd_b})
     rl = jax.vmap(jft.random_like, in_axes=(0, None))
-    p, t, q = tuple(rl(random.split(k, N_TRIES), swd) for k in (k_p, k_t, k_q))
+    p, t, q = tuple(
+        rl(random.split(k, N_TRIES), lh_orig.domain) for k in (k_p, k_t, k_q)
+    )
 
     assert_allclose(jax.vmap(lh_orig)(p), jax.vmap(lh_ab)(p), equal_nan=False)
     rsm_orig = jax.vmap(lh_orig.right_sqrt_metric)(p, t)

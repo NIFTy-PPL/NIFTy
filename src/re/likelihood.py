@@ -10,7 +10,9 @@ from jax.tree_util import (
 
 from .misc import doc_from, is1d, isiterable, split
 from .model import AbstractModel
-from .tree_math import ShapeWithDtype, Vector, conj, vdot, zeros_like
+from .tree_math import (
+    ShapeWithDtype, Vector, conj, has_arithmetics, vdot, zeros_like
+)
 
 Q = TypeVar("Q")
 P = TypeVar("P")
@@ -655,6 +657,15 @@ class Likelihood(AbstractModel):
             rdomain = other.domain.tree if rvec else other.domain
             domain = ldomain | rdomain
             domain = Vector(domain) if lvec or rvec else domain
+            isswd = hasattr(domain, "shape") and hasattr(domain, "dtype")
+            if not isswd and not has_arithmetics(domain):
+                ve = (
+                    "domains of the Likelihood-summands must support core"
+                    " arithmetic operations"
+                    "\nmaybe you forgot to wrap your inputs to the liklihoods"
+                    " in `Vector`s"
+                )
+                raise ValueError(ve)
 
         return Likelihood(
             joined_hamiltonian,
