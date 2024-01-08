@@ -264,7 +264,7 @@ def non_parametric_amplitude(
         slope *= rel_log_mode_len
         ln_spectrum = slope
 
-        if flexibility is not None:
+        if (flexibility is not None) and (log_vol.size > 0):
             assert log_vol is not None
             twolog = integrated_wiener_process(
                 jnp.zeros((2,)),
