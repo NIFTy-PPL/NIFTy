@@ -40,7 +40,7 @@ def scalar_gm(xi, init, drift, diffamp):
         drift = drift[:, jnp.newaxis, jnp.newaxis]
     if not _isscalar(diffamp):
         diffamp = diffamp[:, jnp.newaxis, jnp.newaxis]
-    if isinstance(init, float):
+    if _isscalar(init):
         init = jnp.array([init,])
     return discrete_gm_general(xi[:, jnp.newaxis], init, drift, diffamp)[:, 0]
 
@@ -127,18 +127,18 @@ class OUProcess(Model):
                  N_steps: int = None):
         if _isscalar(dt):
             dt = np.ones(N_steps) * dt
-        shape = dt.shape
-        domain = {name: ShapeWithDtype(shape, float)}
-        init =  partial(random_like, primals=domain)
+        domain = {name: ShapeWithDtype((dt.size + 1,), float)}
+        #init =  {name: partial(random_like, primals=domain)}
         for a in [alpha, gamma]:
             if isinstance(a, Model):
                 domain = domain | a.domain
-                init = init | a.init
+        #        init = init | a.init
+        self.alpha = alpha
 
         def call(x):
             al = alpha(x) if isinstance(alpha, Model) else alpha
             gam = gamma(x) if isinstance(gamma, Model) else gamma
             xi = x[name]
-            return stationary_ou(xi, al, gam, dt)
+            return stationary_init_ou(xi, al, gam, dt)
 
-        super().__init__(call=call, domain=domain, init=init)
+        super().__init__(call=call, domain=domain)#, init=init)
