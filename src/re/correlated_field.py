@@ -266,18 +266,14 @@ def non_parametric_amplitude(
 
         if flexibility is not None:
             assert log_vol is not None
-            xi_spc = primals[prefix + "spectrum"]
-            flx = flexibility(primals)
-            asp = None if asperity is None else asperity(primals)
             twolog = integrated_wiener_process(
                 jnp.zeros((2,)),
-                xi_spc.T,
-                flx,
+                primals[prefix + "spectrum"].T,
+                flexibility(primals),
                 log_vol,
-                asp)
+                0. if asperity is None else asperity(primals))
             twolog = jnp.concatenate((jnp.zeros((1,)), twolog[:,0]))
-            wo_slope = _remove_slope(rel_log_mode_len, twolog)
-            ln_spectrum += wo_slope
+            ln_spectrum += _remove_slope(rel_log_mode_len, twolog)
 
         # Exponentiate and norm the power spectrum
         spectrum = jnp.exp(ln_spectrum)
