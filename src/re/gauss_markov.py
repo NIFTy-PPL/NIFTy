@@ -11,6 +11,7 @@ from typing import Union
 
 from .model import Model
 from .tree_math import ShapeWithDtype, random_like
+from .model import Initializer
 
 def _isscalar(x):
     return jnp.ndim(x) == 0
@@ -76,11 +77,11 @@ def integrated_wiener_process(
 def ou_process(
         x0: float,
         xi: Array,
-        alpha: Union[float, Array],
+        sigma: Union[float, Array],
         gamma: Union[float, Array],
         dt: Union[float, Array]):
     drift = jnp.exp(-gamma*dt)
-    amp = alpha * jnp.sqrt(1. - drift**2)
+    amp = sigma * jnp.sqrt(1. - drift**2)
     return scalar_gm(xi, x0, drift, amp)
 
 def stationary_init_ou(
@@ -103,11 +104,13 @@ class WienerProcess(Model):
             dt = np.ones(N_steps) * dt
         shape = dt.shape
         domain = {name: ShapeWithDtype(shape, float)}
-        init =  partial(random_like, primals=domain)
+        init =  Initializer({name: partial(random_like, primals=domain)})
         for a in [x0, sigma]:
             if isinstance(a, Model):
                 domain = domain | a.domain
                 init = init | a.init
+        self.x0 = x0
+        self.sigma = sigma
 
         def call(x):
             sig = sigma(x) if isinstance(sigma, Model) else sigma
@@ -120,7 +123,7 @@ class WienerProcess(Model):
 
 class OUProcess(Model):
     def __init__(self,
-                 alpha: Union[float, Array, Model],
+                 sigma: Union[float, Array, Model],
                  gamma: Union[float, Array, Model],
                  dt: Union[float, Array],
                  name: str = 'ouxi',
@@ -128,17 +131,18 @@ class OUProcess(Model):
         if _isscalar(dt):
             dt = np.ones(N_steps) * dt
         domain = {name: ShapeWithDtype((dt.size + 1,), float)}
-        #init =  {name: partial(random_like, primals=domain)}
-        for a in [alpha, gamma]:
+        init =  Initializer({name: partial(random_like, primals=domain)})
+        for a in [sigma, gamma]:
             if isinstance(a, Model):
                 domain = domain | a.domain
-        #        init = init | a.init
-        self.alpha = alpha
+                init = init | a.init
+        self.sigma = sigma
+        self.gamma = gamma
 
         def call(x):
-            al = alpha(x) if isinstance(alpha, Model) else alpha
+            al = sigma(x) if isinstance(sigma, Model) else sigma
             gam = gamma(x) if isinstance(gamma, Model) else gamma
             xi = x[name]
             return stationary_init_ou(xi, al, gam, dt)
 
-        super().__init__(call=call, domain=domain)#, init=init)
+        super().__init__(call=call, domain=domain, init=init)
