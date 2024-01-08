@@ -13,6 +13,7 @@ from .misc import wrap
 from .model import Model, WrappedCall
 from .num import lognormal_prior, normal_prior
 from .tree_math import ShapeWithDtype, random_like
+from .gauss_markov import integrated_wiener_process
 
 
 def hartley(p, axes=None):
@@ -134,21 +135,6 @@ def _make_grid(shape, distances, harmonic_type) -> RegularCartesianGrid:
         raise ValueError(ve)
     grid = grid._replace(harmonic_grid=harmonic_grid)
     return grid
-
-
-def _twolog_integrate(log_vol, x):
-    # Map the space to the one for the relative log-modes, i.e. pad the space
-    # of the log volume
-    twolog = jnp.empty((2 + log_vol.shape[0], ))
-    twolog = twolog.at[0].set(0.)
-    twolog = twolog.at[1].set(0.)
-
-    twolog = twolog.at[2:].set(jnp.cumsum(x[1], axis=0))
-    twolog = twolog.at[2:].set(
-        (twolog[2:] + twolog[1:-1]) / 2. * log_vol + x[0]
-    )
-    twolog = twolog.at[2:].set(jnp.cumsum(twolog[2:], axis=0))
-    return twolog
 
 
 def _remove_slope(rel_log_mode_dist, x):
@@ -282,25 +268,14 @@ def non_parametric_amplitude(
             assert log_vol is not None
             xi_spc = primals[prefix + "spectrum"]
             flx = flexibility(primals)
-            sig_flx = flx * jnp.sqrt(log_vol)
-            sig_flx = jnp.broadcast_to(sig_flx, (2, ) + log_vol.shape)
-
-            if asperity is None:
-                shift = jnp.stack(
-                    (log_vol / jnp.sqrt(12.), jnp.ones_like(log_vol)), axis=0
-                )
-                asp = shift * sig_flx * xi_spc
-            else:
-                asp = asperity(primals)
-                shift = jnp.stack(
-                    (log_vol**2 / 12., jnp.ones_like(log_vol)), axis=0
-                )
-                sig_asp = jnp.broadcast_to(
-                    jnp.array([[asp], [0.]]), shift.shape
-                )
-                asp = jnp.sqrt(shift + sig_asp) * sig_flx * xi_spc
-
-            twolog = _twolog_integrate(log_vol, asp)
+            asp = None if asperity is None else asperity(primals)
+            twolog = integrated_wiener_process(
+                jnp.zeros((2,)),
+                xi_spc.T,
+                flx,
+                log_vol,
+                asp)
+            twolog = jnp.concatenate((jnp.zeros((1,)), twolog[:,0]))
             wo_slope = _remove_slope(rel_log_mode_len, twolog)
             ln_spectrum += wo_slope
 
