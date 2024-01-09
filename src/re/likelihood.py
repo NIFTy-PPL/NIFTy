@@ -10,10 +10,16 @@ from jax.tree_util import (
 
 from .misc import doc_from, is1d, isiterable, split
 from .model import AbstractModel
-from .tree_math import ShapeWithDtype, Vector, conj, vdot, zeros_like
+from .tree_math import (
+    ShapeWithDtype, Vector, conj, has_arithmetics, vdot, zeros_like
+)
 
 Q = TypeVar("Q")
 P = TypeVar("P")
+
+
+class _NoInput:
+    pass
 
 
 def _functional_conj(func):
@@ -415,13 +421,13 @@ class Likelihood(AbstractModel):
         self,
         energy: Callable,
         *,
-        normalized_residual: Optional[Callable] = None,
-        transformation: Optional[Callable] = None,
-        left_sqrt_metric: Optional[Callable] = None,
-        right_sqrt_metric: Optional[Callable] = None,
-        metric: Optional[Callable] = None,
-        lsm_tangents_shape=None,
-        domain=None,
+        normalized_residual: Optional[Callable] = _NoInput,
+        transformation: Optional[Callable] = _NoInput,
+        left_sqrt_metric: Optional[Callable] = _NoInput,
+        right_sqrt_metric: Optional[Callable] = _NoInput,
+        metric: Optional[Callable] = _NoInput,
+        lsm_tangents_shape=_NoInput,
+        domain=_NoInput,
     ):
         """Instantiates a new likelihood with the same `lsm_tangents_shape`.
 
@@ -441,18 +447,18 @@ class Likelihood(AbstractModel):
         """
         return Likelihood(
             energy,
-            normalized_residual=normalized_residual
-            if normalized_residual is not None else self.normalized_residual,
+            normalized_residual=normalized_residual if normalized_residual
+            is not _NoInput else self.normalized_residual,
             transformation=transformation
-            if transformation is not None else self.transformation,
+            if transformation is not _NoInput else self.transformation,
             left_sqrt_metric=left_sqrt_metric
-            if left_sqrt_metric is not None else self.left_sqrt_metric,
+            if left_sqrt_metric is not _NoInput else self.left_sqrt_metric,
             right_sqrt_metric=right_sqrt_metric
-            if right_sqrt_metric is not None else self.right_sqrt_metric,
-            metric=metric if metric is not None else self.metric,
+            if right_sqrt_metric is not _NoInput else self.right_sqrt_metric,
+            metric=metric if metric is not _NoInput else self.metric,
             lsm_tangents_shape=lsm_tangents_shape
-            if lsm_tangents_shape is not None else self.lsm_tangents_shape,
-            domain=domain if domain is not None else self.domain
+            if lsm_tangents_shape is not _NoInput else self.lsm_tangents_shape,
+            domain=domain if domain is not _NoInput else self.domain
         )
 
     def jit(self, **kwargs):
@@ -576,11 +582,15 @@ class Likelihood(AbstractModel):
 
         return self.replace(
             energy_at_f,
-            normalized_residual=normalized_residual_at_f,
-            transformation=transformation_at_f,
-            left_sqrt_metric=left_sqrt_metric_at_f,
-            right_sqrt_metric=right_sqrt_metric_at_f,
-            metric=metric_at_f,
+            normalized_residual=normalized_residual_at_f
+            if self._normalized_residual is not None else None,
+            transformation=transformation_at_f
+            if self._transformation is not None else None,
+            left_sqrt_metric=left_sqrt_metric_at_f
+            if self._left_sqrt_metric is not None else None,
+            right_sqrt_metric=right_sqrt_metric_at_f
+            if self._right_sqrt_metric is not None else None,
+            metric=metric_at_f if self._metric is not None else None,
             domain=domain,
         )
 
@@ -599,43 +609,30 @@ class Likelihood(AbstractModel):
             lkey: self._lsm_tan_shp,
             rkey: other._lsm_tan_shp
         }
+        if isinstance(self._lsm_tan_shp,
+                      Vector) or isinstance(other._lsm_tan_shp, Vector):
+            joined_tangents_shape = Vector(joined_tangents_shape)
 
         def joined_hamiltonian(p, **pkw):
             return self.energy(p, **pkw) + other.energy(p, **pkw)
 
         def joined_normalized_residual(p, **pkw):
-            from warnings import warn
-
-            # FIXME
-            warn("adding residuals is untested", UserWarning)
             lres = self.normalized_residual(p, **pkw)
             rres = other.normalized_residual(p, **pkw)
             lvec, rvec = isinstance(lres, Vector), isinstance(rres, Vector)
-            res = {
-                lkey: lres.tree if lvec else lres,
-                rkey: rres.tree if rvec else rres
-            }
-            if lvec and rvec:
-                return Vector(res)
+            res = {lkey: lres, rkey: rres}
+            res = Vector(res) if lvec or rvec else res
             return res
 
         def joined_metric(p, t, **pkw):
             return self.metric(p, t, **pkw) + other.metric(p, t, **pkw)
 
         def joined_transformation(p, **pkw):
-            from warnings import warn
-
-            # FIXME
-            warn("adding transformations is untested", UserWarning)
             lres = self.transformation(p, **pkw)
             rres = other.transformation(p, **pkw)
             lvec, rvec = isinstance(lres, Vector), isinstance(rres, Vector)
-            res = {
-                lkey: lres.tree if lvec else lres,
-                rkey: rres.tree if rvec else rres
-            }
-            if lvec and rvec:
-                return Vector(res)
+            res = {lkey: lres, rkey: rres}
+            res = Vector(res) if lvec or rvec else res
             return res
 
         def joined_left_sqrt_metric(p, t, **pkw):
@@ -648,17 +645,27 @@ class Likelihood(AbstractModel):
             lres = self.right_sqrt_metric(p, t, **pkw)
             rres = other.right_sqrt_metric(p, t, **pkw)
             lvec, rvec = isinstance(lres, Vector), isinstance(rres, Vector)
-            res = {
-                lkey: lres.tree if lvec else lres,
-                rkey: rres.tree if rvec else rres
-            }
-            if lvec and rvec:
-                return Vector(res)
+            res = {lkey: lres, rkey: rres}
+            res = Vector(res) if lvec or rvec else res
             return res
 
         domain = None
         if self.domain is not None and other.domain is not None:
-            domain = self.domain | other.domain
+            lvec = isinstance(self.domain, Vector)
+            rvec = isinstance(other.domain, Vector)
+            ldomain = self.domain.tree if lvec else self.domain
+            rdomain = other.domain.tree if rvec else other.domain
+            domain = ldomain | rdomain
+            domain = Vector(domain) if lvec or rvec else domain
+            isswd = hasattr(domain, "shape") and hasattr(domain, "dtype")
+            if not isswd and not has_arithmetics(domain):
+                ve = (
+                    "domains of the Likelihood-summands must support core"
+                    " arithmetic operations"
+                    "\nmaybe you forgot to wrap your inputs to the liklihoods"
+                    " in `Vector`s"
+                )
+                raise ValueError(ve)
 
         return Likelihood(
             joined_hamiltonian,
