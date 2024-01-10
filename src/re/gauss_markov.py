@@ -91,18 +91,7 @@ def wiener_process(
         x0: float,
         sigma: Union[float, Array],
         dt: Union[float, Array]):
-    """Implements the Wiener process (WP).
-
-    The WP in continuous time takes the form:
-    ```
-        d/dt x_t = sigma xi_t ,
-    ```
-    where `xi_t` is continuous time white noise.
-
-    Note that in case `sigma` is time dependent, i.E. passed on as a sequence
-    of length equal to `xi`, it is assumed to be constant within each timebin,
-    i.E. `sigma_t = sigma_i for t_i <= t < t_{i+1}`.
-    """
+    """Implements the Wiener process (WP)."""
     drift = 1.
     amp = jnp.sqrt(dt)*sigma
     return scalar_gm(xi, x0, drift, amp)
@@ -114,27 +103,7 @@ def integrated_wiener_process(
         sigma: Array,
         dt: Array,
         asperity: Union[float, Array] = None):
-    """Implements the (generalized) Integrated Wiener process (IWP).
-
-    The generalized IWP in continuous time takes the form:
-    ```
-        d/dt x_t = y_t + sigma * asperity xi^1_t ,
-        d/dt y_t = sigma * xi^2_t
-    ```
-    where `xi^i_t` are continuous time white noise processes.
-    This is a standard IWP in x in the case that `asperity` is zero (None). If
-    it is non-zero, a WP with relative strength set by `asperity` is added to
-    the dynamics of the IWP.
-
-    This is also the process used in the CorrelatedField to describe the
-    deviations of the power spectra from power-laws on a double logarithmic
-    scale. See also `re.correlated_field.CorrelatedFieldMaker` and references
-    there for further information.
-
-    Note that in case `sigma` (`asperity`) is time dependent, i.E. passed on as
-    a sequence of length equal to `xi`, it is assumed to be constant within each
-    timebin, i.E. `sigma_t = sigma_i for t_i <= t < t_{i+1}`.
-    """
+    """Implements the (generalized) Integrated Wiener process (IWP)."""
     asperity = 0. if asperity is None else asperity
     dt = jnp.ones(xi.shape[0])*dt if _isscalar(dt) else dt
     def drift_amp(d, sig, asp):
@@ -156,17 +125,7 @@ def ornstein_uhlenbeck_process(
         sigma: Union[float, Array],
         gamma: Union[float, Array],
         dt: Union[float, Array]):
-    """Implements the Ornstein Uhlenbeck process (OUP).
-
-    The stochastic differential equation of the OUP takes the form:
-    ```
-        d/dt x_t + gamma x_t = sigma xi_t
-    ```
-    where `xi_t` is continuous time white noise.
-
-    Note that `sigma` and `gamma` may also be sequences. See notes above on the
-    parameters of the `wiener_process` for further information.
-    """
+    """Implements the Ornstein Uhlenbeck process (OUP)."""
     drift = jnp.exp(-gamma*dt)
     amp = sigma * jnp.sqrt(1. - drift**2)
     return scalar_gm(xi, x0, drift, amp)
@@ -215,6 +174,39 @@ def WienerProcess(x0: Union[tuple, float, Model],
                   dt: Union[float, Array],
                   name: str = 'wp',
                   N_steps: int = None):
+    """Implements the Wiener process (WP).
+
+    The WP in continuous time takes the form:
+    ```
+        d/dt x_t = sigma xi_t ,
+    ```
+    where `xi_t` is continuous time white noise.
+
+    Parameters:
+    -----------
+    x0: tuple, float, or Model
+        Initial position of the WP. Can be passed as a fixed value, or a
+        generative Model. Passing a tuple is a shortcut to set a normal prior
+        with mean and std equal to the first and second entry of the tuple
+        respectively on `x0`.
+    sigma: tuple, float, Array, Model
+        Standard deviation of the WP. Analogously to `x0` may also be passed on
+        as a model. May also be passed as a sequence of length equal to `dt` in
+        which case a different sigma is used for each time interval.
+    dt: float or Array of float
+        Stepsizes of the process. In case it is a single float, `N_steps` must
+        be provided to indicate the number of steps taken.
+    name: str
+        Name of the key corresponding to the parameters of the WP. Default `wp`.
+    N_steps: int (optional)
+        Option to set the number of steps in case `dt` is a scalar.
+
+    Notes:
+    ------
+    In case `sigma` is time dependent, i.E. passed on as a sequence
+    of length equal to `xi`, it is assumed to be constant within each timebin,
+    i.E. `sigma_t = sigma_i for t_i <= t < t_{i+1}`.
+    """
     if isinstance(x0, tuple):
         x0 = NormalPrior(x0[0], x0[1], name=name+'_x0')
     if isinstance(sigma, tuple):
@@ -230,6 +222,31 @@ def IntegratedWienerProcess(
     name: str = 'iwp',
     asperity: Union[tuple, float, Array, Model] = None,
     N_steps: int = None):
+    """Implements the Integrated Wiener Process.
+
+    The generalized IWP in continuous time takes the form:
+    ```
+        d/dt x_t = y_t + sigma * asperity xi^1_t ,
+        d/dt y_t = sigma * xi^2_t
+    ```
+    where `xi^i_t` are continuous time white noise processes.
+    This is a standard IWP in x in the case that `asperity` is zero (None). If
+    it is non-zero, a WP with relative strength set by `asperity` is added to
+    the dynamics of the IWP.
+
+    For information on the parameters, please refer to `WienerProcess`. The
+    `asperity` parameter may be defined analogously to `sigma`.
+
+    This is also the process used in the CorrelatedField to describe the
+    deviations of the power spectra from power-laws on a double logarithmic
+    scale. See also `re.correlated_field.CorrelatedFieldMaker` and references
+    there for further information.
+
+    Notes:
+    ------
+    `sigma` and `asperity` may also be sequences. See notes on `WienerProcess`
+    for further information.
+    """
     if isinstance(x0, tuple):
         x0 = NormalPrior(x0[0], x0[1], shape=(2,), name=name+'_x0')
     if isinstance(sigma, tuple):
@@ -247,6 +264,26 @@ def OrnsteinUhlenbeckProcess(
     name: str = 'oup',
     x0: Union[tuple, float, Model] = None,
     N_steps: int = None):
+    """Implements the Ornstein Uhlenbeck process (OUP).
+
+    The stochastic differential equation of the OUP takes the form:
+    ```
+        d/dt x_t + gamma x_t = sigma xi_t
+    ```
+    where `xi_t` is continuous time white noise.
+
+    For information on the parameters, please refer to `WienerProcess`. The
+    `gamma` parameter may be defined analogously to `sigma`.
+    Unlike the WP and IWP, the OUP is a proper process, i.E. allows for a proper
+    steady state solution. Therefore, `x0` may not be provided at all, in which
+    case it defaults to a random variable drawn from the steady state
+    distribution of the OUP.
+
+    Notes:
+    ------
+    `sigma` and `gamma` may also be sequences. See notes on `WienerProcess`
+    for further information.
+    """
     if isinstance(sigma, tuple):
         sigma = LogNormalPrior(sigma[0], sigma[1], name=name+'_sigma')
     if isinstance(gamma, tuple):
