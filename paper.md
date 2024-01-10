@@ -126,22 +126,11 @@ scientific explorations of forthcoming data releases from the *Gaia* mission
 
 * minimization; implement scipy style minimize for NCG because we already have access to the curvature
 
-<!-- Single dollars ($) are required for inline mathematics e.g. $f(x) = e^{\pi/x}$
+# Acknowledgements
 
-Double dollars make self-standing equations:
+ Gordian Edenhofer acknowledges the support of the German Academic Scholarship Foundation in the form of a PhD scholarship (``Promotionsstipendium der Studienstiftung des Deutschen Volkes'').
 
-$$\Theta(x) = \left\{\begin{array}{l}
-0\textrm{ if } x < 0\cr
-1\textrm{ else}
-\end{array}\right.$$
-
-You can also use plain \LaTeX for equations
-\begin{equation}\label{eq:fourier}
-\hat f(\omega) = \int_{-\infty}^{\infty} f(x) e^{i\omega x} dx
-\end{equation}
-and refer to \autoref{eq:fourier} from text. -->
-
-# Citations
+# References
 
 <!-- Citations to entries in paper.bib should be in
 [rMarkdown](http://rmarkdown.rstudio.com/authoring_bibliographies_and_citations.html)
@@ -162,12 +151,4 @@ and referenced from text using \autoref{fig:example}.
 
 Figure sizes can be customized by adding an optional second parameter:
 ![Caption for example figure.](figure.png){ width=20% }
-
-# Acknowledgements
-
-We acknowledge contributions from Brigitta Sipocz, Syrtis Major, and Semyeong
-Oh, and support from Kathryn Johnston during the genesis of this project.
-
 -->
-
-# References
