@@ -128,7 +128,7 @@ scientific explorations of forthcoming data releases from the *Gaia* mission
 
 # Acknowledgements
 
- Gordian Edenhofer acknowledges the support of the German Academic Scholarship Foundation in the form of a PhD scholarship (``Promotionsstipendium der Studienstiftung des Deutschen Volkes'').
+Gordian Edenhofer acknowledges support from the German Academic Scholarship Foundation in the form of a PhD scholarship (``Promotionsstipendium der Studienstiftung des Deutschen Volkes'').
 
 # References
 
