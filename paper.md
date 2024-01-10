@@ -10,25 +10,13 @@ authors:
   - name: Gordian Edenhofer
     orcid: 0000-0003-3122-4894
     corresponding: true
-    affiliation: "1, 2, 3"  # Multiple affiliations must be quoted
-  - name: Philipp Frank
-    orcid: 0000-0001-5610-3779
-    affiliation: "1, 2"
-  - name: Jakob Roth
-    orcid: 0000-0002-8873-8215
-    affiliation: "1, 2"
-  - name: Massin Guerdi
-    affiliation: "1, 2"
-  - name: ...
-  - name: Torsten Enßlin
-    affiliation: "1, 2"
+    affiliation: "1, 2"  # Multiple affiliations must be quoted
+  - name: et al.
 affiliations:
  - name: Max Planck Institute for Astrophysics, Karl-Schwarzschild-Straße 1, 85748 Garching bei München, Germany
    index: 1
  - name: Ludwig Maximilian University of Munich, Geschwister-Scholl-Platz 1, 80539 München, Germany
    index: 2
- - name: Center for Astrophysics | Harvard & Smithsonian, Observatory Building E, 60 Garden St., Cambridge, MA 02138
-   index: 3
 date: 31 August 2023
 bibliography: paper.bib
 
