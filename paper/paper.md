@@ -41,7 +41,7 @@ bibliography: paper.bib
 * middle ground between tools like blackjax and pymc
 -->
 
-# Summary (Make this Context/Background (?))
+# Summary
 
 <!-- The forces on stars, galaxies, and dark matter under external gravitational
 fields lead to the dynamical evolution of structures in the universe. The orbits
@@ -53,12 +53,12 @@ Aside from toy problems and demonstrations, the majority of problems require
 efficient numerical tools, many of which require the same base code (e.g., for
 performing numerical orbit integration). -->
 
-* Imaging is the process of inferring the measured data into a space that humans can interpret.
-* It is especially important in the domain of astrophysics and crucial for fields such as radio astronomy, galactic tomography, observational cosmology among many more.
-* Imaging requires a careful treatment of the measurement errors and knowledge about the to-be-imaged objects.
-* Bayesian imaging frameworks provide an information theoretical optimal way for imaging but are computationally expensive because the parameter space is very high dimensional.
-* DO NOT ELABORATE TOO MUCH ABOUT GPUs yet and instead just say that support for accelerator architectures and AD is crucial
-
+* Imaging at the most basic level is the process of transforming noisy, incomplete data into a space that humans can interpret.
+* NIFTy is a Bayesian imaging framework that propagates the statistical uncertainty in the data and the model to the image domain.
+* NIFTy has already successfully been applied to the fields of radio astronomy, galactic tomography, and observational cosmology.
+* Ever larger models and previous design decisions and modeling principles, held the performance and the development of new inference strategies in NIFTy back.
+* We present a re-write of NIFTy, coined NIFTy.re, which bridges NIFTy to Machine Learning ecosystem, reworks the modeling principle, the inference strategy, and outsources much of the heavy lifiting to JAX to easy future developments.
+* The re-write dramatically accelerated models written in NIFTy and enables the interoperability of NIFTy with the JAX Machine Learning ecosystem.
 
 # Statement of need
 
