@@ -273,8 +273,8 @@ class OptimizeVI:
                 partial(_kl_met, likelihood, map=kl_map, reduce=kl_reduce)
             )
         if _draw_linear_residual is None:
-            _draw_linear_residual = residual_jit(
-                partial(draw_linear_residual, likelihood)
+            _draw_linear_residual = partial(
+                residual_jit(draw_linear_residual), likelihood
             )
         if _nonlinearly_update_residual is None:
             # TODO: Pull out `jit` from `nonlinearly_update_residual` once NCG
