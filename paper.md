@@ -72,6 +72,10 @@ TODO: make it sound less like a NIFTy rewrite but rather an independent package!
 * Core component of NIFTy.re are the GP models and the VI methods.
 * Both are now accesible and integrate into other JAX packages such as `blackjax`(TODO:cite), `numpyro`(TODO:cite), and `jaxopt`(TODO:cite).
 
+<!-- A list of key references, including to other software addressing related needs. Note that the references should include full names of venues, e.g., journals and conferences, not abbreviations only understood in the context of a specific discipline. -->
+* Competes with other GP libraries as well as with probabilistic programming languages and frameworks.
+* Compared to Gpytorch, GPflow, george, tinygp
+* Compared to classical propabilistic programming languages and or frameworks such as Stan, pyro, pyMC3, Emcee, dynesty, numpyro, or blackjax (TODO:cite), NIFTy has a very strong focus on high dimensional inference with 1M+ to hundreds of billions of parameters, and features a set of models that quickly these number of parameters: GPs
 
 <!-- `Gala` is an Astropy-affiliated Python package for galactic dynamics. Python
 enables wrapping low-level languages (e.g., C) for speed without losing
@@ -84,6 +88,7 @@ interfaces well with the implementations of physical units and astronomical
 coordinate systems in the `Astropy` package [@astropy] (`astropy.units` and
 `astropy.coordinates`). -->
 
+<!-- Mention (if applicable) a representative set of past or ongoing research projects using the software and recent scholarly publications enabled by it. -->
 * NIFTy.re is envisioned to be used for many imaging applications
 * A very early version `NIFTy.re` enabled the 100B dimensional reconstruction and was recently used to infer 500M dimensional inference problem.
 
