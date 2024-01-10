@@ -13,7 +13,7 @@ from .misc import wrap
 from .model import Model, WrappedCall
 from .num import lognormal_prior, normal_prior
 from .tree_math import ShapeWithDtype, random_like
-from .gauss_markov import integrated_wiener_process
+from .gauss_markov import IntegratedWienerProcess
 
 
 def hartley(p, axes=None):
@@ -245,18 +245,21 @@ def non_parametric_amplitude(
     ptree = fluctuations.domain.copy()
     loglogavgslope = WrappedCall(loglogavgslope, name=prefix + "loglogavgslope")
     ptree.update(loglogavgslope.domain)
-    if flexibility is not None:
+    if flexibility is not None and (log_vol.size > 0):
         flexibility = WrappedCall(flexibility, name=prefix + "flexibility")
-        ptree.update(flexibility.domain)
-        # Register the parameters for the spectrum
         assert log_vol is not None
         assert rel_log_mode_len.ndim == log_vol.ndim == 1
-        ptree.update(
-            {prefix + "spectrum": ShapeWithDtype((2, ) + log_vol.shape)}
-        )
-    if asperity is not None:
-        asperity = WrappedCall(asperity, name=prefix + "asperity")
-        ptree.update(asperity.domain)
+        if asperity is not None:
+            asperity = WrappedCall(asperity, name=prefix + "asperity")
+        deviations = IntegratedWienerProcess(
+            jnp.zeros((2,)),
+            flexibility,
+            log_vol,
+            name=prefix + "spectrum",
+            asperity=asperity)
+        ptree.update(deviations.domain)
+    else:
+        deviations = None
 
     def correlate(primals: Mapping) -> jnp.ndarray:
         flu = fluctuations(primals)
@@ -264,14 +267,9 @@ def non_parametric_amplitude(
         slope *= rel_log_mode_len
         ln_spectrum = slope
 
-        if (flexibility is not None) and (log_vol.size > 0):
-            assert log_vol is not None
-            twolog = integrated_wiener_process(
-                jnp.zeros((2,)),
-                primals[prefix + "spectrum"].T,
-                flexibility(primals),
-                log_vol,
-                0. if asperity is None else asperity(primals))
+        if deviations is not None:
+            twolog = deviations(primals)
+            # Prepend zeromode
             twolog = jnp.concatenate((jnp.zeros((1,)), twolog[:,0]))
             ln_spectrum += _remove_slope(rel_log_mode_len, twolog)
 
