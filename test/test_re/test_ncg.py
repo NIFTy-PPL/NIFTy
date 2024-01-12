@@ -48,14 +48,6 @@ def eggholder(np):
     return func
 
 
-cg_static_argnames = ('absdelta', 'resnorm', 'norm_ord', 'tol', 'atol',
-                      'miniter', 'maxiter', 'name', '_raise_nonposdef')
-
-ncg_static_argnames = ('miniter', 'maxiter', 'energy_reduction_factor',
-                       'old_fval', 'absdelta', 'norm_ord', 'xtol',
-                       'name', 'cg_kwargs')
-
-
 @pmp("seed", (3637, 12, 42))
 @pmp("cg", (jft.cg, jft.static_cg))
 def test_cg(seed, cg):
@@ -101,7 +93,7 @@ def test_static_cg_jittability(seed):
     diag = 6. + random.normal(sk[1], shape=(3, ))
     mat = lambda x: x / diag
 
-    cg = jit(partial(jft.static_cg, mat=mat), static_argnames=cg_static_argnames)
+    cg = jit(partial(jft.static_cg, mat=mat))
     res, _ = cg(j=x, x0=None, resnorm=1e-5, absdelta=1e-5)
     assert_allclose(res, diag * x, rtol=1e-4, atol=1e-4)
 
@@ -228,8 +220,7 @@ def test_static_ncg_jittability(seed):
     fun_and_grad = lambda y: (fun(y), grad(y))
 
     for kwargs in [{'fun': fun, 'jac': grad}, {'fun_and_grad': fun_and_grad}]:
-        ncg = jit(partial(jft.static_newton_cg, hessp=met, **kwargs),
-                  static_argnames=ncg_static_argnames)
+        ncg = jit(partial(jft.static_newton_cg, hessp=met, **kwargs))
         res = ncg(
             x0=x,
             maxiter=20,
