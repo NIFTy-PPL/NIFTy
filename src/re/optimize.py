@@ -318,8 +318,6 @@ def _static_newton_cg(
         )
 
     nm = "N" if name is None else name
-    log_energy_increase = lambda: logger.error(
-        "{nm}: WARNING: Energy would increase; aborting line search.")
     log_iteration_limit_reached = lambda: logger.error(f"{nm}: Iteration Limit Reached!")
 
     def continue_condition_newton_cg(v):
@@ -379,107 +377,34 @@ def _static_newton_cg(
             ValueError("conjugate Gradient failed")
         )
 
-        def continue_condition_line_search(vv):
-            return vv["status_ls"] < -1
+        ret_ls = _line_search_successive_halving(status, pos, energy, g, nat_g, fun_and_grad, hessp, nm)
 
-        val_ls = {
-            "status_ls": status, # if the Newton-CG step is already bound to stop, don't line search
-            "naive_ls_it": 0,
-            "pos": pos,
-            "new_pos": pos,        # placeholder value
-            "energy": energy,
-            "new_energy": energy,  # placeholder value
-            "g": g,
-            "new_g": g,            # placeholder value
-            "dd": nat_g,  # negative descent direction
-            "grad_scaling": 1.,
-            "ls_reset": False,
-            "nfev_inner": 0,
-            "njev_inner": 0,
-            "nhev_inner": 0,
-        }
-
-        def line_search_single_step(vv):
-            status_ls = vv["status_ls"]
-            naive_ls_it, ls_reset = vv["naive_ls_it"], vv["ls_reset"]
-            pos, grad_scaling, dd, g = vv["pos"], vv["grad_scaling"], vv["dd"], vv["g"]
-            nfev_i, njev_i, nhev_i = vv["nfev_inner"], vv["njev_inner"], vv["nhev_inner"]
-
-            new_pos = pos - grad_scaling * dd
-            new_energy, new_g = fun_and_grad(new_pos)
-            nfev_i += 1
-            njev_i += 1
-
-            status_ls = jnp.where(new_energy <= vv['energy'] , 0, status_ls)
-
-            grad_scaling = jnp.where(status_ls == -2, grad_scaling / 2, grad_scaling)
-
-            ls_reset, dd, grad_scaling, nhev_i = cond(
-                (naive_ls_it == 5) & (status_ls == -2),
-                lambda x: (True,
-                           vdot(x["g"], x["g"]) / x["g"].dot(hessp(x["pos"], x["g"])) * x["g"],
-                           1.,
-                           x["nhev_i"] + 1),
-                lambda x: (x["ls_reset"], x["dd"], x["grad_scaling"], x["nhev_i"]),
-                {
-                    "pos": pos,
-                    "g": g,
-                    "ls_reset": ls_reset,
-                    "dd": dd,
-                    "grad_scaling": grad_scaling,
-                    "nhev_i": nhev_i,
-                }
-            )
-
-            # if after 9 inner iterations energy has not yet decreased set error flag
-            abort_ls = (naive_ls_it == 8) & (status_ls < -1)
-            status_ls = jnp.where(abort_ls, -1, status_ls)
-            conditional_call(abort_ls, log_energy_increase)
-
-            return {
-                "status_ls": status_ls,
-                "naive_ls_it": naive_ls_it + 1,
-                "pos": pos,
-                "new_pos": new_pos,
-                "energy": vv['energy'],
-                "new_energy": new_energy,
-                "g": g,
-                "new_g": new_g,
-                "dd": dd,
-                "grad_scaling": grad_scaling,
-                "ls_reset": ls_reset,
-                "nfev_inner": nfev_i,
-                "njev_inner": njev_i,
-                "nhev_inner": nhev_i,
-            }
-
-        val_ls = while_loop(continue_condition_line_search, line_search_single_step, val_ls)
-
-        status_ls = val_ls["status_ls"]
+        status_ls = ret_ls["status_ls"]
 
         status = jnp.where(status_ls == 0, status, -1)
 
-        old_energy = jnp.where(status_ls == 0, val_ls["energy"], v["old_energy"])
-        energy = jnp.where(status_ls == 0, val_ls["new_energy"], v["energy"])
-        energy_diff = old_energy - energy
+        # only update values if line search was successful
+        old_energy = jnp.where(status_ls == 0, v["energy"], v["old_energy"])
+        energy = jnp.where(status_ls == 0, ret_ls["new_energy_candidate"], v["energy"])
+        energy_diff = jnp.where(status_ls == 0, old_energy - energy, 0.)
 
         old_energy_present = jnp.where(status_ls == 0, True, v["old_energy_present"])
 
-        pos = where(status_ls == 0, val_ls["new_pos"], v["pos"])
-        g = where(status_ls == 0, val_ls["new_g"], v["g"])
+        pos = where(status_ls == 0, ret_ls["new_pos_candidate"], v["pos"])
+        g = where(status_ls == 0, ret_ls["new_g_candidate"], v["g"])
 
-        grad_scaling = jnp.where(status_ls == 0, val_ls["grad_scaling"], 0.)
+        grad_scaling = jnp.where(status_ls == 0, ret_ls["grad_scaling"], 0.)
 
-        nfev += val_ls["nfev_inner"]
-        njev += val_ls["njev_inner"]
-        nhev += val_ls["nhev_inner"]
+        nfev += ret_ls["nfev_inner"]
+        njev += ret_ls["njev_inner"]
+        nhev += ret_ls["nhev_inner"]
 
-        descent_norm = grad_scaling * jft_norm(val_ls['dd'], ord=norm_ord)
+        descent_norm = grad_scaling * jft_norm(ret_ls['dd'], ord=norm_ord)
         if name is not None:
             printable_state = {
                 "i": i,
                 "grad_scaling": grad_scaling,
-                "ls_reset": val_ls["ls_reset"],
+                "ls_reset": ret_ls["ls_reset"],
                 "nhev": nhev,
                 "descent_norm": descent_norm,
                 "energy": energy,
@@ -491,7 +416,7 @@ def _static_newton_cg(
         status = jnp.where(ne_isnan, -1, status)
         conditional_raise(ne_isnan, ValueError('energy is NaN'))
 
-        min_cond = (val_ls["naive_ls_it"] < 2) & (i > miniter)
+        min_cond = (ret_ls["naive_ls_it"] < 2) & (i > miniter)
         status = jnp.where(
             (absdelta is not None) & (0. <= energy_diff) & (energy_diff < absdelta) & min_cond & (status != -1),
             0, status
@@ -531,6 +456,94 @@ def _static_newton_cg(
         njev=val["njev"],
         nhev=val["nhev"]
     )
+
+
+def _line_search_successive_halving(status, pos, start_energy, g, nat_g, fun_and_grad, hessp, name):
+    from jax.experimental.host_callback import call
+    from jax.lax import cond, while_loop
+
+    log_energy_increase = lambda: logger.error(
+        "{name}: WARNING: Energy would increase; aborting line search.")
+
+    val = {
+        "status_ls": status, # if the Newton-CG step is already bound to stop, don't line search
+        "naive_ls_it": 0,
+        "pos": pos,
+        "new_pos_candidate": pos,          # placeholder value
+        "energy": start_energy,
+        "new_energy_candidate": jnp.inf,   # placeholder value
+        "g": g,
+        "new_g_candidate": g,              # placeholder value
+        "dd": nat_g,  # negative descent direction
+        "grad_scaling": 1.,
+        "ls_reset": False,
+        "nfev_inner": 0,
+        "njev_inner": 0,
+        "nhev_inner": 0,
+    }
+
+    def continue_condition_line_search(val):
+        return val["status_ls"] < -1
+
+    def line_search_single_step(val):
+        status_ls = val["status_ls"]
+        naive_ls_it, ls_reset = val["naive_ls_it"], val["ls_reset"]
+        pos, grad_scaling, dd, g = val["pos"], val["grad_scaling"], val["dd"], val["g"]
+        nfev_i, njev_i, nhev_i = val["nfev_inner"], val["njev_inner"], val["nhev_inner"]
+
+        new_pos = pos - grad_scaling * dd
+        new_energy, new_g = fun_and_grad(new_pos)
+        nfev_i += 1
+        njev_i += 1
+
+        status_ls = jnp.where(new_energy <= val['energy'] , 0, status_ls)
+
+        grad_scaling = jnp.where(status_ls == -2, grad_scaling / 2, grad_scaling)
+
+        ls_reset, dd, grad_scaling, nhev_i = cond(
+            (naive_ls_it == 5) & (status_ls == -2),
+            lambda x: (True,
+                       vdot(x["g"], x["g"]) / x["g"].dot(hessp(x["pos"], x["g"])) * x["g"],
+                       1.,
+                       x["nhev_i"] + 1),
+            lambda x: (x["ls_reset"], x["dd"], x["grad_scaling"], x["nhev_i"]),
+            {
+                "pos": pos,
+                "g": g,
+                "ls_reset": ls_reset,
+                "dd": dd,
+                "grad_scaling": grad_scaling,
+                "nhev_i": nhev_i,
+            }
+        )
+
+        # if after 9 inner iterations energy has not yet decreased set error flag
+        abort_ls = (naive_ls_it == 8) & (status_ls < -1)
+        status_ls = jnp.where(abort_ls, -1, status_ls)
+        conditional_call(abort_ls, log_energy_increase)
+
+        ret = {
+            "status_ls": status_ls,
+            "naive_ls_it": naive_ls_it + 1,
+            "pos": pos,
+            "new_pos_candidate": new_pos,
+            "energy": val['energy'],
+            "new_energy_candidate": new_energy,
+            "g": g,
+            "new_g_candidate": new_g,
+            "dd": dd,
+            "grad_scaling": grad_scaling,
+            "ls_reset": ls_reset,
+            "nfev_inner": nfev_i,
+            "njev_inner": njev_i,
+            "nhev_inner": nhev_i,
+        }
+
+        return ret
+
+    val = while_loop(continue_condition_line_search, line_search_single_step, val)
+
+    return val
 
 
 class _TrustRegionState(NamedTuple):
