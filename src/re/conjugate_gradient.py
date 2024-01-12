@@ -13,6 +13,7 @@ from .misc import doc_from, conditional_raise, conditional_call
 from .tree_math import assert_arithmetics, result_type
 from .tree_math import norm as jft_norm
 from .tree_math import size, vdot, where, zeros_like
+from .tree_math import PyTreeString
 
 HessVP = Callable[[jnp.ndarray], jnp.ndarray]
 
@@ -262,8 +263,6 @@ def _static_cg(
         _cg_pretty_print_it(name, **arg)
 
     nm = "CG" if name is None else name
-    log_converged = lambda: logger.warning(f"{nm}: gamma=0, converged!")
-
 
     def continue_condition(v):
         return v["info"] < -1
@@ -305,7 +304,7 @@ def _static_cg(
 
         is_success = (gamma >= 0.) & (gamma <= tiny) & (info != -1)
         info = jnp.where(is_success, 0, info)
-        conditional_call(is_success, log_converged)
+        conditional_call(is_success, logger.warning, PyTreeString(f"{nm}: gamma=0, converged!"))
 
         if resnorm is not None:
             norm = jft_norm(r, ord=norm_ord)
@@ -381,7 +380,7 @@ def _static_cg(
     }
     # Finish early if already converged in the initial iteration
     val["info"] = jnp.where(gamma == 0., 0, val["info"])
-    conditional_call(gamma == 0., log_converged)
+    conditional_call(gamma == 0., logger.warning, PyTreeString(f"{nm}: gamma=0, converged!"))
 
     if name is not None:
         if resnorm is not None:

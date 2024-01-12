@@ -17,6 +17,7 @@ from .misc import doc_from, conditional_raise, conditional_call
 from .tree_math import assert_arithmetics, result_type
 from .tree_math import norm as jft_norm
 from .tree_math import size, where, vdot
+from .tree_math import PyTreeString
 
 
 class OptimizeResults(NamedTuple):
@@ -318,7 +319,6 @@ def _static_newton_cg(
         )
 
     nm = "N" if name is None else name
-    log_iteration_limit_reached = lambda: logger.error(f"{nm}: Iteration Limit Reached!")
 
     def continue_condition_newton_cg(v):
         return v["status"] < -1
@@ -443,7 +443,7 @@ def _static_newton_cg(
 
     val = while_loop(continue_condition_newton_cg, single_newton_cg_step, val)
 
-    conditional_call(val["status"] > 0, log_iteration_limit_reached)
+    conditional_call(val["status"] > 0, logger.error, PyTreeString(f"{nm}: Iteration Limit Reached!"))
 
     return OptimizeResults(
         x=val["pos"],
@@ -461,9 +461,6 @@ def _static_newton_cg(
 def _line_search_successive_halving(status, pos, start_energy, g, nat_g, fun_and_grad, hessp, name):
     from jax.experimental.host_callback import call
     from jax.lax import cond, while_loop
-
-    log_energy_increase = lambda: logger.error(
-        "{name}: WARNING: Energy would increase; aborting line search.")
 
     val = {
         "status_ls": status, # if the Newton-CG step is already bound to stop, don't line search
@@ -520,7 +517,9 @@ def _line_search_successive_halving(status, pos, start_energy, g, nat_g, fun_and
         # if after 9 inner iterations energy has not yet decreased set error flag
         abort_ls = (naive_ls_it == 8) & (status_ls < -1)
         status_ls = jnp.where(abort_ls, -1, status_ls)
-        conditional_call(abort_ls, log_energy_increase)
+        conditional_call(abort_ls, logger.error, PyTreeString(
+            f"{name}: WARNING: Energy would increase; aborting line search."))
+
 
         ret = {
             "status_ls": status_ls,
