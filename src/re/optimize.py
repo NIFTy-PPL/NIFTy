@@ -318,6 +318,9 @@ def _static_newton_cg(
         )
 
     nm = "N" if name is None else name
+    log_energy_increase = lambda: logger.error(
+        "{nm}: WARNING: Energy would increase; aborting line search.")
+    log_iteration_limit_reached = lambda: logger.error(f"{nm}: Iteration Limit Reached!")
 
     def continue_condition_newton_cg(v):
         return v["status"] < -1
@@ -431,8 +434,7 @@ def _static_newton_cg(
             # if after 9 inner iterations energy has not yet decreased set error flag
             abort_ls = (naive_ls_it == 8) & (status_ls < -1)
             status_ls = jnp.where(abort_ls, -1, status_ls)
-            conditional_call(abort_ls, logger.error,
-                      f"{nm}: WARNING: Energy would increase; aborting line search.")
+            conditional_call(abort_ls, log_energy_increase)
 
             return {
                 "status_ls": status_ls,
@@ -516,7 +518,7 @@ def _static_newton_cg(
 
     val = while_loop(continue_condition_newton_cg, single_newton_cg_step, val)
 
-    conditional_call(val["status"] > 0, logger.error, f"{nm}: Iteration Limit Reached!")
+    conditional_call(val["status"] > 0, log_iteration_limit_reached)
 
     return OptimizeResults(
         x=val["pos"],

@@ -262,6 +262,8 @@ def _static_cg(
         _cg_pretty_print_it(name, **arg)
 
     nm = "CG" if name is None else name
+    log_converged = lambda: logger.warning(f"{nm}: gamma=0, converged!")
+
 
     def continue_condition(v):
         return v["info"] < -1
@@ -303,7 +305,7 @@ def _static_cg(
 
         is_success = (gamma >= 0.) & (gamma <= tiny) & (info != -1)
         info = jnp.where(is_success, 0, info)
-        conditional_call(is_success, logger.warning, f"{nm}: gamma=0, converged!")
+        conditional_call(is_success, log_converged)
 
         if resnorm is not None:
             norm = jft_norm(r, ord=norm_ord)
@@ -379,7 +381,7 @@ def _static_cg(
     }
     # Finish early if already converged in the initial iteration
     val["info"] = jnp.where(gamma == 0., 0, val["info"])
-    conditional_call(gamma == 0., logger.warning, f"{nm}: gamma=0, converged!")
+    conditional_call(gamma == 0., log_converged)
 
     if name is not None:
         if resnorm is not None:
