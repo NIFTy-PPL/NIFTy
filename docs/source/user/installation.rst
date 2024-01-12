@@ -4,7 +4,7 @@ Installation
 Requirements
 ------------
 
-- `Python 3 <https://www.python.org/>`_ (3.8.x or later)
+- `Python 3 <https://www.python.org/>`_ (3.10.x or later)
 - `SciPy <https://www.scipy.org/>`_
 
 Optional dependencies:
