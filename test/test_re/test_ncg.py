@@ -220,7 +220,8 @@ def test_static_ncg_jittability(seed):
     fun_and_grad = lambda y: (fun(y), grad(y))
 
     for kwargs in [{'fun': fun, 'jac': grad}, {'fun_and_grad': fun_and_grad}]:
-        ncg = jit(partial(jft.static_newton_cg, hessp=met, **kwargs))
+        ncg = jit(partial(jft.static_newton_cg, hessp=met, **kwargs),
+                  static_argnames=('name'))
         res = ncg(
             x0=x,
             maxiter=20,
