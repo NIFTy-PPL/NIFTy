@@ -46,11 +46,11 @@ header-includes:
 # Summary
 
 * Imaging at the most basic level is the process of transforming noisy, incomplete data into a space that humans can interpret.
-* NIFTy is a Bayesian imaging framework that propagates the statistical uncertainty in the data and the model to the image domain.
-* NIFTy has already successfully been applied to the fields of radio astronomy, galactic tomography, and observational cosmology.
-* A focus on CPU computing and previous design decisions, held the performance and the development of new inference methods in NIFTy back.
-* We present a re-write of NIFTy, coined NIFTy.re, which bridges NIFTy to Machine Learning ecosystem, reworks the modeling principle, the inference strategy, and outsources much of the heavy lifting to JAX to easy future developments.
-* The re-write dramatically accelerated models written in NIFTy, lays the foundation for a new kind of inference machinery, and enables the interoperability of NIFTy with the JAX/XLA Machine Learning ecosystem.
+* \texttt{NIFTy} is a Bayesian imaging framework that propagates the statistical uncertainty in the data and the model to the image domain.
+* \texttt{NIFTy} has already successfully been applied to the fields of radio astronomy, galactic tomography, and observational cosmology.
+* A focus on CPU computing and previous design decisions, held the performance and the development of new inference methods in \texttt{NIFTy} back.
+* We present a re-write of NIFTy, coined \texttt{NIFTy.re}, which bridges \texttt{NIFTy} to Machine Learning ecosystem, reworks the modeling principle, the inference strategy, and outsources much of the heavy lifting to JAX to easy future developments.
+* The re-write dramatically accelerated models written in NIFTy, lays the foundation for a new kind of inference machinery, and enables the interoperability of \texttt{NIFTy} with the JAX/XLA Machine Learning ecosystem.
 
 # Statement of Need
 
@@ -87,17 +87,17 @@ With \texttt{NIFTy.re} the Gaussian Process models and the Variational Inference
 
 # Core Components
 
-* NIFTy.re brings Harmonic Space based GP models from NIFTy to JAX (CITE:M87_paper) for reconstructions with regularly spaced pixels and a new GP model called ICR for reconstructions with arbitrarily deformed pixel spacings.
+* \texttt{NIFTy.re} brings Harmonic Space based GP models from \texttt{NIFTy} to JAX (CITE:M87_paper) for reconstructions with regularly spaced pixels and a new GP model called ICR for reconstructions with arbitrarily deformed pixel spacings.
 * Imaging usually has as many or more degrees of freedom as pixels in the image which is on the order of tens or hundreds of million.
-* NIFTy.re treats this problem as a Bayesian inference task.
+* \texttt{NIFTy.re} treats this problem as a Bayesian inference task.
 * It implements MGVI and geoVI TODO:cite_both.
 
-* NIFTy model from a Machine Learning perspective reads `loss(d, f(\theta)) + reg(\theta)`
+* \texttt{NIFTy} model from a Machine Learning perspective reads `loss(d, f(\theta)) + reg(\theta)`
 * From a Bayesian perspective the reduction `loss(d, f(\theta))` represents the likelihood and the regularization `reg(\theta)` the prior.
 * Formulation is degenerate between what is considered part of the likelihood/loss and what is considered a regularization/prior.
-* Without loss of generalizty NIFTy formulates model such that the regularization/prior always is an L_2 regularization respectively a standard Gaussian prior.
+* Without loss of generalizty \texttt{NIFTy} formulates model such that the regularization/prior always is an L_2 regularization respectively a standard Gaussian prior.
 * This means that all relevant details of the model are encoded in the forward model `f` and the loss `loss`
-* NIFTy is all about building up the forward model `f` and choosing a suitable loss `loss`
+* \texttt{NIFTy} is all about building up the forward model `f` and choosing a suitable loss `loss`
 
 ## GP
 
@@ -154,23 +154,23 @@ jft.OptimizeVI()  # TODO
 
 ## Performance compared to old NIFTy
 
-* Test performance of NIFTy.re versus NIFTy on a simple 2D log-normal model with varying dimensions
+* Test performance of \texttt{NIFTy.re} versus \texttt{NIFTy} on a simple 2D log-normal model with varying dimensions
 * Model reads $d = \rho + n$ with $\rho=e^s$ and $s$ 2D GP with a homogeneous and stationary kernel model from TODO:cite_M87 and $n$ white Gaussian noise
-* Ensure that NIFTy.re and NIFTy model agree up to numerical precision
-* A typical minimization in NIFTy is dominated by calls to the $M \coloneqq J_\rho^\dagger N J_\rho + 1$ with $J$ the implicit Jacobian of the model and $N$ the covariance of the noice.
+* Ensure that \texttt{NIFTy.re} and \texttt{NIFTy} model agree up to numerical precision
+* A typical minimization in \texttt{NIFTy} is dominated by calls to the $M \coloneqq J_\rho^\dagger N J_\rho + 1$ with $J$ the implicit Jacobian of the model and $N$ the covariance of the noice.
 * These calls are both essential for the sampling and the approximate second order minimization underpinning NIFTy
-* Thus, we compare the performance of $M$ for our model in NIFTy.re and NIFTy
+* Thus, we compare the performance of $M$ for our model in \texttt{NIFTy.re} and NIFTy
 
 * TODO: do performance benchmark and insert figure
 
-* Figure shows performance of NIFTy versus NIFTy.re on the the CPU as well as versus NIFTy.re running on the GPU
+* Figure shows performance of \texttt{NIFTy} versus \texttt{NIFTy.re} on the the CPU as well as versus \texttt{NIFTy.re} running on the GPU
 * TODO: describe
-* For a simple log-normal NIFTy.re is faster by TODO on the CPU and TODO on the GPU.
+* For a simple log-normal \texttt{NIFTy.re} is faster by TODO on the CPU and TODO on the GPU.
 * For methods that are better optimized for the GPU e.g. ICR, the performance gain can be even larger
 
 # Conclusion
 
-* NIFTy is faster, foundation for new inference machinery with higher order derivates, better maintainable
+* \texttt{NIFTy} is faster, foundation for new inference machinery with higher order derivates, better maintainable
 
 # Acknowledgements
 
