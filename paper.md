@@ -1,5 +1,5 @@
 ---
-title: 'Re-Envisioning Numerical Information Field Theory (NIFTy.re)'
+title: 'Re-Envisioning Numerical Information Field Theory (NIFTy.re): A Library for Gaussian Processes and Variational Inference'
 tags:
   - Python
   - Astronomy
