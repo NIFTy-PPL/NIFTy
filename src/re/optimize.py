@@ -327,7 +327,7 @@ def _static_newton_cg(
         "iteration": 1,
         "pos": pos,
         "energy": energy,
-        "old_energy": old_fval if old_fval is not None else energy,
+        "old_energy": old_fval if old_fval is not None else jnp.inf,
         "old_energy_present": True if old_fval is not None else False,
         "g": g,
         "nfev": 1,
