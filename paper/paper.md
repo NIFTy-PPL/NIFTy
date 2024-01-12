@@ -19,6 +19,8 @@ affiliations:
    index: 2
 date: 31 August 2023
 bibliography: paper.bib
+header-includes:
+  - \usepackage{mathtools}
 
 # Optional fields if submitting to a AAS journal too, see this blog post:
 # https://blog.joss.theoj.org/2018/12/a-new-collaboration-with-aas-publishing
