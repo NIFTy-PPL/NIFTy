@@ -54,27 +54,36 @@ header-includes:
 
 # Statement of Need
 
-* Imaging commonly encounters millions to billions of parameters as each pixel in an image can be considered an independent degree-of-freedom.
-* Modeling millions to billions of degrees-of-freedom is tricky
-* The inference of a human-accesible image from noisy requires inference machine to work with millions to billions of paramters
-* NIFTy infers "truth" including its uncertainty from noisy data for million to billion dimensional problems
+Imaging commonly involves millions to billions of pixel.
+Each pixel usually corresponds to one or more correlated degree of freedom in the model space.
+Modeling millions to billions of degrees of freedom is computationally demanding.
+Yet, imaging is not only computationally demanding but also statistically challenging.
+The noisy input requires a statistical treatment and needs to be accurately propagates from input to the final image.
+Thus, to infer an image from noisy data, we require an inference machine that not only handles the modeling of millions to billions of degrees of freedom but one that does so in a statistically rigorous way.
 
-* NIFTy.re is a library for Gaussian Processes and Variational Inference based on JAX.
-* It makes many of the algorithms from NIFTy available on the GPU, enables vectorizing models over parameters, and taking second order derivatives for optimization.
-* GPU already enabled much faster model evaluations, we envision that higher order derivates will allow probing new inference techniques~(TODO:cite: Riemmanien manifold HMC), and better maintanability for the next decade in astrophysics research
+\texttt{NIFTy} is a Bayesian imaging library [@Selig2013; @Steiniger2017; @Arras2019].
+It is designed to infer the million to billion dimensional posterior distribution in the image space from noisy input data.
+At the core of \texttt{NIFTy} lies a set of powerful Gaussian Process models for modeling correlated degrees of freedom in high dimensions and an accurate statistical inference machinery of Variational Inference algorithms.
+
+\texttt{NIFTy.re} is a rewrite of \texttt{NIFTy} in JAX [@Jax2018] with all relevant previous Gaussian Process models, a new even more powerful Gaussian Process model, and a much more flexible posterior approximation machinery.
+By virtue of being written in JAX, \texttt{NIFTy.re} effortlessly runs on the accelerator hardware such as the GPU, extensively vectorizes models whenever possible, just-in-time compiles code for additional performance, and enables a new kind of inference machinery thanks to being able to retrieve higher order derivates.
+By switching from a home-grown automatic differentiation engine to JAX, we envision to harness significant gains in maintainability of \texttt{NIFTy} moving forward and a faster development cycle for new features.
 
 <!-- Mention (if applicable) a representative set of past or ongoing research projects using the software and recent scholarly publications enabled by it. -->
-* NIFTy.re is envisioned to be used for many imaging applications
-* A very early version `NIFTy.re` enabled the 100B dimensional reconstruction and was recently used to infer 500M dimensional inference problem.
-* TODO:cite_all_of_NIFTY papers
-* Many new possiblities of inferring Machine Learning models with NIFTy inference methods and using NIFTy components such as the GP models in NN
+We expect \texttt{NIFTy.re} to be highly useful for many imaging applications and envision many applications within and outside of astrophysics [@Arras2022; @Leike2019; @Leike2020; @Mertsch2023; @Roth2023DirectionDependentCalibration; @Hutschenreuter2023; @Tsouros2023; @Roth2023FastCadenceHighContrastImaging; @Hutschenreuter2022].
+\texttt{NIFTy.re} has already been successfully used in two galactic tomography publications [@Leike2022; @Edenhofer2023].
+A very early version of \texttt{NIFTy.re} enabled a 100 billion dimensional reconstruction using a maximum posterior inference.
+In a newer publication, \texttt{NIFTy.re} was used to infer a 500 million dimensional posterior dimensional using Metric Gaussian Variational Inference [@Knollmueller2019].
+Both publications extensively use \texttt{NIFTy.re}'s GPU support which yielded order of magnitude speed-ups.
+With \texttt{NIFTy.re} bridging \texttt{NIFTy} to JAX, we envision many new possibilities for inferring classical Machine Learning models with \texttt{NIFTy}'s inference methods and using \texttt{NIFTy} components such as the GP models in classical neural networks frameworks.
 
 <!-- A list of key references, including to other software addressing related needs. Note that the references should include full names of venues, e.g., journals and conferences, not abbreviations only understood in the context of a specific discipline. -->
-* Competes with other GP libraries as well as with probabilistic programming languages and frameworks.
-* Compared to Gpytorch, GPflow, george, tinygp
-* Compared to classical propabilistic programming languages and or frameworks such as Stan, pyro, pyMC3, Emcee, dynesty, numpyro, or blackjax (TODO:cite), NIFTy has a very strong focus on high dimensional inference with 1M+ to hundreds of billions of parameters, and features a set of models that quickly these number of parameters: GPs
-* Middle ground between tools like blackjax and pymc
-* NIFTy's GP and VI are now accesible and integrate into other JAX packages such as `blackjax`(TODO:cite), `numpyro`(TODO:cite), and `jaxopt`(TODO:cite).
+\texttt{NIFTy.re} competes with other Gaussian Process libraries as well as with probabilistic programming languages and frameworks.
+Compared to GPyTorch [@Hensman2015], GPflow [@Matthews2017], george [@Sivaram2015], or TinyGP [@ForemanMackey2024], \texttt{NIFTy} and \texttt{NIFTy.re} focus on Gaussian Process models for structured spaces.
+These spaces can be arbitrarily deformed in the new Gaussian Process model implemented in NIFTy.re [@Edenhofer2022].
+Compared to classical probabilistic programming languages such as Stan [@Carpenter2017] and frameworks such pyro [@Bingham2019], numpyro [@Phan2019], pyMC3 [@Salvatier2016], Emcee [@ForemanMackey2013], dynesty [@Speagle2020; @Koposov2023], or blackjax [@blackjax2020], \texttt{NIFTy} and \texttt{NIFTy.re} focus on high dimensional inference with millions to billions of degrees of freedom.
+In contrast to many Gaussian Process libraries, nether \texttt{NIFTy} nor \texttt{NIFTy.re} assume the posterior to be analytically accessible and instead try to approximate it using Variational Inference.
+With \texttt{NIFTy.re} the Gaussian Process models and the Variational Inference machinery is now fully accessible in JAX ecosystem and \texttt{NIFTy.re} components interact seamlessly with other JAX packages such as `blackjax` and  `jaxopt` [@Blondel2021].
 
 # Core Components
 
