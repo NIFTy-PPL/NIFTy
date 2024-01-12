@@ -63,7 +63,7 @@ Thus, to infer an image from noisy data, we require an inference machine that no
 
 \texttt{NIFTy} is a Bayesian imaging library [@Selig2013; @Steiniger2017; @Arras2019].
 It is designed to infer the million to billion dimensional posterior distribution in the image space from noisy input data.
-At the core of \texttt{NIFTy} lies a set of powerful Gaussian Process (GP) models for modeling correlated degrees of freedom in high dimensions and an accurate statistical inference machinery of Variational Inference algorithms.
+At the core of \texttt{NIFTy} lies a set of powerful Gaussian Process (GP) models for modeling correlated degrees of freedom in high dimensions and an accurate statistical inference machinery of Variational Inference (VI) algorithms.
 
 \texttt{NIFTy.re} is a rewrite of \texttt{NIFTy} in JAX [@Jax2018] with all relevant previous GP models, a new even more powerful GP model, and a much more flexible posterior approximation machinery.
 By virtue of being written in JAX, \texttt{NIFTy.re} effortlessly runs on the accelerator hardware such as the GPU, extensively vectorizes models whenever possible, just-in-time compiles code for additional performance, and enables a new kind of inference machinery thanks to being able to retrieve higher order derivates.
@@ -73,7 +73,7 @@ By switching from a home-grown automatic differentiation engine to JAX, we envis
 We expect \texttt{NIFTy.re} to be highly useful for many imaging applications and envision many applications within and outside of astrophysics [@Arras2022; @Leike2019; @Leike2020; @Mertsch2023; @Roth2023DirectionDependentCalibration; @Hutschenreuter2023; @Tsouros2023; @Roth2023FastCadenceHighContrastImaging; @Hutschenreuter2022].
 \texttt{NIFTy.re} has already been successfully used in two galactic tomography publications [@Leike2022; @Edenhofer2023].
 A very early version of \texttt{NIFTy.re} enabled a 100 billion dimensional reconstruction using a maximum posterior inference.
-In a newer publication, \texttt{NIFTy.re} was used to infer a 500 million dimensional posterior dimensional using Metric Gaussian Variational Inference [@Knollmueller2019].
+In a newer publication, \texttt{NIFTy.re} was used to infer a 500 million dimensional posterior dimensional using VI [@Knollmueller2019].
 Both publications extensively use \texttt{NIFTy.re}'s GPU support which yielded order of magnitude speed-ups.
 With \texttt{NIFTy.re} bridging \texttt{NIFTy} to JAX, we envision many new possibilities for inferring classical Machine Learning models with \texttt{NIFTy}'s inference methods and using \texttt{NIFTy} components such as the GP models in classical neural networks frameworks.
 
@@ -82,13 +82,13 @@ With \texttt{NIFTy.re} bridging \texttt{NIFTy} to JAX, we envision many new poss
 Compared to GPyTorch [@Hensman2015], GPflow [@Matthews2017], george [@Sivaram2015], or TinyGP [@ForemanMackey2024], \texttt{NIFTy} and \texttt{NIFTy.re} focus on GP models for structured spaces.
 These spaces can be arbitrarily deformed in the new GP model implemented in NIFTy.re [@Edenhofer2022].
 Compared to classical probabilistic programming languages such as Stan [@Carpenter2017] and frameworks such pyro [@Bingham2019], numpyro [@Phan2019], pyMC3 [@Salvatier2016], Emcee [@ForemanMackey2013], dynesty [@Speagle2020; @Koposov2023], or blackjax [@blackjax2020], \texttt{NIFTy} and \texttt{NIFTy.re} focus on high dimensional inference with millions to billions of degrees of freedom.
-In contrast to many GP libraries, nether \texttt{NIFTy} nor \texttt{NIFTy.re} assume the posterior to be analytically accessible and instead try to approximate it using Variational Inference.
-With \texttt{NIFTy.re} the GP models and the Variational Inference machinery is now fully accessible in JAX ecosystem and \texttt{NIFTy.re} components interact seamlessly with other JAX packages such as `blackjax` and  `jaxopt` [@Blondel2021].
+In contrast to many GP libraries, nether \texttt{NIFTy} nor \texttt{NIFTy.re} assume the posterior to be analytically accessible and instead try to approximate it using VI.
+With \texttt{NIFTy.re} the GP models and the VI machinery is now fully accessible in JAX ecosystem and \texttt{NIFTy.re} components interact seamlessly with other JAX packages such as `blackjax` and  `jaxopt` [@Blondel2021].
 
 # Core Components
 
-* \texttt{NIFTy.re} brings \texttt{NIFTy}'s structured GP models from \texttt{NIFTy} to JAX (CITE:M87_paper) for reconstructions with regularly spaced pixels and a new GP model called ICR for reconstructions with arbitrarily deformed pixel spacings.
-* Imaging usually has as many or more degrees of freedom as pixels in the image which is on the order of tens or hundreds of million.
+\texttt{NIFTy.re} brings tried and tested structured GP models and VI algorithms to JAX.
+* Imaging requires GP models, inference requires VI
 * \texttt{NIFTy.re} treats this problem as a Bayesian inference task.
 * It implements MGVI and geoVI TODO:cite_both.
 
@@ -101,11 +101,14 @@ With \texttt{NIFTy.re} the GP models and the Variational Inference machinery is 
 
 ## GP
 
-* Common component of a forward model in imaging is the GP
-* highlight need for GP and applications
-* recap GP for structured spaces
-  * recap FT GP
-  * recap ICR
+* \texttt{NIFTy.re} brings \texttt{NIFTy}'s structured GP models to JAX.
+* The models rely for reconstructions with regularly spaced pixels
+* In NIFTy's generative picture: GP realization $s = \mathcal{FT} \cdot \sqrt{P} \cdot \xi$
+* Stationary kernels with an accesible harmonic space can be straight-forwadly implemented this way
+* User can choose-between a non-parametric kernel or a Matern kernel [@Arras2022; @Guardiani2022 for details on their implementation].
+
+* New GP model called ICR for reconstructions with arbitrarily deformed pixel spacings
+* Recap ICR
 
 ```python
 from nifty import re as jft
