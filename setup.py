@@ -34,7 +34,7 @@ description = "Library for signal inference algorithms that operate regardless o
 
 extras_require = {
     "re": ("jax", "jaxlib"),
-    "native": ("ducc0>=0.24.0", ),
+    "native": ("ducc0>=0.27.0", ),
     "doc": ("sphinx", "pydata-sphinx-theme", "jupyter", "jupytext"),
     "util": ("astropy", "healpy"),
 }
@@ -56,10 +56,10 @@ setup(name="nifty8",
       },
       packages=find_packages(include=["nifty8", "nifty8.*"]),
       license="GPLv3",
-      setup_requires=['scipy>=1.4.1', 'numpy>=1.19'],
-      install_requires=['scipy>=1.4.1', 'numpy>=1.19'],
+      setup_requires=['scipy>=1.9.0', 'numpy>=1.23'],
+      install_requires=['scipy>=1.9.0', 'numpy>=1.23'],
       extras_require=extras_require,
-      python_requires='>=3.8',
+      python_requires='>=3.10',
       classifiers=[
           "Development Status :: 5 - Production/Stable",
           "Topic :: Scientific/Engineering :: Mathematics",

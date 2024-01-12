@@ -1,4 +1,4 @@
-FROM debian:bullseye-slim
+FROM debian:stable-slim
 
 RUN apt-get update && apt-get install -y \
     # Needed for setup
@@ -8,7 +8,7 @@ RUN apt-get update && apt-get install -y \
     # Dependency of mpi4py
     libopenmpi-dev \
     && rm -rf /var/lib/apt/lists/*
-RUN DUCC0_OPTIMIZATION=portable pip3 install \
+RUN DUCC0_OPTIMIZATION=portable pip3 install --break-system-packages\
     # Packages needed for NIFTy
     scipy \
     # Optional nifty dependencies
