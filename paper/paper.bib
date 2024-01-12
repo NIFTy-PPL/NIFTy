@@ -342,6 +342,189 @@
   version = {0.3.13},
   year    = {2018}
 }
+
+@inproceedings{Hensman2015,
+  author    = {Hensman, James and de G. Matthews, Alexander G. and Ghahramani, Zoubin},
+  biburl    = {https://www.bibsonomy.org/bibtex/23167a785dedae9dbff722940828a6e89/dblp},
+  booktitle = {AISTATS},
+  crossref  = {conf/aistats/2015},
+  editor    = {Lebanon, Guy and Vishwanathan, S. V. N.},
+  ee        = {http://proceedings.mlr.press/v38/hensman15.html},
+  interhash = {e1ab718ad19fa81d5e00136b884475c5},
+  intrahash = {3167a785dedae9dbff722940828a6e89},
+  keywords  = {dblp},
+  publisher = {JMLR.org},
+  series    = {JMLR Workshop and Conference Proceedings},
+  timestamp = {2019-05-30T11:50:37.000+0200},
+  title     = {Scalable Variational Gaussian Process Classification.},
+  url       = {http://dblp.uni-trier.de/db/conf/aistats/aistats2015.html#HensmanMG15},
+  volume    = 38,
+  year      = 2015
+}
+
+@article{Matthews2017,
+  author     = {De G. Matthews, Alexander G. and Van Der Wilk, Mark and Nickson, Tom and Fujii, Keisuke and Boukouvalas, Alexis and Le\'{o}n-Villagr\'{a}, Pablo and Ghahramani, Zoubin and Hensman, James},
+  title      = {GPflow: A Gaussian Process Library Using Tensorflow},
+  year       = {2017},
+  issue_date = {January 2017},
+  publisher  = {JMLR.org},
+  volume     = {18},
+  number     = {1},
+  issn       = {1532-4435},
+  abstract   = {GPflow is a Gaussian process library that uses TensorFlow for its core computations and Python for its front end. The distinguishing features of GPflow are that it uses variational inference as the primary approximation method, provides concise code through the use of automatic differentiation, has been engineered with a particular emphasis on software testing and is able to exploit GPU hardware.},
+  journal    = {J. Mach. Learn. Res.},
+  month      = {jan},
+  pages      = {1299–1304},
+  numpages   = {6}
+}
+
+@article{Sivaram2015,
+  author        = {{Ambikasaran}, Sivaram and {Foreman-Mackey}, Daniel and {Greengard}, Leslie and {Hogg}, David W. and {O'Neil}, Michael},
+  title         = {{Fast Direct Methods for Gaussian Processes}},
+  journal       = {IEEE Transactions on Pattern Analysis and Machine Intelligence},
+  keywords      = {Mathematics - Numerical Analysis, Astrophysics - Instrumentation and Methods for Astrophysics, Mathematics - Statistics Theory, Mathematics - Numerical Analysis, Astrophysics - Instrumentation and Methods for Astrophysics, Mathematics - Statistics Theory},
+  year          = 2015,
+  month         = jun,
+  volume        = {38},
+  pages         = {252},
+  doi           = {10.1109/TPAMI.2015.2448083},
+  archiveprefix = {arXiv},
+  eprint        = {1403.6015},
+  primaryclass  = {math.NA},
+  adsurl        = {https://ui.adsabs.harvard.edu/abs/2015ITPAM..38..252A},
+  adsnote       = {Provided by the SAO/NASA Astrophysics Data System}
+}
+
+@article{ForemanMackey2017,
+  author  = {{Foreman-Mackey}, D. and {Agol}, E. and {Angus}, R. and
+             {Ambikasaran}, S.},
+  title   = {Fast and scalable Gaussian process modeling
+             with applications to astronomical time series},
+  year    = {2017},
+  journal = {AJ},
+  volume  = {154},
+  pages   = {220},
+  doi     = {10.3847/1538-3881/aa9332},
+  url     = {https://arxiv.org/abs/1703.09710}
+}
+
+@software{ForemanMackey2024,
+  author    = {Foreman-Mackey, Daniel and Weixiang Yu and Yadav, Sachin and Becker, McCoy Reynolds and Caplar, Neven and Huppenkothen, Daniela and Killestein, Thomas and Tronsgaard, René and Rashid, Theo and Schmerler, Steve},
+  title     = {{dfm/tinygp: The tiniest of Gaussian Process libraries}},
+  month     = jan,
+  year      = 2024,
+  publisher = {Zenodo},
+  version   = {v0.3.0},
+  doi       = {10.5281/zenodo.10463641},
+  url       = {https://doi.org/10.5281/zenodo.10463641}
+}
+
+@article{Carpenter2017,
+  title    = {Stan: A Probabilistic Programming Language},
+  volume   = {76},
+  url      = {https://www.jstatsoft.org/index.php/jss/article/view/v076i01},
+  doi      = {10.18637/jss.v076.i01},
+  abstract = {Stan is a probabilistic programming language for specifying statistical models. A Stan program imperatively defines a log probability function over parameters conditioned on specified data and constants. As of version 2.14.0, Stan provides full Bayesian inference for continuous-variable models through Markov chain Monte Carlo methods such as the No-U-Turn sampler, an adaptive form of Hamiltonian Monte Carlo sampling. Penalized maximum likelihood estimates are calculated using optimization methods such as the limited memory Broyden-Fletcher-Goldfarb-Shanno algorithm. Stan is also a platform for computing log densities and their gradients and Hessians, which can be used in alternative algorithms such as variational Bayes, expectation propagation, and marginal inference using approximate integration. To this end, Stan is set up so that the densities, gradients, and Hessians, along with intermediate quantities of the algorithm such as acceptance probabilities, are easily accessible. Stan can be called from the command line using the cmdstan package, through R using the rstan package, and through Python using the pystan package. All three interfaces support sampling and optimization-based inference with diagnostics and posterior analysis. rstan and pystan also provide access to log probabilities, gradients, Hessians, parameter transforms, and specialized plotting.},
+  number   = {1},
+  journal  = {Journal of Statistical Software},
+  author   = {Carpenter, Bob and Gelman, Andrew and Hoffman, Matthew D. and Lee, Daniel and Goodrich, Ben and Betancourt, Michael and Brubaker, Marcus and Guo, Jiqiang and Li, Peter and Riddell, Allen},
+  year     = {2017},
+  pages    = {1-32}
+}
+
+@article{Bingham2019,
+  author  = {Eli Bingham and Jonathan P. Chen and Martin Jankowiak and Fritz Obermeyer and Neeraj Pradhan and Theofanis Karaletsos and Rohit Singh and Paul A. Szerlip and Paul Horsfall and Noah D. Goodman},
+  title   = {Pyro: Deep Universal Probabilistic Programming},
+  journal = {J. Mach. Learn. Res.},
+  volume  = {20},
+  pages   = {28:1--28:6},
+  year    = {2019},
+  url     = {http://jmlr.org/papers/v20/18-403.html}
+}
+
+@article{Salvatier2016,
+  title    = {Probabilistic programming in Python using PyMC3},
+  author   = {Salvatier, John and Wiecki, Thomas V. and Fonnesbeck, Christopher},
+  year     = 2016,
+  month    = apr,
+  keywords = {Bayesian statistic, Probabilistic Programming, Python, Markov chain Monte Carlo, Statistical modeling},
+  volume   = 2,
+  pages    = {e55},
+  journal  = {PeerJ Computer Science},
+  issn     = {2376-5992},
+  url      = {https://doi.org/10.7717/peerj-cs.55},
+  doi      = {10.7717/peerj-cs.55}
+}
+
+@article{ForemanMackey2013,
+  author        = {{Foreman-Mackey}, Daniel and {Hogg}, David W. and {Lang}, Dustin and {Goodman}, Jonathan},
+  title         = {{emcee: The MCMC Hammer}},
+  journal       = {\pasp},
+  keywords      = {Astrophysics - Instrumentation and Methods for Astrophysics, Physics - Computational Physics, Statistics - Computation},
+  year          = 2013,
+  month         = mar,
+  volume        = {125},
+  number        = {925},
+  pages         = {306},
+  doi           = {10.1086/670067},
+  archiveprefix = {arXiv},
+  eprint        = {1202.3665},
+  primaryclass  = {astro-ph.IM},
+  adsurl        = {https://ui.adsabs.harvard.edu/abs/2013PASP..125..306F},
+  adsnote       = {Provided by the SAO/NASA Astrophysics Data System}
+}
+
+@article{Speagle2020,
+  author        = {{Speagle}, Joshua S.},
+  title         = {{DYNESTY: a dynamic nested sampling package for estimating Bayesian posteriors and evidences}},
+  journal       = {\mnras},
+  keywords      = {methods: data analysis, methods: statistical, Astrophysics - Instrumentation and Methods for Astrophysics, Statistics - Computation},
+  year          = 2020,
+  month         = apr,
+  volume        = {493},
+  number        = {3},
+  pages         = {3132-3158},
+  doi           = {10.1093/mnras/staa278},
+  archiveprefix = {arXiv},
+  eprint        = {1904.02180},
+  primaryclass  = {astro-ph.IM},
+  adsurl        = {https://ui.adsabs.harvard.edu/abs/2020MNRAS.493.3132S},
+  adsnote       = {Provided by the SAO/NASA Astrophysics Data System}
+}
+
+@software{Koposov2023,
+  author    = {Sergey Koposov and Josh Speagle and Kyle Barbary and Gregory Ashton and Ed Bennett and Johannes Buchner and Carl Scheffler and Ben Cook and Colm Talbot and James Guillochon and Patricio Cubillos and Andrés Asensio Ramos and Ben Johnson and Dustin Lang and Ilya and Matthieu Dartiailh and Alex Nitz and Andrew McCluskey and Anne Archibald},
+  title     = {joshspeagle/dynesty: v2.1.3},
+  month     = oct,
+  year      = 2023,
+  publisher = {Zenodo},
+  version   = {v2.1.3},
+  doi       = {10.5281/zenodo.8408702},
+  url       = {https://doi.org/10.5281/zenodo.8408702}
+}
+
+@article{Phan2019,
+  title   = {Composable Effects for Flexible and Accelerated Probabilistic Programming in NumPyro},
+  author  = {Phan, Du and Pradhan, Neeraj and Jankowiak, Martin},
+  journal = {arXiv preprint arXiv:1912.11554},
+  year    = {2019}
+}
+
+@software{blackjax2020,
+  author  = {Cabezas, Alberto, Lao, Junpeng, and Louf, R\'emi},
+  title   = {{B}lackjax: A sampling library for {JAX}},
+  url     = {http://github.com/blackjax-devs/blackjax},
+  version = {<insert current release tag>},
+  year    = {2023}
+}
+
+@article{Blondel2021,
+  title   = {Efficient and Modular Implicit Differentiation},
+  author  = {Blondel, Mathieu and Berthet, Quentin and Cuturi, Marco and Frostig, Roy and Hoyer, Stephan and Llinares-L{\'o}pez, Felipe and Pedregosa, Fabian and Vert, Jean-Philippe},
+  journal = {arXiv preprint arXiv:2105.15183},
+  year    = {2021}
+}
+
 @article{Steiniger2017,
   author  = {{Steininger}, Theo and {Dixit}, Jait and {Frank}, Philipp and {Greiner}, Maksim and {Hutschenreuter}, Sebastian and {Knollm{\"u}ller}, Jakob and {Leike}, Reimar H. and {Porqueres}, Natalia and {Pumpe}, Daniel and {Reinecke}, Martin and {{\v{S}}raml}, Matev{\v{z}} and {Varady}, Csongor and {En{\ss}lin}, Torsten A.},
   title   = {{NIFTy 3 - Numerical Information Field Theory: A Python Framework for Multicomponent Signal Inference on HPC Clusters}},
