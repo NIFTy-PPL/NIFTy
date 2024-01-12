@@ -160,14 +160,14 @@ def conditional_raise(condition, exception):
     """
     from jax.experimental.host_callback import call
 
-    def maybe_raise(condition):
+    def host_fn(condition):
         if condition:
             raise exception
 
-    call(maybe_raise, condition, result_shape=None)
+    call(host_fn, condition, result_shape=None)
 
 
-def conditional_call(condition, fn, *arg, **kwargs):
+def conditional_call(condition, fn, *args, **kwargs):
     """Calls the function `fn` with the given arguments on the host
     if `condition` evaluates to True.
 
@@ -186,8 +186,10 @@ def conditional_call(condition, fn, *arg, **kwargs):
     """
     from jax.experimental.host_callback import call
 
-    def maybe_log(condition):
-        if condition:
-            fn(*arg, **kwargs)
+    def host_fn(host_fn_arg_tuple):
+        condition, args, kwargs = host_fn_arg_tuple
 
-    call(maybe_log, condition, result_shape=None)
+        if condition:
+            fn(*args, **kwargs)
+
+    call(host_fn, (condition, args, kwargs), result_shape=None)
