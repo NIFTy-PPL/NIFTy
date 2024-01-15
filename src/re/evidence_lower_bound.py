@@ -38,7 +38,6 @@ class _Projector(ssl.LinearOperator):
 
 
 def _explicify(M):
-    # This is only a utilty method to check results
     identity = np.identity(M.shape[0], dtype=np.float64)
     m = []
     for v in identity:
@@ -245,9 +244,9 @@ def estimate_evidence_lower_bound(hamiltonian, samples, n_eigenvalues, min_lh_ev
 
     stats = {'lower_error': tr_log_lat_cov_lower}
     elbo_mean = np.mean(elbo_samples)
-    elbo_var = np.std(elbo_samples, ddof=1)
-    elbo_up = elbo_mean + np.sqrt(elbo_var)
-    elbo_lw = elbo_mean - np.sqrt(elbo_var) - stats["lower_error"]
+    elbo_std = np.std(elbo_samples, ddof=1)
+    elbo_up = elbo_mean + elbo_std
+    elbo_lw = elbo_mean - elbo_std - stats["lower_error"]
     stats['elbo_mean'], stats['elbo_up'], stats['elbo_lw'] = elbo_mean, elbo_up, elbo_lw
     if verbose:
         s = (f"\nELBO decomposition (in log units)"
