@@ -99,6 +99,7 @@ class ModelMeta(abc.ABCMeta):
             static = []
             dynamic = []
             for k, v in self.__dict__.items():
+                # Inspired by how equinox registers properties as static in JAX
                 fm = self.__dataclass_fields__.get(k)
                 fm = fm.metadata if fm is not None else {}
                 if fm.get("static", IS_STATIC_DEFAULT) is False:
