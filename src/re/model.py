@@ -85,7 +85,7 @@ class Initializer():
 
 
 class ModelMeta(abc.ABCMeta):
-    """Register all derived classes as PyTrees via black-magic.
+    """Register all derived classes as PyTrees in JAX using metaprogramming.
 
     For any dataclasses.Field property with a metadata-entry named "static",
     we will either hide or expose the property to JAX depending on the value.
@@ -172,9 +172,9 @@ class Model(LazyModel):
 
     From a domain and a callable, this class automatically derives the target as
     well as instantiate a default initializer if not set explicitly. More
-    importantly though, it registers the class as PyTree using black-magic. By
-    default all properties are hidden from JAX except those marked via
-    `dataclasses.field(metadata=dict(static=False))` as non-static.
+    importantly though, it registers the class as PyTree in JAX using
+    metaprogramming. By default all properties are hidden from JAX except those
+    marked via `dataclasses.field(metadata=dict(static=False))` as non-static.
     """
     def __init__(
         self,
