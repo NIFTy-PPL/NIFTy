@@ -83,45 +83,66 @@ Compared to GPyTorch [@Hensman2015], GPflow [@Matthews2017], george [@Sivaram201
 These spaces can be arbitrarily deformed in the new GP model implemented in NIFTy.re [@Edenhofer2022].
 Compared to classical probabilistic programming languages such as Stan [@Carpenter2017] and frameworks such pyro [@Bingham2019], numpyro [@Phan2019], pyMC3 [@Salvatier2016], Emcee [@ForemanMackey2013], dynesty [@Speagle2020; @Koposov2023], or blackjax [@blackjax2020], \texttt{NIFTy} and \texttt{NIFTy.re} focus on high dimensional inference with millions to billions of degrees of freedom.
 In contrast to many GP libraries, nether \texttt{NIFTy} nor \texttt{NIFTy.re} assume the posterior to be analytically accessible and instead try to approximate it using VI.
-With \texttt{NIFTy.re} the GP models and the VI machinery is now fully accessible in JAX ecosystem and \texttt{NIFTy.re} components interact seamlessly with other JAX packages such as `blackjax` and  `jaxopt` [@Blondel2021].
+With \texttt{NIFTy.re} the GP models and the VI machinery is now fully accessible in JAX ecosystem and \texttt{NIFTy.re} components interact seamlessly with other JAX packages such as `blackjax` and `jaxopt` [@Blondel2021].
 
 # Core Components
 
 \texttt{NIFTy.re} brings tried and tested structured GP models and VI algorithms to JAX.
-* Imaging requires GP models, inference requires VI
-* \texttt{NIFTy.re} treats this problem as a Bayesian inference task.
-* It implements MGVI and geoVI TODO:cite_both.
+The first is essential for modeling in the domain of imaging and the other is essential to probe the high dimensional posterior.
+\texttt{NIFTy.re} treats the imaging problem as a Bayesian inference problem.
+\texttt{NIFTy.re} infers the parameters of interest, often an image, from noisy data and a stochastic mapping from the parameters of interest to the data a.k.a. a model.
 
-* \texttt{NIFTy} model from a Machine Learning perspective reads `loss(d, f(\theta)) + reg(\theta)`
-* From a Bayesian perspective the reduction `loss(d, f(\theta))` represents the likelihood and the regularization `reg(\theta)` the prior.
-* Formulation is degenerate between what is considered part of the likelihood/loss and what is considered a regularization/prior.
-* Without loss of generalizty \texttt{NIFTy} formulates model such that the regularization/prior always is an L_2 regularization respectively a standard Gaussian prior.
-* This means that all relevant details of the model are encoded in the forward model `f` and the loss `loss`
-* \texttt{NIFTy} is all about building up the forward model `f` and choosing a suitable loss `loss`
+\texttt{NIFTy} and \texttt{NIFTy.re} build up hierarchical models for the posterior.
+The log-posterior function reads $\ln\mathcal{p(\theta|d)} \coloneqq \mathcal{l}(d, f(\theta)) + \ln\mathcal{p}(\theta) + \mathrm{const}$ with log-likelihood $\mathcal{l}$, forward model $f$ mapping the parameters of interest $\theta$ to the data space, and log-prior $\ln\mathcal{p(\theta)}$.
+The goal of the inference is to draw samples from the posterior $\mathcal{p}(\theta|d)$.
+
+What is considered part of the likelihood and what is considered part of the prior is ill-defined.
+Without loss of generality \texttt{NIFTy} and \texttt{NIFTy.re} formulate models such that the prior always is a standard Gaussian.
+This choice of re-parameterization [@Rezende2015] is called standardization.
+All relevant details of the prior model are encoded in the forward model $f$.
+The standardization is often carried out implicitly in the background, however, for prior models outside of the current toolbox the user has to manually implement the necessary component for $f$ that corresponds to the desired non-Gaussian prior.
 
 ## GP
 
-* \texttt{NIFTy.re} brings \texttt{NIFTy}'s structured GP models to JAX.
-* The models rely for reconstructions with regularly spaced pixels
-* In NIFTy's generative picture: GP realization $s = \mathcal{FT} \cdot \sqrt{P} \cdot \xi$
-* Stationary kernels with an accesible harmonic space can be straight-forwadly implemented this way
-* User can choose-between a non-parametric kernel or a Matern kernel [@Arras2022; @Guardiani2022 for details on their implementation].
-
-* New GP model called ICR for reconstructions with arbitrarily deformed pixel spacings
-* Recap ICR
+One standard tool from the \texttt{NIFTy.re} toolbox are the structured GP models from \texttt{NIFTy}.
+The models rely on the harmonic domain being easily accessible, e.g. for pixels spaced on a regular Cartesian grid, the natural choice to represent a stationary kernel is the Fourier domain.
+In the generative picture, a realization $s$ drawn from a GP then reads $s = \mathcal{HT} \cdot \sqrt{P} \cdot \xi$ with $\mathcal{HT}$ the harmonic transform, $\sqrt{P}$ the square-root of the power-spectrum in harmonic space as diagonal operator, and $\xi$ standard Gaussian random variables.
+In the implementation in \texttt{NIFTy.re} and \texttt{NIFTy}, user can choose-between a non-parametric kernel $\sqrt{P}$ or a Matérn kernel $\sqrt{P}$ [@Arras2022; @Guardiani2022 for details on their implementation].
+An example initializing a non-parameteric GP prior for a $128 \times 128$ space with unit volume is shown in the following.
 
 ```python
 from nifty import re as jft
 
-jft.CorrelatedFieldMaker()
-# TODO
+dims = (128, 128)
+cfm = jft.CorrelatedFieldMaker("cf")
+cfm.set_amplitude_total_offset(offset_mean=0., offset_std=(1e-3, 1e-4))
+cfm.add_fluctuations(  # Axis over which the kernle is defined
+  dims,
+  distances=tuple(1. / d for d in dims),
+  fluctuations=(1e-1, 5e-3),
+  loglogavgslope=(-1., 1e-2),
+  flexibility=(1e+0, 5e-1),
+  asperity=(5e-1, 5e-2),
+  prefix="ax1",
+  non_parametric_kind="power"
+)
+correlated_field = cfm.finalize()  # forward model for a GP prior
 ```
+
+Not all problems are well described by regularly spaced pixels.
+For more complicated spaced pixels, \texttt{NIFTy.re} features @Edenhofer2022, a GP model for arbitrarily deformed spaces.
+This model exploits nearest neighbor relations on various coarsening of the discretized modeled space and runs very efficiently on GPUs.
+See the demonstration scripts in the repository for an example.
 
 ## Models as PyTrees
 
-* Object-oriented model as PyTree
-* Attributes can be marked as jax-traceable or can be hidden from jax (idea of using python's `dataclasses` library is heavily inspired by equinox)
-* Likelihood as PyTrees
+Models are rarely just a GP prior.
+Commonly a model contains at least several non-linearity that transforms the GP prior or combines it with other random variables.
+To built up more involved models, \texttt{NIFTy.re} provides a `Model` class that a somewhat familiar object-oriented design yet is fully JAX compatible and functional under the hood.
+By inheritng from `Model`, a class is registered as a PyTree in JAX.
+Individual attrributes of the class can be marked as stitic or non-static via `dataclass.field(metadata=dict(static=...))`.
+Depending on the value, JAX will either trace through the attribute under just-in-time compiles or hides from JAX and treats them as static.
+The dataclass-style implementation took inspiration from equinox [@Kidger2021].
 
 ```python
 from jax import numpy as jnp
@@ -133,26 +154,66 @@ class Forward(Model):
   def __call__(self, x):
     # NOTE, any kind of masking of the output, non-linear and linear
     # transformation could be carried out here. Models can also combined and
-    # nested in any for that suites the program flow.
+    # nested in any way and form.
     return jnp.exp(self._cf(x))
 
 forward = Forward(cf)
-lh = TODO
+
+data = np.load("")  # TODO
+noise_cov_inv = np.load("")  # TODO
+lh = jft.Gaussian(data, noise_cov_inv).amend(forward)
 ```
 
-* As `cf`, `forward`, and `lh` are all PyTrees in JAX, the following is valid code `jax.jit(lambda l, x: l(x))(lh, x0)`.
-* By registering fields of models as dataclass.field and setting the `static` key in the metadata to `False`, we can control what gets inlined and what is traced by JAX.
-* This mechanism is extensively made use of in likelihoods to avoid inlining large constants and avoiding re-compiles.
+All GP models in \texttt{NIFTy.re} as well as all likelihoods are registered as PyTrees and can be traced by JAX.
+Thus, `cf`, `forward`, and `lh` from the preceding code snippet are all PyTrees in JAX and the following is valid code `jax.jit(lambda l, x: l(x))(lh, x0)` with `x0` some arbitrarily chosen valid input to `lh`.
+By registering fields of `Forward` via `dataclass.field` and setting the `static` key in the metadata to `False`/`True`, we can control what gets in-lined and what is traced by JAX.
+This mechanism is extensively used in likelihoods to avoid in-lining large constants such as the data and avoiding expensive re-compiles whenever possible.
 
 ## VI
 
-* highlight need for VI
+\texttt{NIFTy.re} is build for models with millions to billions of degrees of freedoms.
+To probe the posterior efficiently, \texttt{NIFTy.re} relies on VI.
+Specifically, \texttt{NIFTy.re} utilizes Metric Gaussian Variational Inference and its successor geometric Variational Inference [@Knollmueller2019 @Frank2021 @Frank2022].
 * recap MGVI and geoVI as expansion-point inference algorithms
-
+* exploit model-instrinsic information about the posterior encoded in the Fisher-information metric
+* Novel in NIFTy.re, more general as it give complete freedom over how samples are updated in the iterative minimize-update_samples scheme
 * Completely functional sampling and jaxopt-style minimization
+* Many more posterior approximators available in the JAX ecosystem
 
 ```python
-jft.OptimizeVI()  # TODO
+# Initialize an empty jft.Samples class, `OptimizeVI.update`
+samples = jft.Samples(pos=initial_pos, samples=None, keys=None)
+opt_vi = jft.OptimizeVI(lh, n_total_iterations=25)
+opt_vi_st_init = opt_vi.init_state(
+  key,
+  # Typically on the order of 2-12
+  n_samples=lambda i: 1 if i < 2 else (2 if i < 4 else 6),
+  # Arguments for the conjugate gradient method used to drawing samples from
+  # an implicit covariance matrix
+  draw_linear_kwargs=dict(
+    cg_name="SL", cg_kwargs=dict(absdelta=absdelta / 10., maxiter=100)
+  ),
+  # Arguements for the minimizer in the nonlinear updating of the samples
+  nonlinearly_update_kwargs=dict(
+    minimize_kwargs=dict(
+      name="SN",
+      xtol=delta,
+      cg_kwargs=dict(name=None),
+      maxiter=5,
+    )
+  ),
+  # Arguments for the minimizer of the KL-divergence cost potential
+  kl_kwargs=dict(
+    minimize_kwargs=dict(
+      name="M", absdelta=absdelta, cg_kwargs=dict(name="MCG"), maxiter=35
+    )
+  ),
+  sample_mode=lambda i: "nonlinear_resample" if i < 3 else "nonlinear_update",
+)
+for i in range(opt_vi.n_total_iterations):
+  print(f"Iteration {i+1:04d}")
+  samples, opt_vi_st = opt_vi.update(samples, opt_vi_st)
+  print(opt_vi.get_status_message(samples, opt_vi_st))
 ```
 
 ## Performance compared to old NIFTy
