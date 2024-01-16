@@ -173,12 +173,21 @@ This mechanism is extensively used in likelihoods to avoid in-lining large const
 
 \texttt{NIFTy.re} is build for models with millions to billions of degrees of freedoms.
 To probe the posterior efficiently, \texttt{NIFTy.re} relies on VI.
-Specifically, \texttt{NIFTy.re} utilizes Metric Gaussian Variational Inference and its successor geometric Variational Inference [@Knollmueller2019 @Frank2021 @Frank2022].
-* recap MGVI and geoVI as expansion-point inference algorithms
-* exploit model-instrinsic information about the posterior encoded in the Fisher-information metric
-* Novel in NIFTy.re, more general as it give complete freedom over how samples are updated in the iterative minimize-update_samples scheme
-* Completely functional sampling and jaxopt-style minimization
-* Many more posterior approximators available in the JAX ecosystem
+Specifically, \texttt{NIFTy.re} utilizes Metric Gaussian Variational Inference (MGVI) and its successor geometric Variational Inference (geoVI) [@Knollmueller2019 @Frank2021 @Frank2022].
+At the core of both MGVI and geoVI lies an alternating procedure in which we switch between optimizing the Kullback–Leibler divergence for a specific shape of variational posterior and updating the shape of the variational posterior.
+Both MGVI and geoVI define the variational posterior via samples, specifically, via samples that are drawn around an expansion point.
+The samples in MGVI and geoVI exploit model-intrinsic knowledge of the approximate shape of the posterior which is encoded in the Fisher information metric and the prior curvature [@Frank2021].
+
+\texttt{NIFTy.re} implements both MGVI and geoVI and allows for much finer control over the way samples are drawn and/or updated compared to \texttt{NIFTy}.
+Furthermore, \texttt{NIFTy.re} exposes stand-alone functions for drawing MGVI and geoVI samples from any arbitrary model with a likelihood from \texttt{NIFTy.re} and a forward model that is differentiable by JAX.
+In additiona to stand-alone sampling functions, \texttt{NIFTy.re} also provides tools at a higher abstractions to configure and execute the alternating Kullback–Leibler divergence optimiztion and sample adaption.
+These tools are provided in a jaxopt-style optimizer class [@Blondel2021].
+
+A typical minimization with \texttt{NIFTy.re} is shown in the following.
+It retrieves six antithetically mirrored samples from the approximate posterior via 25 iterations of alternating between optimization and sample adaption.
+The final result is stored in the `samples` variable.
+A convenient one-shot wrapper for the below is `jft.optimize_kl`.
+By virtue of all modeling tools in \texttt{NIFTy.re} being written in JAX, it is also possible to combine \texttt{NIFTy.re} tools with blackjax [@blackjax2020] or any other posterior sampler in the JAX ecosystem.
 
 ```python
 # Initialize an empty jft.Samples class, `OptimizeVI.update`
@@ -212,6 +221,7 @@ opt_vi_st_init = opt_vi.init_state(
 )
 for i in range(opt_vi.n_total_iterations):
   print(f"Iteration {i+1:04d}")
+  # Continuously updates the samples of the approximate posterior distribution
   samples, opt_vi_st = opt_vi.update(samples, opt_vi_st)
   print(opt_vi.get_status_message(samples, opt_vi_st))
 ```
