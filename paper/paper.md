@@ -150,6 +150,9 @@ from jax import numpy as jnp
 class Forward(Model):
   def __init__(self, correlated_field):
     self._cf = correlated_field
+    # Track a method with which a random input for the model. This is not
+    # strictly required but is usually handy when building deep models.
+    super().__init__(init=correlated_field.init)
 
   def __call__(self, x):
     # NOTE, any kind of masking of the output, non-linear and linear
