@@ -98,7 +98,7 @@ RegularFourierGrid = namedtuple(
 )
 
 
-def _make_grid(shape, distances, harmonic_domain_type) -> RegularCartesianGrid:
+def _make_grid(shape, distances, harmonic_type) -> RegularCartesianGrid:
     """Creates the grid for the amplitude model"""
     shape = (shape, ) if isinstance(shape, int) else tuple(shape)
     distances = tuple(np.broadcast_to(distances, jnp.shape(shape)))
@@ -111,7 +111,7 @@ def _make_grid(shape, distances, harmonic_domain_type) -> RegularCartesianGrid:
         distances=distances,
     )
     # Pre-compute lengths of modes and indices for distributing power
-    if harmonic_domain_type.lower() == "fourier":
+    if harmonic_type.lower() == "fourier":
         m_length_idx, m_length, m_count = get_fourier_mode_distributor(
             shape, distances
         )
@@ -130,7 +130,7 @@ def _make_grid(shape, distances, harmonic_domain_type) -> RegularCartesianGrid:
             log_volume=log_vol,
         )
     else:
-        ve = f"invalid `harmonic_domain_type` {harmonic_domain_type!r}"
+        ve = f"invalid `harmonic_type` {harmonic_type!r}"
         raise ValueError(ve)
     grid = grid._replace(harmonic_grid=harmonic_grid)
     return grid
@@ -367,7 +367,7 @@ class CorrelatedFieldMaker():
         flexibility: Union[tuple, Callable, None] = None,
         asperity: Union[tuple, Callable, None] = None,
         prefix: str = "",
-        harmonic_domain_type: str = "fourier",
+        harmonic_type: str = "fourier",
         non_parametric_kind: str = "amplitude",
     ):
         """Adds a correlation structure to the to-be-made field.
@@ -382,10 +382,9 @@ class CorrelatedFieldMaker():
         The parameters `fluctuations`, `flexibility`, `asperity` and
         `loglogavgslope` configure either the amplitude or the power
         spectrum model used on the target field subgrid of type
-        `harmonic_domain_type`. It is assembled as the sum of a power
-        law component (linear slope in log-log
-        amplitude-frequency-space), a smooth varying component
-        (integrated Wiener process) and a ragged component
+        `harmonic_type`. It is assembled as the sum of a power law component
+        (linear slope in log-log amplitude-frequency-space), a smooth varying
+        component (integrated Wiener process) and a ragged component
         (un-integrated Wiener process).
 
         Parameters
@@ -409,7 +408,7 @@ class CorrelatedFieldMaker():
             (by default a priori log-normal distributed)
         prefix : str
             Prefix of the power spectrum parameter names
-        harmonic_domain_type : str
+        harmonic_type : str
             Description of the harmonic partner domain in which the amplitude
             lives
         non_parametric_kind : str
@@ -427,7 +426,7 @@ class CorrelatedFieldMaker():
         Enßlin, Torsten, `<https://arxiv.org/abs/2002.05218>`_
         `<http://dx.doi.org/10.1038/s41550-021-01548-0>`_
         """
-        grid = _make_grid(shape, distances, harmonic_domain_type)
+        grid = _make_grid(shape, distances, harmonic_type)
 
         flu = fluctuations
         if isinstance(flu, (tuple, list)):
@@ -477,7 +476,7 @@ class CorrelatedFieldMaker():
         loglogslope: Union[tuple, Callable],
         renormalize_amplitude: bool,
         prefix: str = "",
-        harmonic_domain_type: str = "fourier",
+        harmonic_type: str = "fourier",
         non_parametric_kind: str = "amplitude",
     ):
         """Adds a Matérn-kernel correlation structure to the
@@ -515,7 +514,7 @@ class CorrelatedFieldMaker():
             fluctuations along the specified axis.
         prefix : str
             Prefix of the power spectrum parameter names.
-        harmonic_domain_type : str
+        harmonic_type : str
             Description of the harmonic partner domain in which the amplitude
             lives.
         non_parametric_kind : str
@@ -533,7 +532,7 @@ class CorrelatedFieldMaker():
         Enßlin, Torsten, `<https://arxiv.org/abs/2105.13483>`_
         `<https://doi.org/10.1371/journal.pone.0275011>`_
         """
-        grid = _make_grid(shape, distances, harmonic_domain_type)
+        grid = _make_grid(shape, distances, harmonic_type)
 
         if isinstance(scale, (tuple, list)):
             scale = lognormal_prior(*scale)

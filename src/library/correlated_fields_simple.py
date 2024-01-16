@@ -151,7 +151,7 @@ def SimpleCorrelatedField(
             flexibility=flexibility,
             asperity=asperity,
             prefix="",
-            harmonic_domain_type="fourier",
+            harmonic_type="fourier",
             non_parametric_kind="power",
         )
         cfm.set_amplitude_total_offset(

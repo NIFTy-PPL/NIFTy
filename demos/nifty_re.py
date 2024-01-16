@@ -18,14 +18,13 @@ key = random.PRNGKey(seed)
 
 dims = (128, 128)
 
-cf_zm = {"offset_mean": 0., "offset_std": (1e-3, 1e-4)}
-cf_fl = {
-    "fluctuations": (1e-1, 5e-3),
-    "loglogavgslope": (-1., 1e-2),
-    "flexibility": (1e+0, 5e-1),
-    "asperity": (5e-1, 5e-2),
-    "harmonic_domain_type": "Fourier"
-}
+cf_zm = dict(offset_mean=0., offset_std=(1e-3, 1e-4))
+cf_fl = dict(
+    fluctuations=(1e-1, 5e-3),
+    loglogavgslope=(-1., 1e-2),
+    flexibility=(1e+0, 5e-1),
+    asperity=(5e-1, 5e-2),
+)
 cfm = jft.CorrelatedFieldMaker("cf")
 cfm.set_amplitude_total_offset(**cf_zm)
 cfm.add_fluctuations(

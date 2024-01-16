@@ -590,7 +590,7 @@ class CorrelatedFieldMaker:
                 flexibility=flexibility,
                 asperity=asperity,
                 prefix=str(prefix),
-                harmonic_domain_type="fourier",
+                harmonic_type="fourier",
                 non_parametric_kind="power",
             )
             amp._jax_expr = self._jax_cfm.fluctuations[-1]
