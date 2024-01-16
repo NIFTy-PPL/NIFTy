@@ -102,7 +102,7 @@ This choice of re-parameterization [@Rezende2015] is called standardization.
 All relevant details of the prior model are encoded in the forward model $f$.
 The standardization is often carried out implicitly in the background, however, for prior models outside of the current toolbox the user has to manually implement the necessary component for $f$ that corresponds to the desired non-Gaussian prior.
 
-## GP
+## Gaussian Processes
 
 One standard tool from the \texttt{NIFTy.re} toolbox are the structured GP models from \texttt{NIFTy}.
 The models rely on the harmonic domain being easily accessible, e.g. for pixels spaced on a regular Cartesian grid, the natural choice to represent a stationary kernel is the Fourier domain.
@@ -169,7 +169,7 @@ Thus, `cf`, `forward`, and `lh` from the preceding code snippet are all PyTrees 
 By registering fields of `Forward` via `dataclass.field` and setting the `static` key in the metadata to `False`/`True`, we can control what gets in-lined and what is traced by JAX.
 This mechanism is extensively used in likelihoods to avoid in-lining large constants such as the data and avoiding expensive re-compiles whenever possible.
 
-## VI
+## Variational Inference
 
 \texttt{NIFTy.re} is build for models with millions to billions of degrees of freedoms.
 To probe the posterior efficiently, \texttt{NIFTy.re} relies on VI.
