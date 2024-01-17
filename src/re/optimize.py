@@ -329,7 +329,6 @@ def _static_newton_cg(
         "pos": pos,
         "energy": energy,
         "old_energy": old_fval if old_fval is not None else jnp.inf,
-        "old_energy_present": True if old_fval is not None else False,
         "g": g,
         "nfev": 1,
         "njev": 1,
@@ -340,7 +339,7 @@ def _static_newton_cg(
         status, i = v["status"], v["iteration"]
         pos = v["pos"]
         energy, g = v["energy"], v["g"]
-        old_energy, old_energy_present = v["old_energy"], v["old_energy_present"]
+        old_energy = v["old_energy"]
         nfev, njev, nhev = v["nfev"], v["njev"], v["nhev"]
 
         # Newton approximates the potential up to second order. The CG energy
@@ -348,8 +347,9 @@ def _static_newton_cg(
         # potential in Newton thus live on comparable energy scales. Hence, the
         # energy in a Newton minimization can be used to set the CG energy
         # convergence criterion.
+        old_energy_available = jnp.logical_not(jnp.isinf(old_energy))
         cg_absdelta = jnp.where(
-            old_energy_present & (energy_reduction_factor is not None),
+            old_energy_available & (energy_reduction_factor is not None),
             energy_reduction_factor * (old_energy - energy),
             None if absdelta is None else jnp.array(absdelta / 100., dtype=energy.dtype)
         )
@@ -387,8 +387,6 @@ def _static_newton_cg(
         old_energy = jnp.where(status_ls == 0, v["energy"], v["old_energy"])
         energy = jnp.where(status_ls == 0, ret_ls["new_energy_candidate"], v["energy"])
         energy_diff = jnp.where(status_ls == 0, old_energy - energy, 0.)
-
-        old_energy_present = jnp.where(status_ls == 0, True, v["old_energy_present"])
 
         pos = where(status_ls == 0, ret_ls["new_pos_candidate"], v["pos"])
         g = where(status_ls == 0, ret_ls["new_g_candidate"], v["g"])
@@ -432,7 +430,6 @@ def _static_newton_cg(
             "pos": pos,
             "energy": energy,
             "old_energy": old_energy,
-            "old_energy_present": old_energy_present,
             "g": g,
             "nfev": nfev,
             "njev": njev,
