@@ -111,20 +111,20 @@ In the implementation in \texttt{NIFTy.re} and \texttt{NIFTy}, user can choose-b
 An example initializing a non-parameteric GP prior for a $128 \times 128$ space with unit volume is shown in the following.
 
 ```python
-from nifty import re as jft
+from nifty8 import re as jft
 
 dims = (128, 128)
 cfm = jft.CorrelatedFieldMaker("cf")
-cfm.set_amplitude_total_offset(offset_mean=0., offset_std=(1e-3, 1e-4))
+cfm.set_amplitude_total_offset(offset_mean=2, offset_std=(1e-1, 3e-2))
 cfm.add_fluctuations(  # Axis over which the kernle is defined
   dims,
-  distances=tuple(1. / d for d in dims),
-  fluctuations=(1e-1, 5e-3),
-  loglogavgslope=(-1., 1e-2),
-  flexibility=(1e+0, 5e-1),
+  distances=tuple(1.0 / d for d in dims),
+  fluctuations=(1.0, 5e-1),
+  loglogavgslope=(-3.0, 2e-1),
+  flexibility=(1e0, 2e-1),
   asperity=(5e-1, 5e-2),
   prefix="ax1",
-  non_parametric_kind="power"
+  non_parametric_kind="power",
 )
 correlated_field = cfm.finalize()  # forward model for a GP prior
 ```
@@ -147,7 +147,8 @@ The dataclass-style implementation took inspiration from equinox [@Kidger2021].
 ```python
 from jax import numpy as jnp
 
-class Forward(Model):
+
+class Forward(jft.Model):
   def __init__(self, correlated_field):
     self._cf = correlated_field
     # Track a method with which a random input for the model. This is not
@@ -160,11 +161,11 @@ class Forward(Model):
     # nested in any way and form.
     return jnp.exp(self._cf(x))
 
-forward = Forward(cf)
 
-data = np.load("")  # TODO
-noise_cov_inv = np.load("")  # TODO
-lh = jft.Gaussian(data, noise_cov_inv).amend(forward)
+forward = Forward(correlated_field)
+
+data = jnp.load("data.npy")
+lh = jft.Poissonian(data).amend(forward)
 ```
 
 All GP models in \texttt{NIFTy.re} as well as all likelihoods are registered as PyTrees and can be traced by JAX.
@@ -193,33 +194,37 @@ A convenient one-shot wrapper for the below is `jft.optimize_kl`.
 By virtue of all modeling tools in \texttt{NIFTy.re} being written in JAX, it is also possible to combine \texttt{NIFTy.re} tools with blackjax [@blackjax2020] or any other posterior sampler in the JAX ecosystem.
 
 ```python
+from jax import random
+
+key = random.PRNGKey(42)
+key, sk = random.split(key, 2)
+# NIFTy is agnostic w.r.t. the type of input it gets as long as it supports core
+# airthmetics properties. Tell NIFTy to treat our parameter dictiornay as a
+# vector.
+initial_pos = jft.Vector(lh.init(sk))
+delta = 1e-4
+absdelta = delta * jft.size(initial_pos)
+
 # Initialize an empty jft.Samples class, `OptimizeVI.update`
 samples = jft.Samples(pos=initial_pos, samples=None, keys=None)
 opt_vi = jft.OptimizeVI(lh, n_total_iterations=25)
-opt_vi_st_init = opt_vi.init_state(
+opt_vi_st = opt_vi.init_state(
   key,
   # Typically on the order of 2-12
   n_samples=lambda i: 1 if i < 2 else (2 if i < 4 else 6),
   # Arguments for the conjugate gradient method used to drawing samples from
   # an implicit covariance matrix
   draw_linear_kwargs=dict(
-    cg_name="SL", cg_kwargs=dict(absdelta=absdelta / 10., maxiter=100)
+    cg_name="SL", cg_kwargs=dict(absdelta=absdelta / 10.0, maxiter=100)
   ),
   # Arguements for the minimizer in the nonlinear updating of the samples
   nonlinearly_update_kwargs=dict(
     minimize_kwargs=dict(
-      name="SN",
-      xtol=delta,
-      cg_kwargs=dict(name=None),
-      maxiter=5,
+      name="SN", xtol=delta, cg_kwargs=dict(name=None), maxiter=5
     )
   ),
   # Arguments for the minimizer of the KL-divergence cost potential
-  kl_kwargs=dict(
-    minimize_kwargs=dict(
-      name="M", absdelta=absdelta, cg_kwargs=dict(name="MCG"), maxiter=35
-    )
-  ),
+  kl_kwargs=dict(minimize_kwargs=dict(name="M", xtol=delta, maxiter=35)),
   sample_mode=lambda i: "nonlinear_resample" if i < 3 else "nonlinear_update",
 )
 for i in range(opt_vi.n_total_iterations):
