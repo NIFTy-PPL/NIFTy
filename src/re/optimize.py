@@ -462,11 +462,8 @@ def _line_search_successive_halving(status, pos, start_energy, g, nat_g, fun_and
     val = {
         "status_ls": status, # if the Newton-CG step is already bound to stop, don't line search
         "naive_ls_it": 0,
-        "pos": pos,
         "new_pos_candidate": pos,          # placeholder value
-        "energy": start_energy,
         "new_energy_candidate": jnp.inf,   # placeholder value
-        "g": g,
         "new_g_candidate": g,              # placeholder value
         "dd": nat_g,  # negative descent direction
         "grad_scaling": 1.,
@@ -482,7 +479,7 @@ def _line_search_successive_halving(status, pos, start_energy, g, nat_g, fun_and
     def line_search_single_step(val):
         status_ls = val["status_ls"]
         naive_ls_it, ls_reset = val["naive_ls_it"], val["ls_reset"]
-        pos, grad_scaling, dd, g = val["pos"], val["grad_scaling"], val["dd"], val["g"]
+        grad_scaling, dd = val["grad_scaling"], val["dd"]
         nfev_i, njev_i, nhev_i = val["nfev_inner"], val["njev_inner"], val["nhev_inner"]
 
         new_pos = pos - grad_scaling * dd
@@ -490,20 +487,21 @@ def _line_search_successive_halving(status, pos, start_energy, g, nat_g, fun_and
         nfev_i += 1
         njev_i += 1
 
-        status_ls = jnp.where(new_energy <= val['energy'] , 0, status_ls)
+        status_ls = jnp.where(new_energy <= start_energy , 0, status_ls)
 
         grad_scaling = jnp.where(status_ls == -2, grad_scaling / 2, grad_scaling)
 
         ls_reset, dd, grad_scaling, nhev_i = cond(
             (naive_ls_it == 5) & (status_ls == -2),
             lambda x: (True,
-                       vdot(x["g"], x["g"]) / x["g"].dot(hessp(x["pos"], x["g"])) * x["g"],
+                       vdot(g, g) / g.dot(hessp(pos, g)) * g,
                        1.,
                        x["nhev_i"] + 1),
-            lambda x: (x["ls_reset"], x["dd"], x["grad_scaling"], x["nhev_i"]),
+            lambda x: (x["ls_reset"],
+                       x["dd"],
+                       x["grad_scaling"],
+                       x["nhev_i"]),
             {
-                "pos": pos,
-                "g": g,
                 "ls_reset": ls_reset,
                 "dd": dd,
                 "grad_scaling": grad_scaling,
@@ -521,11 +519,8 @@ def _line_search_successive_halving(status, pos, start_energy, g, nat_g, fun_and
         ret = {
             "status_ls": status_ls,
             "naive_ls_it": naive_ls_it + 1,
-            "pos": pos,
             "new_pos_candidate": new_pos,
-            "energy": val['energy'],
             "new_energy_candidate": new_energy,
-            "g": g,
             "new_g_candidate": new_g,
             "dd": dd,
             "grad_scaling": grad_scaling,
