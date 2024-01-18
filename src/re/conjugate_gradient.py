@@ -164,7 +164,7 @@ def _cg(
                 info = 0
                 break
             else:
-                pos = previous_gamma / (-curv) * j
+                pos = previous_gamma / (-curv) * (-j)
                 info = 0
                 break
         alpha = previous_gamma / curv
