@@ -276,23 +276,28 @@ def _static_cg(
 
         q = mat(d)
         curv = vdot(d, q)
-        info = jnp.where(curv == 0., -1, info)
+
+        info = jnp.where(curv == 0., -1, info)  # Lk: flagged as success (`0`) in the non-static code, but flagging as error seems to make more sense to me
         conditional_raise(
             (curv == 0) & _raise_nonposdef,
             ValueError("zero curvature in conjugate gradient")
         )
 
         alpha = previous_gamma / curv
-        info = jnp.where(alpha < 0., -1, info)
         conditional_raise(
-            (alpha < 0.) & _raise_nonposdef,
-            ValueError("implausible gradient scaling `alpha < 0`")
+            (alpha < 0.) & (i == 1) & _raise_nonposdef,
+            ValueError("negative curvature in conjugate gradient")
         )
+        info = jnp.where(alpha < 0., 0, info)  # Lk: do we want to set this to `-1` if `i == 1`?
+        pos = where(alpha < 0.,
+                    where(i > 1, pos, previous_gamma / (-curv) * (-j)),
+                    pos - alpha * d)
 
-        pos = pos - alpha * d
         r = cond(
-            i % N_RESET == 0, lambda x: mat(x["pos"]) - x["j"],
-            lambda x: x["r"] - x["q"] * x["alpha"], {
+            i % N_RESET == 0,
+            lambda x: mat(x["pos"]) - x["j"],
+            lambda x: x["r"] - x["q"] * x["alpha"],
+            {
                 "pos": pos,
                 "j": j,
                 "r": r,
