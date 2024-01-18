@@ -491,22 +491,15 @@ def _line_search_successive_halving(pos, start_energy, g, nat_g, fun_and_grad, h
 
         grad_scaling = jnp.where(status_ls < -1, grad_scaling / 2, grad_scaling)
 
-        ls_reset, dd, grad_scaling, nhev_i = cond(
-            (naive_ls_it == 5) & (status_ls < -1),
-            lambda x: (True,
-                       vdot(g, g) / g.dot(hessp(pos, g)) * g,
-                       1.,
-                       x["nhev_i"] + 1),
-            lambda x: (x["ls_reset"],
-                       x["dd"],
-                       x["grad_scaling"],
-                       x["nhev_i"]),
-            {
-                "ls_reset": ls_reset,
-                "dd": dd,
-                "grad_scaling": grad_scaling,
-                "nhev_i": nhev_i,
-            }
+        reset = (naive_ls_it == 5) & (status_ls < -1)
+        ls_reset = jnp.where(reset, True, ls_reset)
+        grad_scaling = jnp.where(reset, 1., grad_scaling)
+        nhev_i += reset
+        dd = cond(
+            reset,
+            lambda x: vdot(g, g) / g.dot(hessp(pos, g)) * g,
+            lambda x: x,
+            dd
         )
 
         # if after 9 inner iterations energy has not yet decreased set error flag
