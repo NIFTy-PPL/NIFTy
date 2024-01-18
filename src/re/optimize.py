@@ -489,10 +489,10 @@ def _line_search_successive_halving(pos, start_energy, g, nat_g, fun_and_grad, h
 
         status_ls = jnp.where(new_energy <= start_energy , 0, status_ls)
 
-        grad_scaling = jnp.where(status_ls == -2, grad_scaling / 2, grad_scaling)
+        grad_scaling = jnp.where(status_ls < -1, grad_scaling / 2, grad_scaling)
 
         ls_reset, dd, grad_scaling, nhev_i = cond(
-            (naive_ls_it == 5) & (status_ls == -2),
+            (naive_ls_it == 5) & (status_ls < -1),
             lambda x: (True,
                        vdot(g, g) / g.dot(hessp(pos, g)) * g,
                        1.,
