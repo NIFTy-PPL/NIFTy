@@ -377,7 +377,7 @@ def _static_newton_cg(
             ValueError("conjugate Gradient failed")
         )
 
-        ret_ls = _line_search_successive_halving(status, pos, energy, g, nat_g, fun_and_grad, hessp, nm)
+        ret_ls = _line_search_successive_halving(pos, energy, g, nat_g, fun_and_grad, hessp, nm)
 
         status_ls = ret_ls["status_ls"]
 
@@ -455,12 +455,12 @@ def _static_newton_cg(
     )
 
 
-def _line_search_successive_halving(status, pos, start_energy, g, nat_g, fun_and_grad, hessp, name):
+def _line_search_successive_halving(pos, start_energy, g, nat_g, fun_and_grad, hessp, name):
     from jax.experimental.host_callback import call
     from jax.lax import cond, while_loop
 
     val = {
-        "status_ls": status, # if the Newton-CG step is already bound to stop, don't line search
+        "status_ls": -2,
         "naive_ls_it": 0,
         "new_pos_candidate": pos,          # placeholder value
         "new_energy_candidate": jnp.inf,   # placeholder value
