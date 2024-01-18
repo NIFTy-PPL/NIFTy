@@ -9,7 +9,7 @@ from jax.tree_util import (
 )
 
 from .misc import is1d, isiterable
-from .model import LazyModel
+from .model import LazyModel, NoValue
 from .tree_math import (
     ShapeWithDtype, Vector, conj, has_arithmetics, zeros_like
 )
@@ -207,11 +207,13 @@ class Likelihood(LazyModel):
     """
     _lsm_tan_shp: Any = None
 
-    def __init__(self, *, domain=None, lsm_tangents_shape=None):
-        self._domain = domain
+    def __init__(
+        self, *, domain=NoValue, init=NoValue, lsm_tangents_shape=None
+    ):
         # NOTE, `lsm_tangents_shape` is not `normalized_residual` applied to
         # `domain` for e.g. models with a learnable covariance
         self._lsm_tan_shp = _parse_swd(lsm_tangents_shape)
+        super().__init__(domain=domain, init=init)
 
     def __call__(self, primals, **primals_kw):
         """Convenience method to access the `energy` method of this instance.
@@ -501,7 +503,8 @@ class LikelihoodWithModel(Likelihood):
         f: Callable,
         /,
         *,
-        domain=None,
+        domain=NoValue,
+        init=NoValue,
         likelihood_argnames=None,
     ):
         """Amend the function `f` to the right of the likelihood.
@@ -531,11 +534,13 @@ class LikelihoodWithModel(Likelihood):
             te = f"invalid `likelihood_argnames` {self.likelihood_argnames!r}"
             raise TypeError(te)
         self.likelihood_argnames = likelihood_argnames
-        domain = f.domain if domain is None and isinstance(
+        domain = f.domain if domain is NoValue and isinstance(
             f, LazyModel
         ) else domain
+        init = f.init if init is NoValue and isinstance(f, LazyModel) else init
         super().__init__(
             domain=domain,
+            init=init,
             lsm_tangents_shape=self.likelihood.lsm_tangents_shape
         )
 
@@ -614,7 +619,8 @@ class LikelihoodSum(Likelihood):
         left,
         right,
         /,
-        domain=None,
+        domain=NoValue,
+        init=NoValue,
         _left_key="lh_left",
         _right_key="lh_right",
     ):
@@ -633,8 +639,7 @@ class LikelihoodSum(Likelihood):
                       Vector) or isinstance(right._lsm_tan_shp, Vector):
             joined_tangents_shape = Vector(joined_tangents_shape)
 
-        domain = None
-        if left.domain is not None and right.domain is not None:
+        if domain is NoValue and left.domain is not NoValue and right.domain is not NoValue:
             lvec = isinstance(left.domain, Vector)
             rvec = isinstance(right.domain, Vector)
             ldomain = left.domain.tree if lvec else left.domain
@@ -653,7 +658,7 @@ class LikelihoodSum(Likelihood):
         self.left_likelihood = left
         self.right_likelihood = right
         super().__init__(
-            domain=domain, lsm_tangents_shape=joined_tangents_shape
+            domain=domain, init=init, lsm_tangents_shape=joined_tangents_shape
         )
 
     def energy(self, primals, **kwargs):

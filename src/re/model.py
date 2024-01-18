@@ -121,7 +121,7 @@ class ModelMeta(abc.ABCMeta):
         return cls
 
 
-class _NoValue():
+class NoValue():
     pass
 
 
@@ -130,31 +130,29 @@ class LazyModel(metaclass=ModelMeta):
     _target: Any = field()
     _init: Any = field()
 
-    def __init__(self, domain=_NoValue, target=_NoValue, init=_NoValue):
+    def __init__(self, domain=NoValue, target=NoValue, init=NoValue):
         self._domain = domain
         self._target = target
-        self._init = Initializer(init) if init is not _NoValue else init
+        self._init = Initializer(init) if init is not NoValue else init
 
     def __call__(self, *args, **kwargs):
         raise NotImplementedError()
 
     @property
     def domain(self):
-        if self._domain is _NoValue and self._init is not _NoValue:
+        if self._domain is NoValue and self._init is not NoValue:
             return eval_shape(self.init, Initializer.domain)
-        if self._domain is not _NoValue:
-            return self._domain
-        raise NotImplementedError()
+        return self._domain
 
     @property
     def target(self):
-        if self._target is _NoValue:
+        if self._target is NoValue and self.domain is not NoValue:
             return eval_shape(self.__call__, self.domain)
         return self._target
 
     @property  # Needs to be a property to enable `model_a.init | model_B.init`
     def init(self) -> Initializer:
-        if self._init is _NoValue:
+        if self._init is NoValue:
             msg = (
                 "drawing white parameters"
                 ";\nto silence this warning, overload the `init` method"
@@ -181,9 +179,9 @@ class Model(LazyModel):
         self,
         call: Optional[Callable] = None,
         *,
-        domain=_NoValue,
-        target=_NoValue,
-        init=_NoValue,
+        domain=NoValue,
+        target=NoValue,
+        init=NoValue,
         white_init=False,
     ):
         """Wrap a callable and associate it with a `domain`.
@@ -207,14 +205,14 @@ class Model(LazyModel):
             `False`.
         """
         self._call = call
-        if init is _NoValue and domain is not _NoValue and white_init is True:
+        if init is NoValue and domain is not NoValue and white_init is True:
             init = tree_map(lambda p: partial(random_like, primals=p), domain)
-        elif init is _NoValue and domain is _NoValue:
+        elif init is NoValue and domain is NoValue:
             raise ValueError("one of `init` or `domain` must be set")
 
-        if domain is _NoValue and init is not _NoValue:
+        if domain is NoValue and init is not NoValue:
             domain = eval_shape(init, Initializer.domain)
-        if target is _NoValue and domain is not _NoValue:
+        if target is NoValue and domain is not NoValue:
             target = eval_shape(self, domain)  # Honor overloaded `__call__`
         super().__init__(domain=domain, init=init, target=target)
 
@@ -251,7 +249,7 @@ class WrappedCall(Model):
         shape=(),
         dtype=None,
         white_init=False,
-        target=_NoValue,
+        target=NoValue,
     ):
         """Transforms `call` such that instead of it acting on `input` it
         selects `name` from `input` using `input[name]`.
