@@ -265,12 +265,18 @@ class OptimizeVI:
             raise NotImplementedError()
 
         if _kl_value_and_grad is None:
-            _kl_value_and_grad = kl_jit(
-                partial(_kl_vg, likelihood, map=kl_map, reduce=kl_reduce)
+            _kl_value_and_grad = partial(
+                kl_jit(_kl_vg, static_argnames=("map", "reduce")),
+                likelihood,
+                map=kl_map,
+                reduce=kl_reduce
             )
         if _kl_metric is None:
-            _kl_metric = kl_jit(
-                partial(_kl_met, likelihood, map=kl_map, reduce=kl_reduce)
+            _kl_metric = partial(
+                kl_jit(_kl_met, static_argnames=("map", "reduce")),
+                likelihood,
+                map=kl_map,
+                reduce=kl_reduce
             )
         if _draw_linear_residual is None:
             _draw_linear_residual = partial(
