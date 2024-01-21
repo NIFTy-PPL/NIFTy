@@ -9,9 +9,7 @@ from .evi import (
 )
 from .hmc import generate_hmc_acc_rej, generate_nuts_tree
 from .hmc_oo import HMCChain, NUTSChain
-from .likelihood import (
-    Likelihood, StandardHamiltonian, partial_insert_and_remove
-)
+from .likelihood import Likelihood, LikelihoodPartial
 from .likelihood_impl import (
     Categorical, Gaussian, Poissonian, StudentT, VariableCovarianceGaussian,
     VariableCovarianceStudentT

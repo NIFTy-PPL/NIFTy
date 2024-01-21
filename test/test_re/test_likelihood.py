@@ -11,7 +11,7 @@ from jax import random
 from numpy.testing import assert_allclose
 
 import nifty8.re as jft
-from nifty8.re import partial_insert_and_remove as jpartial
+from nifty8.re.likelihood import partial_insert_and_remove as jpartial
 
 pmp = pytest.mark.parametrize
 
@@ -67,10 +67,11 @@ def test_likelihood_partial(seed, forward):
     primals = jft.random_like(sk_p, domain)
     data = forward(jft.random_like(sk_d, domain))
 
-    gaussian = jft.Gaussian(data)
-    gaussian = gaussian.amend(forward)
+    gaussian = jft.Gaussian(data).amend(forward)
 
-    gaussian_part, primals_liquid = gaussian.freeze(("b", ), primals)
+    gaussian_part, primals_liquid = gaussian.freeze(
+        primals=primals, point_estimates=("b", )
+    )
     assert primals_liquid.tree[0].shape == domain["a"].shape
     aallclose(gaussian_part(primals_liquid), gaussian(primals))
     jax.tree_map(
@@ -272,19 +273,23 @@ def test_variable_likelihood_add(seed, likelihood, forward_a, forward_b):
     tree_assert_allclose(
         nresi_orig[key_b], nresi_ab["lh_right"], equal_nan=False
     )
-    if lh_orig._transformation is not None:
-        trafo_orig = jax.vmap(lh_orig.transformation)(p)
-        trafo_ab = jax.vmap(lh_ab.transformation)(p)
-        tree_assert_allclose(
-            tuple(t[key_a] for t in trafo_orig),
-            trafo_ab["lh_left"],
-            equal_nan=False
-        )
-        tree_assert_allclose(
-            tuple(t[key_b] for t in trafo_orig),
-            trafo_ab["lh_right"],
-            equal_nan=False
-        )
+
+    try:
+        jax.vmap(lh_orig.transformation)(p)
+    except NotImplementedError:
+        return
+    trafo_orig = jax.vmap(lh_orig.transformation)(p)
+    trafo_ab = jax.vmap(lh_ab.transformation)(p)
+    tree_assert_allclose(
+        tuple(t[key_a] for t in trafo_orig),
+        trafo_ab["lh_left"],
+        equal_nan=False
+    )
+    tree_assert_allclose(
+        tuple(t[key_b] for t in trafo_orig),
+        trafo_ab["lh_right"],
+        equal_nan=False
+    )
 
 
 if __name__ == "__main__":

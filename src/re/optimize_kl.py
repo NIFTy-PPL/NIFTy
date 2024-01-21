@@ -6,9 +6,9 @@
 import inspect
 import os
 import pickle
+from dataclasses import field
 from functools import partial
 from os import makedirs
-from pickle import PicklingError
 from typing import Any, Callable, Literal, NamedTuple, Optional, TypeVar, Union
 
 import jax
@@ -21,10 +21,11 @@ from . import optimize
 from .evi import (
     Samples, _parse_jit, draw_linear_residual, nonlinearly_update_residual
 )
-from .likelihood import Likelihood, StandardHamiltonian
+from .likelihood import Likelihood
 from .logger import logger
 from .minisanity import minisanity
-from .tree_math import get_map, hide_strings
+from .model import LazyModel
+from .tree_math import get_map, hide_strings, vdot
 
 P = TypeVar("P")
 
@@ -58,6 +59,28 @@ def get_status_message(
 _reduce = partial(tree_map, partial(jnp.mean, axis=0))
 
 
+class _StandardHamiltonian(LazyModel):
+    """Joined object storage composed of a user-defined likelihood and a
+    standard normal prior.
+    """
+    likelihood: Likelihood = field(metadata=dict(static=False))
+
+    def __init__(self, likelihood: Likelihood, /):
+        self.likelihood = likelihood
+
+    def __call__(self, primals, **primals_kw):
+        return self.energy(primals, **primals_kw)
+
+    def energy(self, primals, **primals_kw):
+        return self.likelihood(primals, **
+                               primals_kw) + 0.5 * vdot(primals, primals)
+
+    def metric(self, primals, tangents, **primals_kw):
+        return self.likelihood.metric(
+            primals, tangents, **primals_kw
+        ) + tangents
+
+
 def _kl_vg(
     likelihood,
     primals,
@@ -68,7 +91,7 @@ def _kl_vg(
 ):
     assert isinstance(primals_samples, Samples)
     map = get_map(map)
-    ham = StandardHamiltonian(likelihood=likelihood)
+    ham = _StandardHamiltonian(likelihood)
 
     if len(primals_samples) == 0:
         return jax.value_and_grad(ham)(primals)
@@ -88,7 +111,7 @@ def _kl_met(
 ):
     assert isinstance(primals_samples, Samples)
     map = get_map(map)
-    ham = StandardHamiltonian(likelihood=likelihood)
+    ham = _StandardHamiltonian(likelihood)
 
     if len(primals_samples) == 0:
         return ham.metric(primals, tangents)
@@ -242,16 +265,22 @@ class OptimizeVI:
             raise NotImplementedError()
 
         if _kl_value_and_grad is None:
-            _kl_value_and_grad = kl_jit(
-                partial(_kl_vg, likelihood, map=kl_map, reduce=kl_reduce)
+            _kl_value_and_grad = partial(
+                kl_jit(_kl_vg, static_argnames=("map", "reduce")),
+                likelihood,
+                map=kl_map,
+                reduce=kl_reduce
             )
         if _kl_metric is None:
-            _kl_metric = kl_jit(
-                partial(_kl_met, likelihood, map=kl_map, reduce=kl_reduce)
+            _kl_metric = partial(
+                kl_jit(_kl_met, static_argnames=("map", "reduce")),
+                likelihood,
+                map=kl_map,
+                reduce=kl_reduce
             )
         if _draw_linear_residual is None:
-            _draw_linear_residual = residual_jit(
-                partial(draw_linear_residual, likelihood)
+            _draw_linear_residual = partial(
+                residual_jit(draw_linear_residual), likelihood
             )
         if _nonlinearly_update_residual is None:
             # TODO: Pull out `jit` from `nonlinearly_update_residual` once NCG

@@ -15,7 +15,7 @@ from scipy.spatial import distance_matrix
 
 from ..tree_math import ShapeWithDtype, zeros_like
 from ..logger import logger
-from ..model import AbstractModel
+from ..model import LazyModel
 
 NDARRAY = Union[jnp.ndarray, np.ndarray]
 
@@ -306,7 +306,7 @@ def refinement_covariance(chart_or_model, kernel=None, jit=True):
     elif isinstance(chart_or_model, HEALPixChart):
         cf = RefinementField(chart_or_model, kernel=kernel)
         shape = chart_or_model.shape
-    elif isinstance(chart_or_model, AbstractModel):
+    elif isinstance(chart_or_model, LazyModel):
         cf = chart_or_model
         shape = chart_or_model.target.shape
     else:

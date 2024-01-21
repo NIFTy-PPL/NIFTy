@@ -169,7 +169,7 @@ noise_truth = ((noise_cov(jft.ones_like(signal_response.target)))**
                0.5) * jft.random_like(key, signal_response.target)
 data = signal_response_truth + noise_truth
 
-nll = jft.Gaussian(data, noise_cov_inv) @ signal_response
+nll = jft.Gaussian(data, noise_cov_inv).amend(signal_response)
 
 # %%
 n_vi_iterations = 6

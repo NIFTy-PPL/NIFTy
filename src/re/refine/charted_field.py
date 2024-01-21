@@ -8,7 +8,7 @@ from typing import Callable, Iterable, Optional, Tuple, Union
 from jax import numpy as jnp
 from jax import vmap
 
-from ..model import AbstractModel
+from ..model import LazyModel
 from ..tree_math import Vector
 from .chart import CoordinateChart
 from .charted_refine import refine
@@ -146,7 +146,7 @@ def _coordinate_refinement_matrices(
     )
 
 
-class RefinementField(AbstractModel):
+class RefinementField(LazyModel):
     def __init__(
         self,
         *args,

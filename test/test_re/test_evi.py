@@ -128,7 +128,7 @@ def test_mgvi_wiener_filter_consistency(
         data, noise_cov_inv=partial(jnp.multiply, np.reciprocal(noise_cov))
     )
     forward = partial(jnp.matmul, prior_lsm)
-    lh = (lh @ partial(jnp.matmul, response)) @ forward
+    lh = lh.amend(partial(jnp.matmul, response)).amend(forward)
 
     draw_linear_kwargs = dict(cg_kwargs=dict(absdelta=1e-10, maxiter=size))
     draw_linear_residual = partial(
