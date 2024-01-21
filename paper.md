@@ -199,14 +199,13 @@ from jax import random
 key = random.PRNGKey(42)
 key, sk = random.split(key, 2)
 # NIFTy is agnostic w.r.t. the type of input it gets as long as it supports core
-# airthmetics properties. Tell NIFTy to treat our parameter dictiornay as a
+# arithmetic properties. Tell NIFTy to treat our parameter dictionary as a
 # vector.
-initial_pos = jft.Vector(lh.init(sk))
-delta = 1e-4
-absdelta = delta * jft.size(initial_pos)
+samples = jft.Samples(pos=jft.Vector(lh.init(sk)), samples=None, keys=None)
 
-# Initialize an empty jft.Samples class, `OptimizeVI.update`
-samples = jft.Samples(pos=initial_pos, samples=None, keys=None)
+delta = 1e-4
+absdelta = delta * jft.size(samples.pos)
+
 opt_vi = jft.OptimizeVI(lh, n_total_iterations=25)
 opt_vi_st = opt_vi.init_state(
   key,
