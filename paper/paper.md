@@ -67,7 +67,7 @@ At the core of \texttt{NIFTy} lies a set of powerful Gaussian Process (GP) model
 
 \texttt{NIFTy.re} is a rewrite of \texttt{NIFTy} in JAX [@Jax2018] with all relevant previous GP models, a new even more powerful GP model, and a much more flexible posterior approximation machinery.
 By virtue of being written in JAX, \texttt{NIFTy.re} effortlessly runs on the accelerator hardware such as the GPU, extensively vectorizes models whenever possible, just-in-time compiles code for additional performance, and enables a new kind of inference machinery thanks to being able to retrieve higher order derivates.
-By switching from a home-grown automatic differentiation engine to JAX, we envision to harness significant gains in maintainability of \texttt{NIFTy} moving forward and a faster development cycle for new features.
+By switching from a home-grown automatic differentiation engine to JAX, we envision to harness significant gains in maintainability of \texttt{NIFTy.re} compared to \texttt{NIFTy} moving forward and a faster development cycle for new features.
 
 <!-- Mention (if applicable) a representative set of past or ongoing research projects using the software and recent scholarly publications enabled by it. -->
 We expect \texttt{NIFTy.re} to be highly useful for many imaging applications and envision many applications within and outside of astrophysics [@Arras2022; @Leike2019; @Leike2020; @Mertsch2023; @Roth2023DirectionDependentCalibration; @Hutschenreuter2023; @Tsouros2023; @Roth2023FastCadenceHighContrastImaging; @Hutschenreuter2022].
@@ -75,7 +75,7 @@ We expect \texttt{NIFTy.re} to be highly useful for many imaging applications an
 A very early version of \texttt{NIFTy.re} enabled a 100 billion dimensional reconstruction using a maximum posterior inference.
 In a newer publication, \texttt{NIFTy.re} was used to infer a 500 million dimensional posterior dimensional using VI [@Knollmueller2019].
 Both publications extensively use \texttt{NIFTy.re}'s GPU support which yielded order of magnitude speed-ups.
-With \texttt{NIFTy.re} bridging \texttt{NIFTy} to JAX, we envision many new possibilities for inferring classical Machine Learning models with \texttt{NIFTy}'s inference methods and using \texttt{NIFTy} components such as the GP models in classical neural networks frameworks.
+With \texttt{NIFTy.re} bridging \texttt{NIFTy} to JAX/XLA, we envision many new possibilities for inferring classical Machine Learning models with \texttt{NIFTy}'s inference methods and using \texttt{NIFTy} components such as the GP models in classical neural networks frameworks.
 
 <!-- A list of key references, including to other software addressing related needs. Note that the references should include full names of venues, e.g., journals and conferences, not abbreviations only understood in the context of a specific discipline. -->
 \texttt{NIFTy.re} competes with other GP libraries as well as with probabilistic programming languages and frameworks.
@@ -235,23 +235,31 @@ for i in range(opt_vi.n_total_iterations):
 
 ## Performance compared to old NIFTy
 
-* Test performance of \texttt{NIFTy.re} versus \texttt{NIFTy} on a simple 2D log-normal model with varying dimensions
-* Model reads $d = \rho + n$ with $\rho=e^s$ and $s$ 2D GP with a homogeneous and stationary kernel model from TODO:cite_M87 and $n$ white Gaussian noise
-* Ensure that \texttt{NIFTy.re} and \texttt{NIFTy} model agree up to numerical precision
-* A typical minimization in \texttt{NIFTy} is dominated by calls to the $M \coloneqq J_\rho^\dagger N J_\rho + 1$ with $J$ the implicit Jacobian of the model and $N$ the covariance of the noice.
-* These calls are both essential for the sampling and the approximate second order minimization underpinning NIFTy
-* Thus, we compare the performance of $M$ for our model in \texttt{NIFTy.re} and NIFTy
+We test the performance of \texttt{NIFTy.re} against \texttt{NIFTy} for the simple yet representative model from above.
+We vary the number of dimensions of the two-dimensional grid but preserve the overall square shape.
+Both models, the one in \texttt{NIFTy.re} and the one in \texttt{NIFTy} agree up to numerical precision on their output for the same input.
+To assess the performance, we benchmark the $M \coloneqq F + \mathbb{1}$ with $F$ denoting the Fisher metric of the overall likelihood and $\mathbb{1}$ the analogous curvature of the prior.
+Within \texttt{NIFTy.re} the Fisher metric of the overall likelihood is decomposed into $J_f^\dagger N^{-1} J_f$ with $J_f$ the implicit Jacobian of the forward model $f$ and $N$ the Fisher-metric of the Poisson likelihood itself.
+We choose to benchmark $M$ as a typical minimization in \texttt{NIFTy.re} and \texttt{NIFTy} is dominated by calls to this function.
+These calls are essential in both the sampling and the approximate second order minimization.
 
 * TODO: do performance benchmark and insert figure
 
-* Figure shows performance of \texttt{NIFTy} versus \texttt{NIFTy.re} on the the CPU as well as versus \texttt{NIFTy.re} running on the GPU
-* TODO: describe
-* For a simple log-normal \texttt{NIFTy.re} is faster by TODO on the CPU and TODO on the GPU.
-* For methods that are better optimized for the GPU e.g. ICR, the performance gain can be even larger
+Figure TODO shows the performance of \texttt{NIFTy.re} on the CPU and \texttt{NIFTy.re} on the GPU compared to \texttt{NIFTy}.
+For small problem sizes, \texttt{NIFTy.re} on the CPU is TODO faster than \texttt{NIFTy}.
+Both reach about the same performance at a problem size of TODO and continue to perform roughly the same for larger problem sizes.
+\texttt{NIFTy.re} on the GPU is consistently TODO faster than \texttt{NIFTy}.
+
+We believe the performance benefits of \texttt{NIFTy.re} on the CPU to stem from the reduced python overhead by just-in-time compiling computations.
+At a problem size of TODO, both evaluation times are dominated by the fast Fourier transform and are hence the same as both use the same underlying implementation [TODO:cite_ducc0].
+Typical models in \texttt{NIFTy.re} and \texttt{NIFTy} are often well aligned with GPU programming models and thus consistently outperform well on the GPU.
+Models such as the new GP model implemented in NIFTy.re are even better aligned with GPU programming models and yield even higher performance gains [@Edenhofer2022].
 
 # Conclusion
 
-* \texttt{NIFTy} is faster, foundation for new inference machinery with higher order derivates, better maintainable
+We implemented and extended the core GP and VI machinery of the Bayesian imaging package \texttt{NIFTy} in JAX.
+The re-write moves much of the heavy-lifting into JAX, and we envision significant gains in maintainability of \texttt{NIFTy.re} and a faster development cycle moving forward.
+The re-write accelerated typical models written in \texttt{NIFTy} by TODO, lays the foundation for a new kind of inference machinery by enabling higher order derivates via JAX, and enables the interoperability of \texttt{NIFTy} with the VI and GP methods from the JAX/XLA Machine Learning ecosystem.
 
 # Acknowledgements
 
