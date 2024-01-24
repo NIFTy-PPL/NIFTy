@@ -550,14 +550,10 @@ def _register_cmaps():
                          (.7, .64, .64), (.8, .84, .84), (.9, .96, .96),
                          (1., 1., 1.))}
 
-    mpl.colormaps.register(cmap=LinearSegmentedColormap("Planck-like",
-                                                        planckcmap))
-    mpl.colormaps.register(cmap=LinearSegmentedColormap("High Energy",
-                                                        he_cmap))
-    mpl.colormaps.register(cmap=LinearSegmentedColormap("Faraday Map",
-                                                        fd_cmap))
-    mpl.colormaps.register(cmap=LinearSegmentedColormap("Faraday Uncertainty",
-                                                        fdu_cmap))
+    mpl.colormaps.register(cmap=LinearSegmentedColormap("Planck-like", planckcmap))
+    mpl.colormaps.register(cmap=LinearSegmentedColormap("High Energy", he_cmap))
+    mpl.colormaps.register(cmap=LinearSegmentedColormap("Faraday Map", fd_cmap))
+    mpl.colormaps.register(cmap=LinearSegmentedColormap("Faraday Uncertainty", fdu_cmap))
     mpl.colormaps.register(cmap=LinearSegmentedColormap("Plus Minus", pm_cmap))
 
 
