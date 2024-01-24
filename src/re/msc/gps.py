@@ -10,7 +10,7 @@ from .convolve import charted_convolve, prepare_input
 from .utils import j1
 from .chart import MSChart
 from .kernel import MSKernel
-from ..model import AbstractModel, Model
+from ..model import Model
 from ..misc import wrap
 from ..tree_math import ShapeWithDtype, zeros_like
 
@@ -170,7 +170,7 @@ def get_rminmax(chart):
     r_min = np.min(ds)
     return r_min, r_max
 
-class _MSSpectralGP(AbstractModel):
+class _MSSpectralGP(Model):
     def __init__(self, chart, specfunc, logamp, offset, offset_logamp, r_minmax,
                  N, prefix = "", dtype = jnp.float64, stationary_axes = False,
                  scan_kernel = False, scan_use_latent = True,
@@ -305,7 +305,7 @@ class _MSSpectralGP(AbstractModel):
         d = self.kernel_dists
         return self.get_kernelfunc(p)(d[np.newaxis, ...])
 
-    def apply(self, p):
+    def __call__(self, p):
         kerfunc = self.get_kernelfunc(p)
         self._kernel.update_kernelfunction(kerfunc)
         off = self.get_offset(p)
