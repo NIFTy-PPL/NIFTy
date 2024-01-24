@@ -123,7 +123,8 @@ def _kl_met(
 @jax.jit
 def concatenate_zip(*arrays):
     return tree_map(
-        lambda *x: jnp.stack(x, axis=1).reshape((-1, ) + x[0].shape[1:]),
+        lambda *x: jnp.stack(x, axis=1).reshape(
+            (x[0].shape[0]*len(x), ) + x[0].shape[1:]),
         *arrays
     )
 
