@@ -45,40 +45,40 @@ from .utilities import check_object_identity, myassert
 
 def _mollweide_helper(xsize):
     xsize = int(xsize)
-    ysize = xsize//2
+    ysize = xsize // 2
     res = np.full(shape=(ysize, xsize), fill_value=np.nan, dtype=np.float64)
-    xc, yc = (xsize-1)*0.5, (ysize-1)*0.5
+    xc, yc = (xsize - 1) * 0.5, (ysize - 1) * 0.5
     u, v = np.meshgrid(np.arange(xsize), np.arange(ysize))
-    u, v = 2*(u-xc)/(xc/1.02), (v-yc)/(yc/1.02)
+    u, v = 2 * (u - xc) / (xc / 1.02), (v - yc) / (yc / 1.02)
 
-    mask = np.where((u*u*0.25 + v*v) <= 1.)
+    mask = np.where((u * u * 0.25 + v * v) <= 1.)
     t1 = v[mask]
-    theta = 0.5*np.pi-(
-        np.arcsin(2/np.pi*(np.arcsin(t1) + t1*np.sqrt((1.-t1)*(1+t1)))))
-    phi = -0.5*np.pi*u[mask]/np.maximum(np.sqrt((1-t1)*(1+t1)), 1e-6)
-    phi = np.where(phi < 0, phi+2*np.pi, phi)
+    theta = 0.5 * np.pi - (np.arcsin(2 / np.pi * (np.arcsin(t1) + t1 * np.sqrt(
+        (1. - t1) * (1 + t1)))))
+    phi = -0.5 * np.pi * u[mask] / np.maximum(np.sqrt((1 - t1) * (1 + t1)), 1e-6)
+    phi = np.where(phi < 0, phi + 2 * np.pi, phi)
     return res, mask, theta, phi
 
 
 def _hammer_helper(xsize):
     xsize = int(xsize)
-    ysize = xsize//2
+    ysize = xsize // 2
     res = np.full(shape=(ysize, xsize), fill_value=np.nan, dtype=np.float64)
-    xc, yc = (xsize-1)*0.5, (ysize-1)*0.5
+    xc, yc = (xsize - 1) * 0.5, (ysize - 1) * 0.5
     u, v = np.meshgrid(np.arange(xsize), np.arange(ysize))
-    u, v = 2*(u-xc)/(xc/1.02), (v-yc)/(yc/1.02)
+    u, v = 2 * (u - xc) / (xc / 1.02), (v - yc) / (yc / 1.02)
 
     u *= np.sqrt(2)
     v *= np.sqrt(2)
 
-    mask = np.where((u*u/8 + v*v/2) <= 1.)
+    mask = np.where((u * u / 8 + v * v / 2) <= 1.)
     umask, vmask = u[mask], v[mask]
 
-    zmask = np.sqrt(1-umask*umask/16 - vmask*vmask/4)
-    longitude = 2*np.arctan(zmask*umask / 2 / (2*zmask*zmask - 1.))
-    latitude = np.arcsin(zmask*vmask)
+    zmask = np.sqrt(1 - umask * umask / 16 - vmask * vmask / 4)
+    longitude = 2 * np.arctan(zmask * umask / 2 / (2 * zmask * zmask - 1.))
+    latitude = np.arcsin(zmask * vmask)
 
-    theta = np.pi/2 - latitude
+    theta = np.pi / 2 - latitude
     phi = -longitude
 
     assert np.min(theta) >= 0.
@@ -123,23 +123,23 @@ def project_spherical_data_to_2d(val, domain, projection='mollweide', xsize=800,
     res, mask, theta, phi = _sphere_projection_helpers[projection](xsize)
 
     if have_rgb:
-        res = np.full(shape=res.shape+(3,), fill_value=1., dtype=np.float64)
+        res = np.full(shape=res.shape + (3, ), fill_value=1., dtype=np.float64)
 
     if isinstance(domain, HPSpace):
         from ducc0.healpix import Healpix_Base
         ptg = np.empty((phi.size, 2), dtype=np.float64)
         ptg[:, 0] = theta
         ptg[:, 1] = phi
-        base = Healpix_Base(int(np.sqrt(domain.size//12)), "RING")
+        base = Healpix_Base(int(np.sqrt(domain.size // 12)), "RING")
         res[mask] = val[base.ang2pix(ptg)]
     else:
         from ducc0.misc import GL_thetas
-        ra = np.linspace(0, 2*np.pi, domain.nlon+1)
+        ra = np.linspace(0, 2 * np.pi, domain.nlon + 1)
         dec = GL_thetas(domain.nlat)
         ilat = _find_closest(dec, theta)
         ilon = _find_closest(ra, phi)
         ilon = np.where(ilon == domain.nlon, 0, ilon)
-        res[mask] = val[ilat*domain.nlon + ilon]
+        res[mask] = val[ilat * domain.nlon + ilon]
 
     return res
 
