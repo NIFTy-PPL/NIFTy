@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 
+from collections import namedtuple
 from collections.abc import Mapping
 from functools import partial
 from typing import Callable, Optional, Tuple, Union
@@ -38,7 +39,7 @@ def get_fourier_mode_distributor(
     -------
     mode_length_idx : jnp.ndarray
         Index in power-space for every mode in harmonic-space. Can be used to
-        distribute power from a power-space to the full harmonic domain.
+        distribute power from a power-space to the full harmonic grid.
     unique_mode_length : jnp.ndarray
         Unique length of Fourier modes.
     mode_multiplicity : jnp.ndarray
@@ -75,40 +76,64 @@ def get_fourier_mode_distributor(
     return m_length_idx, um, m_count
 
 
-def _make_domain(shape, distances, harmonic_domain_type):
-    """Creates the domain attributes for the amplitude model"""
+RegularCartesianGrid = namedtuple(
+    "RegularCartesianGrid", (
+        "shape",
+        "total_volume",
+        "distances",
+        "harmonic_grid",
+    ),
+    defaults=(None, )
+)
+
+RegularFourierGrid = namedtuple(
+    "RegularFourierGrid", (
+        "shape",
+        "power_distributor",
+        "mode_multiplicity",
+        "mode_lengths",
+        "relative_log_mode_lengths",
+        "log_volume",
+    )
+)
+
+
+def _make_grid(shape, distances, harmonic_type) -> RegularCartesianGrid:
+    """Creates the grid for the amplitude model"""
     shape = (shape, ) if isinstance(shape, int) else tuple(shape)
     distances = tuple(np.broadcast_to(distances, jnp.shape(shape)))
 
     totvol = jnp.prod(jnp.array(shape) * jnp.array(distances))
     # TODO: cache results such that only references are used afterwards
-    domain = {
-        "position_space_shape": shape,
-        "position_space_total_volume": totvol,
-        "position_space_distances": distances,
-        "harmonic_domain_type": harmonic_domain_type.lower()
-    }
+    grid = RegularCartesianGrid(
+        shape=shape,
+        total_volume=totvol,
+        distances=distances,
+    )
     # Pre-compute lengths of modes and indices for distributing power
-    if harmonic_domain_type.lower() == "fourier":
-        domain["harmonic_space_shape"] = shape
-        m_length_idx, um, m_count = get_fourier_mode_distributor(
+    if harmonic_type.lower() == "fourier":
+        m_length_idx, m_length, m_count = get_fourier_mode_distributor(
             shape, distances
         )
-        domain["power_distributor"] = m_length_idx
-        domain["mode_multiplicity"] = m_count
-        domain["mode_lengths"] = um
-
+        um = m_length.copy()
         um = um.at[1:].set(jnp.log(um[1:]))
         um = um.at[1:].add(-um[1])
         assert um[0] == 0.
-        domain["relative_log_mode_lengths"] = um
         log_vol = um[2:] - um[1:-1]
         assert um.shape[0] - 2 == log_vol.shape[0]
-        domain["log_volume"] = log_vol
+        harmonic_grid = RegularFourierGrid(
+            shape=shape,
+            power_distributor=m_length_idx,
+            mode_multiplicity=m_count,
+            mode_lengths=m_length,
+            relative_log_mode_lengths=um,
+            log_volume=log_vol,
+        )
     else:
-        ve = f"invalid `harmonic_domain_type` {harmonic_domain_type!r}"
+        ve = f"invalid `harmonic_type` {harmonic_type!r}"
         raise ValueError(ve)
-    return domain
+    grid = grid._replace(harmonic_grid=harmonic_grid)
+    return grid
 
 
 def _twolog_integrate(log_vol, x):
@@ -132,7 +157,7 @@ def _remove_slope(rel_log_mode_dist, x):
 
 
 def matern_amplitude(
-    domain: Mapping,
+    grid,
     scale: Callable,
     cutoff: Callable,
     loglogslope: Callable,
@@ -156,9 +181,9 @@ def matern_amplitude(
     Enßlin, Torsten, `<https://arxiv.org/abs/2105.13483>`_
     `<https://doi.org/10.1371/journal.pone.0275011>`_
     """
-    totvol = domain.get("position_space_total_volume", 1.)
-    mode_lengths = domain["mode_lengths"]
-    mode_multiplicity = domain["mode_multiplicity"]
+    totvol = grid.total_volume
+    mode_lengths = grid.harmonic_grid.mode_lengths
+    mode_multiplicity = grid.harmonic_grid.mode_multiplicity
 
     scale = WrappedCall(scale, name=prefix + "scale")
     ptree = scale.domain.copy()
@@ -202,7 +227,7 @@ def matern_amplitude(
 
 
 def non_parametric_amplitude(
-    domain: Mapping,
+    grid,
     fluctuations: Callable,
     loglogavgslope: Callable,
     flexibility: Optional[Callable] = None,
@@ -225,10 +250,10 @@ def non_parametric_amplitude(
     Enßlin, Torsten, `<https://arxiv.org/abs/2002.05218>`_
     `<http://dx.doi.org/10.1038/s41550-021-01548-0>`_
     """
-    totvol = domain.get("position_space_total_volume", 1.)
-    rel_log_mode_len = domain["relative_log_mode_lengths"]
-    mode_multiplicity = domain["mode_multiplicity"]
-    log_vol = domain.get("log_volume")
+    totvol = grid.total_volume
+    rel_log_mode_len = grid.harmonic_grid.relative_log_mode_lengths
+    mode_multiplicity = grid.harmonic_grid.mode_multiplicity
+    log_vol = grid.harmonic_grid.log_volume
 
     fluctuations = WrappedCall(fluctuations, name=prefix + "fluctuations")
     ptree = fluctuations.domain.copy()
@@ -306,7 +331,7 @@ class CorrelatedFieldMaker():
 
     The correlated field models are parametrized by creating square roots of
     power spectrum operators ("amplitudes") via calls to
-    :func:`add_fluctuations*` that act on the targeted field subdomains.
+    :func:`add_fluctuations*` that act on the targeted field subgrids.
     During creation of the :class:`CorrelatedFieldMaker`, a global offset from
     zero of the field model can be defined and an operator applying
     fluctuations around this offset is parametrized.
@@ -323,13 +348,12 @@ class CorrelatedFieldMaker():
         Parameters
         ----------
         prefix : string
-            Prefix to the names of the domains of the cf operator to be made.
-            This determines the names of the operator domain.
+            Prefix to the names of the parameters of the CF operator.
         """
         self._azm = None
         self._offset_mean = None
         self._fluctuations = []
-        self._target_subdomains = []
+        self._target_grids = []
         self._parameter_tree = {}
 
         self._prefix = prefix
@@ -343,12 +367,12 @@ class CorrelatedFieldMaker():
         flexibility: Union[tuple, Callable, None] = None,
         asperity: Union[tuple, Callable, None] = None,
         prefix: str = "",
-        harmonic_domain_type: str = "fourier",
+        harmonic_type: str = "fourier",
         non_parametric_kind: str = "amplitude",
     ):
         """Adds a correlation structure to the to-be-made field.
 
-        Correlations are described by their power spectrum and the subdomain on
+        Correlations are described by their power spectrum and the subgrid on
         which they apply.
 
         Multiple calls to `add_fluctuations` are possible, in which case
@@ -357,19 +381,18 @@ class CorrelatedFieldMaker():
 
         The parameters `fluctuations`, `flexibility`, `asperity` and
         `loglogavgslope` configure either the amplitude or the power
-        spectrum model used on the target field subdomain of type
-        `harmonic_domain_type`. It is assembled as the sum of a power
-        law component (linear slope in log-log
-        amplitude-frequency-space), a smooth varying component
-        (integrated Wiener process) and a ragged component
+        spectrum model used on the target field subgrid of type
+        `harmonic_type`. It is assembled as the sum of a power law component
+        (linear slope in log-log amplitude-frequency-space), a smooth varying
+        component (integrated Wiener process) and a ragged component
         (un-integrated Wiener process).
 
         Parameters
         ----------
         shape : tuple of int
-            Shape of the position space domain
+            Shape of the position space grid
         distances : tuple of float or float
-            Distances in the position space domain
+            Distances in the position space grid
         fluctuations : tuple of float (mean, std) or callable
             Total spectral energy, i.e. amplitude of the fluctuations
             (by default a priori log-normal distributed)
@@ -384,8 +407,8 @@ class CorrelatedFieldMaker():
             accommodate single frequency peak
             (by default a priori log-normal distributed)
         prefix : str
-            Prefix of the power spectrum parameter domain names
-        harmonic_domain_type : str
+            Prefix of the power spectrum parameter names
+        harmonic_type : str
             Description of the harmonic partner domain in which the amplitude
             lives
         non_parametric_kind : str
@@ -403,7 +426,7 @@ class CorrelatedFieldMaker():
         Enßlin, Torsten, `<https://arxiv.org/abs/2002.05218>`_
         `<http://dx.doi.org/10.1038/s41550-021-01548-0>`_
         """
-        domain = _make_domain(shape, distances, harmonic_domain_type)
+        grid = _make_grid(shape, distances, harmonic_type)
 
         flu = fluctuations
         if isinstance(flu, (tuple, list)):
@@ -432,7 +455,7 @@ class CorrelatedFieldMaker():
             raise TypeError(te)
 
         npa = non_parametric_amplitude(
-            domain=domain,
+            grid=grid,
             fluctuations=flu,
             loglogavgslope=slp,
             flexibility=flx,
@@ -441,7 +464,7 @@ class CorrelatedFieldMaker():
             kind=non_parametric_kind,
         )
         self._fluctuations.append(npa)
-        self._target_subdomains.append(domain)
+        self._target_grids.append(grid)
         self._parameter_tree.update(npa.domain)
 
     def add_fluctuations_matern(
@@ -453,7 +476,7 @@ class CorrelatedFieldMaker():
         loglogslope: Union[tuple, Callable],
         renormalize_amplitude: bool,
         prefix: str = "",
-        harmonic_domain_type: str = "fourier",
+        harmonic_type: str = "fourier",
         non_parametric_kind: str = "amplitude",
     ):
         """Adds a Matérn-kernel correlation structure to the
@@ -473,9 +496,9 @@ class CorrelatedFieldMaker():
         Parameters
         ----------
         shape : tuple of int
-            Shape of the position space domain.
+            Shape of the position space grid.
         distances : tuple of float or float
-            Distances in the position space domain.
+            Distances in the position space grid.
         scale : tuple of float (mean, std) or callable
             Total spectral energy, i.e. amplitude of the fluctuations
             (by default a priori log-normal distributed).
@@ -490,8 +513,8 @@ class CorrelatedFieldMaker():
             ensure that the `scale` parameter relates to the scale of the
             fluctuations along the specified axis.
         prefix : str
-            Prefix of the power spectrum parameter domain names.
-        harmonic_domain_type : str
+            Prefix of the power spectrum parameter names.
+        harmonic_type : str
             Description of the harmonic partner domain in which the amplitude
             lives.
         non_parametric_kind : str
@@ -509,7 +532,7 @@ class CorrelatedFieldMaker():
         Enßlin, Torsten, `<https://arxiv.org/abs/2105.13483>`_
         `<https://doi.org/10.1371/journal.pone.0275011>`_
         """
-        domain = _make_domain(shape, distances, harmonic_domain_type)
+        grid = _make_grid(shape, distances, harmonic_type)
 
         if isinstance(scale, (tuple, list)):
             scale = lognormal_prior(*scale)
@@ -528,7 +551,7 @@ class CorrelatedFieldMaker():
             raise TypeError(te)
 
         ma = matern_amplitude(
-            domain=domain,
+            grid=grid,
             scale=scale,
             cutoff=cutoff,
             loglogslope=loglogslope,
@@ -537,7 +560,7 @@ class CorrelatedFieldMaker():
             renormalize_amplitude=renormalize_amplitude,
         )
         self._fluctuations.append(ma)
-        self._target_subdomains.append(domain)
+        self._target_grids.append(grid)
         self._parameter_tree.update(ma.domain)
 
     def set_amplitude_total_offset(
@@ -638,15 +661,15 @@ class CorrelatedFieldMaker():
         """
         harmonic_transforms = []
         excitation_shape = ()
-        for sub_dom in self._target_subdomains:
+        for sgrid in self._target_grids:
             sub_shp = None
-            sub_shp = sub_dom["harmonic_space_shape"]
+            sub_shp = sgrid.harmonic_grid.shape
             excitation_shape += sub_shp
             n = len(excitation_shape)
             axes = tuple(range(n - len(sub_shp), n))
 
             # TODO: Generalize to complex
-            harmonic_dvol = 1. / sub_dom["position_space_total_volume"]
+            harmonic_dvol = 1. / sgrid.total_volume
             harmonic_transforms.append(
                 (harmonic_dvol, partial(hartley, axes=axes))
             )
@@ -664,14 +687,14 @@ class CorrelatedFieldMaker():
 
         def _mk_expanded_amp(amp, sub_dom):  # Avoid late binding
             def expanded_amp(p):
-                return amp(p)[sub_dom["power_distributor"]]
+                return amp(p)[sub_dom.harmonic_grid.power_distributor]
 
             return expanded_amp
 
         expanded_amplitudes = []
         namps = self.get_normalized_amplitudes()
-        for amp, sub_dom in zip(namps, self._target_subdomains):
-            expanded_amplitudes.append(_mk_expanded_amp(amp, sub_dom))
+        for amp, sgrid in zip(namps, self._target_grids):
+            expanded_amplitudes.append(_mk_expanded_amp(amp, sgrid))
 
         def outer_amplitude(p):
             outer = expanded_amplitudes[0](p)
@@ -695,4 +718,5 @@ class CorrelatedFieldMaker():
             correlated_field, domain=self._parameter_tree.copy(), init=init
         )
         cf.normalized_amplitudes = namps
+        cf.target_grids = tuple(self._target_grids)
         return cf
