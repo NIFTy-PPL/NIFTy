@@ -32,6 +32,23 @@ def test_reduced_residual_stats_normal_residuals(seed):
         rtol=rtol
     )
 
+@pmp("seed", (42, 43))
+@pmp("complex", (True, False))
+def test_reduced_chi_square_dtype(seed, complex):
+    sseq = np.random.SeedSequence(seed)
+    rng = np.random.default_rng(sseq)
+    norm_res = rng.normal(size=(10), )
+    if complex:
+        norm_res = norm_res + 1j*rng.normal(size=(10), )
+    rrs = reduced_residual_stats(norm_res)
+    if not rrs.mean.dtype == norm_res.dtype:
+        raise ValueError()
+    # chi^2 should be real and positive
+    if not np.abs(rrs.reduced_chisq[0]) == rrs.reduced_chisq[0]:
+        raise ValueError()
+
+
 
 if __name__ == "__main__":
     test_reduced_residual_stats_normal_residuals(33)
+    test_reduced_chi_square_dtype(42, True)
