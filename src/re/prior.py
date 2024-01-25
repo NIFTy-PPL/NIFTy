@@ -95,7 +95,7 @@ class UniformPrior(WrappedCall):
         """
         self.low = self.a_min = a_min
         self.high = self.a_max = a_max
-        call = uniform_prior(self.a_max, self.a_max)
+        call = uniform_prior(self.a_min, self.a_max)
         super().__init__(call, white_init=True, **kwargs)
 
 
