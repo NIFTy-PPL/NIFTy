@@ -6,7 +6,59 @@ import jax.numpy as jnp
 import healpy as hp
 from functools import partial
 from jax import vmap, jit
-from .index_utils import my_setdiff_indices
+from .index_utils import my_setdiff_indices, id_to_axisids
+
+
+def full_hp_radial_sorting(arrays, chart):
+    """Returns the finest level sorted to match a full healpix+radial
+    pixelization.
+
+    Parameters:
+    -----------
+    arrays: List of Arrays
+        A Field represented on `chart`.
+    chart: MSChart
+        Chart of the space. Must contain exactly two axes where one of them is
+        a `HPAxis`. The chart is assumed to be fully resolved (with potentially
+        open boundaries in the radial axis). This is checked for rudimentary by
+        testing if the indices are a multiple of the number of pixels of the
+        healpix sphere.
+
+    Returns:
+    --------
+    Array:
+        two-dimensional array of the pixels sorted according to the healpix
+        nested scheme and radial bins.
+    """
+    axs = chart.axes(-1)
+    if len(axs) != 2:
+        msg = "Chart has to consist of one healpix and one extra axis!"
+        raise ValueError(msg)
+    from .axes import HPAxis
+    hpaxis_id = int(isinstance(axs[1], HPAxis))
+    raxis_id = (hpaxis_id+1)%2
+    hpax = chart.axes(-1)[hpaxis_id]
+    ids = chart.indices[-1]
+
+    npixhp = 12 * hpax.nside**2
+    npixr = ids.size // npixhp
+    if npixhp*npixr != ids.size:
+        raise ValueError("Inconsistent number of pixels in space!")
+
+    ids = id_to_axisids(ids, chart.maxlevel, chart._axes)
+    hpids = ids[hpaxis_id]
+    rids = ids[raxis_id]
+    array = arrays[-1]
+
+    rsort = np.argsort(rids)
+    hpids = hpids[rsort].reshape((npixr, npixhp))
+    array = array[rsort].reshape((npixr, npixhp))
+
+    array = array[np.arange(npixr, dtype=int)[:,np.newaxis],
+                  np.argsort(hpids, axis=1)]
+    if raxis_id == 1:
+        array = array.T
+    return array
 
 
 def sorted_concat(arr1, inds1, arr2, inds2):
