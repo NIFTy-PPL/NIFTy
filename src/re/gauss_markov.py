@@ -158,15 +158,20 @@ class GaussMarkovProcess(Model):
             if isinstance(a, Model):
                 domain = domain | a.domain
                 init = init | a.init
+        self.x0 = x0
         self.args = args
+        self.name = name
+        self.process = process
+        self.dt = dt
 
-        def apply(x):
-            xi = x[name]
-            xx = x0(x) if isinstance(x0, Model) else x0
-            tmp = {k:a(x) if isinstance(a,Model) else a for k,a in args.items()}
-            return process(xi=xi, x0=xx, dt=dt, **tmp)
+        super().__init__(domain=domain, init=init)
 
-        super().__init__(call=apply, domain=domain, init=init)
+    def __call__(self, x):
+        xi = x[self.name]
+        xx = self.x0(x) if isinstance(self.x0, Model) else self.x0
+        tmp = {k:a(x) if isinstance(a,Model) else a for k,a in
+               self.args.items()}
+        return self.process(xi=xi, x0=xx, dt=self.dt, **tmp)
 
 
 def WienerProcess(x0: Union[tuple, float, Model],
