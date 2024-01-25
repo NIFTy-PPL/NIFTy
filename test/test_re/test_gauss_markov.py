@@ -17,6 +17,38 @@ def _call(process, key):
     assert np.all(np.isfinite(res))
     process(rnd)
 
+
+@pmp('x0', [0.1, -2.2])
+@pmp('dts', [np.ones((10,))*0.2, np.array([0.2, 0.5, 0.1])])
+@pmp('gamma', [0.1, 0.5, 0.2])
+def test_decay_oup(x0, dts, gamma):
+    ts = np.zeros(dts.size + 1)
+    ts[1:] = np.cumsum(dts)
+    res = np.exp(-gamma*ts) * x0
+    gp = jft.OrnsteinUhlenbeckProcess(1., gamma, dts, x0=x0)
+    myres = gp(jft.zeros_like(gp.domain))
+    np.testing.assert_allclose(res, myres)
+
+@pmp('x0', [0.1, -1.2])
+@pmp('dts', [np.ones((10,))*0.2, np.array([0.2, 0.5, 0.1])])
+def test_const_wp(x0, dts):
+    gp = jft.WienerProcess(x0, 1., dts)
+    myres = gp(jft.zeros_like(gp.domain))
+    np.testing.assert_allclose(myres, x0)
+
+@pmp('x0', [np.array([0.1,0.5]), np.array([-1.2, 0.7])])
+@pmp('dts', [np.ones((10,))*0.2, np.array([0.2, 0.5, 0.1])])
+def test_drift_iwp(x0, dts):
+    ts = np.zeros(dts.size + 1)
+    ts[1:] = np.cumsum(dts)
+    res = x0[1]*ts + x0[0]
+    gp = jft.IntegratedWienerProcess(x0, 1., dts)
+    myres = gp(jft.zeros_like(gp.domain))
+    # Check if it is a straight line
+    np.testing.assert_allclose(myres[:,0], res)
+    # Check that derivative is const.
+    np.testing.assert_allclose(myres[:,1], x0[1])
+
 @pmp('x0', [1., (0., 1.5), jft.UniformPrior(-1.,1.,name='x0')])
 @pmp('sigma', [0.3, (1.,0.8), jft.UniformPrior(0.1,1.1,name='sigma')])
 @pmp('name', ['wiener',])
