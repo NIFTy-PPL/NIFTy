@@ -216,7 +216,7 @@ def WienerProcess(x0: Union[tuple, float, Model],
 
 
 def IntegratedWienerProcess(
-    x0: Union[tuple, float, Model],
+    x0: Union[tuple, Array, Model],
     sigma: Union[tuple, float, Array, Model],
     dt: Union[float, Array],
     name: str = 'iwp',
@@ -252,7 +252,8 @@ def IntegratedWienerProcess(
     if isinstance(sigma, tuple):
         sigma = LogNormalPrior(sigma[0], sigma[1], name=name+'_sigma')
     if isinstance(asperity, tuple):
-        asperity = LogNormalPrior(sigma[0], sigma[1], name=name+'_asperity')
+        asperity = LogNormalPrior(asperity[0], asperity[1],
+                                  name=name+'_asperity')
     return GMProcess(integrated_wiener_process, x0, dt, name=name,
                      N_steps=N_steps, sigma=sigma, asperity=asperity)
 
