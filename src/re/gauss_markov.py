@@ -137,7 +137,7 @@ class GaussMarkovProcess(Model):
                  dt: Union[float, Array],
                  name = 'xi',
                  N_steps: int = None,
-                 **args):
+                 **kwargs):
         if _isscalar(dt):
             if N_steps is None:
                 msg = "`N_steps` is None and `dt` is not a sequence"
@@ -154,12 +154,12 @@ class GaussMarkovProcess(Model):
             domain = domain | x0.domain
             init = init | x0.init
         self.x0 = x0
-        for _, a in args.items():
+        for _, a in kwargs.items():
             if isinstance(a, Model):
                 domain = domain | a.domain
                 init = init | a.init
         self.x0 = x0
-        self.args = args
+        self.args = kwargs
         self.name = name
         self.process = process
         self.dt = dt
@@ -170,7 +170,7 @@ class GaussMarkovProcess(Model):
         xi = x[self.name]
         xx = self.x0(x) if isinstance(self.x0, Model) else self.x0
         tmp = {k:a(x) if isinstance(a,Model) else a for k,a in
-               self.args.items()}
+               self.kwargs.items()}
         return self.process(xi=xi, x0=xx, dt=self.dt, **tmp)
 
 
