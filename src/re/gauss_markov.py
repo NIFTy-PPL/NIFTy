@@ -24,9 +24,9 @@ def discrete_gm_general(xi: Array, x0: Array, drift: Array, diffamp: Array):
 
     Given the discrete transition probabilities via the `drift` and `diffamp`
     matrices, this function produces a series `res` of the form:
-    ```
+
+    .. math::
         res_{i+1} = drift_i @ res_i + diffamp_i @ xi_i
-    ```
 
     which corresponds to a random realization of a GMP in case `xi` is
     standard normal distributed.
@@ -177,9 +177,10 @@ def WienerProcess(x0: Union[tuple, float, Model],
     """Implements the Wiener process (WP).
 
     The WP in continuous time takes the form:
-    ```
+
+    .. math::
         d/dt x_t = sigma xi_t ,
-    ```
+
     where `xi_t` is continuous time white noise.
 
     Parameters:
@@ -225,10 +226,11 @@ def IntegratedWienerProcess(
     """Implements the Integrated Wiener Process.
 
     The generalized IWP in continuous time takes the form:
-    ```
-        d/dt x_t = y_t + sigma * asperity xi^1_t ,
+
+    .. math::
+        d/dt x_t = y_t + sigma * asperity xi^1_t , \\
         d/dt y_t = sigma * xi^2_t
-    ```
+
     where `xi^i_t` are continuous time white noise processes.
     This is a standard IWP in x in the case that `asperity` is zero (None). If
     it is non-zero, a WP with relative strength set by `asperity` is added to
@@ -268,9 +270,10 @@ def OrnsteinUhlenbeckProcess(
     """Implements the Ornstein Uhlenbeck process (OUP).
 
     The stochastic differential equation of the OUP takes the form:
-    ```
+
+    .. math::
         d/dt x_t + gamma x_t = sigma xi_t
-    ```
+
     where `xi_t` is continuous time white noise.
 
     For information on the parameters, please refer to `WienerProcess`. The
