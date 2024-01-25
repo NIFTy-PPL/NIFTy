@@ -130,7 +130,7 @@ def ornstein_uhlenbeck_process(
     amp = sigma * jnp.sqrt(1. - drift**2)
     return scalar_gm(xi, x0, drift, amp)
 
-class GMProcess(Model):
+class GaussMarkovProcess(Model):
     def __init__(self,
                  process: Callable,
                  x0: Union[float, Array, Model],
@@ -212,8 +212,10 @@ def WienerProcess(x0: Union[tuple, float, Model],
         x0 = NormalPrior(x0[0], x0[1], name=name+'_x0')
     if isinstance(sigma, tuple):
         sigma = LogNormalPrior(sigma[0], sigma[1], name=name+'_sigma')
-    return GMProcess(wiener_process, x0, dt, name=name, N_steps=N_steps,
-                     sigma=sigma)
+    return GaussMarkovProcess(wiener_process, x0, dt,
+                              name=name,
+                              N_steps=N_steps,
+                              sigma=sigma)
 
 
 def IntegratedWienerProcess(
@@ -256,8 +258,11 @@ def IntegratedWienerProcess(
     if isinstance(asperity, tuple):
         asperity = LogNormalPrior(asperity[0], asperity[1],
                                   name=name+'_asperity')
-    return GMProcess(integrated_wiener_process, x0, dt, name=name,
-                     N_steps=N_steps, sigma=sigma, asperity=asperity)
+    return GaussMarkovProcess(integrated_wiener_process, x0, dt,
+                              name=name,
+                              N_steps=N_steps,
+                              sigma=sigma,
+                              asperity=asperity)
 
 
 def OrnsteinUhlenbeckProcess(
@@ -309,5 +314,8 @@ def OrnsteinUhlenbeckProcess(
         x0 = Model(gen_x0, domain=domain, init=init)
     elif isinstance(x0, tuple):
         x0 = NormalPrior(x0[0], x0[1], name=name+'_x0')
-    return GMProcess(ornstein_uhlenbeck_process, x0, dt, name=name,
-                     N_steps=N_steps, sigma=sigma, gamma=gamma)
+    return GaussMarkovProcess(ornstein_uhlenbeck_process, x0, dt,
+                              name=name,
+                              N_steps=N_steps,
+                              sigma=sigma,
+                              gamma=gamma)
