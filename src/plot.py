@@ -282,7 +282,7 @@ class SpectrumToRGBProjector:
             raise RuntimeError("this method requires the spectral bin widths "
                                "to be specified during initialization.")
         self._input_saturation_flux = saturation_flux_density \
-            * np.sum(self._input_spectrum_bin_widths) * spectral_denseness
+            * (spectral_denseness * np.sum(self._input_spectrum_bin_widths))
 
     # --- functions to implement saturation effect ---
     def _apply_luminance_saturation(self, XYZ_data, reference_bin_flux_spectrum=None):
@@ -308,11 +308,11 @@ class SpectrumToRGBProjector:
         if reference_bin_flux_spectrum is None:
             saturation_luminance = np.max(XYZ_data[..., 1])
         else:
-            saturation_luminance = np.dot(
-                reference_bin_flux_spectrum,
-                self._visible_spectrum_bin_flux_to_XYZ_mapping_tensor[:, 1])
+            XYZ_reference = self._transform_visible_spectrum_bin_flux_to_XYZ(reference_bin_flux_spectrum)
+            saturation_luminance = XYZ_reference[1] / 0.52701199  # correct for white reference spectrum
 
-        xyY_data = ColorSpaceTools.XYZ_to_xyY(XYZ_data / saturation_luminance)
+        xyY_data = ColorSpaceTools.XYZ_to_xyY(XYZ_data)
+        xyY_data[..., 2] /=  saturation_luminance
         return ColorSpaceTools.xyY_to_XYZ(xyY_data.clip(0., 1.))
 
     def _apply_cone_response_saturation(self, XYZ_data, reference_bin_flux_spectrum=None):
@@ -342,9 +342,9 @@ class SpectrumToRGBProjector:
             print(saturation_LMS)  #DEBUG
         else:
             reference_bin_flux_spectrum = reference_bin_flux_spectrum[np.newaxis, :]
-            saturation_XYZ = self._transform_visible_spectrum_bin_flux_to_XYZ(
+            reference_XYZ = self._transform_visible_spectrum_bin_flux_to_XYZ(
                 reference_bin_flux_spectrum)
-            saturation_LMS = ColorSpaceTools.XYZ_to_LMS(saturation_XYZ)[0]
+            saturation_LMS = ColorSpaceTools.XYZ_to_LMS(reference_XYZ)[0]
 
         broadcast_slice = (None, ) * (LMS_data.ndim - 1) + (slice(None), )
         LMS_data /= saturation_LMS[broadcast_slice]
@@ -496,13 +496,12 @@ class SpectrumToRGBProjector:
     def _get_d65_bin_flux_for_visible_spectrum_bins(self):
         lambda_visible_lower = self._visible_spectrum_bin_lower_wavelengths
         lambda_visible_upper = self._visible_spectrum_bin_upper_wavelengths
-        within_bin_wavelengths = 1. / np.array([
-            np.linspace(1. / l_lower, 1. / l_upper, 100)
-            for l_lower, l_upper in zip(lambda_visible_lower, lambda_visible_upper)
-        ])
-        relative_power = ColorSpaceTools.get_cie_d65_standard_illuminant_relative_power(
-            within_bin_wavelengths)
-        res = np.sum(relative_power, axis=1)
+        within_bin_wavelengths = 1. / np.array(
+            [np.linspace(1. / l_lower, 1. / l_upper, 100)
+             for l_lower, l_upper in zip(lambda_visible_lower, lambda_visible_upper)]
+        )
+        d65_power = ColorSpaceTools.get_cie_d65_standard_illuminant_power(within_bin_wavelengths)
+        res = np.sum(d65_power, axis=1)
         return res / np.sum(res)
 
     # --- check functions ---
@@ -687,7 +686,7 @@ class ColorSpaceTools:
             0.000000]])
 
     @classmethod
-    def get_cie_d65_standard_illuminant_relative_power(self, wavelengths):
+    def get_cie_d65_standard_illuminant_power(self, wavelengths):
         return np.interp(wavelengths,
                          self._CIE_D65_WAVELENGTH_TABLE_300nm_TO_830nm,
                          self._CIE_D65_RELATIVE_POWER_TABLE_300nm_TO_830nm)
@@ -1116,9 +1115,9 @@ def _plot2D(f, ax, **kwargs):
                 # by default assume linearly spaced energy bins
                 center_energies = kwargs.pop('f_space_bin_energies', np.arange(n_freqs)),
                 widths = kwargs.pop('f_space_bin_widths', np.ones(n_freqs)))
-            f_space_saturation_flux = kwargs.pop('f_space_saturation_flux', None)
-            if f_space_saturation_flux is not None:
-                mf_to_rgb.set_saturation_flux(f_space_saturation_flux)
+            saturation_flux = kwargs.pop('saturation_flux', None)
+            if saturation_flux is not None:
+                mf_to_rgb.set_saturation_flux(saturation_flux)
             rgb = mf_to_rgb.project_total_spectral_bin_flux(val)
             have_rgb = True
     else:  # "DomainTuple can only have one or two entries.
