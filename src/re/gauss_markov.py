@@ -158,8 +158,7 @@ class GaussMarkovProcess(Model):
             if isinstance(a, Model):
                 domain = domain | a.domain
                 init = init | a.init
-        self.x0 = x0
-        self.args = kwargs
+        self.kwargs = kwargs
         self.name = name
         self.process = process
         self.dt = dt
