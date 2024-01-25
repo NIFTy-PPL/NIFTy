@@ -154,8 +154,8 @@ class SpectrumToRGBProjector:
 
     The code makes a distinction between fluxes :math:`\Phi` and spectral
     flux densities :math:`\del\Phi/\del\E` and provides separate projection
-    functions for each: :func:`project_integrated_flux` and
-    :func:`project_flux_density`.
+    functions for each: :func:`project_total_spectral_bin_flux` and
+    :func:`project_spectral_flux_density`.
 
     To set up the class for projections, the spectral bin boundaries need to be specified.
     The class provides two methods for this purpose:
@@ -311,9 +311,10 @@ class SpectrumToRGBProjector:
             XYZ_reference = self._transform_visible_spectrum_bin_flux_to_XYZ(reference_bin_flux_spectrum)
             saturation_luminance = XYZ_reference[1] / 0.52701199  # correct for white reference spectrum
 
-        xyY_data = ColorSpaceTools.XYZ_to_xyY(XYZ_data)
-        xyY_data[..., 2] /=  saturation_luminance
-        return ColorSpaceTools.xyY_to_XYZ(xyY_data.clip(0., 1.))
+        #xyY_data = ColorSpaceTools.XYZ_to_xyY(XYZ_data)
+        #xyY_data[..., 2] /=  saturation_luminance
+        #return ColorSpaceTools.xyY_to_XYZ(xyY_data)
+        return XYZ_data / saturation_luminance  # equivalent, but more efficient
 
     def _apply_cone_response_saturation(self, XYZ_data, reference_bin_flux_spectrum=None):
         """Simulates saturation in the response of the retinal cone cells.
@@ -419,7 +420,7 @@ class SpectrumToRGBProjector:
         self._visible_spectrum_bin_flux_to_XYZ_mapping_tensor = np.mean(XYZ_values_of_within_bin_wavelengths, axis=1)
 
     # --- functions to perform the full projection from energy spectrum to sRGB value ---
-    def project_spectral_flux_density(self, spectral_flux_density, saturation_via='luminance'):
+    def project_spectral_flux_density(self, spectral_flux_density, saturation_via='luminance', XYZ_inspect_callback=None):
         """Projects spectral flux density data to percieved colors and embeds in sRGB.
 
         Parameters
@@ -430,6 +431,9 @@ class SpectrumToRGBProjector:
         saturation_via : string
             Type of saturation to apply. Supported values are `luminance` (default)
             and `retinal cone response`.
+        XYZ_inspect_callback : callable, None
+            Function to inspect the XYZ tristimulus values before and after saturation corrcetion.
+            Has to have the signature `fn(XYZ, XYZ_saturation_corrected)`
 
         Returns
         -------
@@ -439,9 +443,9 @@ class SpectrumToRGBProjector:
         self._pre_projection_checks(spectral_flux_density)
         broadcast_sl = (None, ) * (spectral_flux_density.ndim - 1) + (slice(None), )
         total_spectral_bin_flux = spectral_flux_density * self._input_spectrum_bin_widths[broadcast_sl]
-        self.project_total_spectral_bin_flux(total_spectral_bin_flux, saturation_via=saturation_via)
+        return self.project_total_spectral_bin_flux(total_spectral_bin_flux, saturation_via=saturation_via, XYZ_inspect_callback=XYZ_inspect_callback)
 
-    def project_total_spectral_bin_flux(self, total_spectral_bin_flux, saturation_via='luminance'):
+    def project_total_spectral_bin_flux(self, total_spectral_bin_flux, saturation_via='luminance', XYZ_inspect_callback=None):
         """Projects spectral bin flux data to percieved colors and embeds in sRGB.
 
         Parameters
@@ -452,6 +456,9 @@ class SpectrumToRGBProjector:
         saturation_via : string
             Type of saturation to apply. Supported values are `'luminance'` (default)
             and `'retinal cone response'`.
+        XYZ_inspect_callback : callable, None
+            Function to inspect the XYZ tristimulus values before and after saturation corrcetion.
+            Has to have the signature `fn(XYZ, XYZ_saturation_corrected)`
 
         Returns
         -------
@@ -474,6 +481,10 @@ class SpectrumToRGBProjector:
         else:
             raise ValueError("Unknown saturation function '{saturation_via}'")
         XYZ_data_saturated = saturation_function(XYZ_data, saturation_spectral_bin_flux)
+
+        if XYZ_inspect_callback is not None:
+            assert callable(XYZ_inspect_callback)
+            XYZ_inspect_callback(XYZ_data, XYZ_data_saturated)
 
         # embed to sRGB
         sRGB_data = ColorSpaceTools.embed_XYZ_perceived_color_in_sRGB(XYZ_data_saturated)
@@ -538,6 +549,28 @@ class SpectrumToRGBProjector:
     def after_log_gammacorr(spectral_values_log, exponent):
         return np.float_power(spectral_values_log, exponent)
 
+    # --- helper functions ---
+    def gen_color_mapping_legend_data(self, total_bin_flux_vals, saturation_via='luminance'):
+        """Generate response to monochromatic spectra for all energy bins
+        and the given total_bin_flux values (1d array).
+
+        Assumes energy bins are spaced linearly - for non-linear bins resampling
+        of energies is necessary"""
+        if total_bin_flux_vals.ndim != 1:
+            raise ValueError("total_bin_flux_vals needs to be a 1d numpy array")
+        n_energy_bins = len(self._input_spectrum_bin_lower_energies)
+        probe_vals = np.eye(n_energy_bins)[np.newaxis, :, :] * total_bin_flux_vals[:, np.newaxis, np.newaxis]
+        return self.project_total_spectral_bin_flux(probe_vals, saturation_via=saturation_via)
+
+    def example_xyz_inspect_callback(self, xyz_raw, XYZ_saturation_corrected):
+        import matplotlib.pyplot as plt
+        fig, ax = plt.subplots()
+        ax.hist(XYZ_saturation_corrected, bins=25)
+        ax.set_xlabel('XYZ activation')
+        ax.set_yscale('log')
+        ax.set_ylabel('pixel count')
+        fig.show()
+
 
 class ColorSpaceTools:
     # --- Color space trafos ---
@@ -589,9 +622,9 @@ class ColorSpaceTools:
         res_sRGB : :class:`numpy.ndarray`
             Corresponding sRGB values.
         """
-        tmp = np.tensordot(self._CIE1931_XYZ_TO_sRGB_D65, XYZ_values, axes=(1, -1)).T
-        tmp = tmp.clip(0., 1.)  # clip to values inside the sRGB garmut
-        return self._sRGB_gammacorr(tmp)
+        tmp = np.tensordot(self._CIE1931_XYZ_TO_sRGB_D65, XYZ_values, axes=((1,), (-1,)))
+        tmp = np.moveaxis(tmp, 0, -1)  # undo axis movement by tensordot
+        return self._sRGB_gammacorr(tmp).clip(0., 1.) # clip to values inside the sRGB garmut
 
     _CIE1931_XYZ_TO_sRGB_D65 = np.array([[3.2404542, -1.5371385, -0.4985314],
                                          [-0.9692660, 1.8760108, 0.0415560],
@@ -805,27 +838,27 @@ class ColorSpaceTools:
     # --- post-processing functions ---
     def enhance_sRGB_color_contrast(sRGB_data, color_contrast_multiplier):
         """Enhance the color saturation of of an sRGB image."""
-        if contrast_multiplier == 1.0:
+        if color_contrast_multiplier == 1.0:
             return sRGB_data
 
         if np.any(sRGB_data < 0.0) or np.any(sRGB_data > 1.0):
             raise ValueError("sRGB data must be in [0, 1] for this routine")
 
-        black_mask = np.logical_and(sRGB_data[:, :, 0] == 0.,
-                                    np.logical_and(sRGB_data[:, :, 1] == 0.,
-                                                   sRGB_data[:, :, 2] == 0.))
+        black_mask = np.logical_and(sRGB_data[..., 0] == 0.,
+                                    np.logical_and(sRGB_data[..., 1] == 0.,
+                                                   sRGB_data[..., 2] == 0.))
 
-        white_mask = np.logical_and(sRGB_data[:, :, 0] == 1.,
-                                    np.logical_and(sRGB_data[:, :, 1] == 1.,
-                                                   sRGB_data[:, :, 2] == 1.))
+        white_mask = np.logical_and(sRGB_data[..., 0] == 1.,
+                                    np.logical_and(sRGB_data[..., 1] == 1.,
+                                                   sRGB_data[..., 2] == 1.))
 
         res = sRGB_data.copy()
 
         # color contrast enhancement
         # increases sRGB-channel-wise difference between channel and grey value of each pixel
-        grey_vals = 0.2989 * sRGB_data[:, :, 0] + 0.5870 * sRGB_data[:, :, 1] + 0.1140 * sRGB_data[:, :, 2]
-        grey_vals = grey_vals[:, :, np.newaxis]
-        res[:, :, :3] = color_contrast_multiplier * (sRGB_data[:, :, :3] - grey_vals) + grey_vals
+        grey_vals = 0.2989 * sRGB_data[..., 0] + 0.5870 * sRGB_data[..., 1] + 0.1140 * sRGB_data[..., 2]
+        grey_vals = grey_vals[..., np.newaxis]
+        res[..., :3] = color_contrast_multiplier * (sRGB_data[..., :3] - grey_vals) + grey_vals
 
         # ensure numerical black and white points are preserved
         res = res.clip(0.0, 1.0)
@@ -835,12 +868,12 @@ class ColorSpaceTools:
         return res
 
 
+
 def _find_closest(A, target):
     # A must be sorted
     idx = np.clip(A.searchsorted(target), 1, len(A)-1)
     idx -= target - A[idx-1] < A[idx] - target
     return idx
-
 
 def _makeplot(name, block=True, dpi=None):
     import matplotlib.pyplot as plt
