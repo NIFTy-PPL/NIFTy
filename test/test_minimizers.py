@@ -55,16 +55,16 @@ def test_quadratic_minimization(minimizer, space):
         covariance_diagonal = ift.Field.from_random(domain=space, random_type='uniform') + 0.5
         covariance = ift.DiagonalOperator(covariance_diagonal)
         required_result = ift.full(space, 1.)
-    
+
         try:
             minimizer = eval(minimizer)
             energy = ift.QuadraticEnergy(
                 A=covariance, b=required_result, position=starting_point)
-    
+
             (energy, convergence) = minimizer(energy)
         except NotImplementedError:
             pytest.skip()
-    
+
         assert_equal(convergence, IC.CONVERGED)
         assert_allclose(
             energy.position.val,
@@ -255,3 +255,25 @@ def test_cosh(minimizer):
 
     assert_equal(convergence, IC.CONVERGED)
     assert_allclose(energy.position.val, 0., atol=1e-3)
+
+
+@pmp('space', spaces)
+def test_scipy_respect_bounds(space):
+    with pytest.raises(AssertionError):
+        starting_point = ift.Field.from_random(domain=space, random_type='normal') * 10
+        covariance_diagonal = ift.Field.from_random(domain=space, random_type='uniform') + 0.5
+        covariance = ift.DiagonalOperator(covariance_diagonal)
+        required_result = ift.full(space, 1.)
+
+        minimizer = ift.L_BFGS_B(ftol=1e-10, gtol=1e-5, maxiter=1000, bounds=(5, 10))
+
+        energy = ift.QuadraticEnergy(
+            A=covariance, b=required_result, position=starting_point)
+
+        (energy, convergence) = minimizer(energy)
+
+        assert_allclose(
+            energy.position.val,
+            1. / covariance_diagonal.val,
+            rtol=1e-3,
+            atol=1e-3)
