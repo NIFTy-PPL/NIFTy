@@ -259,21 +259,18 @@ def test_cosh(minimizer):
 
 @pmp('space', spaces)
 def test_scipy_respect_bounds(space):
-    with pytest.raises(AssertionError):
-        starting_point = ift.Field.from_random(domain=space, random_type='normal') * 10
-        covariance_diagonal = ift.Field.from_random(domain=space, random_type='uniform') + 0.5
-        covariance = ift.DiagonalOperator(covariance_diagonal)
-        required_result = ift.full(space, 1.)
+    starting_point = ift.Field.from_random(domain=space, random_type='normal') * 10
+    covariance_diagonal = ift.Field.from_random(domain=space, random_type='uniform') + 0.5
+    covariance = ift.DiagonalOperator(covariance_diagonal)
+    required_result = ift.full(space, 1.)
+    left_bound = 2.
+    best_possible_result = ift.full(space, left_bound)
 
-        minimizer = ift.L_BFGS_B(ftol=1e-10, gtol=1e-5, maxiter=1000, bounds=(5, 10))
+    minimizer = ift.L_BFGS_B(ftol=1e-10, gtol=1e-5, maxiter=1000, bounds=(left_bound, 10))
 
-        energy = ift.QuadraticEnergy(
-            A=covariance, b=required_result, position=starting_point)
+    energy = ift.QuadraticEnergy(
+        A=covariance, b=required_result, position=starting_point)
 
-        (energy, convergence) = minimizer(energy)
+    (energy, convergence) = minimizer(energy)
 
-        assert_allclose(
-            energy.position.val,
-            1. / covariance_diagonal.val,
-            rtol=1e-3,
-            atol=1e-3)
+    assert_allclose(energy.position.val, best_possible_result.val)
