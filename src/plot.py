@@ -148,7 +148,7 @@ class SpectrumToRGBProjector:
     """Class to facilitate projections of fields with a spectral dimension to sRGBs color space.
 
     The fields spectral dimension is mapped onto the visible light spectral range.
-    The thusly created visible light spectra are then mapped to percieved colors
+    The visible light spectra created this way are then mapped to percieved colors
     following the CIE 1931 model of human color perception. The percieved colors
     are then encoded into the sRGB color space and an array of sRGB values is returned.
 
@@ -158,8 +158,12 @@ class SpectrumToRGBProjector:
     :func:`project_flux_density`.
 
     To set up the class for projections, the spectral bin boundaries need to be specified.
-    The class provides the methods :func:`specify_input_spectrum_bins_via_bin_boundaries`
-    and :func:`specify_input_spectrum_bins_via_mean_energy_and_width` for this purpose.
+    The class provides two methods for this purpose:
+    :func:`specify_input_spectrum_bins_via_bin_boundaries` allows communicating
+    both linear and non-linear energy binning schemes by specifying the upper and lower
+    boundaries of the bins.
+    For linearly spaced energy bins there additionally is the convenience function
+    :func:`specify_input_spectrum_bins_via_center_energy_and_width`.
 
     Second, if desireable, a fixed white point can be specified. 
     This is possible either via a total spectrum-wide flux at which
@@ -198,8 +202,8 @@ class SpectrumToRGBProjector:
 
     # --- init function ---
     def __init__(self, wavelength_min_mappable=440., wavelength_max_mappable=640.):
-        self._WAVELENGTH_MIN_MAPPABLE = self._check_pos_scalar(wavelength_min_mappable)
-        self._WAVELENGTH_MAX_MAPPABLE = self._check_pos_scalar(wavelength_max_mappable)
+        self._WAVELENGTH_MIN_MAPPABLE = self._check_pos_scalar(wavelength_min_mappable, "wavelength_min_mappable")
+        self._WAVELENGTH_MAX_MAPPABLE = self._check_pos_scalar(wavelength_max_mappable, "wavelength_max_mappable")
 
     # --- Functions to provide input energy bin layout ---
     def specify_input_spectrum_bins_via_bin_boundaries(self, lower_energies, upper_energies):
@@ -281,7 +285,7 @@ class SpectrumToRGBProjector:
             * np.sum(self._input_spectrum_bin_widths) * spectral_denseness
 
     # --- functions to implement saturation effect ---
-    def apply_luminance_saturation(self, XYZ_data, reference_bin_flux_spectrum=None):
+    def _apply_luminance_saturation(self, XYZ_data, reference_bin_flux_spectrum=None):
         """Creates saturation in luminosity.
 
         For this, it divides the XYZ input values by a reference luminosity,
@@ -311,7 +315,7 @@ class SpectrumToRGBProjector:
         xyY_data = ColorSpaceTools.XYZ_to_xyY(XYZ_data / saturation_luminance)
         return ColorSpaceTools.xyY_to_XYZ(xyY_data.clip(0., 1.))
 
-    def apply_cone_response_saturation(self, XYZ_data, reference_bin_flux_spectrum=None):
+    def _apply_cone_response_saturation(self, XYZ_data, reference_bin_flux_spectrum=None):
         """Simulates saturation in the response of the retinal cone cells.
 
         For this, it projects the XYZ input values into the LMS (cone response) space,
@@ -351,7 +355,8 @@ class SpectrumToRGBProjector:
     def map_input_spectrum_bins_to_visible_light_wavelength_bins(self,
                                                                  lower_bin_energies=None,
                                                                  upper_bin_energies=None):
-        """Maps given bin energy values into the visible spectrum energy range.
+        """Maps given bin energy values into the visible spectrum energy range
+        by linearly mapping input energies to visible photon energies.
 
         All parameters are optional - if `None` is given, the class-internal
         values are used.
@@ -370,86 +375,24 @@ class SpectrumToRGBProjector:
         lambda_visible_upper : :class:`numpy.ndarray`
             Mapper upper wavelength boundaries of the given spectral bins.
         """
-        # FIXME: currently the function contains two implementations!
+        E_in_lower = lower_bin_energies if lower_bin_energies is not None else self._input_spectrum_bin_lower_energies
+        E_in_upper = upper_bin_energies if upper_bin_energies is not None else self._input_spectrum_bin_upper_energies
 
-        if lower_bin_energies is None:
-            lower_bin_energies = self._input_spectrum_bin_lower_energies
-
-        if upper_bin_energies is None:
-            upper_bin_energies = self._input_spectrum_bin_upper_energies
-
-        if np.any(upper_bin_energies - lower_bin_energies <= 0):
+        if np.any(E_in_upper - E_in_lower <= 0):
             raise ValueError("bins of negative width given")
 
-        delta_wl_mappable = self._WAVELENGTH_MIN_MAPPABLE - self._WAVELENGTH_MAX_MAPPABLE
-
-        inp_lower = lower_bin_energies
-        inp_upper = upper_bin_energies
-
-        print(inp_lower, inp_upper)
-
-        inp_min = np.min(inp_lower)
-        inp_max = np.max(inp_upper)
-
-        print(inp_min, inp_max)
-
-        wl_lower = self._WAVELENGTH_MIN_MAPPABLE + (inp_lower - inp_min) / (inp_max - inp_min) * delta_wl_mappable
-        wl_upper = self._WAVELENGTH_MIN_MAPPABLE + (inp_upper - inp_min) / (inp_max - inp_min) * delta_wl_mappable
-
-        print(wl_lower, wl_upper)
-        return wl_lower, wl_upper
-
-    def map_input_spectrum_bins_to_visible_light_wavelength_bins_old(self,
-                                                                     lower_bin_energies=None,
-                                                                     upper_bin_energies=None):
-        """Maps given bin energy values into the visible spectrum energy range.
-
-        All parameters are optional - if `None` is given, the class-internal
-        values are used.
-
-        Parameters
-        ----------
-        lower_bin_energies : :class:`numpy.ndarray`, list of float, None
-            Lower energy boundaries of the spectral domain bins.
-        upper_bin_energies : :class:`numpy.ndarray`, list of float, None
-            Upper energy boundaries of the spectral domain bins.
-
-        Returns
-        -------
-        lambda_visible_lower : :class:`numpy.ndarray`
-            Mapper lower wavelength boundaries of the given spectral bins.
-        lambda_visible_upper : :class:`numpy.ndarray`
-            Mapper upper wavelength boundaries of the given spectral bins.
-        """
-        if lower_bin_energies is None:
-            lower_bin_energies = self._input_spectrum_bin_lower_energies
-
-        if upper_bin_energies is None:
-            upper_bin_energies = self._input_spectrum_bin_upper_energies
-
-        if np.any(upper_bin_energies - lower_bin_energies <= 0):
-            raise ValueError("bins of negative width given")
-
-        delta_wl_mappable = self._WAVELENGTH_MIN_MAPPABLE - self._WAVELENGTH_MAX_MAPPABLE
-
-        inp_lower = lower_bin_energies
-        inp_upper = upper_bin_energies
-
-        print(inp_lower, inp_upper)
-
-        inp_min = np.min(inp_lower)
-        inp_max = np.max(inp_upper)
-
-        print(inp_min, inp_max)
+        E_in_min = np.min(E_in_lower)
+        E_in_max = np.max(E_in_upper)
 
         E0_vis, E1_vis = 1. / self._WAVELENGTH_MAX_MAPPABLE, 1. / self._WAVELENGTH_MIN_MAPPABLE
-        E_visible_lower = E0_vis + (inp_lower - inp_min) / (inp_max - inp_min) * (E1_vis - E0_vis)
-        E_visible_upper = E0_vis + (inp_upper - inp_min) / (inp_max - inp_min) * (E1_vis - E0_vis)
-        wl_lower = 1. / E_visible_lower
-        wl_upper = 1. / E_visible_upper
 
-        print(wl_lower, wl_upper)
-        return wl_lower, wl_upper
+        E_visible_lower = E0_vis + (E_in_lower - E_in_min) / (E_in_max - E_in_min) * (E1_vis - E0_vis)
+        E_visible_upper = E0_vis + (E_in_upper - E_in_min) / (E_in_max - E_in_min) * (E1_vis - E0_vis)
+
+        lambda_vis_lower = 1. / E_visible_lower
+        lambda_vis_upper = 1. / E_visible_upper
+
+        return lambda_vis_lower, lambda_vis_upper
 
     # --- functions to map visible light fluxse to XYZ values ---
     def _transform_visible_spectrum_bin_flux_to_XYZ(self, vis_bin_flux):
@@ -471,10 +414,9 @@ class SpectrumToRGBProjector:
         # compute average tristimulus values for wavelengths within visible spectrum bins
         lambda_gen = zip(lambda_visible_lower, lambda_visible_upper)
         within_bin_wavelengths = 1. / np.array(
-            [np.linspace(1./l_lower, 1./l_upper, 100) for l_lower, l_upper in lambda_gen])
+            [np.linspace(1./wl_lower, 1./wl_upper, 100) for wl_lower, wl_upper in lambda_gen])
         XYZ_values_of_within_bin_wavelengths = ColorSpaceTools.get_cie1931_standard_observer_XYZ_tristimulus_values(within_bin_wavelengths)
-        self._visible_spectrum_bin_flux_to_XYZ_mapping_tensor = \
-            np.mean(XYZ_values_of_within_bin_wavelengths, axis=1)
+        self._visible_spectrum_bin_flux_to_XYZ_mapping_tensor = np.mean(XYZ_values_of_within_bin_wavelengths, axis=1)
 
     # --- functions to perform the full projection from energy spectrum to sRGB value ---
     def project_spectral_flux_density(self, spectral_flux_density, saturation_via='luminance'):
@@ -508,8 +450,8 @@ class SpectrumToRGBProjector:
             Values of the field to be projected.
             The spectral dimension is expected to be the last dimension of the array.
         saturation_via : string
-            Type of saturation to apply. Supported values are `luminance` (default)
-            and `retinal cone response`.
+            Type of saturation to apply. Supported values are `'luminance'` (default)
+            and `'retinal cone response'`.
 
         Returns
         -------
@@ -519,18 +461,18 @@ class SpectrumToRGBProjector:
         self._pre_projection_checks(total_spectral_bin_flux)
 
         visible_bin_flux = total_spectral_bin_flux
+
         XYZ_data = self._transform_visible_spectrum_bin_flux_to_XYZ(visible_bin_flux)
 
-        # luminance saturation
-        if self._input_saturation_flux is None:
-            saturation_spectral_bin_flux = None  # saturation point will be defined by input
-        else:
-            saturation_spectral_bin_flux = self._input_saturation_flux * self._input_spectrum_relative_bin_widths
-            #d65_vis_bin_relative_power = self._get_d65_bin_flux_for_visible_spectrum_bins()
-            #saturation_spectral_bin_flux = self._input_saturation_flux * d65_vis_bin_relative_power
-            #FIXME which is better, d65 or white spectrum?
+        saturation_spectral_bin_flux = None if self._input_saturation_flux is None else \
+            self._input_saturation_flux * self._input_spectrum_relative_bin_widths
 
-        saturation_function = self._saturation_functions[saturation_via]
+        if saturation_via == 'luminance':
+            saturation_function = self._apply_luminance_saturation
+        elif saturation_via == 'retinal cone response':
+            saturation_function = self._apply_cone_response_saturation
+        else:
+            raise ValueError("Unknown saturation function '{saturation_via}'")
         XYZ_data_saturated = saturation_function(XYZ_data, saturation_spectral_bin_flux)
 
         # embed to sRGB
@@ -688,49 +630,6 @@ class ColorSpaceTools:
             res[..., i] = np.interp(wavelengths,
                                     self._CIE1931_STANDARD_OBSERVER_WAVELENGTH_TABLE_380nm_TO_780nm,
                                     self._CIE1931_STANDARD_OBSERVER_XYZ_COLOR_MATCHING_TABLE_380nm_TO_780nm[i])
-        return res
-
-    # FIXME: move to tests
-    @classmethod
-    def get_cie1931_standard_observer_XYZ_tristimulus_values_old(self, wavelength):
-        """Get CIE 1931 XYZ tristimulus values for given wavelengths.
-
-        Linearly interpolates in the CIE 1931 Standard Observer table
-        (:math:`\delta\lambda = \mathrm{5nm}`).
-
-        Parameters
-        ----------
-        wavelength : int, float, :class:`numpy.ndarray`
-            Wavelength(s) for which to compute the equivalent raw RGB intensities.
-
-        Returns
-        -------
-        XYZ_tristimulus_values : :class:`numpy.ndarray`
-            CIE 1931 XYZ tristimulus values for the requested wavelength(s).
-        """
-        # convenience functionality: recursively process numpy arrays
-        if isinstance(wavelength, np.ndarray) and len(wavelength.shape) >= 1:
-            return np.array([self.get_cie1931_standard_observer_XYZ_tristimulus_values(wl)
-                             for wl in wavelength])
-
-        # assure wavelength is a scalar
-        if not self._is_scalar(wavelength):
-            raise ValueError("not a scalar: " + str(wavelength))
-
-        # wavelengths outside the table range get mapped to the table ends (quasi-dark)
-        if wavelength <= 380.:
-            return self._CIE1931_STANDARD_OBSERVER_XYZ_COLOR_MATCHING_TABLE_380nm_TO_780nm[:, 0]
-        if wavelength >= 780:
-            return self._CIE1931_STANDARD_OBSERVER_XYZ_COLOR_MATCHING_TABLE_380nm_TO_780nm[:, -1]
-
-        length_table = self._CIE1931_STANDARD_OBSERVER_XYZ_COLOR_MATCHING_TABLE_380nm_TO_780nm.shape[1]
-
-        precise_position = (wavelength - 380.) / (780. - 380.) * length_table
-        idx_table = int(np.floor(precise_position))
-
-        weight = 1. - (precise_position - idx_table)
-        res = weight * self._CIE1931_STANDARD_OBSERVER_XYZ_COLOR_MATCHING_TABLE_380nm_TO_780nm[:, idx_table]
-        res += (1. - weight) * self._CIE1931_STANDARD_OBSERVER_XYZ_COLOR_MATCHING_TABLE_380nm_TO_780nm[:, idx_table + 1]
         return res
 
     _CIE1931_STANDARD_OBSERVER_WAVELENGTH_TABLE_380nm_TO_780nm = np.linspace(380., 780., 81)
