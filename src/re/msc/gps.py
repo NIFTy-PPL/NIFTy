@@ -18,7 +18,7 @@ from ..tree_math import ShapeWithDtype, zeros_like
 def _get_msc_shapewithdtype(chart, dtype):
     return list(ShapeWithDtype(ii.shape, dtype) for ii in chart.indices)
 
-
+# TODO pass chart
 def MSConvolve(kernel):
     """Function to perform convolutions on an `MSChart` with an `MSKernel`.
 
@@ -284,6 +284,10 @@ class _MSSpectralGP(Model):
     @property
     def domain(self):
         return self._pytree
+
+    @property
+    def chart(self):
+        return self._chart
 
     def get_amplitude(self, p):
         return self._amp(p)
