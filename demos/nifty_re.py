@@ -173,17 +173,7 @@ nll = jft.Gaussian(data, noise_cov_inv).amend(signal_response)
 # %%
 n_vi_iterations = 6
 delta = 1e-4
-absdelta = delta * jnp.prod(jnp.array(dims))
 n_samples = 4
-
-
-def sample_mode_update(i):
-    if i < 2:
-        return "linear_resample"
-    if i < 4:
-        return "nonlinear_resample"
-    return "nonlinear_update"
-
 
 key, subkey = random.split(key)
 pos_init = jft.Vector(jft.random_like(subkey, signal_response.domain))
@@ -203,7 +193,8 @@ samples, state = jft.optimize_kl(
     # Arguments for the conjugate gradient method used to drawing samples from
     # an implicit covariance matrix
     draw_linear_kwargs=dict(
-        cg_name="SL", cg_kwargs=dict(absdelta=absdelta / 10., maxiter=100)
+        cg_name="SL",
+        cg_kwargs=dict(absdelta=delta * jft.size(pos_init) / 10., maxiter=100)
     ),
     # Arguements for the minimizer in the nonlinear updating of the samples
     nonlinearly_update_kwargs=dict(
@@ -217,10 +208,10 @@ samples, state = jft.optimize_kl(
     # Arguments for the minimizer of the KL-divergence cost potential
     kl_kwargs=dict(
         minimize_kwargs=dict(
-            name="M", absdelta=absdelta, cg_kwargs=dict(name="MCG"), maxiter=35
+            name="M", xtol=delta, cg_kwargs=dict(name="MCG"), maxiter=35
         )
     ),
-    sample_mode=sample_mode_update,
+    sample_mode="nonlinear_resample",
     odir="results_nifty_re",
     resume=False,
 )
