@@ -180,5 +180,6 @@ fig.update_layout(
 )
 fig.update_xaxes(type="log")
 fig.update_yaxes(type="log")
-fig.write_html("benchmark.html")
+devs_nm = "+".join(dev.device_kind for dev in jax.devices())
+fig.write_html(f"benchmark_nthreads={nthreads}_devices={devs_nm}.html")
 fig.show()
