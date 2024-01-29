@@ -92,6 +92,15 @@ def test_likelihood_partial(seed, forward):
     )
 
 
+def test_likelihood_domain():
+    lh = jft.Poissonian(jnp.zeros((3, 4), dtype=int))
+    assert lh.domain is not None
+    lh_wfwd = lh.amend(
+        jft.Model(lambda x: x, domain=lh.domain, white_init=True)
+    )
+    assert lh_wfwd.domain is not None
+
+
 def _Poissonian(x):
     return jft.Poissonian(jax.tree_map(lambda y: jnp.exp(y).astype(int), x))
 
