@@ -5,22 +5,34 @@ from numpy.testing import assert_allclose
 import numpy as np
 pytest.importorskip("ducc0")
 
-_sseq = [np.random.SeedSequence(42)]
-_rng = np.random.default_rng(_sseq[-1])
+pmp = pytest.mark.parametrize
 
-def test_ffts():
+
+@pmp('seed', [42])
+def test_ffts(seed):
+    _sseq = [np.random.SeedSequence(seed)]
+    _rng = np.random.default_rng(_sseq[-1])
     array = _rng.normal(0, 1, (32, 32)).astype(np.float64, copy=False)
     assert_allclose(fftn(array), _scipy_fftn(array))
 
-def test_iffts():
+@pmp('seed', [42])
+def test_iffts(seed):
+    _sseq = [np.random.SeedSequence(seed)]
+    _rng = np.random.default_rng(_sseq[-1])
     array = _rng.normal(0, 1, (32, 32)).astype(np.float64, copy=False)
     assert_allclose(ifftn(array), _scipy_ifftn(array))
 
-def test_hartleys():
+@pmp('seed', [42])
+def test_hartleys(seed):
+    _sseq = [np.random.SeedSequence(seed)]
+    _rng = np.random.default_rng(_sseq[-1])
     array = _rng.normal(0, 1, (32, 32)).astype(np.float64, copy=False)
     assert_allclose(hartley(array), _scipy_hartley(array))
 
-def test_vdots():
+@pmp('seed', [42])
+def test_vdots(seed):
+    _sseq = [np.random.SeedSequence(seed)]
+    _rng = np.random.default_rng(_sseq[-1])
     a = _rng.normal(0, 1, (32, 32)).astype(np.float64, copy=False)
     b = _rng.normal(0, 1, (32, 32)).astype(np.float64, copy=False)
     assert_allclose(vdot(a, b), _scipy_vdot(a, b))
