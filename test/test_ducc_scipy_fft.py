@@ -9,30 +9,41 @@ pmp = pytest.mark.parametrize
 
 
 @pmp('seed', [42])
-def test_ffts(seed):
+@pmp('shape', [(10), (32, 32), (16, 16, 16)])
+@pmp('dtype', [np.float64, np.complex128])
+def test_ffts(seed, shape, dtype):
     _sseq = [np.random.SeedSequence(seed)]
     _rng = np.random.default_rng(_sseq[-1])
-    array = _rng.normal(0, 1, (32, 32)).astype(np.float64, copy=False)
+    array = _rng.normal(0, 1, shape).astype(dtype, copy=False)
     assert_allclose(fftn(array), _scipy_fftn(array))
 
+
 @pmp('seed', [42])
-def test_iffts(seed):
+@pmp('shape', [(10), (32, 32), (16, 16, 16)])
+@pmp('dtype', [np.float64, np.complex128])
+def test_iffts(seed, shape, dtype):
     _sseq = [np.random.SeedSequence(seed)]
     _rng = np.random.default_rng(_sseq[-1])
-    array = _rng.normal(0, 1, (32, 32)).astype(np.float64, copy=False)
+    array = _rng.normal(0, 1, shape).astype(dtype, copy=False)
     assert_allclose(ifftn(array), _scipy_ifftn(array))
 
-@pmp('seed', [42])
-def test_hartleys(seed):
-    _sseq = [np.random.SeedSequence(seed)]
-    _rng = np.random.default_rng(_sseq[-1])
-    array = _rng.normal(0, 1, (32, 32)).astype(np.float64, copy=False)
-    assert_allclose(hartley(array), _scipy_hartley(array))
 
 @pmp('seed', [42])
-def test_vdots(seed):
+@pmp('shape', [(10), (32, 32), (16, 16, 16)])
+@pmp('dtype', [np.float64])
+def test_hartleys(seed, shape, dtype):
     _sseq = [np.random.SeedSequence(seed)]
     _rng = np.random.default_rng(_sseq[-1])
-    a = _rng.normal(0, 1, (32, 32)).astype(np.float64, copy=False)
-    b = _rng.normal(0, 1, (32, 32)).astype(np.float64, copy=False)
+    array = _rng.normal(0, 1, shape).astype(dtype, copy=False)
+    assert_allclose(hartley(array), _scipy_hartley(array))
+
+
+@pmp('seed', [42])
+@pmp('shape', [(10), (32, 32), (16, 16, 16)])
+@pmp('dtype', [np.float64, np.complex128])
+def test_vdots(seed, shape, dtype):
+    _sseq = [np.random.SeedSequence(seed)]
+    _rng = np.random.default_rng(_sseq[-1])
+    a = _rng.normal(0, 1, shape).astype(dtype, copy=False)
+    b = _rng.normal(0, 1, shape).astype(dtype, copy=False)
     assert_allclose(vdot(a, b), _scipy_vdot(a, b))
