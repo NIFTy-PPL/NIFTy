@@ -17,6 +17,7 @@
 
 
 import numpy as np
+import scipy.fft
 
 _nthreads = 1
 
@@ -28,6 +29,27 @@ def nthreads():
 def set_nthreads(nthr):
     global _nthreads
     _nthreads = int(nthr)
+
+
+def _scipy_fftn(a, axes=None):
+    return scipy.fft.fftn(a, axes=axes, workers=_nthreads)
+
+
+def _scipy_ifftn(a, axes=None):
+    return scipy.fft.ifftn(a, axes=axes, workers=_nthreads)
+
+
+def _scipy_hartley(a, axes=None):
+    tmp = scipy.fft.fftn(a, axes=axes, workers=_nthreads)
+    return tmp.real+tmp.imag
+
+
+def _scipy_vdot(a, b):
+    from .logger import logger
+    if (isinstance(a, np.ndarray) and a.dtype == np.float32) or \
+    (isinstance(b, np.ndarray) and b.dtype == np.float32):
+        logger.warning("Calling np.vdot in single precision may lead to inaccurate results")
+    return np.vdot(a, b)
 
 
 try:
@@ -56,25 +78,7 @@ try:
         return ducc0.misc.vdot(a, b)
 
 except ImportError:
-    import scipy.fft
-
-
-    def fftn(a, axes=None):
-        return scipy.fft.fftn(a, axes=axes, workers=_nthreads)
-
-
-    def ifftn(a, axes=None):
-        return scipy.fft.ifftn(a, axes=axes, workers=_nthreads)
-
-
-    def hartley(a, axes=None):
-        tmp = scipy.fft.fftn(a, axes=axes, workers=_nthreads)
-        return tmp.real+tmp.imag
-
-
-    def vdot(a, b):
-        from .logger import logger
-        if (isinstance(a, np.ndarray) and a.dtype == np.float32) or \
-           (isinstance(b, np.ndarray) and b.dtype == np.float32):
-            logger.warning("Calling np.vdot in single precision may lead to inaccurate results")
-        return np.vdot(a, b)
+    fftn = _scipy_fftn
+    ifftn = _scipy_ifftn
+    hartley = _scipy_hartley
+    vdot = _scipy_vdot
