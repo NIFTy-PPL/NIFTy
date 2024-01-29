@@ -144,15 +144,15 @@ def map_forest(
     **kwargs
 ) -> Callable:
     if out_axes != 0:
-        raise TypeError("`out_axis` not yet supported")
+        raise NotImplementedError("`out_axis` not yet supported")
     in_axes = in_axes if isinstance(in_axes, tuple) else (in_axes, )
     i = None
     for idx, el in enumerate(in_axes):
         if el is not None and i is None:
             i = idx
         elif el is not None and i is not None:
-            ve = "mapping over more than one axis is not yet supported"
-            raise ValueError(ve)
+            nie = "mapping over more than one axis is not yet supported"
+            raise NotImplementedError(nie)
     if i is None:
         raise ValueError("must map over at least one axis")
     if not isinstance(i, int):
