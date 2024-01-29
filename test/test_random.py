@@ -19,42 +19,51 @@ import nifty8 as ift
 import numpy as np
 
 
-def check_state_back_to_orig():
-    np.testing.assert_equal(len(ift.random._rng),1)
-    np.testing.assert_equal(len(ift.random._sseq),1)
+class RandomStateIsSane:
+    def __init__(self):
+        self._n_states = None
+
+    def __enter__(self):
+        self._n_states = len(ift.random._rng)
+        assert self._n_states == len(ift.random._sseq)
+
+    def __exit__(self, exc_type, exc_value, tb):
+        assert self._n_states == len(ift.random._rng)
+        assert self._n_states == len(ift.random._sseq)
+        return exc_type is None
 
 
 def test_rand1():
-    with ift.random.Context(31):
-        a = ift.random.current_rng().integers(0,1000000000)
-    with ift.random.Context(31):
-        b = ift.random.current_rng().integers(0,1000000000)
-    check_state_back_to_orig()
+    with RandomStateIsSane():
+        with ift.random.Context(31):
+            a = ift.random.current_rng().integers(0,1000000000)
+        with ift.random.Context(31):
+            b = ift.random.current_rng().integers(0,1000000000)
     np.testing.assert_equal(a,b)
 
 
 def test_rand2():
-    sseq = ift.random.spawn_sseq(10)
-    with ift.random.Context(sseq[2]):
-        a = ift.random.current_rng().integers(0,1000000000)
-    with ift.random.Context(sseq[2]):
-        b = ift.random.current_rng().integers(0,1000000000)
-    check_state_back_to_orig()
+    with RandomStateIsSane():
+        sseq = ift.random.spawn_sseq(10)
+        with ift.random.Context(sseq[2]):
+            a = ift.random.current_rng().integers(0,1000000000)
+        with ift.random.Context(sseq[2]):
+            b = ift.random.current_rng().integers(0,1000000000)
     np.testing.assert_equal(a,b)
 
 
 def test_rand3():
-    with ift.random.Context(31):
-        sseq = ift.random.spawn_sseq(10)
-        with ift.random.Context(sseq[2]):
-            a = ift.random.current_rng().integers(0,1000000000)
-    with ift.random.Context(31):
-        sseq = ift.random.spawn_sseq(1)
-        sseq = ift.random.spawn_sseq(1)
-        sseq = ift.random.spawn_sseq(1)
-        with ift.random.Context(sseq[0]):
-            b = ift.random.current_rng().integers(0,1000000000)
-    check_state_back_to_orig()
+    with RandomStateIsSane():
+        with ift.random.Context(31):
+            sseq = ift.random.spawn_sseq(10)
+            with ift.random.Context(sseq[2]):
+                a = ift.random.current_rng().integers(0,1000000000)
+        with ift.random.Context(31):
+            sseq = ift.random.spawn_sseq(1)
+            sseq = ift.random.spawn_sseq(1)
+            sseq = ift.random.spawn_sseq(1)
+            with ift.random.Context(sseq[0]):
+                b = ift.random.current_rng().integers(0,1000000000)
     np.testing.assert_equal(a,b)
 
 
@@ -67,47 +76,47 @@ def test_rand4():
 
 
 def test_rand5():
-    ift.random.push_sseq_from_seed(31)
-    a = ift.random.current_rng().integers(0,1000000000)
-    ift.random.push_sseq_from_seed(31)
-    b = ift.random.current_rng().integers(0,1000000000)
-    c = ift.random.current_rng().integers(0,1000000000)
-    ift.random.pop_sseq()
-    d = ift.random.current_rng().integers(0,1000000000)
-    ift.random.pop_sseq()
-    check_state_back_to_orig()
+    with RandomStateIsSane():
+        ift.random.push_sseq_from_seed(31)
+        a = ift.random.current_rng().integers(0,1000000000)
+        ift.random.push_sseq_from_seed(31)
+        b = ift.random.current_rng().integers(0,1000000000)
+        c = ift.random.current_rng().integers(0,1000000000)
+        ift.random.pop_sseq()
+        d = ift.random.current_rng().integers(0,1000000000)
+        ift.random.pop_sseq()
     np.testing.assert_equal(a,b)
     np.testing.assert_equal(c,d)
 
 
 def test_rand5b():
-    with ift.random.Context(31):
-        a = ift.random.current_rng().integers(0,1000000000)
+    with RandomStateIsSane():
         with ift.random.Context(31):
-            b = ift.random.current_rng().integers(0,1000000000)
-            c = ift.random.current_rng().integers(0,1000000000)
-        d = ift.random.current_rng().integers(0,1000000000)
-    check_state_back_to_orig()
+            a = ift.random.current_rng().integers(0,1000000000)
+            with ift.random.Context(31):
+                b = ift.random.current_rng().integers(0,1000000000)
+                c = ift.random.current_rng().integers(0,1000000000)
+            d = ift.random.current_rng().integers(0,1000000000)
     np.testing.assert_equal(a,b)
     np.testing.assert_equal(c,d)
 
 
 def test_rand6():
-    ift.random.push_sseq_from_seed(31)
-    state = ift.random.getState()
-    a = ift.random.current_rng().integers(0,1000000000)
-    ift.random.setState(state)
-    b = ift.random.current_rng().integers(0,1000000000)
-    np.testing.assert_equal(a,b)
-    ift.random.pop_sseq()
-    check_state_back_to_orig()
-
-
-def test_rand6b():
-    with ift.random.Context(31):
+    with RandomStateIsSane():
+        ift.random.push_sseq_from_seed(31)
         state = ift.random.getState()
         a = ift.random.current_rng().integers(0,1000000000)
         ift.random.setState(state)
         b = ift.random.current_rng().integers(0,1000000000)
         np.testing.assert_equal(a,b)
-    check_state_back_to_orig()
+        ift.random.pop_sseq()
+
+
+def test_rand6b():
+    with RandomStateIsSane():
+        with ift.random.Context(31):
+            state = ift.random.getState()
+            a = ift.random.current_rng().integers(0,1000000000)
+            ift.random.setState(state)
+            b = ift.random.current_rng().integers(0,1000000000)
+            np.testing.assert_equal(a,b)
