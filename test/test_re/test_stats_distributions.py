@@ -57,6 +57,17 @@ def test_lognormal_roundtrip(mean, std, seed):
         ),
         (stats.invgamma(a=2), jft.invgamma_prior(a=2, scale=1)),
         (stats.uniform(), jft.uniform_prior(a_min=0, a_max=1)),
+        (stats.norm(), jft.NormalPrior(mean=0, std=1)),
+        (stats.laplace(), jft.LaplacePrior(alpha=1)),
+        (
+            stats.lognorm(s=1),
+            jft.LogNormalPrior(
+                np.exp(0.5),
+                np.exp(0.5) * np.sqrt(np.exp(1) - 1)
+            )
+        ),
+        (stats.invgamma(a=2), jft.InvGammaPrior(a=2, scale=1)),
+        (stats.uniform(), jft.UniformPrior(a_min=0, a_max=1)),
     )
 )
 def test_quantiles(stats_and_prior):
