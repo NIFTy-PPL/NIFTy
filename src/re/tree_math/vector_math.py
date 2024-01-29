@@ -36,13 +36,13 @@ class ShapeWithDtype():
         dtype : dtype
             Data-type of the to-be-described object.
         """
-        from ..misc import is1d
+        from ..misc import is_iterable_of_non_iterables
 
         if isinstance(shape, int):
             shape = (shape, )
         if isinstance(shape, list):
             shape = tuple(shape)
-        if not is1d(shape):
+        if not is_iterable_of_non_iterables(shape):
             ve = f"invalid shape; got {shape!r}"
             raise TypeError(ve)
 

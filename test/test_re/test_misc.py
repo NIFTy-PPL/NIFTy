@@ -30,9 +30,9 @@ def test_dictsplit(params):
         (np.zeros(()), False),
         ([2, 3, 4], True),
         (False, False),
-        ((), False),
+        ((), True),
     ),
 )
 def test_is1d(params):
     obj, res = params
-    assert jft.misc.is1d(obj) is res
+    assert jft.misc.is_iterable_of_non_iterables(obj) is res

@@ -8,7 +8,7 @@ from jax.tree_util import (
     Partial, tree_flatten, tree_leaves, tree_map, tree_structure, tree_unflatten
 )
 
-from .misc import is1d, isiterable
+from .misc import is_iterable_of_non_iterables, isiterable
 from .model import LazyModel, NoValue
 from .tree_math import (
     ShapeWithDtype, Vector, conj, has_arithmetics, zeros_like
@@ -175,7 +175,7 @@ def partial_insert_and_remove(
 def _parse_swd(shape):
     leaves = tree_leaves(shape)
     if not all(hasattr(e, "shape") and hasattr(e, "dtype") for e in leaves):
-        if is1d(shape) or not isiterable(shape):
+        if is_iterable_of_non_iterables(shape) or not isiterable(shape):
             shape = ShapeWithDtype(shape)
         else:
             te = "`lsm_tangents_shapes` of invalid type"
