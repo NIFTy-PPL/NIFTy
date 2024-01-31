@@ -97,14 +97,18 @@ def generic_lh_metric(lh, p, t):
 
 
 # %%
-all_t_jft = {dev.device_kind: [] for dev in jax.devices()}
-all_t_nft = {dev.device_kind: [] for dev in jax.devices()}
 # dim_range = (16, 10**3, 10)
 dim_range = (16, 10**4, 20)
 all_dims = [(i,) * 2 for i in np.geomspace(*dim_range).astype(int)]
+
+all_devices = list(set(jax.devices()) | set(jax.devices(backend="cpu")))
+all_t_jft = {dev.device_kind: [] for dev in all_devices}
+all_t_nft = {dev.device_kind: [] for dev in all_devices}
 key = random.PRNGKey(123)
 
-for dev, dims in tqdm(itertools.product(jax.devices(), all_dims), total=len(all_dims)):
+for dev, dims in tqdm(
+    itertools.product(all_devices, all_dims), total=len(all_devices) * len(all_dims)
+):
     lh_jft = get_model_jft(dims)
     pos = jft.Vector(lh_jft.init(key))
     pos = jax.device_put(pos, device=dev)
@@ -116,7 +120,7 @@ for dev, dims in tqdm(itertools.product(jax.devices(), all_dims), total=len(all_
         timeit(lambda: jax.block_until_ready(lh_met(pos, pos)))
     )
 
-    if dev == jax.devices()[0]:
+    if dev.device_kind.lower() == "cpu":
         lh_nft = get_model_nft(dims, data=lh_jft.likelihood.data)
         pos_nft = ift.MultiField.from_dict(
             {
@@ -134,6 +138,14 @@ for dev, dims in tqdm(itertools.product(jax.devices(), all_dims), total=len(all_
                 lh_met_wm,
                 lh_metric_nft(pos_nft).val,
             )
+
+# %%
+devs_nm = "+".join(dev.device_kind for dev in all_devices)
+np.save(
+    f"benchmark_nthreads={nthreads}_devices={devs_nm}.npy",
+    dict(all_dims=all_dims, all_t_jft=all_t_jft, all_t_nft=all_t_nft),
+    allow_pickle=True,
+)
 
 # %%
 # The below is a fancy version of
@@ -180,6 +192,7 @@ fig.update_layout(
 )
 fig.update_xaxes(type="log")
 fig.update_yaxes(type="log")
-devs_nm = "+".join(dev.device_kind for dev in jax.devices())
-fig.write_html(f"benchmark_nthreads={nthreads}_devices={devs_nm}.html")
+devs_nm = "+".join(dev.device_kind for dev in all_devices)
 fig.show()
+fig.write_html(f"benchmark_nthreads={nthreads}_devices={devs_nm}.html")
+fig.write_image(f"benchmark_nthreads={nthreads}_devices={devs_nm}.png")
