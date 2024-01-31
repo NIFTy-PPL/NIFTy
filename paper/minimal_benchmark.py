@@ -193,6 +193,5 @@ fig.update_layout(
 fig.update_xaxes(type="log")
 fig.update_yaxes(type="log")
 devs_nm = "+".join(dev.device_kind for dev in all_devices)
-fig.show()
 fig.write_html(f"benchmark_nthreads={nthreads}_devices={devs_nm}.html")
 fig.write_image(f"benchmark_nthreads={nthreads}_devices={devs_nm}.png")
