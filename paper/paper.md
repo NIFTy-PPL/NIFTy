@@ -233,7 +233,11 @@ for i in range(opt_vi.n_total_iterations):
   print(opt_vi.get_status_message(samples, opt_vi_st))
 ```
 
-TODO: show plot
+![Data (left), posterior mean (middle), and posterior uncertainty (right) for a simple toy example.\label{fig:minimal_reconstruction_data_mean_std}](minimal_reconstruction_data_mean_std.png)
+
+\autoref{fig:minimal_reconstruction_data_mean_std} shows an exemplary posterior reconstruction employing the above model.
+The posterior mean is in good agreement with the data but completely removed the noisy structures.
+Differences between the posterior mean and the data are on the order of the posterior standard deviation.
 
 ## Performance compared to old NIFTy
 
