@@ -100,6 +100,7 @@ from functools import partial
 
 # %%
 import jax
+import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
@@ -107,30 +108,50 @@ pm = jax.tree_map(partial(jnp.mean, axis=0), jax.vmap(forward)(samples.samples))
 ps = jax.tree_map(partial(jnp.std, axis=0), jax.vmap(forward)(samples.samples))
 
 fig = make_subplots(
-    rows=1,
-    cols=3,
+    rows=2,
+    cols=2,
     horizontal_spacing=0.12,
-    column_titles=("truth", "posterior mean", "posterior std."),
+    vertical_spacing=0.2,
+    subplot_titles=("truth", "post. mean", "|truth - post. mean|", "posterior std."),
 )
 x, y = tuple(np.mgrid[slice(0.0, 1.0, d * 1j)] for d in dims)
 fig.add_trace(go.Heatmap(x=x, y=y, z=truth.T, coloraxis="coloraxis"), 1, 1)
 fig.add_trace(go.Heatmap(x=x, y=y, z=pm.T, coloraxis="coloraxis"), 1, 2)
-fig.add_trace(go.Heatmap(x=x, y=y, z=ps.T, coloraxis="coloraxis3"), 1, 3)
+fig.add_trace(
+    go.Heatmap(x=x, y=y, z=np.abs(truth - pm).T, coloraxis="coloraxis3"), 2, 1
+)
+fig.add_trace(go.Heatmap(x=x, y=y, z=ps.T, coloraxis="coloraxis3"), 2, 2)
+for i in range(1, 4 + 1):
+    ya = dict(title="y") if i in (1, 3) else dict()
+    xa = dict(title="x") if i in (3, 4) else dict()
+    fig.update_layout(
+        {
+            f"xaxis{i}": dict(range=(0, 1)) | xa,
+            f"yaxis{i}": dict(range=(0, 1), scaleanchor=f"x{i}", scaleratio=1.0) | ya,
+        }
+    )
 fig.update_layout(
     template="plotly_white",
-    width=720,
-    height=250,
-    xaxis1=dict(range=(0, 1), title="x"),
-    xaxis2=dict(range=(0, 1), title="x"),
-    xaxis3=dict(range=(0, 1), title="x"),
-    yaxis1=dict(range=(0, 1), title="y", scaleanchor="x1", scaleratio=1.),
-    yaxis2=dict(range=(0, 1), scaleanchor="x2", scaleratio=1.),
-    yaxis3=dict(range=(0, 1), scaleanchor="x3", scaleratio=1.),
-    coloraxis=dict(colorbar_x=0.26, colorbar_thickness=15),
-    coloraxis3=dict(colorbar_x=1.0075, colorscale="gray", colorbar_thickness=15),
+    width=550,
+    height=550,
+    coloraxis=dict(
+        colorbar_x=0.425,
+        colorbar_y=+0.79,
+        colorbar_len=0.4,
+        colorscale="viridis",
+        colorbar_thickness=15,
+    ),
+    coloraxis3=dict(
+        colorbar_x=0.425,
+        colorbar_y=+0.21,
+        colorbar_len=0.4,
+        colorscale="gray",
+        colorbar_thickness=15,
+    ),
     margin=dict(t=40, b=10, l=10, r=10),
 )
 fig.show()
+fig.write_html("minimal_reconstruction_truth_post_diff_std.html")
 
 # %%
 import nifty8 as ift
@@ -171,7 +192,6 @@ pos_ift = ift.MultiField.from_dict(pos_ift)
 lh_metric_ift = lh_ift(ift.Linearization.make_var(pos_ift, want_metric=True)).metric
 
 # %%
-import numpy as np
 from upy.detective import timeit
 
 # Warm-up and consistency test
