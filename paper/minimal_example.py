@@ -151,7 +151,40 @@ fig.update_layout(
     margin=dict(t=40, b=10, l=10, r=10),
 )
 fig.show()
-fig.write_html("minimal_reconstruction_truth_post_diff_std.html")
+fig.write_html("minimal_reconstruction_truth_mean_diff_std.html")
+fig.write_image("minimal_reconstruction_truth_mean_diff_std.png")
+
+# %%
+fig = make_subplots(
+    rows=1,
+    cols=3,
+    horizontal_spacing=0.12,
+    subplot_titles=("data", "post. mean", "posterior std."),
+)
+x, y = tuple(np.mgrid[slice(0.0, 1.0, d * 1j)] for d in dims)
+fig.add_trace(go.Heatmap(x=x, y=y, z=data.T, coloraxis="coloraxis"), 1, 1)
+fig.add_trace(go.Heatmap(x=x, y=y, z=pm.T, coloraxis="coloraxis"), 1, 2)
+fig.add_trace(go.Heatmap(x=x, y=y, z=ps.T, coloraxis="coloraxis3"), 1, 3)
+for i in range(1, 4 + 1):
+    ya = dict(title="y") if i in (1, 3) else dict()
+    xa = dict(title="x") if i in (3, 4) else dict()
+    fig.update_layout(
+        {
+            f"xaxis{i}": dict(range=(0, 1)) | xa,
+            f"yaxis{i}": dict(range=(0, 1), scaleanchor=f"x{i}", scaleratio=1.0) | ya,
+        }
+    )
+fig.update_layout(
+    template="plotly_white",
+    width=720,
+    height=250,
+    coloraxis=dict(colorbar_x=0.26, colorscale="viridis", colorbar_thickness=15),
+    coloraxis3=dict(colorbar_x=1.0075, colorscale="gray", colorbar_thickness=15),
+    margin=dict(t=40, b=10, l=10, r=10),
+)
+fig.show()
+fig.write_html("minimal_reconstruction_data_mean_std.html")
+fig.write_image("minimal_reconstruction_data_mean_std.png")
 
 # %%
 import nifty8 as ift
