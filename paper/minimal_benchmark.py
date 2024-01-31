@@ -18,7 +18,6 @@ import jax
 import nifty8 as ift
 import nifty8.re as jft
 import numpy as np
-import plotly.graph_objects as go
 from jax import numpy as jnp
 from jax import random
 from matplotlib import pyplot as plt
@@ -160,23 +159,29 @@ np.save(
 # ax.set_yscale("log")
 # plt.show()
 # ```
+import numpy as np
+import plotly.graph_objects as go
+
+fn_benchmark = "benchmark_nthreads=1_devices=cpu+NVIDIA A100-SXM4-80GB.npy"
+savestate = np.load(fn_benchmark, allow_pickle=True).item()
 
 fig = go.Figure()
-for nm in all_t_jft.keys():
+for nm in savestate["all_t_jft"].keys():
+    pretty_name = nm if not nm.lower().startswith("nvidia") else "GPU"
     fig.add_trace(
         go.Scatter(
-            x=np.array([np.prod(d) for d in all_dims]),
-            y=np.array([t.time for t in all_t_jft[nm]]),
+            x=np.array([np.prod(d) for d in savestate["all_dims"]]),
+            y=np.array([t.time for t in savestate["all_t_jft"][nm]]),
             mode="lines+markers",
-            name=f"{nm.upper()} NIFTy.re",
+            name=f"{pretty_name.upper()} NIFTy.re",
         )
     )
-assert len(all_t_nft)
-nm = list(all_t_nft.keys())[0]
+assert len(savestate["all_t_nft"])
+nm = list(savestate["all_t_nft"].keys())[0]
 fig.add_trace(
     go.Scatter(
-        x=np.array([np.prod(d) for d in all_dims]),
-        y=np.array([t.time for t in all_t_nft[nm]]),
+        x=np.array([np.prod(d) for d in savestate["all_dims"]]),
+        y=np.array([t.time for t in savestate["all_t_nft"][nm]]),
         mode="lines+markers",
         name=f"NIFTy",
     )
@@ -192,6 +197,5 @@ fig.update_layout(
 )
 fig.update_xaxes(type="log")
 fig.update_yaxes(type="log")
-devs_nm = "+".join(dev.device_kind for dev in all_devices)
-fig.write_html(f"benchmark_nthreads={nthreads}_devices={devs_nm}.html")
-fig.write_image(f"benchmark_nthreads={nthreads}_devices={devs_nm}.png")
+fig.write_html(fn_benchmark.replace(".npy", ".html"))
+fig.write_image(fn_benchmark.replace(".npy", ".png"))
