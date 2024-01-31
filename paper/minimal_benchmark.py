@@ -2,7 +2,7 @@
 
 import os
 
-nthreads = 8
+nthreads = 1
 
 os.environ[
     "XLA_FLAGS"
