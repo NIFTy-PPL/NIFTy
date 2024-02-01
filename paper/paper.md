@@ -49,7 +49,7 @@ header-includes:
 * \texttt{NIFTy} is a Bayesian imaging framework that propagates the statistical uncertainty in the data and the model to the image domain.
 * \texttt{NIFTy} has already successfully been applied to the fields of radio astronomy, galactic tomography, and observational cosmology.
 * A focus on CPU computing and previous design decisions, held the performance and the development of new inference methods in \texttt{NIFTy} back.
-* We present a re-write of NIFTy, coined \texttt{NIFTy.re}, which bridges \texttt{NIFTy} to Machine Learning ecosystem, reworks the modeling principle, the inference strategy, and outsources much of the heavy lifting to JAX to easy future developments.
+* We present a re-write of NIFTy, coined \texttt{NIFTy.re}, which bridges \texttt{NIFTy} to Machine Learning ecosystem, reworks the modeling principle, the inference strategy, and outsources much of the heavy lifting to JAX to ease maintainability and allow for a faster development cycle.
 * The re-write dramatically accelerated models written in NIFTy, lays the foundation for new kinds of inference machineries, and enables the interoperability of \texttt{NIFTy} with the JAX/XLA Machine Learning ecosystem.
 
 # Statement of Need
@@ -139,11 +139,9 @@ See the demonstration scripts in the repository for an example.
 
 Models are rarely just a GP prior.
 Commonly a model contains at least several non-linearities that transform the GP prior or combine it with other random variables.
-To built up more involved models, \texttt{NIFTy.re} provides a `Model` class that provides a somewhat familiar object-oriented design yet is fully JAX compatible and functional under the hood.
+For building more complex models, \texttt{NIFTy.re} provides a `Model` class that offers a somewhat familiar object-oriented design, yet is fully JAX compatible and functional under the hood.
 By inheriting from `Model`, a class is registered as a PyTree in JAX.
-Individual attributes of the class can be marked as static or non-static via `dataclass.field(metadata=dict(static=...))`.
-Depending on the value, JAX will either trace through the attribute under just-in-time compiles or treats them as static.
-The dataclass-style model is inspired by equinox [@Kidger2021].
+The following code showcases such a model that builds up a slightly more involved model using the objects from the previous example.
 
 ```python
 from jax import numpy as jnp
@@ -170,9 +168,10 @@ lh = jft.Poissonian(data).amend(forward)
 ```
 
 All GP models in \texttt{NIFTy.re} as well as all likelihoods are registered as PyTrees and can be traced by JAX.
-Thus, `correlated_field`, `forward`, and `lh` from the preceding code snippets are all PyTrees in JAX and, e.g., the following is valid code `jax.jit(lambda l, x: l(x))(lh, x0)` with `x0` some arbitrarily chosen valid input to `lh`.
-By registering fields of `Forward` via `dataclass.field` and setting the `static` key in the metadata to `False`/`True`, we can control what gets in-lined and what is traced by JAX.
-This mechanism is extensively used in likelihoods to avoid in-lining large constants such as the data and avoiding expensive re-compiles whenever possible.
+Thus, `correlated_field`, `forward`, and `lh` from the code snippets shown here are all PyTrees in JAX and, e.g., the following is valid code `jax.jit(lambda l, x: l(x))(lh, x0)` with `x0` some arbitrarily chosen valid input to `lh`.
+Inspired by equinox [@Kidger2021], individual attributes of the class can be marked as static or non-static via `dataclass.field(metadata=dict(static=...))`.
+Depending on the value, JAX will either trace through the attribute under just-in-time compiles or treat them as static and inline them.
+This mechanism is extensively used in likelihoods to avoid inlining large constants such as the data and avoiding expensive re-compiles whenever possible.
 
 ## Variational Inference
 
