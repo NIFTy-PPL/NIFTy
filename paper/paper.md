@@ -247,27 +247,27 @@ Within \texttt{NIFTy.re} the Fisher metric of the overall likelihood is decompos
 We choose to benchmark $M_p$ as a typical minimization in \texttt{NIFTy.re} and \texttt{NIFTy} is dominated by calls to this function.
 These calls are essential in both the sampling and the approximate second order minimization.
 
-TODO: do performance benchmark and insert figure
+![Performance comparison of \texttt{NIFTy.re} on the CPU (one thread of an Intel Xeon Platinum 8358 CPU clocked at 2.60G Hz) and GPU (A100 SXM4 80 GB HBM2) versus \texttt{NIFTy}.\label{fig:benchmark_nthreads=1_devices=cpu+gpu}](benchmark_nthreads=1_devices=cpu+gpu.png)
 
-Figure TODO shows the evaluation time in \texttt{NIFTy} for applying $M_p$ to a new tangent position and the evaluation time in \texttt{NIFTy.re} for building $M_p$ and applying it to a new tangent position for exponentially larger models.
-The benchmarks used eight threads on a compute node with an TODO CPU and a TODO GPU.
+\autoref{{fig:benchmark_nthreads=1_devices=cpu+gpu}} shows the evaluation time in \texttt{NIFTy} for applying $M_p$ to a new tangent position and the evaluation time in \texttt{NIFTy.re} for building $M_p$ and applying it to a new tangent position for exponentially larger models.
+The benchmarks used one thread on a compute-node with an Intel Xeon Platinum 8358 CPU clocked at 2.60G Hz and an NVIDIA A100 SXM4 80 GB HBM2 GPU.
 We vary the size of the model by increasing the size of two-dimensional square image grid.
-We choose to exclude the build time of $M_p$ in \texttt{NIFTy} from the comparison, putting \texttt{NIFTy} at an advantage, as \texttt{NIFTy} incurs a noticeable overhead for the assembly of $M_p$ that is typically only required on roughly every tenth evaluation of $M_p$ because $p$ is varied less often than the tangent position in a typical minimization.
+We choose to exclude the build time of $M_p$ in \texttt{NIFTy} from the comparison, putting \texttt{NIFTy} at an advantage, as \texttt{NIFTy} incurs a noticeable overhead for the assembly of $M_p$ that is typically only required on roughly every tenth evaluation of $M_p$ as $p$ is varied less often than the tangent position in a typical minimization.
 
-For small problem sizes, \texttt{NIFTy.re} on the CPU is TODO faster than \texttt{NIFTy}.
-Both reach about the same performance at a problem size of TODO and continue to perform roughly the same for larger problem sizes except for a small bump in \texttt{NIFTy.re}'s performance for an image grid of size $933 \times 933$.
-\texttt{NIFTy.re} on the GPU is consistently TODO faster than \texttt{NIFTy}.
+For small image sizes, \texttt{NIFTy.re} on the CPU is about one order of magnitude faster than \texttt{NIFTy}.
+Both reach about the same performance at an image of roughly 15,000 pixels and continue to perform roughly the same for larger image sizes.
+\texttt{NIFTy.re} on the GPU is consistently about one to two orders of magnitude faster than \texttt{NIFTy} for images larger than 100,000 pixels.
 
 We believe the performance benefits of \texttt{NIFTy.re} on the CPU to stem from the reduced python overhead by just-in-time compiling computations.
-At a problem size of TODO, both evaluation times are dominated by the fast Fourier transform and are hence the same as both use the same underlying implementation [TODO:cite_ducc0].
+At image sizes larger than roughly 15,000 pixels, both evaluation times are dominated by the fast Fourier transform and are hence the same as both use the same underlying implementation [@ducc0].
 Typical models in \texttt{NIFTy.re} and \texttt{NIFTy} are often well aligned with GPU programming models and thus consistently perform well on the GPU.
-Models such as the new GP model implemented in \texttt{NIFTy.re} are even better aligned with GPU programming models and yield even higher performance gains [@Edenhofer2022].
+Models such as the new GP model implemented in \texttt{NIFTy.re} are even better aligned with GPU programming models and yield even higher performance gains, see @Edenhofer2022.
 
 # Conclusion
 
 We implemented and extended the core GP and VI machinery of the Bayesian imaging package \texttt{NIFTy} in JAX.
 The re-write moves much of the heavy-lifting into JAX, and we envision significant gains in maintainability of \texttt{NIFTy.re} and a faster development cycle moving forward.
-The re-write accelerated typical models written in \texttt{NIFTy} by TODO, lays the foundation for a new kind of inference machinery by enabling higher order derivates via JAX, and enables the interoperability of \texttt{NIFTy} with the VI and GP methods from the JAX/XLA Machine Learning ecosystem.
+The re-write accelerated typical models written in \texttt{NIFTy} by one to two orders of magnitude, lays the foundation for a new kind of inference machinery by enabling higher order derivates via JAX, and enables the interoperability of \texttt{NIFTy} with the VI and GP methods from the JAX/XLA Machine Learning ecosystem.
 
 # Acknowledgements
 
