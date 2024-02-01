@@ -112,7 +112,7 @@ fig = make_subplots(
     cols=2,
     horizontal_spacing=0.12,
     vertical_spacing=0.2,
-    subplot_titles=("truth", "post. mean", "|truth - post. mean|", "posterior std."),
+    subplot_titles=("truth", "post. mean", "|truth - post. mean|", "post. std."),
 )
 x, y = tuple(np.mgrid[slice(0.0, 1.0, d * 1j)] for d in dims)
 fig.add_trace(go.Heatmap(x=x, y=y, z=truth.T, coloraxis="coloraxis"), 1, 1)
@@ -159,7 +159,7 @@ fig = make_subplots(
     rows=1,
     cols=3,
     horizontal_spacing=0.12,
-    subplot_titles=("data", "post. mean", "posterior std."),
+    subplot_titles=("data", "post. mean", "post std."),
 )
 x, y = tuple(np.mgrid[slice(0.0, 1.0, d * 1j)] for d in dims)
 fig.add_trace(go.Heatmap(x=x, y=y, z=data.T, coloraxis="coloraxis"), 1, 1)
