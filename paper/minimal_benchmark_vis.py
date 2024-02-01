@@ -53,4 +53,4 @@ fig.update_layout(
 fig.update_xaxes(type="log")
 fig.update_yaxes(type="log")
 fig.write_html(fn_benchmark.replace(".npy", ".html"))
-fig.write_image(fn_benchmark.replace(".npy", ".png"))
+fig.write_image(fn_benchmark.replace(".npy", ".png"), scale=4)

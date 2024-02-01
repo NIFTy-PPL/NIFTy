@@ -152,7 +152,7 @@ fig.update_layout(
 )
 fig.show()
 fig.write_html("minimal_reconstruction_truth_mean_diff_std.html")
-fig.write_image("minimal_reconstruction_truth_mean_diff_std.png")
+fig.write_image("minimal_reconstruction_truth_mean_diff_std.png", scale=4)
 
 # %%
 fig = make_subplots(
@@ -184,7 +184,7 @@ fig.update_layout(
 )
 fig.show()
 fig.write_html("minimal_reconstruction_data_mean_std.html")
-fig.write_image("minimal_reconstruction_data_mean_std.png")
+fig.write_image("minimal_reconstruction_data_mean_std.png", scale=4)
 
 # %%
 import nifty8 as ift
