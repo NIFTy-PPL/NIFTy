@@ -37,13 +37,18 @@ def test_reduced_residual_stats_normal_residuals(seed):
 def test_reduced_chi_square_dtype(seed, complex):
     sseq = np.random.SeedSequence(seed)
     rng = np.random.default_rng(sseq)
-    norm_res = rng.normal(size=(10), )
+    n_npix =500
+    norm_res = rng.normal(size=(n_npix), )
     if complex:
-        norm_res = norm_res + 1j*rng.normal(size=(10), )
+        norm_res = norm_res + 1j*rng.normal(size=(n_npix), )
     rrs = reduced_residual_stats(norm_res)
     assert rrs.mean.dtype == norm_res.dtype
     # chi^2 should be real and positive
     assert np.abs(rrs.reduced_chisq[0]) == rrs.reduced_chisq[0]
+
+    atol, rtol = 1e-1, 1e-1
+    assert_allclose(rrs.reduced_chisq[0], 1., atol=atol, rtol=rtol)
+    assert_allclose(rrs.mean, 0., atol=atol, rtol=rtol)
 
 
 
