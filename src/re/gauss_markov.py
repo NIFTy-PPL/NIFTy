@@ -143,9 +143,7 @@ class GaussMarkovProcess(Model):
                 msg = "`N_steps` is None and `dt` is not a sequence"
                 raise NotImplementedError(msg)
             dt = np.ones(N_steps) * dt
-        shp = x0.target if isinstance(x0, Model) else x0
-        shp = () if _isscalar(shp) else shp.shape
-        shp = dt.shape + shp
+        shp = dt.shape + jnp.shape(x0.target if isinstance(x0, Model) else x0)
         domain = {name: ShapeWithDtype(shp)}
         init = Initializer(
             tree_map(lambda x: partial(random_like, primals=x), domain)
