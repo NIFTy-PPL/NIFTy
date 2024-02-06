@@ -41,11 +41,9 @@ def test_reduced_chi_square_dtype(seed, complex):
     if complex:
         norm_res = norm_res + 1j*rng.normal(size=(10), )
     rrs = reduced_residual_stats(norm_res)
-    if not rrs.mean.dtype == norm_res.dtype:
-        raise ValueError()
+    assert rrs.mean.dtype == norm_res.dtype
     # chi^2 should be real and positive
-    if not np.abs(rrs.reduced_chisq[0]) == rrs.reduced_chisq[0]:
-        raise ValueError()
+    assert np.abs(rrs.reduced_chisq[0]) == rrs.reduced_chisq[0]
 
 
 
