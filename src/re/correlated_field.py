@@ -241,16 +241,24 @@ def non_parametric_amplitude(
     mode_multiplicity = grid.harmonic_grid.mode_multiplicity
     log_vol = grid.harmonic_grid.log_volume
 
-    fluctuations = WrappedCall(fluctuations, name=prefix + "fluctuations")
+    fluctuations = WrappedCall(fluctuations,
+                               name=prefix + "fluctuations",
+                               white_init=True)
     ptree = fluctuations.domain.copy()
-    loglogavgslope = WrappedCall(loglogavgslope, name=prefix + "loglogavgslope")
+    loglogavgslope = WrappedCall(loglogavgslope,
+                                 name=prefix + "loglogavgslope",
+                                 white_init=True)
     ptree.update(loglogavgslope.domain)
     if flexibility is not None and (log_vol.size > 0):
-        flexibility = WrappedCall(flexibility, name=prefix + "flexibility")
+        flexibility = WrappedCall(flexibility,
+                                  name=prefix + "flexibility",
+                                  white_init=True)
         assert log_vol is not None
         assert rel_log_mode_len.ndim == log_vol.ndim == 1
         if asperity is not None:
-            asperity = WrappedCall(asperity, name=prefix + "asperity")
+            asperity = WrappedCall(asperity,
+                                   name=prefix + "asperity",
+                                   white_init=True)
         deviations = IntegratedWienerProcess(
             jnp.zeros((2,)),
             flexibility,
