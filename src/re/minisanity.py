@@ -15,8 +15,8 @@ I = TypeVar('I')
 
 def _residual_params(inp):
     ndof = inp.size if jnp.isrealobj(inp) else 2 * inp.size
-    mean = jnp.sum(inp.real + inp.imag) / ndof
-    rchisq = jnp.vdot(inp, inp) / ndof
+    mean = jnp.sum(inp) / inp.size
+    rchisq = jnp.vdot(inp, inp).real / ndof
     return mean, rchisq, ndof
 
 
