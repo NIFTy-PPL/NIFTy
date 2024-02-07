@@ -10,23 +10,25 @@ authors:
   - name: Gordian Edenhofer
     orcid: 0000-0003-3122-4894
     corresponding: true
-    affiliation: "1, 2"  # Multiple affiliations must be quoted
+    affiliation: "1, 2, 3"  # Multiple affiliations must be quoted
   - name: Philipp Frank
     orcid: 0000-0001-5610-3779
     corresponding: false
-    affiliation: 1
+    affiliation: "1"
   - name: Jakob Roth
     orcid: 0000-0002-8873-8215
     corresponding: false
-    affiliation: "1, 2, 3"
+    affiliation: "1, 2, 4"
   - name: et al.
 affiliations:
  - name: Max Planck Institute for Astrophysics, Karl-Schwarzschild-Straße 1, 85748 Garching bei München, Germany
    index: 1
  - name: Ludwig Maximilian University of Munich, Geschwister-Scholl-Platz 1, 80539 München, Germany
    index: 2
- - name: Technical University of Munich (TUM), Boltzmannstr. 3, 85748 Garching bei München, Germany
+ - name: Department of Astrophysics, University of Vienna, Türkenschanzstrasse 17, A-1180 Wien, Austria
    index: 3
+ - name: Technical University of Munich (TUM), Boltzmannstr. 3, 85748 Garching bei München, Germany
+   index: 4
 date: 31 August 2023
 bibliography: paper.bib
 header-includes:
