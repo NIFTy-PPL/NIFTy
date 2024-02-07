@@ -34,7 +34,7 @@ def isiterable(candidate):
         return False
 
 
-def is1d(ls: Any) -> bool:
+def is_iterable_of_non_iterables(ls: Any) -> bool:
     """Indicates whether the input is one dimensional.
 
     An object is considered one dimensional if it is an iterable of
