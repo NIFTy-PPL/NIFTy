@@ -55,12 +55,11 @@ header-includes:
 
 # Summary
 
-* Imaging at the most basic level is the process of transforming noisy, incomplete data into a space that humans can interpret.
-* \texttt{NIFTy} is a Bayesian imaging framework that propagates the statistical uncertainty in the data and the model to the image domain.
-* \texttt{NIFTy} has already successfully been applied to the fields of radio, X-, and gamma-ray astronomy, galactic tomography, astroparticle physics and observational cosmology.
-* A focus on CPU computing and previous design decisions held the performance and the development of new inference methods in \texttt{NIFTy} back.
-* We present a re-write of NIFTy, coined \texttt{NIFTy.re}, which bridges \texttt{NIFTy} to Machine Learning ecosystem, reworks the modeling principle, the inference strategy, and outsources much of the heavy lifting to JAX to ease maintainability and allow for a faster development cycle.
-* The re-write dramatically accelerated models written in NIFTy, lays the foundation for new kinds of inference machineries, and enables the interoperability of \texttt{NIFTy} with the JAX/XLA Machine Learning ecosystem.
+Imaging is the process of transforming noisy, incomplete data into a space that humans can interpret.
+\texttt{NIFTy} is a Bayesian framework for imaging and has already successfully been applied to many fields in astrophysics.
+A focus on CPU computing and previous design decisions held the performance and the development of methods in \texttt{NIFTy} back.
+We present a re-write of \texttt{NIFTy}, coined \texttt{NIFTy.re}, which bridges \texttt{NIFTy} to the Machine Learning ecosystem, reworks the modeling principle, extends the inference strategies, and outsources much of the heavy lifting to JAX.
+The re-write dramatically accelerated models written in \texttt{NIFTy}, lays the foundation for new kinds of inference machineries, improves maintainability, and enables the interoperability of \texttt{NIFTy} with the JAX Machine Learning ecosystem.
 
 # Statement of Need
 
