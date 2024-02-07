@@ -8,12 +8,12 @@ from typing import Callable, Optional, Tuple, Union
 import numpy as np
 from jax import numpy as jnp
 
+from .gauss_markov import IntegratedWienerProcess
 from .logger import logger
 from .misc import wrap
 from .model import Model, WrappedCall
 from .num import lognormal_prior, normal_prior
 from .tree_math import ShapeWithDtype, random_like
-from .gauss_markov import IntegratedWienerProcess
 
 
 def hartley(p, axes=None):
@@ -241,30 +241,31 @@ def non_parametric_amplitude(
     mode_multiplicity = grid.harmonic_grid.mode_multiplicity
     log_vol = grid.harmonic_grid.log_volume
 
-    fluctuations = WrappedCall(fluctuations,
-                               name=prefix + "fluctuations",
-                               white_init=True)
+    fluctuations = WrappedCall(
+        fluctuations, name=prefix + "fluctuations", white_init=True
+    )
     ptree = fluctuations.domain.copy()
-    loglogavgslope = WrappedCall(loglogavgslope,
-                                 name=prefix + "loglogavgslope",
-                                 white_init=True)
+    loglogavgslope = WrappedCall(
+        loglogavgslope, name=prefix + "loglogavgslope", white_init=True
+    )
     ptree.update(loglogavgslope.domain)
     if flexibility is not None and (log_vol.size > 0):
-        flexibility = WrappedCall(flexibility,
-                                  name=prefix + "flexibility",
-                                  white_init=True)
+        flexibility = WrappedCall(
+            flexibility, name=prefix + "flexibility", white_init=True
+        )
         assert log_vol is not None
         assert rel_log_mode_len.ndim == log_vol.ndim == 1
         if asperity is not None:
-            asperity = WrappedCall(asperity,
-                                   name=prefix + "asperity",
-                                   white_init=True)
+            asperity = WrappedCall(
+                asperity, name=prefix + "asperity", white_init=True
+            )
         deviations = IntegratedWienerProcess(
-            jnp.zeros((2,)),
+            jnp.zeros((2, )),
             flexibility,
             log_vol,
             name=prefix + "spectrum",
-            asperity=asperity)
+            asperity=asperity
+        )
         ptree.update(deviations.domain)
     else:
         deviations = None
@@ -278,7 +279,7 @@ def non_parametric_amplitude(
         if deviations is not None:
             twolog = deviations(primals)
             # Prepend zeromode
-            twolog = jnp.concatenate((jnp.zeros((1,)), twolog[:,0]))
+            twolog = jnp.concatenate((jnp.zeros((1, )), twolog[:, 0]))
             ln_spectrum += _remove_slope(rel_log_mode_len, twolog)
 
         # Exponentiate and norm the power spectrum

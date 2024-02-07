@@ -156,8 +156,10 @@ def test_nifty_vs_niftyre_non_parametric_cf(
     cf = cfm.finalize(prior_info=0)
 
     pos = jft.random_like(key, jcf.domain)
-    npos = {k: ift.makeField(cf.domain[k], v if k != "spectrum" else v.T) for
-            k, v in pos.items()}
+    npos = {
+        k: ift.makeField(cf.domain[k], v if k != "spectrum" else v.T)
+        for k, v in pos.items()
+    }
     npos = ift.MultiField.from_dict(npos, cf.domain)
     assert_allclose(cf(npos).val, jcf(pos))
 
