@@ -87,14 +87,15 @@ We expect \texttt{NIFTy.re} to be highly useful for many imaging applications an
 A very early version of \texttt{NIFTy.re} enabled a 100 billion dimensional reconstruction using a maximum posterior inference.
 In a newer publication, \texttt{NIFTy.re} was used to infer a 500 million dimensional posterior dimensional using VI [@Knollmueller2019].
 The latter publication extensively used \texttt{NIFTy.re}'s GPU support, which yielded orders of magnitude speed-ups.
-With \texttt{NIFTy.re} bridging ideas from \texttt{NIFTy} to JAX/XLA, we envision many new possibilities for inferring classical Machine Learning models with \texttt{NIFTy}'s inference methods and using \texttt{NIFTy}-components such as the GP models in classical neural network frameworks.
+With \texttt{NIFTy.re} bridging ideas from \texttt{NIFTy} to JAX, we envision many new possibilities for inferring classical Machine Learning models with \texttt{NIFTy}'s inference methods and using \texttt{NIFTy}-components such as the GP models in classical neural network frameworks.
 
 <!-- A list of key references, including to other software addressing related needs. Note that the references should include full names of venues, e.g., journals and conferences, not abbreviations only understood in the context of a specific discipline. -->
 \texttt{NIFTy.re} competes with other GP libraries as well as with probabilistic programming languages and frameworks.
 Compared to GPyTorch [@Hensman2015], GPflow [@Matthews2017], george [@Sivaram2015], or TinyGP [@ForemanMackey2024], \texttt{NIFTy} and \texttt{NIFTy.re} focus on GP models for structured spaces.
 Neither \texttt{NIFTy} nor \texttt{NIFTy.re} assume the posterior to be analytically accessible.
 Instead, \texttt{NIFTy} and \texttt{NIFTy.re} try to approximate the true posterior using VI.
-Compared to classical probabilistic programming languages such as Stan [@Carpenter2017] and frameworks such pyro [@Bingham2019], numpyro [@Phan2019], pyMC3 [@Salvatier2016], Emcee [@ForemanMackey2013], dynesty [@Speagle2020; @Koposov2023], or blackjax [@blackjax2020], \texttt{NIFTy} and \texttt{NIFTy.re} focus on high dimensional inference with millions to billions of degrees of freedom exploiting the structure of generative modeling and taylored scalable (non)-Gaussian VI techniques [@Frank2021].
+Compared to classical probabilistic programming languages such as Stan [@Carpenter2017] and frameworks such pyro [@Bingham2019], numpyro [@Phan2019], pyMC3 [@Salvatier2016], Emcee [@ForemanMackey2013], dynesty [@Speagle2020; @Koposov2023], or blackjax [@blackjax2020], \texttt{NIFTy} and \texttt{NIFTy.re} focus on high dimensional inference with millions to billions of degrees of freedom.
+\texttt{NIFTy} and \texttt{NIFTy.re} exploit the structure of probabilistic models in their VI techniques [@Frank2021].
 With \texttt{NIFTy.re} the GP models and the VI machinery are now fully accessible in the JAX ecosystem and \texttt{NIFTy.re} components interact seamlessly with other JAX packages such as `blackjax` and `jaxopt` [@Blondel2021].
 
 # Core Components
@@ -118,8 +119,8 @@ During standardization, all relevant details of the prior model are encoded in t
 One standard tool from the \texttt{NIFTy.re} toolbox are the structured GP models from \texttt{NIFTy}.
 These models usually rely on the harmonic domain being easily accessible, e.g. for pixels spaced on a regular Cartesian grid, the natural choice to represent a stationary kernel is the Fourier domain.
 In the generative picture, a realization $s$ drawn from a GP then reads $s = \mathcal{HT} \cdot \sqrt{P} \cdot \xi$ with $\mathcal{HT}$ the harmonic transform, $\sqrt{P}$ the square-root of the power-spectrum in harmonic space, and $\xi$ standard Gaussian random variables.
-In the implementation in \texttt{NIFTy.re} and \texttt{NIFTy}, the user can choose between two adaptive models for the kernel, a non-parametric kernel $\sqrt{P}$ and a Matérn kernel $\sqrt{P}$ [@Arras2022; @Guardiani2022 for details on their implementation].
-An example initializing an adaptive, non-parameteric GP prior for a $128 \times 128$ space with unit volume is shown in the following.
+In the implementation in \texttt{NIFTy.re} and \texttt{NIFTy}, the user can choose between two adaptive kernel models, a non-parametric kernel $\sqrt{P}$ and a Matérn kernel $\sqrt{P}$ [@Arras2022; @Guardiani2022 for details on their implementation].
+An example, initializing a non-parameteric GP prior for a $128 \times 128$ space with unit volume is shown in the following.
 
 ```python
 from nifty8 import re as jft
@@ -141,7 +142,7 @@ correlated_field = cfm.finalize()  # forward model for a GP prior
 ```
 
 Not all problems are well described by regularly spaced pixels.
-For more complicated spaced pixels, \texttt{NIFTy.re} features implementations of Gauss-Markov processes as well as Iterative Charted Refinement [@Edenhofer2022], a GP model for arbitrarily deformed spaces.
+For more complicated spaced pixels, \texttt{NIFTy.re} features Iterative Charted Refinement [@Edenhofer2022], a GP model for arbitrarily deformed spaces.
 This model exploits nearest neighbor relations on various coarsening of the discretized modeled space and runs very efficiently on GPUs.
 See the demonstration scripts in the repository for an example.
 
@@ -187,7 +188,7 @@ This mechanism is extensively used in likelihoods to avoid inlining large consta
 \texttt{NIFTy.re} is built for models with millions to billions of degrees of freedom.
 To probe the posterior efficiently and accurately, \texttt{NIFTy.re} relies on VI.
 Specifically, \texttt{NIFTy.re} implements Metric Gaussian Variational Inference (MGVI) and its successor geometric Variational Inference (geoVI) [@Knollmueller2019 @Frank2021 @Frank2022].
-At the core of both MGVI and geoVI lies an alternating procedure in which we switch between optimizing the Kullback–Leibler divergence for a specific shape of the variational posterior and updating the shape of the variational posterior, where geoVI extends the shape of the posterior to non-Gaussian VI approximations by further refining the update step of MGVI.
+At the core of both MGVI and geoVI lies an alternating procedure in which we switch between optimizing the Kullback–Leibler divergence for a specific shape of the variational posterior and updating the shape of the variational posterior.
 MGVI and geoVI define the variational posterior via samples, specifically, via samples drawn around an expansion point.
 The samples in MGVI and geoVI exploit model-intrinsic knowledge of the posterior's approximate shape, encoded in the Fisher information metric and the prior curvature [@Frank2021].
 
@@ -245,13 +246,13 @@ for i in range(opt_vi.n_total_iterations):
 ![Data (left), posterior mean (middle), and posterior uncertainty (right) for a simple toy example.\label{fig:minimal_reconstruction_data_mean_std}](minimal_reconstruction_data_mean_std.png)
 
 \autoref{fig:minimal_reconstruction_data_mean_std} shows an exemplary posterior reconstruction employing the above model.
-The posterior mean agrees with the data but completely removes noisy structures.
-The posterior standard deviation is smaller or equal to typical differences between the posterior mean and the data, as expected by the experiment.
+The posterior mean agrees with the data but removes noisy structures.
+The posterior standard deviation is approximately equal to typical differences between the posterior mean and the data.
 
 ## Performance compared to old NIFTy
 
 We test the performance of \texttt{NIFTy.re} against \texttt{NIFTy} for the simple yet representative model from above.
-To assess the performance, we benchmark the $M_p \coloneqq F_p + \mathbb{1}$ with $F_p$ denoting the Fisher metric of the overall likelihood at position $p$ and $\mathbb{1}$ the identity matrix.
+To assess the performance, we benchmark $M_p \coloneqq F_p + \mathbb{1}$ with $F_p$ denoting the Fisher metric of the overall likelihood at position $p$ and the identity matrix $\mathbb{1}$ which is the curvature of the standardized prior analogous to the Fisher metric.
 Within \texttt{NIFTy.re} the Fisher metric of the overall likelihood is decomposed into $J_{f,p}^\dagger N^{-1} J_{f,p}$ with $J_{f,p}$ the implicit Jacobian of the forward model $f$ at $p$ and $N$ the Fisher-metric of the Poisson likelihood.
 We choose to benchmark $M_p$ as a typical VI minimization in \texttt{NIFTy.re} and \texttt{NIFTy} is dominated by calls to this function.
 
@@ -270,13 +271,13 @@ On the GPU, \texttt{NIFTy.re} is consistently about one to two orders of magnitu
 We believe the performance benefits of \texttt{NIFTy.re} on the CPU for small models stem from the reduced python overhead by just-in-time compiling computations.
 At image sizes larger than roughly 15,000 pixels, both evaluation times are dominated by the fast Fourier transform and are hence roughly the same as both use the same underlying implementation [@ducc0].
 Typical models in \texttt{NIFTy.re} and \texttt{NIFTy} are often well aligned with GPU programming models and thus consistently perform well on the GPU.
-Models such as the new nearest-neighbor GP model implemented in \texttt{NIFTy.re} are even better aligned with GPU programming models and yield even higher performance gains, see [@Edenhofer2022].
+Models such as the new GP model implemented in \texttt{NIFTy.re} are even better aligned with GPU programming models and yield even higher performance gains [@Edenhofer2022].
 
 # Conclusion
 
 We implemented the core GP and VI machinery of the Bayesian imaging package \texttt{NIFTy} in JAX.
 The re-write moves much of the heavy-lifting from home-grown solutions into JAX, and we envision significant gains in maintainability of \texttt{NIFTy.re} and a faster development cycle moving forward.
-The re-write accelerates typical models written in \texttt{NIFTy} by one to two orders of magnitude, lays the foundation for new kinds of inference machineries by enabling higher order derivates via JAX, and enables the interoperability of \texttt{NIFTy} with the VI and GP methods from the JAX/XLA Machine Learning ecosystem.
+The re-write accelerates typical models written in \texttt{NIFTy} by one to two orders of magnitude, lays the foundation for new kinds of inference machineries by enabling higher order derivates via JAX, and enables the interoperability of \texttt{NIFTy} with the VI and GP methods from the JAX Machine Learning ecosystem.
 
 # Acknowledgements
 
