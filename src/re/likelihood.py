@@ -373,7 +373,9 @@ class Likelihood(LazyModel):
         """Alias for `right_sqrt_metric_tangents_shape`."""
         return self.right_sqrt_metric_tangents_shape
 
-    def amend(self, f: Callable, /, *, domain=None, likelihood_argnames=None):
+    def amend(
+        self, f: Callable, /, *, domain=NoValue, likelihood_argnames=None
+    ):
         """Amend a forward model to the likelihood."""
         return LikelihoodWithModel(
             self, f, domain=domain, likelihood_argnames=likelihood_argnames
@@ -590,10 +592,13 @@ class LikelihoodWithModel(Likelihood):
         self,
         f: Callable,
         *,
-        domain=None,
+        domain=NoValue,
         left_argnames=None,
         likelihood_argnames=None,
     ):
+        domain = f.domain if domain is NoValue and isinstance(
+            f, LazyModel
+        ) else domain
         left_argnames = () if left_argnames is None else left_argnames
         likelihood_argnames = self.likelihood_argnames if likelihood_argnames is None else likelihood_argnames
 

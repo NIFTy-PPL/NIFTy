@@ -6,6 +6,7 @@ import pytest
 pytest.importorskip("jax")
 
 import jax.random as random
+import numpy as np
 import pytest
 from numpy.testing import assert_allclose
 
@@ -81,6 +82,39 @@ def test_correlated_field_matern_init(
     correlated_field = cf.finalize()
     assert correlated_field
     assert correlated_field.domain
+
+
+@pmp("flu", ([1e-1], [1e-1, 5e-3], [1e-1, 5e-3, 5e-3], 1e-1))
+@pmp("slp", ([1e-1], [1e-1, 5e-3], [1e-1, 5e-3, 5e-3], 1e-1))
+@pmp("flx", ([1e-1], [1e-1, 5e-3], [1e-1, 5e-3, 5e-3], 1e-1))
+@pmp("asp", ([1e-1], [1e-1, 5e-3], [1e-1, 5e-3, 5e-3], 1e-1))
+def test_correlated_field_non_parametric_init_validation(flu, slp, flx, asp):
+    dims = (16, )
+    if all(
+        (
+            isinstance(el, (tuple, list)) and len(el) == 2 and
+            all(isinstance(f, float) for f in el)
+        ) for el in (flu, slp, flx, asp)
+    ):
+        return
+    with pytest.raises(TypeError):
+        cf_zm = dict(offset_mean=0., offset_std=(1e-3, 1e-4))
+        cf_fl = dict(
+            fluctuations=flu,
+            loglogavgslope=slp,
+            flexibility=flx,
+            asperity=asp,
+        )
+        cfm = jft.CorrelatedFieldMaker("cf")
+        cfm.set_amplitude_total_offset(**cf_zm)
+        cfm.add_fluctuations(
+            shape=dims,
+            distances=tuple(1. / d for d in dims),
+            **cf_fl,
+            prefix="ax1",
+            non_parametric_kind="power"
+        )
+        cfm.finalize()
 
 
 @pmp('seed', [0, 42])
