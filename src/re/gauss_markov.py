@@ -20,7 +20,7 @@ def _isscalar(x):
     return jnp.ndim(x) == 0
 
 
-def discrete_gm_general(xi: Array, x0: Array, drift: Array, diffamp: Array):
+def discrete_gauss_markov_process(xi: Array, x0: Array, drift: Array, diffamp: Array):
     """Generator for a Gauss-Markov process  (GMP).
 
     Given the discrete transition probabilities via the `drift` and `diffamp`
@@ -75,7 +75,7 @@ def discrete_gm_general(xi: Array, x0: Array, drift: Array, diffamp: Array):
     return fori_loop(0, res.size, loop, res)
 
 
-def scalar_gm(xi, x0, drift, diffamp):
+def scalar_gauss_markov_process(xi, x0, drift, diffamp):
     """Simple wrapper of `discrete_gm_general` for 1D scalar processes.
     """
     if not _isscalar(drift):
@@ -84,7 +84,7 @@ def scalar_gm(xi, x0, drift, diffamp):
         diffamp = diffamp[:, jnp.newaxis, jnp.newaxis]
     if _isscalar(x0):
         x0 = jnp.array([x0])
-    return discrete_gm_general(xi[:, jnp.newaxis], x0, drift, diffamp)[:, 0]
+    return discrete_gauss_markov_process(xi[:, jnp.newaxis], x0, drift, diffamp)[:, 0]
 
 
 def wiener_process(
@@ -93,7 +93,7 @@ def wiener_process(
     """Implements the Wiener process (WP)."""
     drift = 1.
     amp = jnp.sqrt(dt) * sigma
-    return scalar_gm(xi, x0, drift, amp)
+    return scalar_gauss_markov_process(xi, x0, drift, amp)
 
 
 def integrated_wiener_process(
@@ -117,7 +117,7 @@ def integrated_wiener_process(
         0, None if _isscalar(sigma) else 0, None if _isscalar(asperity) else 0
     )
     drift, amp = vmap(drift_amp, axs, (0, 0))(dt, sigma, asperity)
-    return discrete_gm_general(xi, x0, drift, amp)
+    return discrete_gauss_markov_process(xi, x0, drift, amp)
 
 
 def ornstein_uhlenbeck_process(
@@ -127,7 +127,7 @@ def ornstein_uhlenbeck_process(
     """Implements the Ornstein Uhlenbeck process (OUP)."""
     drift = jnp.exp(-gamma * dt)
     amp = sigma * jnp.sqrt(1. - drift**2)
-    return scalar_gm(xi, x0, drift, amp)
+    return scalar_gauss_markov_process(xi, x0, drift, amp)
 
 
 class GaussMarkovProcess(Model):
