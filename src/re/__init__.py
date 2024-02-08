@@ -7,6 +7,10 @@ from .custom_map import lmap, smap
 from .evi import (
     Samples, draw_linear_residual, draw_residual, nonlinearly_update_residual
 )
+from .gauss_markov import (
+    WienerProcess, IntegratedWienerProcess, OrnsteinUhlenbeckProcess,
+    GaussMarkovProcess
+)
 from .hmc import generate_hmc_acc_rej, generate_nuts_tree
 from .hmc_oo import HMCChain, NUTSChain
 from .likelihood import Likelihood, LikelihoodPartial

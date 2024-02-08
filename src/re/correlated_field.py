@@ -8,6 +8,7 @@ from typing import Callable, Optional, Tuple, Union
 import numpy as np
 from jax import numpy as jnp
 
+from .gauss_markov import IntegratedWienerProcess
 from .logger import logger
 from .misc import wrap
 from .model import Model, WrappedCall
@@ -136,21 +137,6 @@ def _make_grid(shape, distances, harmonic_type) -> RegularCartesianGrid:
     return grid
 
 
-def _twolog_integrate(log_vol, x):
-    # Map the space to the one for the relative log-modes, i.e. pad the space
-    # of the log volume
-    twolog = jnp.empty((2 + log_vol.shape[0], ))
-    twolog = twolog.at[0].set(0.)
-    twolog = twolog.at[1].set(0.)
-
-    twolog = twolog.at[2:].set(jnp.cumsum(x[1], axis=0))
-    twolog = twolog.at[2:].set(
-        (twolog[2:] + twolog[1:-1]) / 2. * log_vol + x[0]
-    )
-    twolog = twolog.at[2:].set(jnp.cumsum(twolog[2:], axis=0))
-    return twolog
-
-
 def _remove_slope(rel_log_mode_dist, x):
     sc = rel_log_mode_dist / rel_log_mode_dist[-1]
     return x - x[-1] * sc
@@ -255,22 +241,34 @@ def non_parametric_amplitude(
     mode_multiplicity = grid.harmonic_grid.mode_multiplicity
     log_vol = grid.harmonic_grid.log_volume
 
-    fluctuations = WrappedCall(fluctuations, name=prefix + "fluctuations")
+    fluctuations = WrappedCall(
+        fluctuations, name=prefix + "fluctuations", white_init=True
+    )
     ptree = fluctuations.domain.copy()
-    loglogavgslope = WrappedCall(loglogavgslope, name=prefix + "loglogavgslope")
+    loglogavgslope = WrappedCall(
+        loglogavgslope, name=prefix + "loglogavgslope", white_init=True
+    )
     ptree.update(loglogavgslope.domain)
-    if flexibility is not None:
-        flexibility = WrappedCall(flexibility, name=prefix + "flexibility")
-        ptree.update(flexibility.domain)
-        # Register the parameters for the spectrum
+    if flexibility is not None and (log_vol.size > 0):
+        flexibility = WrappedCall(
+            flexibility, name=prefix + "flexibility", white_init=True
+        )
         assert log_vol is not None
         assert rel_log_mode_len.ndim == log_vol.ndim == 1
-        ptree.update(
-            {prefix + "spectrum": ShapeWithDtype((2, ) + log_vol.shape)}
+        if asperity is not None:
+            asperity = WrappedCall(
+                asperity, name=prefix + "asperity", white_init=True
+            )
+        deviations = IntegratedWienerProcess(
+            jnp.zeros((2, )),
+            flexibility,
+            log_vol,
+            name=prefix + "spectrum",
+            asperity=asperity
         )
-    if asperity is not None:
-        asperity = WrappedCall(asperity, name=prefix + "asperity")
-        ptree.update(asperity.domain)
+        ptree.update(deviations.domain)
+    else:
+        deviations = None
 
     def correlate(primals: Mapping) -> jnp.ndarray:
         flu = fluctuations(primals)
@@ -278,31 +276,11 @@ def non_parametric_amplitude(
         slope *= rel_log_mode_len
         ln_spectrum = slope
 
-        if flexibility is not None:
-            assert log_vol is not None
-            xi_spc = primals[prefix + "spectrum"]
-            flx = flexibility(primals)
-            sig_flx = flx * jnp.sqrt(log_vol)
-            sig_flx = jnp.broadcast_to(sig_flx, (2, ) + log_vol.shape)
-
-            if asperity is None:
-                shift = jnp.stack(
-                    (log_vol / jnp.sqrt(12.), jnp.ones_like(log_vol)), axis=0
-                )
-                asp = shift * sig_flx * xi_spc
-            else:
-                asp = asperity(primals)
-                shift = jnp.stack(
-                    (log_vol**2 / 12., jnp.ones_like(log_vol)), axis=0
-                )
-                sig_asp = jnp.broadcast_to(
-                    jnp.array([[asp], [0.]]), shift.shape
-                )
-                asp = jnp.sqrt(shift + sig_asp) * sig_flx * xi_spc
-
-            twolog = _twolog_integrate(log_vol, asp)
-            wo_slope = _remove_slope(rel_log_mode_len, twolog)
-            ln_spectrum += wo_slope
+        if deviations is not None:
+            twolog = deviations(primals)
+            # Prepend zeromode
+            twolog = jnp.concatenate((jnp.zeros((1, )), twolog[:, 0]))
+            ln_spectrum += _remove_slope(rel_log_mode_len, twolog)
 
         # Exponentiate and norm the power spectrum
         spectrum = jnp.exp(ln_spectrum)
