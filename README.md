@@ -3,8 +3,8 @@
 [![pipeline status](https://gitlab.mpcdf.mpg.de/ift/nifty/badges/NIFTy_8/pipeline.svg)](https://gitlab.mpcdf.mpg.de/ift/nifty/-/commits/NIFTy_8)
 [![coverage report](https://gitlab.mpcdf.mpg.de/ift/nifty/badges/NIFTy_8/coverage.svg)](https://gitlab.mpcdf.mpg.de/ift/nifty/-/commits/NIFTy_8)
 
-**NIFTy** project homepage:
-[https://ift.pages.mpcdf.de/nifty](https://ift.pages.mpcdf.de/nifty/index.html)
+**NIFTy** GitHub mirror: [github.com/nifty-ppl/nifty](https://github.com/nifty-ppl/nifty)
+**NIFTy** project homepage: [ift.pages.mpcdf.de/nifty](https://ift.pages.mpcdf.de/nifty/index.html)
 
 ## Summary
 
