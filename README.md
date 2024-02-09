@@ -75,6 +75,16 @@ All of NIFTy is distributed *without any warranty*.
 
 ### Citing NIFTy
 
-Please refer to [the corresponding entry on citing NIFTy in the documentation](https://ift.pages.mpcdf.de/nifty/user/citations.html).
+For the probabilistic programming framework NIFTy, please cite the following.
 
+```
+@misc{niftyre,
+    author       = {{Edenhofer}, Gordian and {Frank}, Philipp and {Leike}, Reimar H. and {Roth}, Jakob and {Guerdi}, Massin and {Enßlin}, Torsten A.},
+    title        = {{Re-Envisioning Numerical Information Field Theory (NIFTy.re): A Library for Gaussian Processes and Variational Inference}},
+    keywords     = {Software},
+    year         = 2024,
+    howpublished = {in preparation}
+}
+```
 
+Please also consider crediting the Gaussian Process models if you use them and the inference machinery. See [the corresponding entry on citing NIFTy in the documentation](https://ift.pages.mpcdf.de/nifty/user/citations.html) for further details.
