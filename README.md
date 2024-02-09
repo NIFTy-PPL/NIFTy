@@ -69,9 +69,9 @@ dive into NIFTy by running one of the demonstrations, e.g.:
 
 ### Licensing terms
 
-The NIFTy package is licensed under the terms of the
-[GPLv3](https://www.gnu.org/licenses/gpl.html) and is distributed
-*without any warranty*.
+Most of NIFTy is licensed under the terms of the
+[GPLv3](https://www.gnu.org/licenses/gpl.html) license while NIFTy.re is also licensed under the terms of the BSD-2-Clause license.
+All of NIFTy is distributed *without any warranty*.
 
 ### Citing NIFTy
 
