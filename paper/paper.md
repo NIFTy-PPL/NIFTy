@@ -128,7 +128,8 @@ from nifty8 import re as jft
 dims = (128, 128)
 cfm = jft.CorrelatedFieldMaker("cf")
 cfm.set_amplitude_total_offset(offset_mean=2, offset_std=(1e-1, 3e-2))
-cfm.add_fluctuations(  # Axis over which the kernle is defined
+# Axis over which the kernel is defined
+cfm.add_fluctuations(
   dims,
   distances=tuple(1.0 / d for d in dims),
   fluctuations=(1.0, 5e-1),
@@ -138,7 +139,8 @@ cfm.add_fluctuations(  # Axis over which the kernle is defined
   prefix="ax1",
   non_parametric_kind="power",
 )
-correlated_field = cfm.finalize()  # forward model for a GP prior
+# Get the forward model for the GP prior
+correlated_field = cfm.finalize()
 ```
 
 Not all problems are well described by regularly spaced pixels.
@@ -208,8 +210,8 @@ from jax import random
 
 key = random.PRNGKey(42)
 key, sk = random.split(key, 2)
-# NIFTy is agnostic w.r.t. the type of input it gets as long as it supports core
-# arithmetic properties. Tell NIFTy to treat our parameter dictionary as a
+# NIFTy is agnostic w.r.t. the type of inputs it gets as long as they support
+# core arithmetic properties. Tell NIFTy to treat our parameter dictionary as a
 # vector.
 samples = jft.Samples(pos=jft.Vector(lh.init(sk)), samples=None, keys=None)
 
@@ -219,20 +221,20 @@ absdelta = delta * jft.size(samples.pos)
 opt_vi = jft.OptimizeVI(lh, n_total_iterations=25)
 opt_vi_st = opt_vi.init_state(
   key,
-  # Typically on the order of 2-12
+  # Implicit definition for the accuracy of the KL-divergence approximation;
+  # typically on the order of 2-12
   n_samples=lambda i: 1 if i < 2 else (2 if i < 4 else 6),
-  # Arguments for the conjugate gradient method used to drawing samples from
-  # an implicit covariance matrix
+  # Parametrize the conjugate gradient method at the heart of the sample-drawing
   draw_linear_kwargs=dict(
     cg_name="SL", cg_kwargs=dict(absdelta=absdelta / 10.0, maxiter=100)
   ),
-  # Arguements for the minimizer in the nonlinear updating of the samples
+  # Parametrize the minimizer used in the nonlinear update of the samples
   nonlinearly_update_kwargs=dict(
     minimize_kwargs=dict(
       name="SN", xtol=delta, cg_kwargs=dict(name=None), maxiter=5
     )
   ),
-  # Arguments for the minimizer of the KL-divergence cost potential
+  # Parametrize the minimization of the KL-divergence cost potential
   kl_kwargs=dict(minimize_kwargs=dict(name="M", xtol=delta, maxiter=35)),
   sample_mode=lambda i: "nonlinear_resample" if i < 3 else "nonlinear_update",
 )
