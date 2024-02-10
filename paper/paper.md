@@ -144,9 +144,9 @@ correlated_field = cfm.finalize()
 ```
 
 Not all problems are well described by regularly spaced pixels.
-For more complicated spaced pixels, \texttt{NIFTy.re} features Iterative Charted Refinement [@Edenhofer2022], a GP model for arbitrarily deformed spaces.
+For more complicated pixel spacings, \texttt{NIFTy.re} features Iterative Charted Refinement [@Edenhofer2022], a GP model for arbitrarily deformed spaces.
 This model exploits nearest neighbor relations on various coarsening of the discretized modeled space and runs very efficiently on GPUs.
-See the demonstration scripts in the repository for an example.
+For one dimensional problems with arbitrarily spaced pixel, \texttt{NIFTy.re} also implements multiple flavors of Gauss-Markov processes.
 
 ## Building Up Complex Models
 
