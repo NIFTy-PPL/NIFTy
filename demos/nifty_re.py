@@ -3,6 +3,9 @@
 # Copyright(C) 2013-2021 Max-Planck-Society
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 
+# %% [markdown]
+# # Demonstration of the non-parametric correlated field model in NIFTy.re
+
 # %%
 import jax
 import matplotlib.pyplot as plt
@@ -215,6 +218,7 @@ samples, state = jft.optimize_kl(
     odir="results_nifty_re",
     resume=False,
 )
+
 # %%
 namps = cfm.get_normalized_amplitudes()
 post_sr_mean = jft.mean(tuple(signal(s) for s in samples))
@@ -239,4 +243,4 @@ for ax, (title, field, tp) in zip(axs.flat, to_plot):
             ax_plot(f, alpha=0.7)
 fig.tight_layout()
 fig.savefig("cf_w_unknown_spectrum.png", dpi=400)
-plt.close()
+plt.show()
