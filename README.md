@@ -194,7 +194,8 @@ python demos/nifty_re.py
 ## Licensing terms
 
 Most of NIFTy is licensed under the terms of the
-[GPLv3](https://www.gnu.org/licenses/gpl.html) license while NIFTy.re is also licensed under the terms of the BSD-2-Clause license.
+[GPLv3](https://www.gnu.org/licenses/gpl.html) license with NIFTy.re being a notable exception.
+NIFTy.re is licensed under GPL-2.0+ OR BSD-2-Clause.
 All of NIFTy is distributed *without any warranty*.
 
 ## Citing NIFTy
