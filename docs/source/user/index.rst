@@ -9,12 +9,19 @@ are found in the `API reference <../mod/nifty8.html>`_.
 .. toctree::
    :maxdepth: 1
 
-   whatisnifty
    ift
    approximate_inference
-   volume
-   code
-   getting_started_0
-   getting_started_4_CorrelatedFields
-   custom_nonlinearities
    citations
+
+In the following are guides to the old NIFTy.
+They serve as reference but are likely not relevant anymore for new projects.
+
+.. toctree::
+   :maxdepth: 1
+
+   old_nifty
+   old_nifty_volume
+   old_nifty_design_principles
+   old_nifty_custom_nonlinearities
+   old_nifty_getting_started_0
+   old_nifty_getting_started_4_CorrelatedFields
