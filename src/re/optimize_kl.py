@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# SPDX-License-Identifier: BSD-2-Clause
+# SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 # Authors: Philipp Frank, Jakob Roth, Gordian Edenhofer
 
 import inspect
