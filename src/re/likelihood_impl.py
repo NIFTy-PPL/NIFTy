@@ -227,6 +227,7 @@ class Poissonian(Likelihood):
     sampling_dtype : dtype, optional
         Data-type for sampling.
 
+
     See :class:`Likelihood` for details on the properties.
     """
     data: Any = dataclasses.field(metadata=dict(static=False))
@@ -385,6 +386,7 @@ class Categorical(Likelihood):
         Leaf-axis over which the categories are formed
     sampling_dtype : dtype, optional
         Data-type for sampling.
+
 
     See :class:`Likelihood` for details on the properties.
     """
