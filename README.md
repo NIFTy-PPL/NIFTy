@@ -136,13 +136,13 @@ for i in range(opt_vi.n_total_iterations):
 
 ## Installation
 
-If you only want to use NIFTy in your projects, but not change its source code, the easiest way to install the package is the command:
+If you only want to use NIFTy in your projects, but not change its source code, the easiest way to install NIFTy is via pip:
 
 ```
 pip install --user 'nifty8[re]'
 ```
 
-This approach should work on Linux, MacOS, and Windows.
+The line above installs the optional JAX backend termed NIFTy.re in addition to the numpy-based NIFTy.
 
 If you might want to adapt the NIFTy source code, we suggest installing NIFTy as editable python package using the following commands:
 
