@@ -10,7 +10,6 @@ are found in the `API reference <../mod/nifty8.html>`_.
    :maxdepth: 1
 
    whatisnifty
-   installation
    ift
    approximate_inference
    volume
