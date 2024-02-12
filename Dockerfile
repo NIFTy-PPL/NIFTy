@@ -16,7 +16,7 @@ RUN DUCC0_OPTIMIZATION=portable pip3 install --break-system-packages\
     # Testing dependencies
     pytest pytest-cov \
     # Documentation build dependencies
-    jupyter nbconvert jupytext sphinx pydata-sphinx-theme
+    jupyter nbconvert jupytext sphinx pydata-sphinx-theme myst-parser
 
 # Set matplotlib backend
 ENV MPLBACKEND agg
