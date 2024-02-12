@@ -11,25 +11,44 @@ authors:
     orcid: 0000-0003-3122-4894
     corresponding: true
     affiliation: "1, 2, 3"  # Multiple affiliations must be quoted
+  - name: TODO CONTACT ME IF YOU THINK YOUR NAME IS NOT AT THE RIGHT POSITION
   - name: Philipp Frank
     orcid: 0000-0001-5610-3779
-    corresponding: false
     affiliation: "1"
   - name: Jakob Roth
     orcid: 0000-0002-8873-8215
-    corresponding: false
     affiliation: "1, 2, 4"
-  - name: et al.
+  - name: Reimar H. Leike
+    orcid: 0000-0002-1640-6772
+  - name: Massin Guerdi
+    affiliation: "2"
+  - name: Lukas I. Scheel-Platz
+    orcid: 0000-0003-0809-9634
+    affiliation: "4, 5"
+  - name: Matteo Guardiani
+    orcid: 0000-0002-4905-6692
+    affiliation: "1, 2"
+  - name: Vincent Eberle
+    orcid: 0000-0002-5713-3475
+    affiliation: "1, 2"
+  - name: Margret Westerkamp
+    orcid: 0000-0001-7218-8282
+    affiliation: "1, 2"
+  - name: Torsten A. Enßlin
+    orcid: 0000-0001-5246-1624
+    affiliation: "1, 2"
 affiliations:
- - name: Max Planck Institute for Astrophysics, Karl-Schwarzschild-Straße 1, 85748 Garching bei München, Germany
-   index: 1
- - name: Ludwig Maximilian University of Munich, Geschwister-Scholl-Platz 1, 80539 München, Germany
-   index: 2
- - name: Department of Astrophysics, University of Vienna, Türkenschanzstrasse 17, A-1180 Wien, Austria
-   index: 3
- - name: Technical University of Munich (TUM), Boltzmannstr. 3, 85748 Garching bei München, Germany
-   index: 4
-date: 31 August 2023
+  - name: Max Planck Institute for Astrophysics, Karl-Schwarzschild-Straße 1, 85748 Garching bei München, Germany
+    index: 1
+  - name: Ludwig Maximilian University of Munich, Geschwister-Scholl-Platz 1, 80539 München, Germany
+    index: 2
+  - name: University of Vienna, Türkenschanzstrasse 17, A-1180 Wien, Austria
+    index: 3
+  - name: Technical University of Munich, Boltzmannstr. 3, 85748 Garching bei München, Germany
+    index: 4
+  - name: Helmholtz Zentrum München, Ingolstädter Landstraße 1, 85764 Neuherberg, Germany
+    index: 5
+date: 21 February 2024
 bibliography: paper.bib
 header-includes:
   - \usepackage{mathtools}
