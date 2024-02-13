@@ -267,7 +267,6 @@ for i in range(opt_vi.n_total_iterations):
 ```
 
 ![Data (left), posterior mean (middle), and posterior uncertainty (right) for a simple toy example.\label{fig:minimal_reconstruction_data_mean_std}](minimal_reconstruction_data_mean_std.png)
-<!-- TODO: fewer y labels, more x labels -->
 
 \autoref{fig:minimal_reconstruction_data_mean_std} shows an exemplary posterior reconstruction employing the above model.
 The posterior mean agrees with the data but removes noisy structures.
