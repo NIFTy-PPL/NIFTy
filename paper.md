@@ -120,7 +120,7 @@ With \texttt{NIFTy.re}, the GP models and the VI machinery are now fully accessi
 # Core Components
 
 \texttt{NIFTy.re} brings tried and tested structured GP models and VI algorithms to JAX.
-GP models are especially useful for imaging problems, while VI algorithms are essential to probing high dimensional posteriors, which are often encountered in imaging problems.
+GP models are especially useful for imaging problems, while VI algorithms are essential to probing high-dimensional posteriors, which are often encountered in imaging problems.
 \texttt{NIFTy.re} infers the parameters of interest from noisy data given a stochastic mapping from the parameters of interest to the data.
 
 \texttt{NIFTy} and \texttt{NIFTy.re} build up hierarchical models for the posterior.
@@ -128,8 +128,8 @@ The log-posterior function reads $\ln\mathcal{p(\theta|d)} \coloneqq \mathcal{l}
 The goal of the inference is to draw samples from the posterior $\mathcal{p}(\theta|d)$.
 
 What is considered part of the likelihood versus part of the prior is ill-defined.
-Without loss of generality \texttt{NIFTy} and \texttt{NIFTy.re} re-formulate models such that the prior is always standard Gaussian.
-They implicitly define a mapping from a new latent space with parameters $\xi$ in which the prior is standard Gaussian to the parameters of interest $\theta$.
+Without loss of generality, \texttt{NIFTy} and \texttt{NIFTy.re} re-formulate models such that the prior is always standard Gaussian.
+They implicitly define a mapping from a new latent space where the parameters $\xi$ are a-priori standard Gaussian distributed to the target parameter space in which the parameters $\theta$ are defined.
 The mapping $\theta(\xi)$ is incorporated into the forward model $f(\theta(\xi))$ such that all relevant details of the prior model are encoded in the forward model.
 This choice of re-parameterization [@Rezende2015] is called standardization.
 It is often carried out implicitly in the background without user input.
