@@ -300,13 +300,15 @@ Models such as the new GP models implemented in \texttt{NIFTy.re} are even bette
 
 We implemented the core GP and VI machinery of the Bayesian imaging package \texttt{NIFTy} in JAX.
 The re-write moves much of the heavy-lifting from home-grown solutions into JAX, and we envision significant gains in maintainability of \texttt{NIFTy.re} and a faster development cycle moving forward.
-The re-write accelerates typical models written in \texttt{NIFTy} by one to two orders of magnitude, lays the foundation for new kinds of inference machineries by enabling higher order derivates via JAX, and enables the interoperability of \texttt{NIFTy} with the VI and GP methods from the JAX machine learning ecosystem.
+The re-write accelerates typical models written in \texttt{NIFTy} by one to two orders of magnitude, lays the foundation for new kinds of inference machineries by enabling higher order derivatives through JAX, and enables the interoperability of \texttt{NIFTy} with the VI and GP methods from the JAX machine learning ecosystem.
 
 # Acknowledgements
 
 Gordian Edenhofer acknowledges support from the German Academic Scholarship Foundation in the form of a PhD scholarship (``Promotionsstipendium der Studienstiftung des Deutschen Volkes'').
 Philipp Frank acknowledges funding through the German Federal Ministry of Education and Research for the project "ErUM-IFT: Informationsfeldtheorie für Experimente an Großforschungsanlagen" (Förderkennzeichen: 05D23EO1).
 Jakob Roth acknowledges financial support by the German Federal Ministry of Education and Research (BMBF) under grant 05A20W01 (Verbundprojekt D-MeerKAT).
+Matteo Guardiani acknowledges financial support from the Deutsches Zentrum für Luft- und Raumfahrt e.V. (DLR) through the project Universal Bayesian Imaging Kit (UBIK, Förderkennzeichen 50OO2103).
+<!--- Matteo: I guess Vincent and Margret should have the same! -->
 
 # References
 
