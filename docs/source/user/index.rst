@@ -11,7 +11,7 @@ are found in the `API reference <../mod/nifty8.html>`_.
 
    ift
    approximate_inference
-   nifty_re
+   0_intro
    citations
 
 In the following are guides to the old NIFTy.
