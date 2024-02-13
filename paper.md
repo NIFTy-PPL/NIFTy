@@ -272,16 +272,16 @@ for i in range(opt_vi.n_total_iterations):
 The posterior mean agrees with the data while removing noisy structures.
 The posterior standard deviation is approximately equal to typical differences between the posterior mean and the data.
 
-## Performance compared to old NIFTy
+## Performance compared to NIFTy
 
 We test the performance of \texttt{NIFTy.re} against \texttt{NIFTy} for the simple yet representative model from above.
-To assess the performance, we benchmark $M_p \coloneqq F_p + \mathbb{1}$ with $F_p$ denoting the Fisher metric of the overall likelihood at position $p$ and the identity matrix $\mathbb{1}$ which is the curvature of the standardized prior analogous to the Fisher metric.
-Within \texttt{NIFTy.re} the Fisher metric of the overall likelihood is decomposed into $J_{f,p}^\dagger N^{-1} J_{f,p}$ with $J_{f,p}$ the implicit Jacobian of the forward model $f$ at $p$ and $N$ the Fisher-metric of the Poisson likelihood.
+To assess the performance, we benchmark the execution times of $M_p \coloneqq F_p + \mathbb{1}$, with $F_p$ denoting the Fisher metric of the overall likelihood at position $p$ and the identity matrix $\mathbb{1}$ being the curvature of the standardized prior analogous to its Fisher metric.
+Within \texttt{NIFTy.re}, the Fisher metric of the overall likelihood is decomposed into $J_{f,p}^\dagger N^{-1} J_{f,p}$ with $J_{f,p}$ the implicit Jacobian of the forward model $f$ at $p$ and $N$ the Fisher-metric of the Poisson likelihood.
 We choose to benchmark $M_p$ as a typical VI minimization in \texttt{NIFTy.re} and \texttt{NIFTy} is dominated by calls to this function.
 
 ![Performance comparison of \texttt{NIFTy.re} versus \texttt{NIFTy} on the CPU (one and eight core(s) of an Intel Xeon Platinum 8358 CPU clocked at 2.60G Hz) and GPU (A100 SXM4 80 GB HBM2).\label{fig:benchmark_nthreads=1+8_devices=cpu+gpu}](benchmark_nthreads=1+8_devices=cpu+gpu.png)
 
-\autoref{fig:benchmark_nthreads=1+8_devices=cpu+gpu} shows the evaluation time in \texttt{NIFTy} for applying $M_p$ to a new tangent position and the evaluation time in \texttt{NIFTy.re} for building $M_p$ and applying it to a new tangent position for exponentially larger models.
+\autoref{fig:benchmark_nthreads=1+8_devices=cpu+gpu} shows the evaluation time in \texttt{NIFTy} of applying $M_p$ to a new tangent position and the evaluation time in \texttt{NIFTy.re} of building $M_p$ and applying it to a new tangent position for exponentially larger models.
 We choose to exclude the build time of $M_p$ in \texttt{NIFTy} from the comparison, putting \texttt{NIFTy} at an advantage, as \texttt{NIFTy}'s automatic differentiation is built around calls to $M_p$ with $p$ rarely varying.
 We ran the benchmark on one CPU core, eight CPU cores, and on a GPU on a compute-node with an Intel Xeon Platinum 8358 CPU clocked at 2.60G Hz and an NVIDIA A100 SXM4 80 GB HBM2 GPU.
 We vary the size of the model by increasing the size of the two-dimensional square image grid.
@@ -292,9 +292,9 @@ The performance increases by a factor of three to four with eight cores for \tex
 On the GPU, \texttt{NIFTy.re} is consistently about one to two orders of magnitude faster than \texttt{NIFTy} for images larger than 100,000 pixels.
 
 We believe the performance benefits of \texttt{NIFTy.re} on the CPU for small models stem from the reduced python overhead by just-in-time compiling computations.
-At image sizes larger than roughly 15,000 pixels, both evaluation times are dominated by the fast Fourier transform and are hence roughly the same as both use the same underlying implementation [@ducc0].
+At image sizes larger than roughly 15,000 pixels, both evaluation times are dominated by the fast Fourier transform calls and are hence roughly the same as both use the same underlying implementation [@ducc0].
 Typical models in \texttt{NIFTy.re} and \texttt{NIFTy} are often well aligned with GPU programming models and thus consistently perform well on the GPU.
-Models such as the new GP model implemented in \texttt{NIFTy.re} are even better aligned with GPU programming models and yield even higher performance gains [@Edenhofer2022].
+Models such as the new GP models implemented in \texttt{NIFTy.re} are even better aligned with GPU programming models and yield even higher performance gains [@Edenhofer2022].
 
 # Conclusion
 
