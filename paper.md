@@ -284,6 +284,7 @@ We choose to benchmark $M_p$ as a typical VI minimization in \texttt{NIFTy.re} a
 \autoref{fig:benchmark_nthreads=1+8_devices=cpu+gpu} shows the evaluation time in \texttt{NIFTy} of applying $M_p$ to a new tangent position and the evaluation time in \texttt{NIFTy.re} of building $M_p$ and applying it to a new tangent position for exponentially larger models.
 We choose to exclude the build time of $M_p$ in \texttt{NIFTy} from the comparison, putting \texttt{NIFTy} at an advantage, as \texttt{NIFTy}'s automatic differentiation is built around calls to $M_p$ with $p$ rarely varying.
 We ran the benchmark on one CPU core, eight CPU cores, and on a GPU on a compute-node with an Intel Xeon Platinum 8358 CPU clocked at 2.60G Hz and an NVIDIA A100 SXM4 80 GB HBM2 GPU.
+The benchmark used `jax==0.4.23` and `jaxlib==0.4.23+cuda12.cudnn89`.
 We vary the size of the model by increasing the size of the two-dimensional square image grid.
 
 For small image sizes, \texttt{NIFTy.re} on the CPU is about one order of magnitude faster than \texttt{NIFTy}.
