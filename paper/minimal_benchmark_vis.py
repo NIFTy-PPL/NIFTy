@@ -21,52 +21,45 @@ benchmark_files = {
     "1": "benchmark_nthreads=1_devices=cpu+NVIDIA A100-SXM4-80GB.npy",
     "8": "benchmark_nthreads=8_devices=NVIDIA A100-SXM4-80GB.npy",
 }
-savestate = {}
-for prefix, fn in benchmark_files.items():
-    savestate[prefix] = np.load(fn, allow_pickle=True).item()
+pretty_name_map = {
+    "all_t_jft": "NIFTy.re",
+    "all_t_nft": "NIFTy",
+}
+magic_gpu_key = "GPU NIFTy.re"
 
-# Make the GPU timings the first entry in the dictionary as to automatically
-# order the graphs in the following figure nicely
-for p, svt in savestate.items():
-    for nm in svt["all_t_jft"].keys():
-        gpu_key = None
-        if nm.lower().startswith("nvidia"):
-            gpu_key = nm
-        gpu_key = set((gpu_key,)) if gpu_key is not None else set()
-    new_key_order = set(svt["all_t_jft"].keys()) - gpu_key
-    new_key_order = tuple(gpu_key) + tuple(new_key_order)
-    svt["all_t_jft"] = {k: svt["all_t_jft"][k] for k in new_key_order}
+savestate = {}
+for bench, fn in benchmark_files.items():
+    timings = np.load(fn, allow_pickle=True).item()
+    all_dims = timings.pop("all_dims")
+    for backend, timings_by_platform in timings.items():
+        assert isinstance(timings_by_platform, dict)
+        for platform, timings in timings_by_platform.items():
+            nm = f"{platform.upper()} w/ {bench} core(s) {pretty_name_map[backend]}"
+            if platform.lower().startswith("nvidia"):
+                if backend != "all_t_jft":
+                    if len(timings) != 0:
+                        print(f"Skipping invalid {bench=} {backend=} {platform=}")
+                    continue
+                nm = magic_gpu_key
+                if nm in savestate:
+                    print(f"Skipping duplicate key {nm!r}")
+                    continue
+            print(f"Adding key {nm!r:36s} w/ {bench=} {backend=} {platform=}")
+            savestate[nm] = (all_dims, timings)
+savestate = {k: savestate[k] for k in sorted(savestate.keys())}
 
 # %%
 fig = go.Figure()
 n_gpu_plots = 0
-for prefix, svt in savestate.items():
-    for nm in svt["all_t_jft"].keys():
-        pretty_name = nm.upper() + f" w/ {prefix} core(s)"
-        if nm.lower().startswith("nvidia"):
-            pretty_name = "GPU"
-            n_gpu_plots += 1
-            if n_gpu_plots > 1:
-                continue
-        fig.add_trace(
-            go.Scatter(
-                x=np.array([np.prod(d) for d in svt["all_dims"]]),
-                y=np.array([t.time for t in svt["all_t_jft"][nm]]),
-                mode="lines+markers",
-                name=f"NIFTy.re on {pretty_name}",
-            )
-        )
-    assert len(svt["all_t_nft"])
-    nm = list(svt["all_t_nft"].keys())[0]
+for pretty_name, (all_dims, timings) in savestate.items():
     fig.add_trace(
         go.Scatter(
-            x=np.array([np.prod(d) for d in svt["all_dims"]]),
-            y=np.array([t.time for t in svt["all_t_nft"][nm]]),
+            x=np.array([np.prod(d) for d in all_dims]),
+            y=np.array([t.time for t in timings]),
             mode="lines+markers",
-            name=f"NIFTy w/ {prefix} core(s)",
+            name=pretty_name,
         )
     )
-
 fig.update_layout(
     legend=dict(x=0.05, y=1),
     showlegend=True,
@@ -75,9 +68,11 @@ fig.update_layout(
     yaxis_title="time [s]",
     width=720,
     height=480,
+    margin=dict(t=5, b=5, l=5, r=5),
 )
 fig.update_xaxes(type="log")
 fig.update_yaxes(type="log")
 fn_out_stem = "benchmark_nthreads=1+8_devices=cpu+gpu"
 fig.write_html(fn_out_stem + ".html")
 fig.write_image(fn_out_stem + ".png", scale=4)
+fig.show()
