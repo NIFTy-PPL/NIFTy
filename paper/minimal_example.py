@@ -217,7 +217,7 @@ pos = samples.pos
 lh_met = partial(generic_lh_metric, lh)
 
 pos_ift = {
-    k: ift.Field(d, v)
+    k: ift.Field(d, v) if not k.endswith("spectrum") else ift.Field(d, v.T)
     for (k, d), v in zip(lh_ift.domain.items(), samples.pos.tree.values())
 }
 pos_ift = ift.MultiField.from_dict(pos_ift)
@@ -228,11 +228,13 @@ lh_metric_ift = lh_ift(ift.Linearization.make_var(pos_ift, want_metric=True)).me
 from upy.detective import timeit
 
 # Warm-up and consistency test
-jax.tree_map(
-    partial(np.testing.assert_allclose, atol=1e-10, rtol=1e-11),
-    lh_met(pos, pos).tree,
-    lh_metric_ift(pos_ift).val,
-)
+out = lh_met(pos, pos).tree
+out_ift = lh_metric_ift(pos_ift).val
+assert out.keys() == out_ift.keys()
+aallclose = partial(np.testing.assert_allclose, atol=1e-10, rtol=1e-11)
+for k in out.keys():
+    aallclose(out[k], out_ift[k] if not k.endswith("spectrum") else out_ift[k].T)
 
 t = timeit(lambda: jax.block_until_ready(lh_met(pos, pos)))
 t_ift = timeit(lambda: lh_metric_ift(pos_ift))
+print(f"{t=}, {t_ift=}")
