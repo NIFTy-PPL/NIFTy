@@ -166,8 +166,8 @@ fig.add_trace(go.Heatmap(x=x, y=y, z=data.T, coloraxis="coloraxis"), 1, 1)
 fig.add_trace(go.Heatmap(x=x, y=y, z=pm.T, coloraxis="coloraxis"), 1, 2)
 fig.add_trace(go.Heatmap(x=x, y=y, z=ps.T, coloraxis="coloraxis3"), 1, 3)
 for i in range(1, 4 + 1):
-    ya = dict(title="y") if i in (1, 3) else dict()
-    xa = dict(title="x") if i in (3, 4) else dict()
+    ya = dict(title="y") if i in (1,) else dict()
+    xa = dict(title="x") if i in (1, 2, 3) else dict()
     fig.update_layout(
         {
             f"xaxis{i}": dict(range=(0, 1)) | xa,
@@ -180,7 +180,7 @@ fig.update_layout(
     height=250,
     coloraxis=dict(colorbar_x=0.26, colorscale="viridis", colorbar_thickness=15),
     coloraxis3=dict(colorbar_x=1.0075, colorscale="gray", colorbar_thickness=15),
-    margin=dict(t=40, b=10, l=10, r=10),
+    margin=dict(t=20, b=5, l=5, r=5),
 )
 fig.show()
 fig.write_html("minimal_reconstruction_data_mean_std.html")
