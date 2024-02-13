@@ -222,7 +222,7 @@ These tools are provided in a jaxopt-style optimizer class [@Blondel2021].
 A typical minimization with \texttt{NIFTy.re} is shown in the following.
 It retrieves six antithetically mirrored samples from the approximate posterior via 25 iterations of alternating between optimization and sample adaption.
 The final result is stored in the `samples` variable.
-A convenient one-shot wrapper for the below is `jft.optimize_kl`.
+A convenient one-shot wrapper for the code below is `jft.optimize_kl`.
 By virtue of all modeling tools in \texttt{NIFTy.re} being written in JAX, it is also possible to combine \texttt{NIFTy.re} tools with blackjax [@blackjax2020] or any other posterior sampler in the JAX ecosystem.
 
 ```python
@@ -266,9 +266,10 @@ for i in range(opt_vi.n_total_iterations):
 ```
 
 ![Data (left), posterior mean (middle), and posterior uncertainty (right) for a simple toy example.\label{fig:minimal_reconstruction_data_mean_std}](minimal_reconstruction_data_mean_std.png)
+<!--- Matteo: In the figure, I would maybe share all y axes and the x axis label. -->
 
 \autoref{fig:minimal_reconstruction_data_mean_std} shows an exemplary posterior reconstruction employing the above model.
-The posterior mean agrees with the data but removes noisy structures.
+The posterior mean agrees with the data while removing noisy structures.
 The posterior standard deviation is approximately equal to typical differences between the posterior mean and the data.
 
 ## Performance compared to old NIFTy
