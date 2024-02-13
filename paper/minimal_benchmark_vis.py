@@ -18,8 +18,8 @@ import plotly.graph_objects as go
 
 # %%
 benchmark_files = {
-    "1": "benchmark_nthreads=1_devices=cpu+NVIDIA A100-SXM4-80GB.npy",
-    "8": "benchmark_nthreads=8_devices=NVIDIA A100-SXM4-80GB.npy",
+    "1": "benchmark_nthreads=1_devices=NVIDIA A100-SXM4-80GB+cpu.npy",
+    "8": "benchmark_nthreads=8_devices=NVIDIA A100-SXM4-80GB+cpu.npy",
 }
 pretty_name_map = {
     "all_t_jft": "NIFTy.re",
