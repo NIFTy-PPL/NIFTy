@@ -173,7 +173,7 @@ For one dimensional problems with arbitrarily-spaced pixels, \texttt{NIFTy.re} a
 Models are rarely just a GP prior.
 Commonly, a model contains at least several non-linearities that transform the GP prior or combine it with other random variables.
 For building more complex models, \texttt{NIFTy.re} provides a `Model` class that offers a somewhat familiar object-oriented design yet is fully JAX compatible and functional under the hood.
-The following code showcases such a model that builds up a slightly more involved model using the objects from the previous example.
+The following code showcases a slightly more involved model of such kind using the objects from the previous example.
 
 ```python
 from jax import numpy as jnp
@@ -199,10 +199,10 @@ data = jnp.load("data.npy")
 lh = jft.Poissonian(data).amend(forward)
 ```
 
-All GP models in \texttt{NIFTy.re} as well as all likelihoods behave like `jft.Model`s and their attributes are exposed to JAX, meaning JAX understands what it means if a computation involves `self` or other models.
-In other words, `correlated_field`, `forward`, and `lh` from the code snippets shown here are all so-called pytrees in JAX and, e.g., the following is valid code `jax.jit(lambda l, x: l(x))(lh, x0)` with `x0` some arbitrarily chosen valid input to `lh`.
+All GP models in \texttt{NIFTy.re} as well as all likelihoods behave like `jft.Model`s and their attributes are exposed to JAX, meaning that JAX understands what it means if a computation involves `self` or other models.
+In other words, `correlated_field`, `forward`, and `lh` from the code snippets shown here are all so-called pytrees in JAX and, e.g., the following is valid code `jax.jit(lambda l, x: l(x))(lh, x0)` with `x0` being some arbitrarily chosen valid input to `lh`.
 Inspired by equinox [@Kidger2021], individual attributes of the class can be marked as non-static or static via `dataclass.field(metadata=dict(static=...))` for the purpose of compiling.
-Depending on the value, JAX will either treat the attribute as unknown placeholder or as known concrete attribute and potentially inline it during compiles.
+Depending on the value, JAX will either treat the attribute as an unknown placeholder or as a known concrete attribute and potentially inline it during compiles.
 This mechanism is extensively used in likelihoods to avoid inlining large constants such as the data and avoiding expensive re-compiles whenever possible.
 
 ## Variational Inference
