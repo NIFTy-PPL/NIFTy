@@ -137,10 +137,10 @@ It is often carried out implicitly in the background without user input.
 ## Gaussian Processes
 
 One standard tool from the \texttt{NIFTy.re} toolbox are the structured GP models from \texttt{NIFTy}.
-These models usually rely on the harmonic domain being easily accessible, e.g. for pixels spaced on a regular Cartesian grid, the natural choice to represent a stationary kernel is the Fourier domain.
-In the generative picture, a realization $s$ drawn from a GP then reads $s = \mathcal{HT} \cdot \sqrt{P} \cdot \xi$ with $\mathcal{HT}$ the harmonic transform, $\sqrt{P}$ the square-root of the power-spectrum in harmonic space, and $\xi$ standard Gaussian random variables.
-In the implementation in \texttt{NIFTy.re} and \texttt{NIFTy}, the user can choose between two adaptive kernel models, a non-parametric kernel $\sqrt{P}$ and a Matérn kernel $\sqrt{P}$ [@Arras2022; @Guardiani2022 for details on their implementation].
-An example, initializing a non-parameteric GP prior for a $128 \times 128$ space with unit volume is shown in the following.
+These models usually rely on the harmonic domain being easily accessible. For example, for pixels spaced on a regular Cartesian grid, the natural choice to represent a stationary-kernel model is the Fourier domain.
+In the generative picture, a realization $s$ drawn from a GP then reads $s = \mathcal{HT} \cdot \sqrt{P} \cdot \xi$ with $\mathcal{HT}$ the harmonic transform, $P$ the power spectrum in harmonic space, and $\xi$ standard Gaussian random variables.
+In the implementation in \texttt{NIFTy.re} and \texttt{NIFTy}, the user can choose between two adaptive kernel models, a non-parametric kernel $\sqrt{P}$ and a Matérn-kernel $\sqrt{P}$ [@Arras2022; @Guardiani2022 for details on their implementation].
+An example initializing a non-parametric GP prior for a $128 \times 128$ space with unit volume is shown in the following.
 
 ```python
 from nifty8 import re as jft
@@ -164,9 +164,9 @@ correlated_field = cfm.finalize()
 ```
 
 Not all problems are well described by regularly spaced pixels.
-For more complicated pixel spacings, \texttt{NIFTy.re} features Iterative Charted Refinement [@Edenhofer2022], a GP model for arbitrarily deformed spaces.
-This model exploits nearest neighbor relations on various coarsening of the discretized modeled space and runs very efficiently on GPUs.
-For one dimensional problems with arbitrarily spaced pixel, \texttt{NIFTy.re} also implements multiple flavors of Gauss-Markov processes.
+For more complicated pixel spacings, \texttt{NIFTy.re} features Iterative Charted Refinement [@Edenhofer2022], a GP model for arbitrarily-deformed spaces.
+This model exploits nearest-neighbor relations on various coarsenings of the discretized-modeled space and runs very efficiently on GPUs.
+For one dimensional problems with arbitrarily-spaced pixels, \texttt{NIFTy.re} also implements multiple flavors of Gauss-Markov processes.
 
 ## Building Up Complex Models
 
