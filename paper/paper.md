@@ -80,7 +80,7 @@ Imaging is the process of transforming noisy, incomplete data into a space that 
 \texttt{NIFTy} is a Bayesian framework for imaging and has already successfully been applied to many fields in astrophysics.
 A focus on CPU computing and previous design decisions held the performance and the development of methods in \texttt{NIFTy} back.
 We present a re-write of \texttt{NIFTy}, coined \texttt{NIFTy.re}, which bridges \texttt{NIFTy} to the machine learning ecosystem, reworks the modeling principle, extends the inference strategies, and outsources much of the heavy lifting to JAX.
-The re-write dramatically accelerated models written in \texttt{NIFTy}, lays the foundation for new kinds of inference machineries, improves maintainability, and enables the interoperability of \texttt{NIFTy} with the JAX machine learning ecosystem.
+The re-write dramatically accelerates models written in \texttt{NIFTy}, lays the foundation for new kinds of inference machineries, improves maintainability, and enables the interoperability of \texttt{NIFTy} with the JAX machine learning ecosystem.
 
 # Statement of Need
 
@@ -88,39 +88,39 @@ Imaging commonly involves millions to billions of pixels.
 Each pixel usually corresponds to one or more correlated degrees of freedom in the model space.
 Modeling this many degrees of freedom is computationally demanding.
 However, imaging is not only computationally demanding but also statistically challenging.
-The noisy input requires a statistical treatment and needs to be accurately propagated from the input to the final image.
-To infer an image from noisy data, we require an inference machine that not only handles extremely high dimensional spaces but one that does so in a statistically rigorous way.
+The noise in the data requires a statistical treatment and needs to be accurately propagated from the data to the uncertainties in the final image.
+To do this, we require an inference machinery that not only handles extremely high-dimensional spaces, but one that does so in a statistically rigorous way.
 
 \texttt{NIFTy} is a Bayesian imaging library [@Selig2013; @Steiniger2017; @Arras2019].
-It is designed to infer the million to billion dimensional posterior distribution in the image space from noisy input data.
+It is designed to infer the million- to billion-dimensional posterior distribution in the image space from noisy input data.
 At the core of \texttt{NIFTy} lies a set of powerful Gaussian Process (GP) models and accurate Variational Inference (VI) algorithms.
 
 \texttt{NIFTy.re} is a rewrite of \texttt{NIFTy} in JAX [@Jax2018] with all relevant previous GP models, new, more flexible GP models, and a more flexible posterior approximation machinery.
-By being written in JAX, \texttt{NIFTy.re} effortlessly runs on accelerator hardware such as the GPU and TPU, vectorizes models whenever possible, just-in-time compiles code for additional performance, and enables new kinds of inference machineries thanks to being able to retrieve higher order derivates.
+By being written in JAX, \texttt{NIFTy.re} effortlessly runs on accelerator hardware such as the GPU and TPU, vectorizes models whenever possible, just-in-time compiles code for additional performance, and enables new kinds of inference machineries thanks to being able to retrieve higher order derivatives.
 \texttt{NIFTy.re} switches from a home-grown automatic differentiation engine that was used in \texttt{NIFTy} to JAX's automatic differentiation engine.
-We envision to harness significant gains in maintainability of \texttt{NIFTy.re} compared to \texttt{NIFTy} and a faster development cycle for new features.
+Through these changes, we envision to harness significant gains in maintainability of \texttt{NIFTy.re} compared to \texttt{NIFTy} and a faster development cycle for new features.
 
 <!-- Mention (if applicable) a representative set of past or ongoing research projects using the software and recent scholarly publications enabled by it. -->
 We expect \texttt{NIFTy.re} to be highly useful for many imaging applications and envision many applications within and outside of astrophysics [@Arras2019; @Arras2022; @Leike2019; @Leike2020; @Mertsch2023; @Roth2023DirectionDependentCalibration; @Hutschenreuter2023; @Tsouros2023; @Roth2023FastCadenceHighContrastImaging; @Hutschenreuter2022; @ScheelPlatz2023; @Frank2017; @Welling2021; @Westerkamp2023].
 \texttt{NIFTy.re} has already been successfully used in two galactic tomography publications [@Leike2022; @Edenhofer2023].
-A very early version of \texttt{NIFTy.re} enabled a 100 billion dimensional reconstruction using a maximum posterior inference.
-In a newer publication, \texttt{NIFTy.re} was used to infer a 500 million dimensional posterior dimensional using VI [@Knollmueller2019].
-The latter publication extensively used \texttt{NIFTy.re}'s GPU support, which yielded orders of magnitude speed-ups.
-With \texttt{NIFTy.re} bridging ideas from \texttt{NIFTy} to JAX, we envision many new possibilities for inferring classical machine learning models with \texttt{NIFTy}'s inference methods and using \texttt{NIFTy}-components such as the GP models in classical neural network frameworks.
+A very early version of \texttt{NIFTy.re} enabled a 100-billion-dimensional reconstruction using a maximum posterior inference.
+In a newer publication, \texttt{NIFTy.re} was used to infer a 500-million-dimensional posterior using VI [@Knollmueller2019].
+The latter publication extensively used \texttt{NIFTy.re}'s GPU support to reduce the runtime by two orders of magnitude compared to the CPU.
+With \texttt{NIFTy.re} bridging ideas from \texttt{NIFTy} to JAX, we envision many new possibilities for inferring classical machine learning models with \texttt{NIFTy}'s inference methods and a plethora of opportunities to use \texttt{NIFTy}-components such as the GP models in classical neural network frameworks.
 
 <!-- A list of key references, including to other software addressing related needs. Note that the references should include full names of venues, e.g., journals and conferences, not abbreviations only understood in the context of a specific discipline. -->
 \texttt{NIFTy.re} competes with other GP libraries as well as with probabilistic programming languages and frameworks.
 Compared to GPyTorch [@Hensman2015], GPflow [@Matthews2017], george [@Sivaram2015], or TinyGP [@ForemanMackey2024], \texttt{NIFTy} and \texttt{NIFTy.re} focus on GP models for structured spaces.
 Neither \texttt{NIFTy} nor \texttt{NIFTy.re} assume the posterior to be analytically accessible.
 Instead, \texttt{NIFTy} and \texttt{NIFTy.re} try to approximate the true posterior using VI.
-Compared to classical probabilistic programming languages such as Stan [@Carpenter2017] and frameworks such pyro [@Bingham2019], numpyro [@Phan2019], pyMC3 [@Salvatier2016], Emcee [@ForemanMackey2013], dynesty [@Speagle2020; @Koposov2023], or blackjax [@blackjax2020], \texttt{NIFTy} and \texttt{NIFTy.re} focus on inference in extremely high dimensional spaces.
+Compared to classical probabilistic programming languages such as Stan [@Carpenter2017] and frameworks such pyro [@Bingham2019], numpyro [@Phan2019], pyMC3 [@Salvatier2016], Emcee [@ForemanMackey2013], dynesty [@Speagle2020; @Koposov2023], or blackjax [@blackjax2020], \texttt{NIFTy} and \texttt{NIFTy.re} focus on inference in extremely high-dimensional spaces.
 \texttt{NIFTy} and \texttt{NIFTy.re} exploit the structure of probabilistic models in their VI techniques [@Frank2021].
-With \texttt{NIFTy.re} the GP models and the VI machinery are now fully accessible in the JAX ecosystem and \texttt{NIFTy.re} components interact seamlessly with other JAX packages such as `blackjax` and `jaxopt` [@Blondel2021].
+With \texttt{NIFTy.re}, the GP models and the VI machinery are now fully accessible in the JAX ecosystem and \texttt{NIFTy.re} components interact seamlessly with other JAX packages such as `blackjax` and `jaxopt` [@Blondel2021].
 
 # Core Components
 
 \texttt{NIFTy.re} brings tried and tested structured GP models and VI algorithms to JAX.
-GP models are especially useful for imaging problems, while VI algorithms are essential to probing high dimensional posteriors, which are often encountered in imaging problems.
+GP models are especially useful for imaging problems, while VI algorithms are essential to probing high-dimensional posteriors, which are often encountered in imaging problems.
 \texttt{NIFTy.re} infers the parameters of interest from noisy data given a stochastic mapping from the parameters of interest to the data.
 
 \texttt{NIFTy} and \texttt{NIFTy.re} build up hierarchical models for the posterior.
@@ -128,19 +128,20 @@ The log-posterior function reads $\ln\mathcal{p(\theta|d)} \coloneqq \mathcal{l}
 The goal of the inference is to draw samples from the posterior $\mathcal{p}(\theta|d)$.
 
 What is considered part of the likelihood versus part of the prior is ill-defined.
-Without loss of generality \texttt{NIFTy} and \texttt{NIFTy.re} re-formulate models such that the prior is always standard Gaussian.
-They implicitly define a mapping from a new latent space with parameters $\xi$ in which the prior is standard Gaussian to the parameters of interest $\theta$.
-The mapping $\theta(\xi)$ is incorporated into the forward model $f(\theta(\xi))$ such that all relevant details of the prior model are encoded in the forward model.
+Without loss of generality, \texttt{NIFTy} and \texttt{NIFTy.re} re-formulate models such that the prior is always standard Gaussian.
+They implicitly define a mapping from a new latent space with a priori standard Gaussian parameters $\xi$ to the parameters of interest $\theta$.
+The mapping $\theta(\xi)$ is incorporated into the forward model $f(\theta(\xi))$ in such a way that all relevant details of the prior model are encoded in the forward model.
 This choice of re-parameterization [@Rezende2015] is called standardization.
 It is often carried out implicitly in the background without user input.
 
 ## Gaussian Processes
 
 One standard tool from the \texttt{NIFTy.re} toolbox are the structured GP models from \texttt{NIFTy}.
-These models usually rely on the harmonic domain being easily accessible, e.g. for pixels spaced on a regular Cartesian grid, the natural choice to represent a stationary kernel is the Fourier domain.
+These models usually rely on the harmonic domain being easily accessible.
+For example, for pixels spaced on a regular Cartesian grid, the natural choice to represent a stationary kernel is the Fourier domain.
 In the generative picture, a realization $s$ drawn from a GP then reads $s = \mathcal{HT} \cdot \sqrt{P} \cdot \xi$ with $\mathcal{HT}$ the harmonic transform, $\sqrt{P}$ the square-root of the power-spectrum in harmonic space, and $\xi$ standard Gaussian random variables.
 In the implementation in \texttt{NIFTy.re} and \texttt{NIFTy}, the user can choose between two adaptive kernel models, a non-parametric kernel $\sqrt{P}$ and a Matérn kernel $\sqrt{P}$ [@Arras2022; @Guardiani2022 for details on their implementation].
-An example, initializing a non-parameteric GP prior for a $128 \times 128$ space with unit volume is shown in the following.
+A code example that initializes a non-parametric GP prior for a $128 \times 128$ space with unit volume is shown in the following.
 
 ```python
 from nifty8 import re as jft
@@ -165,15 +166,15 @@ correlated_field = cfm.finalize()
 
 Not all problems are well described by regularly spaced pixels.
 For more complicated pixel spacings, \texttt{NIFTy.re} features Iterative Charted Refinement [@Edenhofer2022], a GP model for arbitrarily deformed spaces.
-This model exploits nearest neighbor relations on various coarsening of the discretized modeled space and runs very efficiently on GPUs.
-For one dimensional problems with arbitrarily spaced pixel, \texttt{NIFTy.re} also implements multiple flavors of Gauss-Markov processes.
+This model exploits nearest neighbor relations on various coarsenings of the discretized modeled space and runs very efficiently on GPUs.
+For one-dimensional problems with arbitrarily spaced pixels, \texttt{NIFTy.re} also implements multiple flavors of Gauss-Markov processes.
 
 ## Building Up Complex Models
 
 Models are rarely just a GP prior.
-Commonly, a model contains at least several non-linearities that transform the GP prior or combine it with other random variables.
+Commonly, a model contains at least a few non-linearities that transform the GP prior or combine it with other random variables.
 For building more complex models, \texttt{NIFTy.re} provides a `Model` class that offers a somewhat familiar object-oriented design yet is fully JAX compatible and functional under the hood.
-The following code showcases such a model that builds up a slightly more involved model using the objects from the previous example.
+The following code shows how to build a slightly more complex model using the objects from the previous example.
 
 ```python
 from jax import numpy as jnp
@@ -199,10 +200,10 @@ data = jnp.load("data.npy")
 lh = jft.Poissonian(data).amend(forward)
 ```
 
-All GP models in \texttt{NIFTy.re} as well as all likelihoods behave like `jft.Model`s and their attributes are exposed to JAX, meaning JAX understands what it means if a computation involves `self` or other models.
-In other words, `correlated_field`, `forward`, and `lh` from the code snippets shown here are all so-called pytrees in JAX and, e.g., the following is valid code `jax.jit(lambda l, x: l(x))(lh, x0)` with `x0` some arbitrarily chosen valid input to `lh`.
+All GP models in \texttt{NIFTy.re} as well as all likelihoods behave like `jft.Model`s and their attributes are exposed to JAX, meaning that JAX understands what it means if a computation involves `self` or other models.
+In other words, `correlated_field`, `forward`, and `lh` from the code snippets shown here are all so-called pytrees in JAX, and for example the following is valid code `jax.jit(lambda l, x: l(x))(lh, x0)` with `x0` some arbitrarily chosen valid input to `lh`.
 Inspired by equinox [@Kidger2021], individual attributes of the class can be marked as non-static or static via `dataclass.field(metadata=dict(static=...))` for the purpose of compiling.
-Depending on the value, JAX will either treat the attribute as unknown placeholder or as known concrete attribute and potentially inline it during compiles.
+Depending on the value, JAX will either treat the attribute as an unknown placeholder or as a known concrete attribute and potentially inline it during compilation.
 This mechanism is extensively used in likelihoods to avoid inlining large constants such as the data and avoiding expensive re-compiles whenever possible.
 
 ## Variational Inference
@@ -222,7 +223,7 @@ These tools are provided in a jaxopt-style optimizer class [@Blondel2021].
 A typical minimization with \texttt{NIFTy.re} is shown in the following.
 It retrieves six antithetically mirrored samples from the approximate posterior via 25 iterations of alternating between optimization and sample adaption.
 The final result is stored in the `samples` variable.
-A convenient one-shot wrapper for the below is `jft.optimize_kl`.
+A convenient one-shot wrapper for the code below is `jft.optimize_kl`.
 By virtue of all modeling tools in \texttt{NIFTy.re} being written in JAX, it is also possible to combine \texttt{NIFTy.re} tools with blackjax [@blackjax2020] or any other posterior sampler in the JAX ecosystem.
 
 ```python
@@ -266,21 +267,22 @@ for i in range(opt_vi.n_total_iterations):
 ```
 
 ![Data (left), posterior mean (middle), and posterior uncertainty (right) for a simple toy example.\label{fig:minimal_reconstruction_data_mean_std}](minimal_reconstruction_data_mean_std.png)
+<!-- TODO: fewer y labels, more x labels -->
 
 \autoref{fig:minimal_reconstruction_data_mean_std} shows an exemplary posterior reconstruction employing the above model.
 The posterior mean agrees with the data but removes noisy structures.
 The posterior standard deviation is approximately equal to typical differences between the posterior mean and the data.
 
-## Performance compared to old NIFTy
+## Performance of \texttt{NIFTy.re} compared to \texttt{NIFTy}
 
 We test the performance of \texttt{NIFTy.re} against \texttt{NIFTy} for the simple yet representative model from above.
-To assess the performance, we benchmark $M_p \coloneqq F_p + \mathbb{1}$ with $F_p$ denoting the Fisher metric of the overall likelihood at position $p$ and the identity matrix $\mathbb{1}$ which is the curvature of the standardized prior analogous to the Fisher metric.
-Within \texttt{NIFTy.re} the Fisher metric of the overall likelihood is decomposed into $J_{f,p}^\dagger N^{-1} J_{f,p}$ with $J_{f,p}$ the implicit Jacobian of the forward model $f$ at $p$ and $N$ the Fisher-metric of the Poisson likelihood.
+To assess the performance, we compare the time required to apply $M_p \coloneqq F_p + \mathbb{1}$ to random input with $F_p$ denoting the Fisher metric of the overall likelihood at position $p$ and $\mathbb{1}$ the identity matrix.
+Within \texttt{NIFTy.re}, the Fisher metric of the overall likelihood is decomposed into $J_{f,p}^\dagger N^{-1} J_{f,p}$ with $J_{f,p}$ the implicit Jacobian of the forward model $f$ at $p$ and $N^{-1}$ the Fisher-metric of the Poisson likelihood.
 We choose to benchmark $M_p$ as a typical VI minimization in \texttt{NIFTy.re} and \texttt{NIFTy} is dominated by calls to this function.
 
 ![Performance comparison of \texttt{NIFTy.re} versus \texttt{NIFTy} on the CPU (one and eight core(s) of an Intel Xeon Platinum 8358 CPU clocked at 2.60G Hz) and GPU (A100 SXM4 80 GB HBM2).\label{fig:benchmark_nthreads=1+8_devices=cpu+gpu}](benchmark_nthreads=1+8_devices=cpu+gpu.png)
 
-\autoref{fig:benchmark_nthreads=1+8_devices=cpu+gpu} shows the evaluation time in \texttt{NIFTy} for applying $M_p$ to a new tangent position and the evaluation time in \texttt{NIFTy.re} for building $M_p$ and applying it to a new tangent position for exponentially larger models.
+\autoref{fig:benchmark_nthreads=1+8_devices=cpu+gpu} shows the evaluation time in \texttt{NIFTy} of applying $M_p$ to a new tangent position and the evaluation time in \texttt{NIFTy.re} of building $M_p$ and applying it to a new tangent position for exponentially larger models.
 We choose to exclude the build time of $M_p$ in \texttt{NIFTy} from the comparison, putting \texttt{NIFTy} at an advantage, as \texttt{NIFTy}'s automatic differentiation is built around calls to $M_p$ with $p$ rarely varying.
 We ran the benchmark on one CPU core, eight CPU cores, and on a GPU on a compute-node with an Intel Xeon Platinum 8358 CPU clocked at 2.60G Hz and an NVIDIA A100 SXM4 80 GB HBM2 GPU.
 We vary the size of the model by increasing the size of the two-dimensional square image grid.
@@ -292,20 +294,21 @@ On the GPU, \texttt{NIFTy.re} is consistently about one to two orders of magnitu
 
 We believe the performance benefits of \texttt{NIFTy.re} on the CPU for small models stem from the reduced python overhead by just-in-time compiling computations.
 At image sizes larger than roughly 15,000 pixels, both evaluation times are dominated by the fast Fourier transform and are hence roughly the same as both use the same underlying implementation [@ducc0].
-Typical models in \texttt{NIFTy.re} and \texttt{NIFTy} are often well aligned with GPU programming models and thus consistently perform well on the GPU.
-Models such as the new GP model implemented in \texttt{NIFTy.re} are even better aligned with GPU programming models and yield even higher performance gains [@Edenhofer2022].
+Models in \texttt{NIFTy.re} and \texttt{NIFTy} are often well aligned with GPU programming models and thus consistently perform well on the GPU.
+Modeling components such as the new GP models implemented in \texttt{NIFTy.re} are even better aligned with GPU programming paradigms and yield even higher performance gains [@Edenhofer2022].
 
 # Conclusion
 
 We implemented the core GP and VI machinery of the Bayesian imaging package \texttt{NIFTy} in JAX.
 The re-write moves much of the heavy-lifting from home-grown solutions into JAX, and we envision significant gains in maintainability of \texttt{NIFTy.re} and a faster development cycle moving forward.
-The re-write accelerates typical models written in \texttt{NIFTy} by one to two orders of magnitude, lays the foundation for new kinds of inference machineries by enabling higher order derivates via JAX, and enables the interoperability of \texttt{NIFTy} with the VI and GP methods from the JAX machine learning ecosystem.
+The re-write accelerates typical models written in \texttt{NIFTy} by one to two orders of magnitude, lays the foundation for new kinds of inference machineries by enabling higher order derivatives via JAX, and enables the interoperability of \texttt{NIFTy} with the VI and GP methods from the JAX machine learning ecosystem.
 
 # Acknowledgements
 
-Gordian Edenhofer acknowledges support from the German Academic Scholarship Foundation in the form of a PhD scholarship (``Promotionsstipendium der Studienstiftung des Deutschen Volkes'').
+Gordian Edenhofer acknowledges support from the German Academic Scholarship Foundation in the form of a PhD scholarship ("Promotionsstipendium der Studienstiftung des Deutschen Volkes").
 Philipp Frank acknowledges funding through the German Federal Ministry of Education and Research for the project "ErUM-IFT: Informationsfeldtheorie für Experimente an Großforschungsanlagen" (Förderkennzeichen: 05D23EO1).
 Jakob Roth acknowledges financial support by the German Federal Ministry of Education and Research (BMBF) under grant 05A20W01 (Verbundprojekt D-MeerKAT).
+Matteo Guardiani, Vincent Eberle, and Margret Westerkamp acknowledge financial support from the "Deutsches Zentrum für Luft- und Raumfahrt e.V." (DLR) through the project Universal Bayesian Imaging Kit (UBIK, Förderkennzeichen 50OO2103).
 
 # References
 
