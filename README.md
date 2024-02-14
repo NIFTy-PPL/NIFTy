@@ -200,7 +200,9 @@ All of NIFTy is distributed *without any warranty*.
 
 ## Citing NIFTy
 
-For the probabilistic programming framework NIFTy, please cite the following.
+To cite the probabilistic programming framework NIFTy, please use the citation provided below.
+In addition to citing NIFTy itself, please consider crediting the Gaussian process models you used and the inference machinery.
+See [the corresponding entry on citing NIFTy in the documentation](https://ift.pages.mpcdf.de/nifty/user/citations.html) for further details.
 
 ```
 @misc{niftyre,
@@ -211,5 +213,3 @@ For the probabilistic programming framework NIFTy, please cite the following.
     howpublished = {in preparation}
 }
 ```
-
-Please also consider crediting the Gaussian Process models if you use them and the inference machinery. See [the corresponding entry on citing NIFTy in the documentation](https://ift.pages.mpcdf.de/nifty/user/citations.html) for further details.
