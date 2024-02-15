@@ -71,7 +71,7 @@ fig.update_layout(
     xaxis_title="number of dimensions",
     yaxis_title="time [s]",
     width=720,
-    height=480,
+    height=400,
     margin=dict(t=5, b=5, l=5, r=5),
 )
 fig.update_xaxes(type="log")
