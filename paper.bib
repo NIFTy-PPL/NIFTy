@@ -346,7 +346,6 @@
   article-number = {6},
   url            = {https://www.mdpi.com/2673-9984/5/1/6},
   issn           = {2673-9984},
-  abstract       = {Modern day Bayesian imaging problems in astrophysics as well as other scientific areas often result in non-Gaussian and very high-dimensional posterior probability distributions as their formal solution. Efficiently accessing the information contained in such distributions remains a core challenge in modern statistics as, on the one hand, point estimates such as Maximum a Posteriori (MAP) estimates are insufficient due to the nonlinear structure of these problems, while on the other hand, posterior sampling methods such as Markov Chain Monte Carlo (MCMC) techniques may become computationally prohibitively expensive in such high-dimensional settings. To nevertheless enable (approximate) inference in these cases, geometric Variational Inference (geoVI) has recently been introduced as an accurate Variational Inference (VI) technique for nonlinear unimodal probability distributions. It utilizes the Fisher&ndash;Rao information metric (FIM) related to the posterior probability distribution and the Riemannian manifold associated with the FIM to construct a set of normal coordinates in which the posterior metric is approximately the Euclidean metric. Transforming the posterior distribution into these coordinates results in a distribution that takes a particularly simple form, which ultimately allows for an accurate approximation with a normal distribution. A computationally efficient approximation of the associated coordinate transformation has been provided by geoVI, which now enables its application to real-world astrophysical imaging problems in millions of dimensions.},
   doi            = {10.3390/psf2022005006}
 }
 @software{Jax2018,
@@ -409,7 +408,6 @@
   volume     = {18},
   number     = {1},
   issn       = {1532-4435},
-  abstract   = {GPflow is a Gaussian process library that uses TensorFlow for its core computations and Python for its front end. The distinguishing features of GPflow are that it uses variational inference as the primary approximation method, provides concise code through the use of automatic differentiation, has been engineered with a particular emphasis on software testing and is able to exploit GPU hardware.},
   journal    = {J. Mach. Learn. Res.},
   month      = {jan},
   pages      = {1299–1304},
@@ -462,7 +460,6 @@
   volume   = {76},
   url      = {https://www.jstatsoft.org/index.php/jss/article/view/v076i01},
   doi      = {10.18637/jss.v076.i01},
-  abstract = {Stan is a probabilistic programming language for specifying statistical models. A Stan program imperatively defines a log probability function over parameters conditioned on specified data and constants. As of version 2.14.0, Stan provides full Bayesian inference for continuous-variable models through Markov chain Monte Carlo methods such as the No-U-Turn sampler, an adaptive form of Hamiltonian Monte Carlo sampling. Penalized maximum likelihood estimates are calculated using optimization methods such as the limited memory Broyden-Fletcher-Goldfarb-Shanno algorithm. Stan is also a platform for computing log densities and their gradients and Hessians, which can be used in alternative algorithms such as variational Bayes, expectation propagation, and marginal inference using approximate integration. To this end, Stan is set up so that the densities, gradients, and Hessians, along with intermediate quantities of the algorithm such as acceptance probabilities, are easily accessible. Stan can be called from the command line using the cmdstan package, through R using the rstan package, and through Python using the pystan package. All three interfaces support sampling and optimization-based inference with diagnostics and posterior analysis. rstan and pystan also provide access to log probabilities, gradients, Hessians, parameter transforms, and specialized plotting.},
   number   = {1},
   journal  = {Journal of Statistical Software},
   author   = {Carpenter, Bob and Gelman, Andrew and Hoffman, Matthew D. and Lee, Daniel and Goodrich, Ben and Betancourt, Michael and Brubaker, Marcus and Guo, Jiqiang and Li, Peter and Riddell, Allen},
@@ -1361,7 +1358,6 @@
   article-number = {33},
   url            = {https://www.mdpi.com/2673-9984/5/1/33},
   issn           = {2673-9984},
-  abstract       = {Bayesian imaging algorithms are becoming increasingly important in, e.g., astronomy, medicine and biology. Given that many of these algorithms compute iterative solutions to high-dimensional inverse problems, the efficiency and accuracy of the instrument response representation are of high importance for the imaging process. For this reason, point spread functions, which make up a large fraction of the response functions of telescopes and microscopes, are usually assumed to be spatially invariant in a given field of view and can thus be represented by a convolution. For many instruments, this assumption does not hold and degrades the accuracy of the instrument representation. Here, we discuss the application of butterfly transforms, which are linear neural network structures whose sizes scale subquadratically with the number of data points. Butterfly transforms are efficient by design, since they are inspired by the structure of the Cooley&ndash;Tukey Fast Fourier transform. In this work, we combine them in several ways into butterfly networks, compare the different architectures with respect to their performance and identify a representation that is suitable for the efficient respresentation of a synthetic spatially variant point spread function up to a 1% error.},
   doi            = {10.3390/psf2022005033}
 }
 
