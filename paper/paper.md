@@ -102,7 +102,7 @@ This lays the foundation for new types of inference machineries that makes use o
 Through these changes, we envision to harness significant gains in maintainability of \texttt{NIFTy.re} compared to \texttt{NIFTy} and a faster development cycle for new features.
 
 <!-- Mention (if applicable) a representative set of past or ongoing research projects using the software and recent scholarly publications enabled by it. -->
-We expect \texttt{NIFTy.re} to be highly useful for many imaging applications and envision many applications within and outside of astrophysics [@Arras2019; @Arras2022; @Leike2019; @Leike2020; @Mertsch2023; @Roth2023DirectionDependentCalibration; @Hutschenreuter2023; @Tsouros2023; @Roth2023FastCadenceHighContrastImaging; @Hutschenreuter2022; @ScheelPlatz2023; @Frank2017; @Welling2021; @Westerkamp2023].
+We expect \texttt{NIFTy.re} to be highly useful for many imaging applications and envision many applications within and outside of astrophysics [@Arras2019; @Arras2022; @Leike2019; @Leike2020; @Mertsch2023; @Roth2023DirectionDependentCalibration; @Hutschenreuter2023; @Tsouros2023; @Roth2023FastCadenceHighContrastImaging; @Hutschenreuter2022; @ScheelPlatz2023; @Frank2017; @Welling2021; @Westerkamp2023; @Eberle2023ButterflyImaging; @Eberle2023ButterflyImagingAlgorithm].
 \texttt{NIFTy.re} has already been successfully used in two galactic tomography publications [@Leike2022; @Edenhofer2023].
 A very early version of \texttt{NIFTy.re} enabled a 100-billion-dimensional reconstruction using a maximum posterior inference.
 In a newer publication, \texttt{NIFTy.re} was used to infer a 500-million-dimensional posterior distribution using VI [@Knollmueller2019].
@@ -114,15 +114,15 @@ With \texttt{NIFTy.re} bridging ideas from \texttt{NIFTy} to JAX, we envision ma
 Compared to GPyTorch [@Hensman2015], GPflow [@Matthews2017], george [@Sivaram2015], or TinyGP [@ForemanMackey2024], \texttt{NIFTy} and \texttt{NIFTy.re} focus on GP models for structured spaces.
 Neither \texttt{NIFTy} nor \texttt{NIFTy.re} assume the posterior to be analytically accessible.
 Instead, \texttt{NIFTy} and \texttt{NIFTy.re} try to approximate the true posterior using VI.
-Compared to classical probabilistic programming languages such as Stan [@Carpenter2017] and frameworks such pyro [@Bingham2019], numpyro [@Phan2019], pyMC3 [@Salvatier2016], Emcee [@ForemanMackey2013], dynesty [@Speagle2020; @Koposov2023], or blackjax [@blackjax2020], \texttt{NIFTy} and \texttt{NIFTy.re} focus on inference in extremely high-dimensional spaces.
+Compared to classical probabilistic programming languages such as Stan [@Carpenter2017] and frameworks such Pyro [@Bingham2019], NumPyro [@Phan2019], pyMC3 [@Salvatier2016], emcee [@ForemanMackey2013], dynesty [@Speagle2020; @Koposov2023], or BlackJAX [@blackjax2020], \texttt{NIFTy} and \texttt{NIFTy.re} focus on inference in extremely high-dimensional spaces.
 \texttt{NIFTy} and \texttt{NIFTy.re} exploit the structure of probabilistic models in their VI techniques [@Frank2021].
-With \texttt{NIFTy.re}, the GP models and the VI machinery are now fully accessible in the JAX ecosystem and \texttt{NIFTy.re} components interact seamlessly with other JAX packages such as `blackjax` and `jaxopt` [@Blondel2021].
+With \texttt{NIFTy.re}, the GP models and the VI machinery are now fully accessible in the JAX ecosystem and \texttt{NIFTy.re} components interact seamlessly with other JAX packages such as BlackJAX and JAXopt [@Blondel2021].
 
 # Core Components
 
 \texttt{NIFTy.re} brings tried and tested structured GP models and VI algorithms to JAX.
-GP models are especially useful for imaging problems, while VI algorithms are essential to probing high-dimensional posteriors, which are often encountered in imaging problems.
-\texttt{NIFTy.re} infers the parameters of interest from noisy data given a stochastic mapping from the parameters of interest to the data.
+GP models are highly useful for imaging problems, and VI algorithms are essential to probing high-dimensional posteriors, which are often encountered in imaging problems.
+\texttt{NIFTy.re} infers the parameters of interest from noisy data via a stochastic mapping that goes in the opposite direction, from the parameters of interest to the data.
 
 \texttt{NIFTy} and \texttt{NIFTy.re} build up hierarchical models for the posterior.
 The log-posterior function reads $\ln\mathcal{p(\theta|d)} \coloneqq \mathcal{l}(d, f(\theta)) + \ln\mathcal{p}(\theta) + \mathrm{const}$ with log-likelihood $\mathcal{l}$, forward model $f$ mapping the parameters of interest $\theta$ to the data space, and log-prior $\ln\mathcal{p(\theta)}$.
@@ -222,13 +222,13 @@ The samples in MGVI and geoVI exploit model-intrinsic knowledge of the posterior
 \texttt{NIFTy.re} implements both MGVI and geoVI and allows for much finer control over the way samples are drawn and updated compared to \texttt{NIFTy}.
 Furthermore, \texttt{NIFTy.re} exposes stand-alone functions for drawing MGVI and geoVI samples from any arbitrary model with a likelihood from \texttt{NIFTy.re} and a forward model that is differentiable by JAX.
 In addition to stand-alone sampling functions, \texttt{NIFTy.re} also provides tools to configure and execute the alternating Kullback–Leibler divergence optimization and sample adaption at a higher abstraction level.
-These tools are provided in a jaxopt-style optimizer class [@Blondel2021].
+These tools are provided in a JAXopt-style optimizer class [@Blondel2021].
 
 A typical minimization with \texttt{NIFTy.re} is shown in the following.
 It retrieves six antithetically mirrored samples from the approximate posterior via 25 iterations of alternating between optimization and sample adaption.
 The final result is stored in the `samples` variable.
 A convenient one-shot wrapper for the code below is `jft.optimize_kl`.
-By virtue of all modeling tools in \texttt{NIFTy.re} being written in JAX, it is also possible to combine \texttt{NIFTy.re} tools with blackjax [@blackjax2020] or any other posterior sampler in the JAX ecosystem.
+By virtue of all modeling tools in \texttt{NIFTy.re} being written in JAX, it is also possible to combine \texttt{NIFTy.re} tools with BlackJAX [@blackjax2020] or any other posterior sampler in the JAX ecosystem.
 
 ```python
 from jax import random

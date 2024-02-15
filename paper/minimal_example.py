@@ -177,7 +177,7 @@ for i in range(1, 4 + 1):
 fig.update_layout(
     template="plotly_white",
     width=720,
-    height=250,
+    height=220,
     coloraxis=dict(colorbar_x=0.26, colorscale="viridis", colorbar_thickness=15),
     coloraxis3=dict(colorbar_x=1.0075, colorscale="gray", colorbar_thickness=15),
     margin=dict(t=20, b=5, l=5, r=5),

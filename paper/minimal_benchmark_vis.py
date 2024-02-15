@@ -51,12 +51,16 @@ savestate = {k: savestate[k] for k in sorted(savestate.keys())}
 # %%
 fig = go.Figure()
 n_gpu_plots = 0
-for pretty_name, (all_dims, timings) in savestate.items():
+symbol_cycle = ("circle", "cross", "triangle-up", "star-triangle-up", "star", "y-down")
+dash_cycle = ("solid", "dot", "dash", "longdash", "dashdot", "longdashdot")
+for i, (pretty_name, (all_dims, timings)) in enumerate(savestate.items()):
     fig.add_trace(
         go.Scatter(
             x=np.array([np.prod(d) for d in all_dims]),
             y=np.array([t.time for t in timings]),
             mode="lines+markers",
+            line=dict(dash=dash_cycle[i % len(savestate)]),
+            marker=dict(symbol=symbol_cycle[i % len(savestate)]),
             name=pretty_name,
         )
     )
