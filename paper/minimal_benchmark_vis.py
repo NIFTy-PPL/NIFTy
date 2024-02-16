@@ -1,5 +1,6 @@
 # %%
 import numpy as np
+import plotly.express as px
 import plotly.graph_objects as go
 
 # %%
@@ -53,15 +54,22 @@ fig = go.Figure()
 n_gpu_plots = 0
 symbol_cycle = ("circle", "cross", "triangle-up", "star-triangle-up", "star", "y-down")
 dash_cycle = ("solid", "dot", "dash", "longdash", "dashdot", "longdashdot")
+color_map = {
+    "NIFTy": px.colors.qualitative.G10[0],
+    "NIFTy.re": px.colors.qualitative.G10[1],
+}
 for i, (pretty_name, (all_dims, timings)) in enumerate(savestate.items()):
+    sym, dash = symbol_cycle[i % len(savestate)], dash_cycle[i % len(savestate)]
+    color = color_map[pretty_name.split(" ")[-1]]
     fig.add_trace(
         go.Scatter(
             x=np.array([np.prod(d) for d in all_dims]),
             y=np.array([t.time for t in timings]),
             mode="lines+markers",
-            line=dict(dash=dash_cycle[i % len(savestate)]),
-            marker=dict(symbol=symbol_cycle[i % len(savestate)]),
+            line=dict(dash=dash, color=color),
+            marker=dict(symbol=sym, color=color),
             name=pretty_name,
+            opacity=0.9,
         )
     )
 fig.update_layout(
