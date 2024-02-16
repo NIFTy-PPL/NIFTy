@@ -52,7 +52,7 @@ savestate = {k: savestate[k] for k in sorted(savestate.keys())}
 # %%
 fig = go.Figure()
 n_gpu_plots = 0
-symbol_cycle = ("circle", "cross", "triangle-up", "star-triangle-up", "star", "y-down")
+symbol_cycle = ("circle", "cross", "x", "star-triangle-up", "square", "y-down")
 dash_cycle = ("solid", "dot", "dash", "longdash", "dashdot", "longdashdot")
 color_map = {
     "NIFTy": px.colors.qualitative.G10[0],
