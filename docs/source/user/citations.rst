@@ -5,7 +5,7 @@ To cite the software library NIFTy, please use the following references:
 
 .. parsed-literal::
     @misc{niftyre,
-      author       = {{Edenhofer}, Gordian and {Frank}, Philipp and {Leike}, Reimar H. and {Roth}, Jakob and {Guerdi}, Massin and {Enßlin}, Torsten A.},
+      author       = {{Edenhofer}, Gordian and {Frank}, Philipp and {Roth}, Jakob and {Leike}, Reimar H. and {Guerdi}, Massin and {Scheel-Platz}, Lukas I. and {Guardiani}, Matteo and {Eberle}, Vincent and {Westerkamp}, Margret and {Enßlin}, Torsten A.},
       title        = {{Re-Envisioning Numerical Information Field Theory (NIFTy.re): A Library for Gaussian Processes and Variational Inference}},
       keywords     = {Software},
       year         = 2024,
