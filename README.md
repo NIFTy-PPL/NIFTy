@@ -160,7 +160,7 @@ To build the documentation locally, run:
 
 ```
 sudo apt-get install dvipng jupyter-nbconvert texlive-latex-base texlive-latex-extra
-pip install --user sphinx pydata-sphinx-theme
+pip install --user sphinx jupytext pydata-sphinx-theme myst-parser
 cd <nifty_directory>
 sh docs/generate.sh
 ```
