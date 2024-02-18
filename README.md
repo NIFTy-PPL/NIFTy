@@ -162,7 +162,7 @@ To build the documentation locally, run:
 sudo apt-get install dvipng jupyter-nbconvert texlive-latex-base texlive-latex-extra
 pip install --user sphinx jupytext pydata-sphinx-theme myst-parser
 cd <nifty_directory>
-sh docs/generate.sh
+bash docs/generate.sh
 ```
 
 To view the documentation, open `docs/build/index.html` in your browser.
@@ -188,7 +188,7 @@ pytest --cov=nifty8 test
 For a quick start, you can browse through the [informal introduction](https://ift.pages.mpcdf.de/nifty/user/code.html) or dive into NIFTy by running one of the demonstrations, e.g.:
 
 ```
-python demos/nifty_re.py
+python demos/0_intro.py
 ```
 
 ## Licensing terms

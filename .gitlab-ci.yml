@@ -58,7 +58,7 @@ pages:
     - python3 setup.py install --user -f
     - git config --global --add safe.directory /builds/ift/nifty
     - git clean -xfd docs/source
-    - sh docs/generate.sh
+    - bash docs/generate.sh
     - mv docs/build/ public/
   artifacts:
     paths:
