@@ -50,8 +50,6 @@ affiliations:
     index: 5
 date: 21 February 2024
 bibliography: paper.bib
-header-includes:
-  - \usepackage{mathtools}
 
 # Optional fields if submitting to a AAS journal too, see this blog post:
 # https://blog.joss.theoj.org/2018/12/a-new-collaboration-with-aas-publishing
@@ -125,7 +123,7 @@ GP models are highly useful for imaging problems, and VI algorithms are essentia
 \texttt{NIFTy.re} infers the parameters of interest from noisy data via a stochastic mapping that goes in the opposite direction, from the parameters of interest to the data.
 
 \texttt{NIFTy} and \texttt{NIFTy.re} build up hierarchical models for the posterior.
-The log-posterior function reads $\ln\mathcal{p(\theta|d)} \coloneqq \mathcal{l}(d, f(\theta)) + \ln\mathcal{p}(\theta) + \mathrm{const}$ with log-likelihood $\mathcal{l}$, forward model $f$ mapping the parameters of interest $\theta$ to the data space, and log-prior $\ln\mathcal{p(\theta)}$.
+The log-posterior function reads $\ln\mathcal{p(\theta|d)} := \mathcal{l}(d, f(\theta)) + \ln\mathcal{p}(\theta) + \mathrm{const}$ with log-likelihood $\mathcal{l}$, forward model $f$ mapping the parameters of interest $\theta$ to the data space, and log-prior $\ln\mathcal{p(\theta)}$.
 The goal of the inference is to draw samples from the posterior $\mathcal{p}(\theta|d)$.
 
 What is considered part of the likelihood versus part of the prior is ill-defined.
@@ -279,7 +277,7 @@ The posterior standard deviation is approximately equal to typical differences b
 ## Performance of \texttt{NIFTy.re} compared to \texttt{NIFTy}
 
 We test the performance of \texttt{NIFTy.re} against \texttt{NIFTy} for the simple yet representative model from above.
-To assess the performance, we compare the time required to apply $M_p \coloneqq F_p + \mathbb{1}$ to random input with $F_p$ denoting the Fisher metric of the overall likelihood at position $p$ and $\mathbb{1}$ the identity matrix.
+To assess the performance, we compare the time required to apply $M_p := F_p + \mathbb{1}$ to random input with $F_p$ denoting the Fisher metric of the overall likelihood at position $p$ and $\mathbb{1}$ the identity matrix.
 Within \texttt{NIFTy.re}, the Fisher metric of the overall likelihood is decomposed into $J_{f,p}^\dagger N^{-1} J_{f,p}$ with $J_{f,p}$ the implicit Jacobian of the forward model $f$ at $p$ and $N^{-1}$ the Fisher-metric of the Poisson likelihood.
 We choose to benchmark $M_p$ as a typical VI minimization in \texttt{NIFTy.re} and \texttt{NIFTy} is dominated by calls to this function.
 
