@@ -324,11 +324,11 @@ class RegularAxis:
         coarse: numpy.ndarray of int
             Binids of the bins on this level that contain the `fine_index`.
         mat: jax.numpy.ndarray of float
-            Unique matrices that map the input on this level to the next fine 
+            Unique matrices that map the input on this level to the next fine
             level along this axis.
         select: numpy.ndarray of int
             Indexing along the first axis of `mat` that maps from the unique
-            array `mat` to an array of the shape `fine_index.shape[0] + 
+            array `mat` to an array of the shape `fine_index.shape[0] +
             mat.shape[1:]`. Can be used to identify the entries in `mat` that
             correspond to one entry of `fine_index`
         Notes:
@@ -390,8 +390,8 @@ class RegularAxis:
                 else:
                     mat[b] = np.array([0., 1.-d, d])
             mat = mat[np.newaxis, ...]
-            coarse = np.add.outer(refine_index, 
-                                np.array([-1,0,1], dtype=refine_index.dtype), 
+            coarse = np.add.outer(refine_index,
+                                np.array([-1,0,1], dtype=refine_index.dtype),
                                 dtype=refine_index.dtype)
             coarse = coarse%self.size
         else:
@@ -430,7 +430,7 @@ class RegularAxis:
             start += (fine_index - self.base * coarse)
             fine_size = self.fine_axis.kernel_size
             start -= fine_size//2
-            select = np.add.outer(start, np.arange(fine_size), 
+            select = np.add.outer(start, np.arange(fine_size),
                                   dtype=fine_index.dtype)
             select = select[:, np.newaxis, ...]
             front = np.zeros_like(select)
@@ -440,10 +440,10 @@ class RegularAxis:
             start += (fine_index - self.base * coarse)
             fine_size = self.fine_axis.kernel_size
             start -= fine_size//2
-            select = np.add.outer(start, 
-                                  np.arange(fine_size, dtype=fine_index.dtype), 
+            select = np.add.outer(start,
+                                  np.arange(fine_size, dtype=fine_index.dtype),
                                   dtype=fine_index.dtype)
-            front = np.multiply.outer(np.ones_like(select), 
+            front = np.multiply.outer(np.ones_like(select),
                                     np.arange(2, dtype=fine_index.dtype),
                                     dtype=fine_index.dtype)
             front = np.moveaxis(front, 1, -1)
@@ -451,7 +451,7 @@ class RegularAxis:
         else:
             msg = f'Unknown interpolation method: {self._omethod}'
             raise NotImplementedError(msg)
-        return (front.reshape(shp+front.shape[1:]), 
+        return (front.reshape(shp+front.shape[1:]),
                 select.reshape(shp+select.shape[1:]))
 
     def get_coords_and_distances(self, index):
@@ -496,7 +496,7 @@ class RegularAxis:
             Kernel size of the new fine axis. If None, the kernel size of
             this axis is used.
         is_linear: bool (optional)#TODO
-            Whether the kernel is linearly interpolated or not. If None, the 
+            Whether the kernel is linearly interpolated or not. If None, the
             `is_linear` of this axis is used.
         Returns:
         --------
@@ -533,18 +533,18 @@ def _int_to_basis(nside, fine, coarse, missing_neighbours):
 
     # Rotate vectors to move query to (pi/2, pi) and center on query
     s, c = np.sin(thq), np.cos(thq)
-    vc = (c*vc + s*np.cross(r,vc,axis=0) 
+    vc = (c*vc + s*np.cross(r,vc,axis=0)
             + (1-c)*r*((vc*r).sum(axis=0)[np.newaxis,...]))
     s, c = np.sin(phq), np.cos(phq)
     vc = c*vc + np.stack([-s[0]*vc[1], s[0]*vc[0],(1-c[0])*vc[2]], axis = 0)
     th = np.stack(hp.vec2ang(vc.reshape((3,-1)).T), axis=0)
     th = th.reshape((2,) + coarse.shape)
     th -= np.pi * np.array([0.5,1.])[:,np.newaxis,np.newaxis]
-    th[:,-1,missing_neighbours] = 0.5*(th[:,1,missing_neighbours] + 
+    th[:,-1,missing_neighbours] = 0.5*(th[:,1,missing_neighbours] +
                                         th[:,2,missing_neighbours])
 
     # Construct local eigenbasis using pixel query belongs to and the two
-    # left/right neighbours. Bilinear interplation is performed in this 
+    # left/right neighbours. Bilinear interplation is performed in this
     # basis.
     e1 = th[:,1]-th[:,0]
     e1 /= np.linalg.norm(e1, axis=0)
@@ -558,8 +558,8 @@ def _int_to_basis(nside, fine, coarse, missing_neighbours):
 def _interpolation_weights(theta, missing_neighbours):
     """Interpolation weights in case of missing neighbours. If a neighbor is
     missing (N/E/S/W), triangular interpolation is performed instead."""
-    M = tuple(np.stack((np.ones(theta.shape[-1]), theta[0,i], 
-                theta[1,i], theta[0,i]*theta[1,i]), axis = 1) 
+    M = tuple(np.stack((np.ones(theta.shape[-1]), theta[0,i],
+                theta[1,i], theta[0,i]*theta[1,i]), axis = 1)
                 for i in range(4))
     M = np.stack(M, axis=1)
     M = np.linalg.inv(M)[:,0]
@@ -569,7 +569,7 @@ def _interpolation_weights(theta, missing_neighbours):
     return M
 
 class HPAxis(RegularAxis):
-    def __init__(self, nside, knn_neighbours, fine_axis, 
+    def __init__(self, nside, knn_neighbours, fine_axis,
                  interpolation_method_in, interpolation_method_out):
         """An axis describing a pixelization of a HEALPiX sphere.
 
@@ -647,7 +647,7 @@ class HPAxis(RegularAxis):
         Returns:
         --------
         numpy.ndarray of float
-            The corresponding coordinates. The returned array is of shape 
+            The corresponding coordinates. The returned array is of shape
             (3,...).
         Notes:
         ------
@@ -706,7 +706,7 @@ class HPAxis(RegularAxis):
         return knn.T
 
     def get_inter_window_ids(self, index):
-        """The indices corresponding to the kernel and interpolation window 
+        """The indices corresponding to the kernel and interpolation window
         centered around each entry of `indices`.
 
         Parameters:

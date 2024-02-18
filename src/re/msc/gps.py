@@ -58,14 +58,14 @@ def MSGp(kernel, dtype = jnp.float64):
     Returns:
     --------
     nifty6.re.Model
-        An instance of `Model` that can be applied to a `Vector` of standard 
-        normal variables of consistent shape to obtain a random realization of 
+        An instance of `Model` that can be applied to a `Vector` of standard
+        normal variables of consistent shape to obtain a random realization of
         a GP with amplitude `kernel` on `chart`.
     Notes:
     ------
         In order to generate a consistent approximation of a continuous GP, the
         input random variables get scaled with the square root of the volume in
-        each bin as this yields the correct variance of integrals over a 
+        each bin as this yields the correct variance of integrals over a
         standard normal distributed random process.
     """
     f = MSConvolve(kernel)
@@ -121,7 +121,7 @@ def distfunc_from_spec(r_min, r_max, N, d, normalize = True):
             res0 = (k[...,1:]**d - k[...,:-1]**d) / d
             resn0 = (fkr[...,1:] - fkr[..., :-1]) / r**d
             res = jnp.where(r < 1E-10, res0, resn0) / fct[d-1]
-            res = jnp.tensordot(res, spec, axes=(-1,0)) 
+            res = jnp.tensordot(res, spec, axes=(-1,0))
             if normalize:
                 res /= (weights*spec).sum()
             return res
@@ -163,7 +163,7 @@ def get_rminmax(chart):
     ker = MSKernel(distmat, chart)
     ds = ker.evaluate_kernel_function(0, chart.main_indices[0])
     r_max = np.max(ds)
-    ds = ker.evaluate_kernel_function(chart.maxlevel, 
+    ds = ker.evaluate_kernel_function(chart.maxlevel,
                                       chart.main_indices[chart.maxlevel])
     ds = ds.flatten()
     ds = ds[ds != 0.]
@@ -322,8 +322,8 @@ class MSCorrelatedField(_MSSpectralGP):
                  scan_use_latent = True, atol = 1E-5, rtol = 1E-5,
                  buffer_size = 10000, nbatch = 10):
         """Special case of `MSConvolve` that assumes the input to be standard
-        normal random variables (see Notes) and `kernel` to be the amplitude of a
-        Gaussian process.
+        normal random variables (see Notes) and `kernel` to be the amplitude of
+        a Gaussian process.
 
         Parameters:
         -----------
@@ -335,14 +335,14 @@ class MSCorrelatedField(_MSSpectralGP):
         --------
         nifty6.re.Model
             An instance of `Model` that can be applied to a `Vector` of standard
-            normal variables of consistent shape to obtain a random realization of
-            a GP with amplitude `kernel` on `chart`.
+            normal variables of consistent shape to obtain a random realization
+            of a GP with amplitude `kernel` on `chart`.
         Notes:
         ------
-            In order to generate a consistent approximation of a continuous GP, the
-            input random variables get scaled with the square root of the volume in
-            each bin as this yields the correct variance of integrals over a
-            standard normal distributed random process.
+            In order to generate a consistent approximation of a continuous GP,
+            the input random variables get scaled with the square root of the
+            volume in each bin as this yields the correct variance of integrals
+            over a standard normal distributed random process.
         """
         self._pytree = {}
         if not isinstance(chart, MSChart):

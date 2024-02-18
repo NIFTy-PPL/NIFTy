@@ -41,10 +41,10 @@ def prepare_input(arrays, chart, volume_scaling = 1., indices = None):
             raise ValueError
         rr = aa * chart.volume(inds, lvl)**volume_scaling
         for ax in chart.axes(lvl):
-            rr = jnp.stack((rr, ) + tuple(jnp.zeros_like(rr) for _ in 
+            rr = jnp.stack((rr, ) + tuple(jnp.zeros_like(rr) for _ in
                                           range(ax.in_size - 1)), axis=-1)
             #if ax.is_linear:
-            #    rr = 
+            #    rr =
             #else:
             #    rr = rr[..., jnp.newaxis]
         res.append(rr)
@@ -65,7 +65,7 @@ def charted_convolve(arrays, kernels, kerneltables, chart):
             assert arrays[lvl+1].shape[0] == chart.main_indices[lvl+1].size
             res, resid = chart.coarse_grain(arrays[lvl+1], lvl+1)
             if arrays[lvl].size > 0:
-                res, resid = sorted_concat(arrays[lvl], chart.indices[lvl], res, 
+                res, resid = sorted_concat(arrays[lvl], chart.indices[lvl], res,
                                            resid)
             assert np.all(resid == chart.main_indices[lvl])
             arrays[lvl] = res
@@ -83,8 +83,8 @@ def charted_convolve(arrays, kernels, kerneltables, chart):
     resultids.reverse()
     prev_result = None
     for lvl in range(chart.maxlevel+1):
-        result[lvl] = chart.batch_interconvolve(prev_result, result[lvl], 
-                                                resultids[lvl], 
+        result[lvl] = chart.batch_interconvolve(prev_result, result[lvl],
+                                                resultids[lvl],
                                                 kernels[lvl],
                                                 kerneltables[lvl], lvl)
         prev_result = result[lvl]

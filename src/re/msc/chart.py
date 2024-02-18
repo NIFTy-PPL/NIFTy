@@ -42,7 +42,7 @@ def _check_indices(indices, baseaxes):
 class MSChart:
     def __init__(self, indices, axes, charted_trafos = None):
         """MultiScale chart for handling convolutions on sparsely resolved
-        multigrids. The underlying abstract multigrid is represented as 
+        multigrids. The underlying abstract multigrid is represented as
         levels i >=0, where 0 corresponds to the most coarse grid and higher
         levels indicate more refined grids.
 
@@ -52,11 +52,11 @@ class MSChart:
             Indices on each level of the multigrid that exist in this chart.
             All levels may have existing indices, however they are subject to
             several constraints (i - iii)
-            i  : If an index exists on level i, all fine voxels that would 
-                 correspond to refining the voxel of this index must not exist on
-                 levels i+j (j>0). 
+            i  : If an index exists on level i, all fine voxels that would
+                 correspond to refining the voxel of this index must not exist
+                 on levels i+j (j>0).
             ii : Furthermore, combining all voxels of all levels must correspond
-                 to a full coverage of the entire space (but only a single 
+                 to a full coverage of the entire space (but only a single
                  coverage due to constraint i).
             iii: If a voxel exists on level i, but some of the voxels in the
                  neighbourhood do not exist on i, the coarse voxels (that would
@@ -103,7 +103,7 @@ class MSChart:
         self._main_indices = self._get_main_indices()
         # Validate ordering between levels
         for lvl in range(self.maxlevel):
-            diff = my_setdiff_indices(self._main_indices[lvl], 
+            diff = my_setdiff_indices(self._main_indices[lvl],
                                       self._indices[lvl])
             fine = get_fine_indices(diff, lvl, self._axes)
             assert np.all(fine.flatten() == self._main_indices[lvl+1])
@@ -219,8 +219,8 @@ class MSChart:
         return self._chart_to_kernel(*locs)
 
     def binid_from_coord(self, coordinate, level, on_chart = False):
-        """Pseudoinverse operation of `coordinate`. Yields the index of the 
-        bin `coordinates` falls into.
+        """Pseudoinverse operation of `coordinate`. Yields the index of the bin
+        `coordinates` falls into.
 
         Parameters:
         -----------
@@ -299,7 +299,7 @@ class MSChart:
 
     def _refine_input(self, input, fine_missing, coarse_table, level):
         coarse, kernels, ker_select = (), (), ()
-        for ax, idx in zip(self.axes(level), 
+        for ax, idx in zip(self.axes(level),
                            id_to_axisids(fine_missing, level+1, self._axes)):
             cc, ker, ker_sel = ax.refine_mat(idx)
             kernels += (ker,)
@@ -331,7 +331,7 @@ class MSChart:
             return self._refine_input(input, missing, table, level), missing
         return None
 
-    def _batch_interpolation_selection(self, level, refine_indices, 
+    def _batch_interpolation_selection(self, level, refine_indices,
                                        coarse_table):
         if level == self.maxlevel:
             raise ValueError
@@ -344,8 +344,8 @@ class MSChart:
         kids, isel = np.unique(kids, return_inverse=True)
 
         coarse, kernels = [], []
-        for i, (ax, idx, kidx) in enumerate(zip(axs, 
-                            id_to_axisids(refine_indices, level, self._axes), 
+        for i, (ax, idx, kidx) in enumerate(zip(axs,
+                            id_to_axisids(refine_indices, level, self._axes),
                             id_to_axisids(kids, level, self._axes))):
             cc, kk = ax.batch_interpolate(idx, kidx)
             kernels.append(kk)
@@ -356,7 +356,7 @@ class MSChart:
         ker_select = isel if kids.size > 1 else None
         return coarse, kernels, ker_select
 
-    def batch_interconvolve(self, oldres, input, inputids, kernel, kerneltable, 
+    def batch_interconvolve(self, oldres, input, inputids, kernel, kerneltable,
                             level):
         input = input.reshape((input.shape[0],-1))
         if level == 0:
@@ -366,16 +366,16 @@ class MSChart:
             select = get_kernel_window(inds, 0, self._axes)
             interselect, interkernels, interker_select = None, None, None
         else:
-            inds = my_setdiff_indices(self.main_indices[level-1], 
+            inds = my_setdiff_indices(self.main_indices[level-1],
                                       self.indices[level-1])
             select = get_batch_kernel_window(inds, level-1, self._axes)
             coarse_tbl = get_table(self.main_indices[level-1])
-            (interselect, interkernels, 
-            interker_select) = self._batch_interpolation_selection(level-1, 
-                                                                   inds, 
+            (interselect, interkernels,
+            interker_select) = self._batch_interpolation_selection(level-1,
+                                                                   inds,
                                                                    coarse_tbl)
             dims = np.arange(2*self.ndim, dtype=int) + 1
-            interkernels = (np.expand_dims(kk, 
+            interkernels = (np.expand_dims(kk,
                             tuple(np.delete(dims, [i, self.ndim+i])))
                             for i,kk in enumerate(interkernels))
             interkernels = reduce(lambda a,b: a*b, interkernels)
@@ -402,8 +402,8 @@ class MSChart:
                 res += jnp.matmul(rker, ores[rsel])
             return res
 
-        axes = (None, None, 0 if oldres is not None else None, 
-                0 if interker_select is not None else None, 
+        axes = (None, None, 0 if oldres is not None else None,
+                0 if interker_select is not None else None,
                 None, None, 0, 0 if ker_select is not None else None)
         return vmap(interconv, axes, 0)(oldres, interkernels, interselect,
                                         interker_select, input, kernel, select,
@@ -417,7 +417,7 @@ class MSChart:
 
     def refine(self, refine_indices, fine_axes = None, _want_ref_pairs = False):
         """Refine the chart at given `refine_indices`.
-        
+
         Parameters:
         -----------
         refine_indices: iterable of numpy.ndarray
@@ -428,13 +428,13 @@ class MSChart:
             If None, `RegularAxis.refine_axis` is used to create the new finest
             axes.
         _want_ref_pairs: bool (default False)
-            Internal flag to also return the matching pairs of 
+            Internal flag to also return the matching pairs of
             (old_index, new_indices) for each refined index.
         Notes:
         ------
             Note that in order to obtain a consistent new `MSChart` additional
             indices may have to be refined to satisfy the conditions (i-iii)
-            that indices must obey for a valid chart (see constructor of 
+            that indices must obey for a valid chart (see constructor of
             `MSChart` for a definition). These additional indices get identified
             and automatically also refined by this function.
         """
@@ -444,7 +444,7 @@ class MSChart:
         chart = self.copy()
         if refine_indices[-1].size != 0:
             refine_indices.append(np.array([], dtype=refine_indices[-1].dtype))
-            inds = chart._indices 
+            inds = chart._indices
             inds += (np.array([], dtype=refine_indices[-1].dtype), )
             for i, aa in enumerate(chart.axes(chart.maxlevel)):
                 if fine_axes is not None:
@@ -459,7 +459,7 @@ class MSChart:
             np.array([], dtype=chart.indices[0].dtype),] * chart.maxlevel
         new_inds.append(np.copy(chart.indices[-1]))
         for lvl in range(chart._maxlevel)[::-1]:
-            if (my_setdiff_indices(refine_indices[lvl], 
+            if (my_setdiff_indices(refine_indices[lvl],
                                    chart.indices[lvl]).size != 0):
                 raise ValueError("Indices to be refined not in chart!")
             fine = get_fine_indices(refine_indices[lvl], lvl, chart._axes)
@@ -476,7 +476,7 @@ class MSChart:
                     raise ValueError
                 missing = get_coarse_index(missing, lvl, chart._axes)
                 missing = my_setdiff_indices(missing, refine_indices[lvl-1])
-                refine_indices[lvl-1] = np.append(refine_indices[lvl-1], 
+                refine_indices[lvl-1] = np.append(refine_indices[lvl-1],
                                                   missing)
                 refine_indices[lvl-1].sort()
             # Check that none of the indices are in fine level
@@ -484,8 +484,8 @@ class MSChart:
             if sz.size != fine.size:
                 raise ValueError("Indices to be refined already in chart!")
             # Delete refined indices and insert new ones on fine level
-            new_inds[lvl] = np.append(new_inds[lvl], 
-                                      my_setdiff_indices(chart.indices[lvl], 
+            new_inds[lvl] = np.append(new_inds[lvl],
+                                      my_setdiff_indices(chart.indices[lvl],
                                                          refine_indices[lvl]))
             new_inds[lvl].sort()
             new_inds[lvl+1] = np.append(new_inds[lvl+1], fine)

@@ -27,9 +27,9 @@ def _get_stationary_kernel_indices(indices, level, baseaxes, stataxes):
 
 
 class MSKernel:
-    def __init__(self, func, chart, stationary_axes = False, scan_kernel = False,
-                 test_kernel = None, atol = None, rtol = None,
-                 buffer_size = 10000, nbatch = 10):
+    def __init__(self, func, chart, stationary_axes = False,
+                 scan_kernel = False, test_kernel = None, atol = None,
+                 rtol = None, buffer_size = 10000, nbatch = 10):
         """Representation of a convolution kernel to be applied via `MSConvolve`
 
         Parameters:
@@ -76,8 +76,8 @@ class MSKernel:
         for lvl in range(1, chart.maxlevel+1):
             dd = my_setdiff_indices(chart.main_indices[lvl-1],
                                     chart.indices[lvl-1])
-            self._kernel_indices.append(dd)#get_fine_indices(dd, lvl-1,
-                                           #              chart._axes).flatten())
+            self._kernel_indices.append(dd)# get_fine_indices(dd, lvl-1,
+                                           # chart._axes).flatten())
         self._kernel_indices = tuple(self._kernel_indices)
         self._kernel_tables = tuple(get_table(kk) for kk in
                                     self._kernel_indices)
@@ -143,7 +143,8 @@ class MSKernel:
     def batchsize(self, level):
         if level == 0:
             raise ValueError
-        return reduce(lambda a,b:a*b, (ax.base for ax in self.chart.axes(level-1)))
+        return reduce(lambda a,b:a*b,
+                      (ax.base for ax in self.chart.axes(level-1)))
 
     def kernel_shape(self, level):
         return tuple(ax.kernel_size for ax in self.chart.axes(level))

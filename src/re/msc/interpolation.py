@@ -47,7 +47,7 @@ def binvals_from_loc(locs, chart, on_chart = False, want_bins = False):
         return f, bins.reshape(shp), binlevel.reshape(shp)
     return f
 
-def refine_integrand(arrays, indices, chart, want_chart = True, key = None, 
+def refine_integrand(arrays, indices, chart, want_chart = True, key = None,
                      fine_axes = None, volume_scaling = 0.5):
     if not isinstance(chart, MSChart):
         raise ValueError
@@ -59,7 +59,7 @@ def refine_integrand(arrays, indices, chart, want_chart = True, key = None,
 
     if key is not None:
         finds = tuple(pp[0] for pp in pairs)
-        frnds = list(random.normal(kk, ff.shape) for kk, ff in 
+        frnds = list(random.normal(kk, ff.shape) for kk, ff in
                 zip(random.split(key, len(pairs)), finds))
         frnds = prepare_input(frnds, chart, volume_scaling=volume_scaling,
                             indices=finds)
@@ -102,15 +102,15 @@ def refine_output(indices, values, chart, want_chart = True, fine_axes = None):
     for lvl in range(newchart.maxlevel + 1):
         if lvl != 0:
             if (chart.maxlevel==newchart.maxlevel) or (lvl!=newchart.maxlevel):
-                vv = my_setdiff_indices(newchart.indices[lvl], 
+                vv = my_setdiff_indices(newchart.indices[lvl],
                                         chart.indices[lvl])
             else:
                 vv = newchart.indices[lvl]
             ll = newchart.get_coordinates(vv, lvl)
             f, _, binlvl = binvals_from_loc(ll, chart, want_bins=True)
             assert np.all(binlvl == lvl - 1)
-            new_vals[lvl], new_ids[lvl] = sorted_concat(new_vals[lvl], 
-                                                        new_ids[lvl], 
+            new_vals[lvl], new_ids[lvl] = sorted_concat(new_vals[lvl],
+                                                        new_ids[lvl],
                                                         f(values), vv)
 
         if (chart.maxlevel == newchart.maxlevel) or (lvl != newchart.maxlevel):
@@ -129,12 +129,12 @@ def fill_grid(values, chart, is_integrand = False, want_chart = True,
     for lvl in range(chart.maxlevel):
         if chart.indices[lvl].size > 0:
             if is_integrand:
-                values, chart = refine_integrand(values, chart.indices[lvl], 
-                                                chart, want_chart = True, 
-                                                key = key, 
+                values, chart = refine_integrand(values, chart.indices[lvl],
+                                                chart, want_chart = True,
+                                                key = key,
                                                 volume_scaling = volume_scaling)
             else:
-                values, chart = refine_output(chart.indices[lvl], values, chart, 
+                values, chart = refine_output(chart.indices[lvl], values, chart,
                                             want_chart = True)
     if want_chart:
         return values, chart

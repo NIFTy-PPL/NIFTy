@@ -148,10 +148,12 @@ def get_all_kneighbours(nside, pix, level, nest):
         shp = (shp[1], sz[0])
         good_neighbors = (good_neighbors.T[rem.T]).reshape(shp).T
         unq = (good_neighbors[1:] - good_neighbors[:-1]) > 0
-        unq = np.concatenate((np.ones(unq.shape[1], dtype=bool)[np.newaxis, ...],
-                            unq), axis = 0)
-        good_neighbors = good_neighbors.T[unq.T].reshape((shp[0], n_ngbrs - 1)).T
-        good_neighbors = np.concatenate((good_pix[np.newaxis, ...], good_neighbors))
+        unq = np.concatenate(
+            (np.ones(unq.shape[1], dtype=bool)[np.newaxis, ...], unq), axis = 0)
+        good_neighbors = good_neighbors.T[unq.T].reshape(
+            (shp[0], n_ngbrs - 1)).T
+        good_neighbors = np.concatenate((good_pix[np.newaxis, ...],
+                                         good_neighbors))
 
         all_pix[:, good] = good_neighbors
 

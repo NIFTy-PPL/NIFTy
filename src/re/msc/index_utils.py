@@ -10,7 +10,7 @@ def my_setdiff_indices(query, indices):
     Parameters:
     -----------
     query : numpy.ndarray of int
-        Array of coordinate indices that should be checked if they are in 
+        Array of coordinate indices that should be checked if they are in
         `indices`.
     indices : numpy.ndarray of int
         Array of coordinate indices that `query` is checked against
@@ -18,7 +18,7 @@ def my_setdiff_indices(query, indices):
     --------
         numpy.ndarray
         Indices in `query` that are not in `indices`
-    
+
     Note:
     -----
         Assumes `indices` to be unique!
@@ -67,7 +67,7 @@ def get_selection(table, selection_indices):
         Array indices of selected position ids
     """
     shp = selection_indices.shape
-    return (np.array([table[ss] for ss in selection_indices.flatten()], 
+    return (np.array([table[ss] for ss in selection_indices.flatten()],
                      dtype=selection_indices.dtype).reshape(shp))
 
 def update_table(table, new_ids, check = True):
@@ -158,8 +158,8 @@ def id_to_axisids(index, lvl, axes):
 
 def my_axes_outer(slices):
     """Helper to create an axis meshgrid given slices along all axes"""
-    res = np.zeros((len(slices),) + 
-                    tuple(ss.shape[-1] for ss in slices) + 
+    res = np.zeros((len(slices),) +
+                    tuple(ss.shape[-1] for ss in slices) +
                     (slices[0].shape[0],),
                     dtype=slices[0].dtype)
     for i, sl in enumerate(slices):
@@ -200,7 +200,7 @@ def get_coarse_index(index, lvl, axes):
     """
     index = id_to_axisids(index, lvl, axes)
     cax = _get_axes_tuple(axes, lvl-1)[-1]
-    index = np.stack(tuple(cax.get_binid_of(ii) for cax,ii in 
+    index = np.stack(tuple(cax.get_binid_of(ii) for cax,ii in
                            zip(cax, index)), axis=0)
     return axisids_to_id(index, lvl-1, axes)
 
@@ -224,7 +224,7 @@ def get_kernel_window(index, lvl, axes):
     return axisids_to_id(my_axes_outer(slices), lvl, axes)
 
 def get_inter_window(index, lvl, axes):
-    """The index window covered by the kernel and interpolation for a given 
+    """The index window covered by the kernel and interpolation for a given
     output `index`.
 
     Parameters:
@@ -259,6 +259,6 @@ def get_batch_kernel_window(index, lvl, axes):
         raise ValueError
     index = id_to_axisids(index, lvl, axes)
     myax = _get_axes_tuple(axes, lvl)[-1]
-    slices = tuple(aa.get_batch_kernel_window(ii) for aa, ii in 
+    slices = tuple(aa.get_batch_kernel_window(ii) for aa, ii in
                    zip(myax, index))
     return axisids_to_id(my_axes_outer(slices), lvl+1, axes)
