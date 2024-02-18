@@ -35,6 +35,9 @@ for bench, fn in benchmark_files.items():
     for backend, timings_by_platform in timings.items():
         assert isinstance(timings_by_platform, dict)
         for platform, timings in timings_by_platform.items():
+            time_m = list(map(lambda x: x["median"], timings))
+            time_q16 = list(map(lambda x: x["q16"], timings))
+            time_q84 = list(map(lambda x: x["q84"], timings))
             nm = f"{platform.upper()} w/ {bench} core(s) {pretty_name_map[backend]}"
             if platform.lower().startswith("nvidia"):
                 if backend != "all_t_jft":
@@ -46,7 +49,7 @@ for bench, fn in benchmark_files.items():
                     print(f"Skipping duplicate key {nm!r}")
                     continue
             print(f"Adding key {nm!r:36s} w/ {bench=} {backend=} {platform=}")
-            savestate[nm] = (all_dims, timings)
+            savestate[nm] = (all_dims, time_m, time_q16, time_q84)
 savestate = {k: savestate[k] for k in sorted(savestate.keys())}
 
 # %%
@@ -58,13 +61,20 @@ color_map = {
     "NIFTy": px.colors.qualitative.G10[0],
     "NIFTy.re": px.colors.qualitative.G10[1],
 }
-for i, (pretty_name, (all_dims, timings)) in enumerate(savestate.items()):
+for i, (pretty_name, (all_dims, tm, tq16, tq84)) in enumerate(savestate.items()):
     sym, dash = symbol_cycle[i % len(savestate)], dash_cycle[i % len(savestate)]
     color = color_map[pretty_name.split(" ")[-1]]
     fig.add_trace(
         go.Scatter(
             x=np.array([np.prod(d) for d in all_dims]),
-            y=np.array([t.time for t in timings]),
+            y=np.array(tm),
+            error_y=dict(
+                type="data",
+                symmetric=False,
+                array=np.array(tq84) - np.array(tm),
+                arrayminus=np.array(tm) - np.array(tq16),
+                width=0,
+            ),
             mode="lines+markers",
             line=dict(dash=dash, color=color),
             marker=dict(symbol=sym, color=color),
