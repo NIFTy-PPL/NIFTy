@@ -3,6 +3,11 @@
 # Copyright(C) 2013-2021 Max-Planck-Society
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 
+# %% [markdown]
+# # Demonstration of the non-parametric correlated field model in NIFTy.re
+
+# ## The Model
+
 # %%
 import jax
 import matplotlib.pyplot as plt
@@ -60,7 +65,7 @@ class Signal(jft.Model):
 signal = Signal(correlated_field, scaling)
 
 # %% [markdown]
-# ## NIFTy to NIFTY.re
+# ### NIFTy to NIFTy.re
 
 # The equivalent model for the correlated field in numpy-based NIFTy reads
 
@@ -76,7 +81,7 @@ signal = Signal(correlated_field, scaling)
 # cfm_nft.add_fluctuations(position_space, **cf_fl_nft, prefix="ax1")
 # cfm_nft.set_amplitude_total_offset(**cf_zm)
 # correlated_field_nft = cfm_nft.finalize()
-#```
+# ```
 
 # For convience, NIFTy implements a method to translate numpy-based NIFTy
 # operators to NIFTy.re. One can access the equivalent expression in JAX for a
@@ -87,7 +92,7 @@ signal = Signal(correlated_field, scaling)
 # domains, they return [JAX PyTrees](TODO:cite PyTree docu) of shape-and-dtype
 # objects.
 
-#```python
+# ```python
 # # Convenience method to get JAX expression as NIFTy.re model which tracks
 # # domain and target
 # correlated_field_nft: jft.Model = ift.nifty2jax.convert(
@@ -110,14 +115,14 @@ signal = Signal(correlated_field, scaling)
 # care when translating them to NIFTy.re/JAX which requires known dtypes.
 
 # %% [markdown]
-# ## Notes on Refinement Field
+# ### Notes on Refinement Field
 
-# The above could cust as well be a refinement field e.g. on a HEALPix sphere
+# The above could just as well be a refinement field e.g. on a HEALPix sphere
 # with logarithmically spaced radial voxels. All of NIFTy.re is agnostic to the
 # specifics of the forward model. The sampling and minimization always works the
 # same.
 
-# %%
+# ```python
 # def matern_kernel(distance, scale=1., cutoff=1., dof=1.5):
 #     if dof == 0.5:
 #         cov = scale**2 * jnp.exp(-distance / cutoff)
@@ -153,6 +158,10 @@ signal = Signal(correlated_field, scaling)
 # correlated_field = jft.Model(
 #     partial(rf, kernel=rfm), domain=rf.domain, init=rf.init
 # )
+# ```
+
+# %% [markdown]
+# ## The likelihood
 
 # %%
 signal_response = signal
@@ -169,6 +178,9 @@ noise_truth = ((noise_cov(jft.ones_like(signal_response.target)))**
 data = signal_response_truth + noise_truth
 
 nll = jft.Gaussian(data, noise_cov_inv).amend(signal_response)
+
+# %% [markdown]
+# ## The inference
 
 # %%
 n_vi_iterations = 6
@@ -208,13 +220,14 @@ samples, state = jft.optimize_kl(
     # Arguments for the minimizer of the KL-divergence cost potential
     kl_kwargs=dict(
         minimize_kwargs=dict(
-            name="M", xtol=delta, cg_kwargs=dict(name="MCG"), maxiter=35
+            name="M", xtol=delta, cg_kwargs=dict(name=None), maxiter=35
         )
     ),
     sample_mode="nonlinear_resample",
     odir="results_nifty_re",
     resume=False,
 )
+
 # %%
 namps = cfm.get_normalized_amplitudes()
 post_sr_mean = jft.mean(tuple(signal(s) for s in samples))
@@ -239,4 +252,4 @@ for ax, (title, field, tp) in zip(axs.flat, to_plot):
             ax_plot(f, alpha=0.7)
 fig.tight_layout()
 fig.savefig("cf_w_unknown_spectrum.png", dpi=400)
-plt.close()
+plt.show()

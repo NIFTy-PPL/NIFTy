@@ -72,19 +72,19 @@ before_script:
 run_ipynb0:
   stage: demo_runs
   script:
-    - jupytext --to ipynb demos/getting_started_0.py
-    - jupyter nbconvert --execute --ExecutePreprocessor.timeout=None --to html demos/getting_started_0.ipynb
+    - jupytext --to ipynb demos/old_nifty/getting_started_0.py
+    - jupyter nbconvert --execute --ExecutePreprocessor.timeout=None --to html demos/old_nifty/getting_started_0.ipynb
 
 run_ipynb1:
   stage: demo_runs
   script:
-    - jupytext --to ipynb demos/getting_started_4_CorrelatedFields.py
-    - jupyter nbconvert --execute --ExecutePreprocessor.timeout=None --to html demos/getting_started_4_CorrelatedFields.ipynb
+    - jupytext --to ipynb demos/old_nifty/getting_started_4_CorrelatedFields.py
+    - jupyter nbconvert --execute --ExecutePreprocessor.timeout=None --to html demos/old_nifty/getting_started_4_CorrelatedFields.ipynb
 
 run_getting_started_1:
   stage: demo_runs
   script:
-    - python3 demos/getting_started_1.py
+    - python3 demos/old_nifty/getting_started_1.py
   artifacts:
     paths:
       - '*.png'
@@ -92,7 +92,7 @@ run_getting_started_1:
 run_getting_started_2:
   stage: demo_runs
   script:
-    - python3 demos/getting_started_2.py
+    - python3 demos/old_nifty/getting_started_2.py
   artifacts:
     paths:
       - 'getting_started_2_results'
@@ -101,7 +101,7 @@ run_getting_started_2:
 run_getting_started_3:
   stage: demo_runs
   script:
-    - python3 demos/getting_started_3.py
+    - python3 demos/old_nifty/getting_started_3.py
   artifacts:
     paths:
       - 'getting_started_3_results'
@@ -110,7 +110,7 @@ run_getting_started_3:
 run_getting_started_3_mpi:
   stage: demo_runs
   script:
-    - mpirun -np 2 --bind-to none python3 demos/getting_started_3.py
+    - mpirun -np 2 --bind-to none python3 demos/old_nifty/getting_started_3.py
   artifacts:
     paths:
       - 'getting_started_3_results'
@@ -119,7 +119,7 @@ run_getting_started_3_mpi:
 run_getting_started_mf:
   stage: demo_runs
   script:
-    - mpiexec -n 2 --bind-to none python3 demos/getting_started_5_mf.py
+    - mpiexec -n 2 --bind-to none python3 demos/old_nifty/getting_started_5_mf.py
   artifacts:
     paths:
       - 'getting_started_mf_results'
@@ -128,7 +128,7 @@ run_getting_started_mf:
 run_getting_started_nifty2jax:
   stage: demo_runs
   script:
-    - python3 demos/nifty_re.py
+    - python3 demos/0_intro.py
   artifacts:
     paths:
       - '*.png'
@@ -136,7 +136,7 @@ run_getting_started_nifty2jax:
 run_getting_started_7:
   stage: demo_runs
   script:
-    - python3 demos/getting_started_7_config_file.py demos/getting_started_7_config_file.cfg
+    - python3 demos/old_nifty/getting_started_7_config_file.py demos/old_nifty/getting_started_7_config_file.cfg
   artifacts:
     paths:
       - '*.png'
@@ -144,7 +144,7 @@ run_getting_started_7:
 run_getting_density:
   stage: demo_runs
   script:
-    - python3 demos/more/density_estimation.py
+    - python3 demos/old_nifty/density_estimation.py
   artifacts:
     paths:
       - '*.png'
@@ -152,7 +152,7 @@ run_getting_density:
 run_model_comparison:
   stage: demo_runs
   script:
-    - python3 demos/more/model_comparison.py
+    - python3 demos/old_nifty/model_comparison.py
   artifacts:
     paths:
       - '*.png'
@@ -160,7 +160,7 @@ run_model_comparison:
 run_bernoulli:
   stage: demo_runs
   script:
-    - python3 demos/more/bernoulli_map.py
+    - python3 demos/old_nifty/bernoulli_map.py
   artifacts:
     paths:
       - '*.png'
@@ -168,7 +168,7 @@ run_bernoulli:
 run_curve_fitting:
   stage: demo_runs
   script:
-    - python3 demos/more/polynomial_fit.py
+    - python3 demos/old_nifty/polynomial_fit.py
   artifacts:
     paths:
       - '*.png'
@@ -176,9 +176,9 @@ run_curve_fitting:
 run_visual_vi:
   stage: demo_runs
   script:
-    - python3 demos/more/variational_inference_visualized.py
+    - python3 demos/old_nifty/variational_inference_visualized.py
 
 run_meanfield:
   stage: demo_runs
   script:
-    - python3 demos/more/parametric_variational_inference.py
+    - python3 demos/old_nifty/parametric_variational_inference.py

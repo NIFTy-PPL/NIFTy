@@ -35,7 +35,7 @@ description = "Library for signal inference algorithms that operate regardless o
 extras_require = {
     "re": ("jax", "jaxlib"),
     "native": ("ducc0>=0.27.0", ),
-    "doc": ("sphinx", "pydata-sphinx-theme", "jupyter", "jupytext"),
+    "doc": ("sphinx", "pydata-sphinx-theme", "myst-parser", "jupyter", "jupytext"),
     "util": ("astropy", "healpy"),
 }
 extras_require["full"] = reduce(operator.add, extras_require.values())

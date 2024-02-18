@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# SPDX-License-Identifier: BSD-2-Clause
+# SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 # Authors: Philipp Frank, Jakob Roth, Gordian Edenhofer
 
 import inspect
@@ -175,10 +175,13 @@ class OptimizeVI:
     transformed in this way has the inverse metric as covariance. The first
     part is trivial since we can use the left square root of the metric
     :math:`L` associated with every likelihood:
+
     .. math::
         \\tilde{d} \\leftarrow \\mathcal{G}(0,\\mathbb{1}) \\
         t = L \\tilde{d}
+
     with :math:`t` now having a covariance structure of
+
     .. math::
         <t t^\\dagger> = L <\\tilde{d} \\tilde{d}^\\dagger> L^\\dagger = M .
 
@@ -186,9 +189,11 @@ class OptimizeVI:
     metric. We can do so using the conjugate gradient algorithm (CG). The CG
     algorithm yields the solution to :math:`M s = t`, i.e. applies the
     inverse of :math:`M` to :math:`t`:
+
     .. math::
         M &s =  t \\\\
         &s = M^{-1} t = cg(M, t) .
+
     The linear sample is :math:`s`.
 
     The nonlinear sampling uses :math:`s` as a starting value and curves it in
@@ -223,7 +228,7 @@ class OptimizeVI:
         """JaxOpt style minimizer for a VI approximation of a distribution with
         samples.
 
-        Parameters:
+        Parameters
         ----------
         likelihood: :class:`~nifty8.re.likelihood.Likelihood`
             Likelihood to be used for inference.
@@ -243,8 +248,8 @@ class OptimizeVI:
         mirror_samples: bool
             Whether to mirror the samples or not.
 
-        Notes:
-        ------
+        Notes
+        -----
         Implements the base logic present in conditional VI approximations
         such as MGVI and geoVI. First samples are generated (and/or updated)
         and then their collective mean is optimized for using the sample
@@ -606,6 +611,7 @@ def optimize_kl(
         optimization state.
     odir : str or None
         Path at which all output files are saved.
+
 
     See :class:`OptimizeVI` and :func:`OptimizeVI.init_state` for the remaining
     parameters and further details on the optimization.

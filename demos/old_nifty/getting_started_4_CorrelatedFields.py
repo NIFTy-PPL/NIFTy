@@ -28,7 +28,9 @@
 # The power spectra `A` is constructed of are in turn constructed as the sum of a power law component
 # and an integrated Wiener process whose amplitude and roughness can be set.
 #
-# ## Setup code
+# ## Preliminaries
+#
+# ### Setup code
 
 # +
 # %matplotlib inline
@@ -131,7 +133,7 @@ def vary_parameter(parameter_key, values, samples_vary_in=None, matern=False):
 
 # -
 
-# ## Before the Action: The Moment-Matched Log-Normal Distribution
+# ### Before the Action: The Moment-Matched Log-Normal Distribution
 # Many properties of the correlated field are modelled as being lognormally distributed.
 #
 # The distribution models are parametrized via their means and standard-deviations (first and second position in tuple).
@@ -190,9 +192,8 @@ init_model(cf_make_pars, cf_x_fluct_pars)
 # Show neutral field
 eval_model(cf_make_pars, cf_x_fluct_pars, "Neutral Field")
 
-# # Parameter Showcases
 #
-# ## The `fluctuations` parameters of `add_fluctuations()`
+# ### The `fluctuations` parameters of `add_fluctuations()`
 #
 # determine the **amplitude of variations along the field dimension**
 # for which `add_fluctuations` is called.
@@ -212,7 +213,7 @@ vary_parameter('fluctuations', [(0.05, 1e-16), (0.5, 1e-16), (2., 1e-16)], sampl
 vary_parameter('fluctuations', [(1., 0.01), (1., 0.1), (1., 1.)], samples_vary_in='fluctuations')
 cf_x_fluct_pars['fluctuations'] = (1., 1e-16)
 
-# ## The `loglogavgslope` parameters of `add_fluctuations()`
+# ### The `loglogavgslope` parameters of `add_fluctuations()`
 #
 # determine **the slope of the loglog-linear (power law) component of the power spectrum**.
 #
@@ -227,7 +228,7 @@ vary_parameter('loglogavgslope', [(-6., 1e-16), (-2., 1e-16), (2., 1e-16)], samp
 vary_parameter('loglogavgslope', [(-2., 0.02), (-2., 0.2), (-2., 2.0)], samples_vary_in='loglogavgslope')
 cf_x_fluct_pars['loglogavgslope'] = (-2., 1e-16)
 
-# ## The `flexibility` parameters of `add_fluctuations()`
+# ### The `flexibility` parameters of `add_fluctuations()`
 #
 # determine **the amplitude of the integrated Wiener process component of the power spectrum**
 # (how strong the power spectrum varies besides the power-law).
@@ -246,7 +247,7 @@ vary_parameter('flexibility', [(0.4, 1e-16), (4.0, 1e-16), (12.0, 1e-16)], sampl
 vary_parameter('flexibility', [(4., 0.02), (4., 0.2), (4., 2.)], samples_vary_in='flexibility')
 cf_x_fluct_pars['flexibility'] = (4., 1e-16)
 
-# ## The `asperity` parameters of `add_fluctuations()`
+# ### The `asperity` parameters of `add_fluctuations()`
 #
 # `asperity` determines **how rough the integrated Wiener process component of the power spectrum is**.
 #
@@ -263,7 +264,7 @@ vary_parameter('asperity', [(0.001, 1e-16), (1.0, 1e-16), (5., 1e-16)], samples_
 vary_parameter('asperity', [(1., 0.01), (1., 0.1), (1., 1.)], samples_vary_in='asperity')
 cf_x_fluct_pars['asperity'] = (1., 1e-16)
 
-# ## The `offset_mean` parameter of `CorrelatedFieldMaker()`
+# ### The `offset_mean` parameter of `CorrelatedFieldMaker()`
 #
 # The `offset_mean` parameter defines a global additive offset on the field realizations.
 #
@@ -277,7 +278,7 @@ cf_x_fluct_pars['loglogavgslope'] = (1e-3, 1e-16)
 
 vary_parameter('offset_mean', [3., 0., -2.])
 
-# ## The `offset_std` parameters of `CorrelatedFieldMaker()`
+# ### The `offset_std` parameters of `CorrelatedFieldMaker()`
 #
 # Variation of the global offset of the field are modelled as being log-normally distributed.
 # See `The Moment-Matched Log-Normal Distribution` above for details.
@@ -322,9 +323,8 @@ init_model(cf_make_pars, cf_x_fluct_pars, matern=True)
 # Show neutral field
 eval_model(cf_make_pars, cf_x_fluct_pars, "Neutral Field", matern=True)
 
-# # Parameter Showcases
 #
-# ## The `scale` parameters of `add_fluctuations_matern()`
+# ### The `scale` parameters of `add_fluctuations_matern()`
 #
 # determine the **overall amplitude scaling factor of fluctuations in the target subdomain**
 # for which `add_fluctuations_matern` is called.
@@ -346,7 +346,7 @@ vary_parameter('scale', [(0.01, 1e-16), (0.1, 1e-16), (1.0, 1e-16)], samples_var
 vary_parameter('scale', [(0.5, 0.01), (0.5, 0.1), (0.5, 0.5)], samples_vary_in='scale', matern=True)
 cf_x_fluct_pars['scale'] = (0.5, 1e-16)
 
-# ## The `loglogslope` parameters of `add_fluctuations_matern()`
+# ### The `loglogslope` parameters of `add_fluctuations_matern()`
 #
 # determine **the slope of the loglog-linear (power law) component of the power spectrum**.
 #
@@ -365,7 +365,7 @@ vary_parameter('loglogslope', [(-4.0, 1e-16), (-2.0, 1e-16), (-1.0, 1e-16)], sam
 
 vary_parameter('loglogslope', [(-3., 0.01), (-3., 0.5), (-3., 1.0)], samples_vary_in='loglogslope', matern=True)
 
-# ## The `cutoff` parameters of `add_fluctuations_matern()`
+# ### The `cutoff` parameters of `add_fluctuations_matern()`
 #
 # determines **at what wavevector length the power spectrum should transition from constant power
 # to following the powerlaw set by `loglogslope`**.
