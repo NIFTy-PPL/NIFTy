@@ -283,9 +283,10 @@ To assess the performance, we compare the time required to apply $M_p \coloneqq 
 Within \texttt{NIFTy.re}, the Fisher metric of the overall likelihood is decomposed into $J_{f,p}^\dagger N^{-1} J_{f,p}$ with $J_{f,p}$ the implicit Jacobian of the forward model $f$ at $p$ and $N^{-1}$ the Fisher-metric of the Poisson likelihood.
 We choose to benchmark $M_p$ as a typical VI minimization in \texttt{NIFTy.re} and \texttt{NIFTy} is dominated by calls to this function.
 
-![Average evaluation time of applying the Fisher metric plus the identity metric to random input for \texttt{NIFTy.re} and \texttt{NIFTy} on the CPU (one and eight core(s) of an Intel Xeon Platinum 8358 CPU clocked at 2.60G Hz) and the GPU (A100 SXM4 80 GB HBM2).\label{fig:benchmark_nthreads=1+8_devices=cpu+gpu}](benchmark_nthreads=1+8_devices=cpu+gpu.png)
+![Median evaluation time of applying the Fisher metric plus the identity metric to random input for \texttt{NIFTy.re} and \texttt{NIFTy} on the CPU (one and eight core(s) of an Intel Xeon Platinum 8358 CPU clocked at 2.60G Hz) and the GPU (A100 SXM4 80 GB HBM2). The 16%-quantile and the 84%-quantile are shown as vertical lines but are not visible as they are smaller than the marker symbols.\label{fig:benchmark_nthreads=1+8_devices=cpu+gpu}](benchmark_nthreads=1+8_devices=cpu+gpu.png)
 
-\autoref{fig:benchmark_nthreads=1+8_devices=cpu+gpu} shows the average evaluation time in \texttt{NIFTy} of applying $M_p$ to a new tangent position and the evaluation time in \texttt{NIFTy.re} of building $M_p$ and applying it to a new tangent position for exponentially larger models.
+\autoref{fig:benchmark_nthreads=1+8_devices=cpu+gpu} shows the median evaluation time in \texttt{NIFTy} of applying $M_p$ to a new tangent position and the evaluation time in \texttt{NIFTy.re} of building $M_p$ and applying it to a new tangent position for exponentially larger models.
+The 16%-quantile and the 84%-quantile of the timings are shown as vertical lines but are not visible as they are smaller than the marker symbol.
 We choose to exclude the build time of $M_p$ in \texttt{NIFTy} from the comparison, putting \texttt{NIFTy} at an advantage, as \texttt{NIFTy}'s automatic differentiation is built around calls to $M_p$ with $p$ rarely varying.
 We ran the benchmark on one CPU core, eight CPU cores, and on a GPU on a compute-node with an Intel Xeon Platinum 8358 CPU clocked at 2.60G Hz and an NVIDIA A100 SXM4 80 GB HBM2 GPU.
 The benchmark used `jax==0.4.23` and `jaxlib==0.4.23+cuda12.cudnn89`.
