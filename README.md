@@ -89,7 +89,7 @@ To probe the posterior efficiently and accurately, NIFTy relies on VI.
 At the core of the VI methods lie an alternating procedure in which we switch between optimizing the Kullback–Leibler divergence for a specific shape of the variational posterior and updating the shape of the variational posterior.
 
 A typical minimization with NIFTy is shown in the following.
-It retrieves six antithetically mirrored samples from the approximate posterior via 25 iterations of alternating between optimization and sample adaption.
+It retrieves six independent, antithetically mirrored samples from the approximate posterior via 25 iterations of alternating between optimization and sample adaption.
 The final result is stored in the `samples` variable.
 A convenient one-shot wrapper for the below is `jft.optimize_kl`.
 By virtue of all modeling tools in NIFTy being written in JAX, it is also possible to combine NIFTy tools with [blackjax](https://blackjax-devs.github.io/blackjax/) or any other posterior sampler in the JAX ecosystem.
@@ -154,9 +154,9 @@ pip install --user --editable .
 
 ### Building the Documentation
 
-NIFTy documentation is provided by [Sphinx](https://www.sphinx-doc.org/en/stable/index.html).
+NIFTy's documentation is generated via [Sphinx](https://www.sphinx-doc.org/en/stable/index.html) and is available online at [ift.pages.mpcdf.de/nifty](https://ift.pages.mpcdf.de/nifty/index.html).
 
-To build the documentation::
+To build the documentation locally, run:
 
 ```
 sudo apt-get install dvipng jupyter-nbconvert texlive-latex-base texlive-latex-extra
