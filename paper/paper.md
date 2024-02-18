@@ -225,7 +225,7 @@ In addition to stand-alone sampling functions, \texttt{NIFTy.re} also provides t
 These tools are provided in a JAXopt-style optimizer class [@Blondel2021].
 
 A typical minimization with \texttt{NIFTy.re} is shown in the following.
-It retrieves six antithetically mirrored samples from the approximate posterior via 25 iterations of alternating between optimization and sample adaption.
+It retrieves six independent, antithetically mirrored samples from the approximate posterior via 25 iterations of alternating between optimization and sample adaption.
 The final result is stored in the `samples` variable.
 A convenient one-shot wrapper for the code below is `jft.optimize_kl`.
 By virtue of all modeling tools in \texttt{NIFTy.re} being written in JAX, it is also possible to combine \texttt{NIFTy.re} tools with BlackJAX [@blackjax2020] or any other posterior sampler in the JAX ecosystem.
