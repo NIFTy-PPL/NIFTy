@@ -1,9 +1,27 @@
 # %%
 
+import argparse
 import os
+import sys
 
-nthreads = 1
+parser = argparse.ArgumentParser(description="Benchmark")
 
+parser.add_argument(
+    "-n",
+    "--nthreads",
+    help="number of threads",
+    dest="nthreads",
+    type=int,
+    required=True,
+)
+args = None
+in_jupyter = hasattr(sys, "ps1") and not sys.__stdin__.isatty()
+if in_jupyter:
+    args = input("args").split(" ")
+args = parser.parse_args(args)
+nthreads = args.nthreads
+
+print(f"{sys.argv[0]} using {nthreads} threads", file=sys.stderr)
 os.environ["XLA_FLAGS"] = (
     f"--xla_cpu_multi_thread_eigen={nthreads != 1} intra_op_parallelism_threads={nthreads}"
 )
