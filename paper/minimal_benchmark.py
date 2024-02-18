@@ -4,14 +4,15 @@ import os
 
 nthreads = 1
 
-os.environ[
-    "XLA_FLAGS"
-] = f"--xla_cpu_multi_thread_eigen={nthreads != 1} intra_op_parallelism_threads={nthreads}"
+os.environ["XLA_FLAGS"] = (
+    f"--xla_cpu_multi_thread_eigen={nthreads != 1} intra_op_parallelism_threads={nthreads}"
+)
 os.environ["OPENBLAS_NUM_THREADS"] = str(nthreads)
 os.environ["MKL_NUM_THREADS"] = str(nthreads)
 os.environ["OMP_NUM_THREADS"] = str(nthreads)
 
 import itertools
+from collections import namedtuple
 from functools import partial
 
 import jax
@@ -20,13 +21,39 @@ import nifty8.re as jft
 import numpy as np
 from jax import numpy as jnp
 from jax import random
-from matplotlib import pyplot as plt
-from upy.detective import timeit
 from upy.pprint import progress_bar as tqdm
 
 jax.config.update("jax_enable_x64", True)
 
 ift.set_nthreads(nthreads)
+
+# %%
+Timed = namedtuple(
+    "Timed",
+    ("time", "number", "repeat", "median", "q16", "q84", "mean", "std"),
+    rename=True,
+)
+
+
+def timeit(stmt, setup=lambda: None, *, number=None, repeat=7):
+    import timeit
+
+    t = timeit.Timer(stmt)
+    if number is None:
+        number, _ = t.autorange()
+
+    setup()
+    t = np.array(t.repeat(number=number, repeat=repeat)) / number
+    return Timed(
+        time=np.median(t),
+        number=number,
+        repeat=repeat,
+        median=np.median(t),
+        q16=np.quantile(t, 0.16),
+        q84=np.quantile(t, 0.84),
+        mean=np.mean(t),
+        std=np.std(t),
+    )
 
 
 # %%
@@ -116,7 +143,7 @@ for dev, dims in tqdm(
     # Warm-up
     lh_met_wm = lh_met(pos, pos).tree
     all_t_jft[dev.device_kind].append(
-        timeit(lambda: jax.block_until_ready(lh_met(pos, pos)))
+        timeit(lambda: jax.block_until_ready(lh_met(pos, pos)))._asdict()
     )
 
     if dev.device_kind.lower() == "cpu":
@@ -130,7 +157,9 @@ for dev, dims in tqdm(
         lh_metric_nft = lh_nft(
             ift.Linearization.make_var(pos_nft, want_metric=True)
         ).metric
-        all_t_nft[dev.device_kind].append(timeit(lambda: lh_metric_nft(pos_nft)))
+        all_t_nft[dev.device_kind].append(
+            timeit(lambda: lh_metric_nft(pos_nft))._asdict()
+        )
         if np.prod(dims) < 1e6:
             jax.tree_map(
                 partial(np.testing.assert_allclose, atol=1e-6, rtol=1e-7),
