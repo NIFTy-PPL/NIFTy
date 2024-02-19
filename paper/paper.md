@@ -24,7 +24,7 @@ authors:
     affiliation: "2"
   - name: Lukas I. Scheel-Platz
     orcid: 0000-0003-0809-9634
-    affiliation: "4, 5"
+    affiliation: "2, 4, 5"
   - name: Matteo Guardiani
     orcid: 0000-0002-4905-6692
     affiliation: "1, 2"
@@ -312,6 +312,7 @@ Gordian Edenhofer acknowledges support from the German Academic Scholarship Foun
 Philipp Frank acknowledges funding through the German Federal Ministry of Education and Research for the project "ErUM-IFT: Informationsfeldtheorie für Experimente an Großforschungsanlagen" (Förderkennzeichen: 05D23EO1).
 Jakob Roth acknowledges financial support by the German Federal Ministry of Education and Research (BMBF) under grant 05A20W01 (Verbundprojekt D-MeerKAT).
 Matteo Guardiani, Vincent Eberle, and Margret Westerkamp acknowledge financial support from the "Deutsches Zentrum für Luft- und Raumfahrt e.V." (DLR) through the project Universal Bayesian Imaging Kit (UBIK, Förderkennzeichen 50OO2103).
+Lukas Scheel-Platz acknowledges funding from the European Research Council (ERC) under the European Union’s Horizon Europe research and innovation programme under grant agreement No 101041936 (EchoLux).
 
 # References
 
