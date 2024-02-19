@@ -112,7 +112,7 @@ Compared to GPyTorch [@Hensman2015], GPflow [@Matthews2017], george [@Sivaram201
 Instead, \texttt{NIFTy.re} tries to approximate the true posterior using VI.
 Compared to classical probabilistic programming languages such as Stan [@Carpenter2017] and frameworks such Pyro [@Bingham2019], NumPyro [@Phan2019], pyMC3 [@Salvatier2016], emcee [@ForemanMackey2013], dynesty [@Speagle2020; @Koposov2023], or BlackJAX [@blackjax2020], \texttt{NIFTy.re} focuses on inference in extremely high-dimensional spaces.
 \texttt{NIFTy.re} exploits the structure of probabilistic models in its VI techniques [@Frank2021].
-With \texttt{NIFTy.re}, the GP models and the VI machinery are now fully accessible in the JAX ecosystem and \texttt{NIFTy.re} components interact seamlessly with other JAX packages such as BlackJAX and JAXopt [@Blondel2021].
+With \texttt{NIFTy.re}, the GP models and the VI machinery are now fully accessible in the JAX ecosystem and \texttt{NIFTy.re} components interact seamlessly with other JAX packages such as BlackJAX and JAXopt/Optax [@Blondel2021; @Deepmind2020Optax].
 
 # Core Components
 
@@ -218,7 +218,7 @@ The samples in MGVI and geoVI exploit model-intrinsic knowledge of the posterior
 \texttt{NIFTy.re} implements both MGVI and geoVI and allows for much finer control over the way samples are drawn and updated compared to \texttt{NIFTy}.
 Furthermore, \texttt{NIFTy.re} exposes stand-alone functions for drawing MGVI and geoVI samples from any arbitrary model with a likelihood from \texttt{NIFTy.re} and a forward model that is differentiable by JAX.
 In addition to stand-alone sampling functions, \texttt{NIFTy.re} also provides tools to configure and execute the alternating Kullback–Leibler divergence optimization and sample adaption at a lower abstraction level.
-These tools are provided in a JAXopt-style optimizer class [@Blondel2021].
+These tools are provided in a JAXopt/Optax-style optimizer class [@Blondel2021; @Deepmind2020Optax].
 
 A typical minimization with \texttt{NIFTy.re} is shown in the following.
 It retrieves six independent, antithetically mirrored samples from the approximate posterior via 25 iterations of alternating between optimization and sample adaption.
