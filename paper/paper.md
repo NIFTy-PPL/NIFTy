@@ -19,11 +19,12 @@ authors:
     affiliation: "1, 2, 4"
   - name: Reimar H. Leike
     orcid: 0000-0002-1640-6772
+    affiliation: "5"
   - name: Massin Guerdi
     affiliation: "2"
   - name: Lukas I. Scheel-Platz
     orcid: 0000-0003-0809-9634
-    affiliation: "2, 4, 5"
+    affiliation: "2, 4, 6"
   - name: Matteo Guardiani
     orcid: 0000-0002-4905-6692
     affiliation: "1, 2"
@@ -45,8 +46,10 @@ affiliations:
     index: 3
   - name: Technical University of Munich, Boltzmannstr. 3, 85748 Garching bei München, Germany
     index: 4
-  - name: Helmholtz Zentrum München, Ingolstädter Landstraße 1, 85764 Neuherberg, Germany
+  - name: "No Affiliation"
     index: 5
+  - name: Helmholtz Zentrum München, Ingolstädter Landstraße 1, 85764 Neuherberg, Germany
+    index: 6
 date: 21 February 2024
 bibliography: paper.bib
 
