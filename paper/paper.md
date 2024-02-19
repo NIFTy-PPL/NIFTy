@@ -11,7 +11,6 @@ authors:
     orcid: 0000-0003-3122-4894
     corresponding: true
     affiliation: "1, 2, 3"  # Multiple affiliations must be quoted
-  - name: TODO CONTACT ME IF YOU THINK YOUR NAME IS NOT AT THE RIGHT POSITION
   - name: Philipp Frank
     orcid: 0000-0001-5610-3779
     affiliation: "1"
