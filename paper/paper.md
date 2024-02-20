@@ -42,15 +42,15 @@ affiliations:
     index: 1
   - name: Ludwig Maximilian University of Munich, Geschwister-Scholl-Platz 1, 80539 München, Germany
     index: 2
-  - name: University of Vienna, Türkenschanzstrasse 17, A-1180 Wien, Austria
+  - name: Department of Astrophysics, University of Vienna, Türkenschanzstraße 17, A-1180 Vienna, Austria
     index: 3
-  - name: Technical University of Munich; School of Computation, Information and Technology, Arcisstr. 21, 80333 München, Germany
+  - name: School of Computation, Information and Technology, Technical University of Munich, Arcisstr. 21, 80333 München, Germany
     index: 4
   - name: "Independent Researcher, USA"
     index: 5
   - name: Helmholtz Zentrum München, Ingolstädter Landstraße 1, 85764 Neuherberg, Germany
     index: 6
-  - name: Technical University of Munich; School of Medicine and Health, Ismaninger Str. 22, 81675 München, Germany
+  - name: School of Medicine and Health, Technical University of Munich, Ismaninger Str. 22, 81675 München, Germany
     index: 7
 date: 21 February 2024
 bibliography: paper.bib
