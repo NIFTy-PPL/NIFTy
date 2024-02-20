@@ -46,7 +46,7 @@ affiliations:
     index: 3
   - name: Technical University of Munich, Boltzmannstr. 3, 85748 Garching bei München, Germany
     index: 4
-  - name: "No Affiliation"
+  - name: "Independent Researcher, USA"
     index: 5
   - name: Helmholtz Zentrum München, Ingolstädter Landstraße 1, 85764 Neuherberg, Germany
     index: 6
