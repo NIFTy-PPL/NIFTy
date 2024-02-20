@@ -44,13 +44,13 @@ affiliations:
     index: 2
   - name: University of Vienna, Türkenschanzstrasse 17, A-1180 Wien, Austria
     index: 3
-  - name: Technical University of Munich, Boltzmannstr. 3, 85748 Garching bei München, Germany
+  - name: Technical University of Munich; School of Computation, Information and Technology, Arcisstr. 21, 80333 München, Germany
     index: 4
   - name: "Independent Researcher, USA"
     index: 5
   - name: Helmholtz Zentrum München, Ingolstädter Landstraße 1, 85764 Neuherberg, Germany
     index: 6
-  - name: Technical University of Munich, Ismaninger Str. 22, 81675 München, Germany
+  - name: Technical University of Munich; School of Medicine and Health, Ismaninger Str. 22, 81675 München, Germany
     index: 7
 date: 21 February 2024
 bibliography: paper.bib
