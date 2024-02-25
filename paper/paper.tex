@@ -12,7 +12,7 @@
             linkcolor=[rgb]{0.0, 0.5, 1.0}}
 \usepackage{caption}
 \usepackage{tcolorbox}
-\usepackage{amssymb,amsmath}
+\usepackage{amssymb,amsmath,dsfont}
 \usepackage{ifxetex,ifluatex}
 \usepackage{seqsplit}
 \usepackage{xstring}
@@ -739,9 +739,9 @@ the posterior mean and the data.
 We test the performance of \texttt{NIFTy.re} against \texttt{NIFTy} for
 the simple yet representative model from above. To assess the
 performance, we compare the time required to apply
-\(M_p := F_p + \mathbb{1}\) to random input with \(F_p\) denoting the
+\(M_p := F_p + \mathds{1}\) to random input with \(F_p\) denoting the
 Fisher metric of the overall likelihood at position \(p\) and
-\(\mathbb{1}\) the identity matrix. Within \texttt{NIFTy.re}, the Fisher
+\(\mathds{1}\) the identity matrix. Within \texttt{NIFTy.re}, the Fisher
 metric of the overall likelihood is decomposed into
 \(J_{f,p}^\dagger N^{-1} J_{f,p}\) with \(J_{f,p}\) the implicit
 Jacobian of the forward model \(f\) at \(p\) and \(N^{-1}\) the
