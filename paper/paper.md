@@ -151,8 +151,8 @@ from nifty8 import re as jft
 dims = (128, 128)
 cfm = jft.CorrelatedFieldMaker("cf")
 cfm.set_amplitude_total_offset(offset_mean=2, offset_std=(1e-1, 3e-2))
-# Parameters for the kernel and the regular 2D Cartesian grid for which it is
-# defined
+# Parameters for the kernel and the regular 2D Cartesian grid for which
+# it is defined
 cfm.add_fluctuations(
   dims,
   distances=tuple(1.0 / d for d in dims),
@@ -186,16 +186,17 @@ from jax import numpy as jnp
 class Forward(jft.Model):
   def __init__(self, correlated_field):
     self._cf = correlated_field
-    # Tracks a callable with which the model can be initialized. This is not
-    # strictly required, but comes in handy when building deep models. Note, the
-    # init method (short for "initialization" method) is not to be confused with
-    # the prior, which is always standard Gaussian.
+    # Tracks a callable with which the model can be initialized. This
+    # is not strictly required, but comes in handy when building deep
+    # models. Note, the init method (short for "initialization" method)
+    # is not to be confused with the prior, which is always standard
+    # Gaussian.
     super().__init__(init=correlated_field.init)
 
   def __call__(self, x):
     # NOTE, any kind of masking of the output, non-linear and linear
-    # transformation could be carried out here. Models can also be combined and
-    # nested in any way and form.
+    # transformation could be carried out here. Models can also be
+    # combined and nested in any way and form.
     return jnp.exp(self._cf(x))
 
 
@@ -236,10 +237,10 @@ from jax import random
 
 key = random.PRNGKey(42)
 key, sk = random.split(key, 2)
-# NIFTy is agnostic w.r.t. the type of inputs it gets as long as they support
-# core arithmetic properties. Tell NIFTy to treat our parameter dictionary as a
-# vector.
-samples = jft.Samples(pos=jft.Vector(lh.init(sk)), samples=None, keys=None)
+# NIFTy is agnostic w.r.t. the type of inputs it gets as long as they
+# support core arithmetic properties. Tell NIFTy to treat our parameter
+# dictionary as a vector.
+samples = jft.Samples(pos=jft.Vector(lh.init(sk)), samples=None)
 
 delta = 1e-4
 absdelta = delta * jft.size(samples.pos)
@@ -247,14 +248,15 @@ absdelta = delta * jft.size(samples.pos)
 opt_vi = jft.OptimizeVI(lh, n_total_iterations=25)
 opt_vi_st = opt_vi.init_state(
   key,
-  # Implicit definition for the accuracy of the KL-divergence approximation;
-  # typically on the order of 2-12
+  # Implicit definition for the accuracy of the KL-divergence
+  # approximation; typically on the order of 2-12
   n_samples=lambda i: 1 if i < 2 else (2 if i < 4 else 6),
-  # Parametrize the conjugate gradient method at the heart of the sample-drawing
+  # Parametrize the conjugate gradient method at the heart of the
+  # sample-drawing
   draw_linear_kwargs=dict(
     cg_name="SL", cg_kwargs=dict(absdelta=absdelta / 10.0, maxiter=100)
   ),
-  # Parametrize the minimizer used in the nonlinear update of the samples
+  # Parametrize the minimizer in the nonlinear update of the samples
   nonlinearly_update_kwargs=dict(
     minimize_kwargs=dict(
       name="SN", xtol=delta, cg_kwargs=dict(name=None), maxiter=5
@@ -262,11 +264,12 @@ opt_vi_st = opt_vi.init_state(
   ),
   # Parametrize the minimization of the KL-divergence cost potential
   kl_kwargs=dict(minimize_kwargs=dict(name="M", xtol=delta, maxiter=35)),
-  sample_mode=lambda i: "nonlinear_resample" if i < 3 else "nonlinear_update",
+  sample_mode="nonlinear_resample",
 )
 for i in range(opt_vi.n_total_iterations):
   print(f"Iteration {i+1:04d}")
-  # Continuously updates the samples of the approximate posterior distribution
+  # Continuously update the samples of the approximate posterior
+  # distribution
   samples, opt_vi_st = opt_vi.update(samples, opt_vi_st)
   print(opt_vi.get_status_message(samples, opt_vi_st))
 ```

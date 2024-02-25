@@ -65,7 +65,7 @@ key, sk = random.split(key, 2)
 # NIFTy is agnostic w.r.t. the type of input it gets as long as it supports core
 # airthmetics properties. Tell NIFTy to treat our parameter dictionary as a
 # vector.
-samples = jft.Samples(pos=jft.Vector(lh.init(sk)), samples=None, keys=None)
+samples = jft.Samples(pos=jft.Vector(lh.init(sk)), samples=None)
 
 delta = 1e-4
 absdelta = delta * jft.size(samples.pos)
@@ -88,7 +88,7 @@ opt_vi_st = opt_vi.init_state(
     ),
     # Arguments for the minimizer of the KL-divergence cost potential
     kl_kwargs=dict(minimize_kwargs=dict(name="M", xtol=delta, maxiter=35)),
-    sample_mode=lambda i: "nonlinear_resample" if i < 3 else "nonlinear_update",
+    sample_mode="nonlinear_resample",
 )
 for i in range(opt_vi.n_total_iterations):
     print(f"Iteration {i+1:04d}")
