@@ -126,8 +126,8 @@ GP models are highly useful for imaging problems, and VI algorithms are essentia
 \texttt{NIFTy.re} infers the parameters of interest from noisy data via a stochastic mapping that goes in the opposite direction, from the parameters of interest to the data.
 
 \texttt{NIFTy} and \texttt{NIFTy.re} build up hierarchical models for the posterior.
-The log-posterior function reads $\ln\mathcal{p(\theta|d)} := \mathcal{l}(d, f(\theta)) + \ln\mathcal{p}(\theta) + \mathrm{const}$ with log-likelihood $\mathcal{l}$, forward model $f$ mapping the parameters of interest $\theta$ to the data space, and log-prior $\ln\mathcal{p(\theta)}$.
-The goal of the inference is to draw samples from the posterior $\mathcal{p}(\theta|d)$.
+The log-posterior function reads $\ln{p(\theta|d)} := \ell(d, f(\theta)) + \ln{p}(\theta) + \mathrm{const}$ with log-likelihood $\ell$, forward model $f$ mapping the parameters of interest $\theta$ to the data space, and log-prior $\ln{p(\theta)}$.
+The goal of the inference is to draw samples from the posterior $p(\theta|d)$.
 
 What is considered part of the likelihood versus part of the prior is ill-defined.
 Without loss of generality, \texttt{NIFTy} and \texttt{NIFTy.re} re-formulate models such that the prior is always standard Gaussian.
@@ -141,7 +141,7 @@ It is often carried out implicitly in the background without user input.
 One standard tool from the \texttt{NIFTy.re} toolbox is the so-called correlated field GP model from \texttt{NIFTy}.
 This model relies on the harmonic domain being easily accessible.
 For example, for pixels spaced on a regular Cartesian grid, the natural choice to represent a stationary kernel is the Fourier domain.
-In the generative picture, a realization $s$ drawn from a GP then reads $s = \mathcal{FT} \circ \sqrt{P} \circ \xi$ with $\mathcal{FT}$ the (fast) Fourier transform, $\sqrt{P}$ the square-root of the power-spectrum in harmonic space, and $\xi$ standard Gaussian random variables.
+In the generative picture, a realization $s$ drawn from a GP then reads $s = \mathrm{FT} \circ \sqrt{P} \circ \xi$ with $\mathrm{FT}$ the (fast) Fourier transform, $\sqrt{P}$ the square-root of the power-spectrum in harmonic space, and $\xi$ standard Gaussian random variables.
 In the implementation in \texttt{NIFTy.re} and \texttt{NIFTy}, the user can choose between two adaptive kernel models, a non-parametric kernel $\sqrt{P}$ and a Matérn kernel $\sqrt{P}$ [@Arras2022; @Guardiani2022 for details on their implementation].
 A code example that initializes a non-parametric GP prior for a $128 \times 128$ space with unit volume is shown in the following.
 
