@@ -125,10 +125,18 @@ run_getting_started_mf:
       - 'getting_started_mf_results'
       - '*.png'
 
-run_getting_started_nifty2jax:
+run_getting_started_niftyre_intro:
   stage: demo_runs
   script:
     - python3 demos/0_intro.py
+  artifacts:
+    paths:
+      - '*.png'
+
+run_getting_started_niftyre_nonlinear_regression:
+  stage: demo_runs
+  script:
+    - python3 demos/z_nonlinear_regression.py
   artifacts:
     paths:
       - '*.png'
