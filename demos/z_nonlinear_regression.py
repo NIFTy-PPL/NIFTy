@@ -68,26 +68,16 @@ samples_opt, st = jft.optimize_kl(
     lh,
     jft.Vector(lh.init(ki)),
     key=ko,
-    n_total_iterations=12,
+    n_total_iterations=5,
     n_samples=12,
     draw_linear_kwargs=dict(
-        cg_name="SL",
-        cg_kwargs=dict(absdelta=delta * jft.size(lh.domain) / 10.0, maxiter=100),
+        cg_kwargs=dict(absdelta=delta * jft.size(lh.domain) / 10.0),
     ),
-    # Arguements for the minimizer in the nonlinear updating of the samples
     nonlinearly_update_kwargs=dict(
-        minimize_kwargs=dict(
-            name="SN",
-            xtol=delta,
-            cg_kwargs=dict(name=None),
-            maxiter=5,
-        )
+        minimize_kwargs=dict(xtol=delta, cg_kwargs=dict(name=None))
     ),
-    # Arguments for the minimizer of the KL-divergence cost potential
     kl_kwargs=dict(
-        minimize_kwargs=dict(
-            name="M", xtol=delta, cg_kwargs=dict(name=None), maxiter=35
-        )
+        minimize_kwargs=dict(name="M", xtol=delta, cg_kwargs=dict(name=None))
     ),
     sample_mode="nonlinear_resample",
 )
@@ -96,7 +86,6 @@ samples_opt, st = jft.optimize_kl(
 x_p = np.linspace(x.min(), x.max(), 500)
 y_unnoised_samples = jax.vmap(partial(nlr, x=x_p))(samples_opt.samples)
 
-# %%
 fig, ax = plt.subplots()
 ax.plot(x, y, color="dodgerblue", linestyle="None", marker=".", markersize=8)
 ax.plot(x_p, y_unnoised_samples.mean(axis=0), color="black")
