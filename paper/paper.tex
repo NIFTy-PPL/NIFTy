@@ -490,7 +490,7 @@ power-spectrum in harmonic space, and \(\xi\) standard Gaussian random
 variables. In the implementation in \texttt{NIFTy.re} and
 \texttt{NIFTy}, the user can choose between two adaptive kernel models,
 a non-parametric kernel \(\sqrt{P}\) and a Matérn kernel \(\sqrt{P}\)
-(Arras et al., 2022; Guardiani, 2022 for details on their
+(Arras et al., 2022; Guardiani et al., 2022 for details on their
 implementation). A code example that initializes a non-parametric GP
 prior for a \(128 \times 128\) space with unit volume is shown in the
 following.
@@ -594,15 +594,16 @@ and to avoid expensive re-compilations whenever possible.
 degrees of freedom. To probe the posterior efficiently and accurately,
 \texttt{NIFTy.re} relies on VI. Specifically, \texttt{NIFTy.re}
 implements Metric Gaussian Variational Inference (MGVI) and its
-successor geometric Variational Inference (geoVI) Frank (2022). At the
-core of both MGVI and geoVI lies an alternating procedure in which one
-switches between optimizing the Kullback--Leibler divergence for a
-specific shape of the variational posterior and updating the shape of
-the variational posterior. MGVI and geoVI define the variational
-posterior via samples, specifically, via samples drawn around an
-expansion point. The samples in MGVI and geoVI exploit model-intrinsic
-knowledge of the posterior's approximate shape, encoded in the Fisher
-information metric and the prior curvature (Frank et al., 2021).
+successor geometric Variational Inference (geoVI) (Frank et al., 2021;
+Frank, 2022; Knollmüller \& Enßlin, 2019). At the core of both MGVI and
+geoVI lies an alternating procedure in which one switches between
+optimizing the Kullback--Leibler divergence for a specific shape of the
+variational posterior and updating the shape of the variational
+posterior. MGVI and geoVI define the variational posterior via samples,
+specifically, via samples drawn around an expansion point. The samples
+in MGVI and geoVI exploit model-intrinsic knowledge of the posterior's
+approximate shape, encoded in the Fisher information metric and the
+prior curvature (Frank et al., 2021).
 
 \texttt{NIFTy.re} implements both MGVI and geoVI and allows for much
 finer control over the way samples are drawn and updated compared to
@@ -918,9 +919,10 @@ inference via spectral density estimation}. \emph{Physical Review E},
 \emph{96}(5), 052104. \url{https://doi.org/10.1103/PhysRevE.96.052104}
 
 \leavevmode\hypertarget{ref-Guardiani2022}{}%
-Guardiani, P. A. K., Matteo AND Frank. (2022). Causal, bayesian, \&
-non-parametric modeling of the SARS-CoV-2 viral load distribution vs.
-Patient's age. \emph{PLOS ONE}, \emph{17}(10), 1--21.
+Guardiani, M., Frank, P., Kostić, A., Edenhofer, G., Roth, J., Uhlmann,
+B., \& Enßlin, T. (2022). Causal, bayesian, \& non-parametric modeling
+of the SARS-CoV-2 viral load distribution vs. Patient's age. \emph{PLOS
+ONE}, \emph{17}(10), 1--21.
 \url{https://doi.org/10.1371/journal.pone.0275011}
 
 \leavevmode\hypertarget{ref-Hensman2015}{}%

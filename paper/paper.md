@@ -216,7 +216,7 @@ This mechanism is extensively used in likelihoods to avoid inlining large consta
 
 \texttt{NIFTy.re} is built for models with millions to billions of degrees of freedom.
 To probe the posterior efficiently and accurately, \texttt{NIFTy.re} relies on VI.
-Specifically, \texttt{NIFTy.re} implements Metric Gaussian Variational Inference (MGVI) and its successor geometric Variational Inference (geoVI) [@Knollmueller2019 @Frank2021 @Frank2022].
+Specifically, \texttt{NIFTy.re} implements Metric Gaussian Variational Inference (MGVI) and its successor geometric Variational Inference (geoVI) [@Knollmueller2019; @Frank2021; @Frank2022].
 At the core of both MGVI and geoVI lies an alternating procedure in which one switches between optimizing the Kullback–Leibler divergence for a specific shape of the variational posterior and updating the shape of the variational posterior.
 MGVI and geoVI define the variational posterior via samples, specifically, via samples drawn around an expansion point.
 The samples in MGVI and geoVI exploit model-intrinsic knowledge of the posterior's approximate shape, encoded in the Fisher information metric and the prior curvature [@Frank2021].
