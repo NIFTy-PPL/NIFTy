@@ -206,10 +206,12 @@ See [the corresponding entry on citing NIFTy in the documentation](https://ift.p
 
 ```
 @misc{niftyre,
-    author       = {{Edenhofer}, Gordian and {Frank}, Philipp and {Roth}, Jakob and {Leike}, Reimar H. and {Guerdi}, Massin and {Scheel-Platz}, Lukas I. and {Guardiani}, Matteo and {Eberle}, Vincent and {Westerkamp}, Margret and {Enßlin}, Torsten A.},
-    title        = {{Re-Envisioning Numerical Information Field Theory (NIFTy.re): A Library for Gaussian Processes and Variational Inference}},
-    keywords     = {Software},
-    year         = 2024,
-    howpublished = {in preparation}
+  author        = {{Edenhofer}, Gordian and {Frank}, Philipp and {Roth}, Jakob and {Leike}, Reimar H. and {Guerdi}, Massin and {Scheel-Platz}, Lukas I. and {Guardiani}, Matteo and {Eberle}, Vincent and {Westerkamp}, Margret and {Enßlin}, Torsten A.},
+  title         = {{Re-Envisioning Numerical Information Field Theory (NIFTy.re): A Library for Gaussian Processes and Variational Inference}},
+  keywords      = {Software},
+  year          = 2024,
+  eprint        = {2402.16683},
+  archivePrefix = {arXiv},
+  primaryClass  = {astro-ph.IM}
 }
 ```
