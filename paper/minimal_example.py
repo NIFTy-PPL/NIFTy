@@ -1,13 +1,22 @@
 #!/usr/bin/env python3
 
 # %%
+from functools import partial
+
 import jax
+import numpy as np
+import plotly.graph_objects as go
+from jax import numpy as jnp
+from jax import random
+from matplotlib import pyplot as plt
+from plotly.subplots import make_subplots
+from upy.detective import timeit
+
+from nifty8 import re as jft
 
 jax.config.update("jax_enable_x64", True)
 
 # %%
-from nifty8 import re as jft
-
 dims = (128, 128)
 cfm = jft.CorrelatedFieldMaker("cf")
 cfm.set_amplitude_total_offset(offset_mean=2, offset_std=(1e-1, 3e-2))
@@ -23,8 +32,8 @@ cfm.add_fluctuations(  # Axis over which the kernle is defined
 )
 correlated_field = cfm.finalize()  # forward model for a GP prior
 
+
 # %%
-from jax import numpy as jnp
 
 
 class Forward(jft.Model):
@@ -44,9 +53,6 @@ class Forward(jft.Model):
 forward = Forward(correlated_field)
 
 # REMOVE STARTING HERE
-from jax import random
-from matplotlib import pyplot as plt
-
 truth = forward(forward.init(random.PRNGKey(3141)))
 data = random.poisson(random.PRNGKey(2718), truth)
 jnp.save("data.npy", data)
@@ -58,7 +64,6 @@ data = jnp.load("data.npy")
 lh = jft.Poissonian(data).amend(forward)
 
 # %%
-from jax import random
 
 key = random.PRNGKey(42)
 key, sk = random.split(key, 2)
@@ -68,8 +73,6 @@ key, sk = random.split(key, 2)
 samples = jft.Samples(pos=jft.Vector(lh.init(sk)), samples=None)
 
 delta = 1e-4
-absdelta = delta * jft.size(samples.pos)
-
 opt_vi = jft.OptimizeVI(lh, n_total_iterations=25)
 opt_vi_st = opt_vi.init_state(
     key,
@@ -78,7 +81,8 @@ opt_vi_st = opt_vi.init_state(
     # Arguments for the conjugate gradient method used to drawing samples from
     # an implicit covariance matrix
     draw_linear_kwargs=dict(
-        cg_name="SL", cg_kwargs=dict(absdelta=absdelta / 10.0, maxiter=100)
+        cg_name="SL",
+        cg_kwargs=dict(absdelta=delta * jft.size(samples.pos) / 10.0, maxiter=100),
     ),
     # Arguements for the minimizer in the nonlinear updating of the samples
     nonlinearly_update_kwargs=dict(
@@ -96,14 +100,29 @@ for i in range(opt_vi.n_total_iterations):
     samples, opt_vi_st = opt_vi.update(samples, opt_vi_st)
     print(opt_vi.get_status_message(samples, opt_vi_st))
 
-from functools import partial
+# %%
+key = random.PRNGKey(42)
+key, sk = random.split(key, 2)
+delta = 1e-4
+samples_opt = jft.optimize_kl(
+    lh,
+    jft.Vector(lh.init(sk)),
+    key=key,
+    n_total_iterations=25,
+    n_samples=12,
+    draw_linear_kwargs=dict(
+        cg_kwargs=dict(absdelta=delta * jft.size(lh.domain) / 10.0, maxiter=100)
+    ),
+    nonlinearly_update_kwargs=dict(
+        minimize_kwargs=dict(
+            xtol=delta * jft.size(lh.domain), cg_kwargs=dict(name=None), maxiter=5
+        )
+    ),
+    kl_kwargs=dict(minimize_kwargs=dict(name="M", xtol=delta, maxiter=35)),
+    sample_mode="nonlinear_resample",
+)
 
 # %%
-import jax
-import numpy as np
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
-
 pm = jax.tree_map(partial(jnp.mean, axis=0), jax.vmap(forward)(samples.samples))
 ps = jax.tree_map(partial(jnp.std, axis=0), jax.vmap(forward)(samples.samples))
 
@@ -225,8 +244,6 @@ pos_ift = ift.MultiField.from_dict(pos_ift)
 lh_metric_ift = lh_ift(ift.Linearization.make_var(pos_ift, want_metric=True)).metric
 
 # %%
-from upy.detective import timeit
-
 # Warm-up and consistency test
 out = lh_met(pos, pos).tree
 out_ift = lh_metric_ift(pos_ift).val
