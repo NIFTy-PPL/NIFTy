@@ -64,7 +64,43 @@ data = jnp.load("data.npy")
 lh = jft.Poissonian(data).amend(forward)
 
 # %%
+seeds = (42, 43)
+for nm, f in (("correlated_field", correlated_field), ("forward", forward)):
+    fig = make_subplots(
+        rows=1,
+        cols=len(seeds),
+        horizontal_spacing=0.12,
+    )
+    x, y = tuple(np.mgrid[slice(0.0, 1.0, d * 1j)] for d in dims)
+    for i, s in enumerate(seeds, start=1):
+        s = f(f.init(random.PRNGKey(s)))
+        fig.add_trace(
+            go.Heatmap(
+                x=x, y=y, z=s.T, coloraxis=f"coloraxis{i}", xaxis=f"x{i}", yaxis=f"y{i}"
+            ),
+            1,
+            i,
+        )
+        fig.update_layout(
+            {
+                f"xaxis{i}": dict(title="x", range=(0, 1)),
+                f"yaxis{i}": dict(
+                    title="y", range=(0, 1), scaleanchor=f"x{i}", scaleratio=1.0
+                ),
+                f"coloraxis{i}": dict(colorscale="viridis", showscale=False),
+            }
+        )
+    fig.update_layout(
+        template="plotly_white",
+        width=420,
+        height=200,
+        margin=dict(t=5, b=5, l=5, r=5),
+    )
+    fig.show()
+    fig.write_html(f"minimal_reconstruction_prior_{nm}_samples.html")
+    fig.write_image(f"minimal_reconstruction_prior_{nm}_samples.png", scale=10)
 
+# %%
 key = random.PRNGKey(42)
 key, sk = random.split(key, 2)
 # NIFTy is agnostic w.r.t. the type of input it gets as long as it supports core
