@@ -76,8 +76,7 @@ def discrete_gauss_markov_process(xi: Array, x0: Array, drift: Array, diffamp: A
 
 
 def scalar_gauss_markov_process(xi, x0, drift, diffamp):
-    """Simple wrapper of `discrete_gm_general` for 1D scalar processes.
-    """
+    """Simple wrapper of `discrete_gm_general` for 1D scalar processes."""
     if not _isscalar(drift):
         drift = drift[:, jnp.newaxis, jnp.newaxis]
     if not _isscalar(diffamp):
@@ -91,42 +90,39 @@ def wiener_process(
     xi: Array, x0: float, sigma: Union[float, Array], dt: Union[float, Array]
 ):
     """Implements the Wiener process (WP)."""
-    drift = 1.
+    drift = 1.0
     amp = jnp.sqrt(dt) * sigma
     return scalar_gauss_markov_process(xi, x0, drift, amp)
 
 
 def integrated_wiener_process(
-    xi: Array,
-    x0: Array,
-    sigma: Array,
-    dt: Array,
-    asperity: Union[float, Array] = None
+    xi: Array, x0: Array, sigma: Array, dt: Array, asperity: Union[float, Array] = None
 ):
     """Implements the (generalized) Integrated Wiener process (IWP)."""
-    asperity = 0. if asperity is None else asperity
+    asperity = 0.0 if asperity is None else asperity
     dt = jnp.ones(xi.shape[0]) * dt if _isscalar(dt) else dt
 
     def drift_amp(d, sig, asp):
-        drift = jnp.array([[1., d], [0., 1.]])
-        amp = jnp.array([[jnp.sqrt(d**2 / 12. + asp), d / 2.], [0., 1.]])
+        drift = jnp.array([[1.0, d], [0.0, 1.0]])
+        amp = jnp.array([[jnp.sqrt(d**2 / 12.0 + asp), d / 2.0], [0.0, 1.0]])
         amp *= sig * jnp.sqrt(d)
         return drift, amp
 
-    axs = (
-        0, None if _isscalar(sigma) else 0, None if _isscalar(asperity) else 0
-    )
+    axs = (0, None if _isscalar(sigma) else 0, None if _isscalar(asperity) else 0)
     drift, amp = vmap(drift_amp, axs, (0, 0))(dt, sigma, asperity)
     return discrete_gauss_markov_process(xi, x0, drift, amp)
 
 
 def ornstein_uhlenbeck_process(
-    xi: Array, x0: float, sigma: Union[float, Array],
-    gamma: Union[float, Array], dt: Union[float, Array]
+    xi: Array,
+    x0: float,
+    sigma: Union[float, Array],
+    gamma: Union[float, Array],
+    dt: Union[float, Array],
 ):
     """Implements the Ornstein Uhlenbeck process (OUP)."""
     drift = jnp.exp(-gamma * dt)
-    amp = sigma * jnp.sqrt(1. - drift**2)
+    amp = sigma * jnp.sqrt(1.0 - drift**2)
     return scalar_gauss_markov_process(xi, x0, drift, amp)
 
 
@@ -136,7 +132,7 @@ class GaussMarkovProcess(Model):
         process: Callable,
         x0: Union[float, Array, LazyModel],
         dt: Union[float, Array],
-        name='xi',
+        name="xi",
         N_steps: int = None,
         **kwargs
     ):
@@ -145,13 +141,9 @@ class GaussMarkovProcess(Model):
                 msg = "`N_steps` is None and `dt` is not a sequence"
                 raise NotImplementedError(msg)
             dt = np.ones(N_steps) * dt
-        shp = dt.shape + jnp.shape(
-            x0.target if isinstance(x0, LazyModel) else x0
-        )
+        shp = dt.shape + jnp.shape(x0.target if isinstance(x0, LazyModel) else x0)
         domain = {name: ShapeWithDtype(shp)}
-        init = Initializer(
-            tree_map(lambda x: partial(random_like, primals=x), domain)
-        )
+        init = Initializer(tree_map(lambda x: partial(random_like, primals=x), domain))
         if isinstance(x0, LazyModel):
             domain = domain | x0.domain
             init = init | x0.init
@@ -171,8 +163,7 @@ class GaussMarkovProcess(Model):
         xi = x[self.name]
         xx = self.x0(x) if isinstance(self.x0, LazyModel) else self.x0
         tmp = {
-            k: a(x) if isinstance(a, LazyModel) else a
-            for k, a in self.kwargs.items()
+            k: a(x) if isinstance(a, LazyModel) else a for k, a in self.kwargs.items()
         }
         return self.process(xi=xi, x0=xx, dt=self.dt, **tmp)
 
@@ -181,8 +172,8 @@ def WienerProcess(
     x0: Union[tuple, float, LazyModel],
     sigma: Union[tuple, float, Array, LazyModel],
     dt: Union[float, Array],
-    name: str = 'wp',
-    N_steps: int = None
+    name: str = "wp",
+    N_steps: int = None,
 ):
     """Implements the Wiener process (WP).
 
@@ -219,9 +210,9 @@ def WienerProcess(
     i.E. `sigma_t = sigma_i for t_i <= t < t_{i+1}`.
     """
     if isinstance(x0, tuple):
-        x0 = NormalPrior(x0[0], x0[1], name=name + '_x0')
+        x0 = NormalPrior(x0[0], x0[1], name=name + "_x0")
     if isinstance(sigma, tuple):
-        sigma = LogNormalPrior(sigma[0], sigma[1], name=name + '_sigma')
+        sigma = LogNormalPrior(sigma[0], sigma[1], name=name + "_sigma")
     return GaussMarkovProcess(
         wiener_process, x0, dt, name=name, N_steps=N_steps, sigma=sigma
     )
@@ -231,9 +222,9 @@ def IntegratedWienerProcess(
     x0: Union[tuple, Array, LazyModel],
     sigma: Union[tuple, float, Array, LazyModel],
     dt: Union[float, Array],
-    name: str = 'iwp',
+    name: str = "iwp",
     asperity: Union[tuple, float, Array, LazyModel] = None,
-    N_steps: int = None
+    N_steps: int = None,
 ):
     """Implements the Integrated Wiener Process.
 
@@ -262,13 +253,11 @@ def IntegratedWienerProcess(
     for further information.
     """
     if isinstance(x0, tuple):
-        x0 = NormalPrior(x0[0], x0[1], shape=(2, ), name=name + '_x0')
+        x0 = NormalPrior(x0[0], x0[1], shape=(2,), name=name + "_x0")
     if isinstance(sigma, tuple):
-        sigma = LogNormalPrior(sigma[0], sigma[1], name=name + '_sigma')
+        sigma = LogNormalPrior(sigma[0], sigma[1], name=name + "_sigma")
     if isinstance(asperity, tuple):
-        asperity = LogNormalPrior(
-            asperity[0], asperity[1], name=name + '_asperity'
-        )
+        asperity = LogNormalPrior(asperity[0], asperity[1], name=name + "_asperity")
     return GaussMarkovProcess(
         integrated_wiener_process,
         x0,
@@ -276,7 +265,7 @@ def IntegratedWienerProcess(
         name=name,
         N_steps=N_steps,
         sigma=sigma,
-        asperity=asperity
+        asperity=asperity,
     )
 
 
@@ -284,9 +273,9 @@ def OrnsteinUhlenbeckProcess(
     sigma: Union[tuple, float, Array, LazyModel],
     gamma: Union[tuple, float, Array, LazyModel],
     dt: Union[float, Array],
-    name: str = 'oup',
+    name: str = "oup",
     x0: Union[tuple, float, LazyModel] = None,
-    N_steps: int = None
+    N_steps: int = None,
 ):
     """Implements the Ornstein Uhlenbeck process (OUP).
 
@@ -310,12 +299,12 @@ def OrnsteinUhlenbeckProcess(
     for further information.
     """
     if isinstance(sigma, tuple):
-        sigma = LogNormalPrior(sigma[0], sigma[1], name=name + '_sigma')
+        sigma = LogNormalPrior(sigma[0], sigma[1], name=name + "_sigma")
     if isinstance(gamma, tuple):
-        gamma = LogNormalPrior(gamma[0], gamma[1], name=name + '_gamma')
+        gamma = LogNormalPrior(gamma[0], gamma[1], name=name + "_gamma")
     if x0 is None:
         # x0 is not set, use steady state distribution of OUP to generate it.
-        key = name + '_x0'
+        key = name + "_x0"
 
         def gen_x0(x):
             res = x[key]
@@ -323,15 +312,13 @@ def OrnsteinUhlenbeckProcess(
             return res * (sig if _isscalar(sig) else sig[0])
 
         domain = {key: ShapeWithDtype(())}
-        init = Initializer(
-            tree_map(lambda x: partial(random_like, primals=x), domain)
-        )
+        init = Initializer(tree_map(lambda x: partial(random_like, primals=x), domain))
         if isinstance(sigma, LazyModel):
             domain = domain | sigma.domain
             init = init | sigma.init
         x0 = Model(gen_x0, domain=domain, init=init)
     elif isinstance(x0, tuple):
-        x0 = NormalPrior(x0[0], x0[1], name=name + '_x0')
+        x0 = NormalPrior(x0[0], x0[1], name=name + "_x0")
     return GaussMarkovProcess(
         ornstein_uhlenbeck_process,
         x0,
@@ -339,5 +326,5 @@ def OrnsteinUhlenbeckProcess(
         name=name,
         N_steps=N_steps,
         sigma=sigma,
-        gamma=gamma
+        gamma=gamma,
     )

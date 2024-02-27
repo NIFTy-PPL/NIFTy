@@ -29,17 +29,14 @@ def test_partial_insert_and_remove():
     # are length one tuples
     _id_part = jpartial(
         _identity,
-        insert_axes=(jft.Vector({
-            "a": (True, False),
-            "b": False
-        }), ),
-        flat_fill=(("THIS IS input['a'][0]", ), )
+        insert_axes=(jft.Vector({"a": (True, False), "b": False}),),
+        flat_fill=(("THIS IS input['a'][0]",),),
     )
     out = _id_part(("THIS IS input['a'][1]", "THIS IS input['b']"))
     assert out == jft.Vector(
         {
             "a": ("THIS IS input['a'][0]", "THIS IS input['a'][1]"),
-            "b": "THIS IS input['b']"
+            "b": "THIS IS input['b']",
         }
     )
 
@@ -57,12 +54,7 @@ def test_likelihood_partial(seed, forward):
     key = random.PRNGKey(seed)
     forward = partial(jax.tree_map, forward)
 
-    domain = jft.Vector(
-        {
-            "a": jft.ShapeWithDtype(128),
-            "b": jft.ShapeWithDtype(64)
-        }
-    )
+    domain = jft.Vector({"a": jft.ShapeWithDtype(128), "b": jft.ShapeWithDtype(64)})
     key, sk_d, sk_p = random.split(key, 3)
     primals = jft.random_like(sk_p, domain)
     data = forward(jft.random_like(sk_d, domain))
@@ -70,7 +62,7 @@ def test_likelihood_partial(seed, forward):
     gaussian = jft.Gaussian(data).amend(forward)
 
     gaussian_part, primals_liquid = gaussian.freeze(
-        primals=primals, point_estimates=("b", )
+        primals=primals, point_estimates=("b",)
     )
     assert primals_liquid.tree[0].shape == domain["a"].shape
     aallclose(gaussian_part(primals_liquid), gaussian(primals))
@@ -95,9 +87,7 @@ def test_likelihood_partial(seed, forward):
 def test_likelihood_domain():
     lh = jft.Poissonian(jnp.zeros((3, 4), dtype=int))
     assert lh.domain is not None
-    lh_wfwd = lh.amend(
-        jft.Model(lambda x: x, domain=lh.domain, white_init=True)
-    )
+    lh_wfwd = lh.amend(jft.Model(lambda x: x, domain=lh.domain, white_init=True))
     assert lh_wfwd.domain is not None
 
 
@@ -112,8 +102,8 @@ def test_nonvariable_likelihood_add(seed, likelihood, forward_a, forward_b):
     key = random.PRNGKey(seed)
     N_TRIES = 100
     shp_a, shp_b = (3, 5), (12, 5)
-    swd_a = jft.Vector((jft.ShapeWithDtype(shp_a), ) * 2)
-    swd_b = jft.Vector((jft.ShapeWithDtype(shp_b), ) * 3)
+    swd_a = jft.Vector((jft.ShapeWithDtype(shp_a),) * 2)
+    swd_b = jft.Vector((jft.ShapeWithDtype(shp_b),) * 3)
     key_a, key_b = "a", "b"
 
     def fwd_a(x):
@@ -149,52 +139,37 @@ def test_nonvariable_likelihood_add(seed, likelihood, forward_a, forward_b):
     assert_allclose(jax.vmap(lh_orig)(p), jax.vmap(lh_ab)(p), equal_nan=False)
     rsm_orig = jax.vmap(lh_orig.right_sqrt_metric)(p, t)
     rsm_ab = jax.vmap(lh_ab.right_sqrt_metric)(p, t)
-    tree_assert_allclose(
-        rsm_orig.tree[key_a], rsm_ab["lh_left"], equal_nan=False
-    )
-    tree_assert_allclose(
-        rsm_orig.tree[key_b], rsm_ab["lh_right"], equal_nan=False
-    )
+    tree_assert_allclose(rsm_orig.tree[key_a], rsm_ab["lh_left"], equal_nan=False)
+    tree_assert_allclose(rsm_orig.tree[key_b], rsm_ab["lh_right"], equal_nan=False)
     tree_assert_allclose(
         jax.vmap(
-            lambda p, t, q: lh_orig.
-            left_sqrt_metric(p, lh_orig.right_sqrt_metric(t, q))
+            lambda p, t, q: lh_orig.left_sqrt_metric(p, lh_orig.right_sqrt_metric(t, q))
         )(p, t, q),
         jax.vmap(
-            lambda p, t, q: lh_ab.
-            left_sqrt_metric(p, lh_ab.right_sqrt_metric(t, q))
+            lambda p, t, q: lh_ab.left_sqrt_metric(p, lh_ab.right_sqrt_metric(t, q))
         )(p, t, q),
-        equal_nan=False
+        equal_nan=False,
     )
     tree_assert_allclose(
-        jax.vmap(lh_orig.metric)(p, t),
-        jax.vmap(lh_ab.metric)(p, t),
-        equal_nan=False
+        jax.vmap(lh_orig.metric)(p, t), jax.vmap(lh_ab.metric)(p, t), equal_nan=False
     )
     nresi_orig = jax.vmap(lh_orig.normalized_residual)(p)
     nresi_ab = jax.vmap(lh_ab.normalized_residual)(p)
-    tree_assert_allclose(
-        nresi_orig.tree[key_a], nresi_ab["lh_left"], equal_nan=False
-    )
-    tree_assert_allclose(
-        nresi_orig.tree[key_b], nresi_ab["lh_right"], equal_nan=False
-    )
+    tree_assert_allclose(nresi_orig.tree[key_a], nresi_ab["lh_left"], equal_nan=False)
+    tree_assert_allclose(nresi_orig.tree[key_b], nresi_ab["lh_right"], equal_nan=False)
     trafo_orig = jax.vmap(lh_orig.transformation)(p)
     trafo_ab = jax.vmap(lh_ab.transformation)(p)
-    tree_assert_allclose(
-        trafo_orig.tree[key_a], trafo_ab["lh_left"], equal_nan=False
-    )
-    tree_assert_allclose(
-        trafo_orig.tree[key_b], trafo_ab["lh_right"], equal_nan=False
-    )
+    tree_assert_allclose(trafo_orig.tree[key_a], trafo_ab["lh_left"], equal_nan=False)
+    tree_assert_allclose(trafo_orig.tree[key_b], trafo_ab["lh_right"], equal_nan=False)
 
 
 @pmp("seed", (33, 42, 43))
 @pmp(
-    "likelihood", (
+    "likelihood",
+    (
         jft.VariableCovarianceGaussian,
         partial(jft.VariableCovarianceStudentT, dof=1.7),
-    )
+    ),
 )
 @pmp("forward_a,forward_b", ((_identity, jnp.exp), (jnp.exp, jnp.reciprocal)))
 def test_variable_likelihood_add(seed, likelihood, forward_a, forward_b):
@@ -203,9 +178,9 @@ def test_variable_likelihood_add(seed, likelihood, forward_a, forward_b):
     # Make input always a tuple for Variable* likelihoods
     data_shp_a = (3, 5)
     data_shp_b = (12, 5)
-    primals_swd_a = (jft.ShapeWithDtype(data_shp_a), ) * 2
+    primals_swd_a = (jft.ShapeWithDtype(data_shp_a),) * 2
     data_swd_a = jft.ShapeWithDtype(data_shp_a)
-    primals_swd_b = (jft.ShapeWithDtype(data_shp_b), ) * 2
+    primals_swd_b = (jft.ShapeWithDtype(data_shp_b),) * 2
     data_swd_b = jft.ShapeWithDtype(data_shp_b)
     key_a, key_b = "a", "b"
 
@@ -231,12 +206,8 @@ def test_variable_likelihood_add(seed, likelihood, forward_a, forward_b):
 
     swd = jft.Vector({key_a: primals_swd_a, key_b: primals_swd_b})
     lh_orig = likelihood(data_ab).amend(forward, domain=swd)
-    lh_a = likelihood(data_a).amend(
-        fwd_a, domain=jft.Vector({key_a: primals_swd_a})
-    )
-    lh_b = likelihood(data_b).amend(
-        fwd_b, domain=jft.Vector({key_b: primals_swd_b})
-    )
+    lh_a = likelihood(data_a).amend(fwd_a, domain=jft.Vector({key_a: primals_swd_a}))
+    lh_b = likelihood(data_b).amend(fwd_b, domain=jft.Vector({key_b: primals_swd_b}))
     lh_ab = lh_a + lh_b
 
     key, k_p, k_t, k_q = random.split(key, 4)
@@ -249,39 +220,27 @@ def test_variable_likelihood_add(seed, likelihood, forward_a, forward_b):
     rsm_orig = jax.vmap(lh_orig.right_sqrt_metric)(p, t)
     rsm_ab = jax.vmap(lh_ab.right_sqrt_metric)(p, t)
     tree_assert_allclose(
-        tuple(r.tree[key_a] for r in rsm_orig),
-        rsm_ab["lh_left"],
-        equal_nan=False
+        tuple(r.tree[key_a] for r in rsm_orig), rsm_ab["lh_left"], equal_nan=False
     )
     tree_assert_allclose(
-        tuple(r.tree[key_b] for r in rsm_orig),
-        rsm_ab["lh_right"],
-        equal_nan=False
+        tuple(r.tree[key_b] for r in rsm_orig), rsm_ab["lh_right"], equal_nan=False
     )
     tree_assert_allclose(
         jax.vmap(
-            lambda p, t, q: lh_orig.
-            left_sqrt_metric(p, lh_orig.right_sqrt_metric(t, q))
+            lambda p, t, q: lh_orig.left_sqrt_metric(p, lh_orig.right_sqrt_metric(t, q))
         )(p, t, q),
         jax.vmap(
-            lambda p, t, q: lh_ab.
-            left_sqrt_metric(p, lh_ab.right_sqrt_metric(t, q))
+            lambda p, t, q: lh_ab.left_sqrt_metric(p, lh_ab.right_sqrt_metric(t, q))
         )(p, t, q),
-        equal_nan=False
+        equal_nan=False,
     )
     tree_assert_allclose(
-        jax.vmap(lh_orig.metric)(p, t),
-        jax.vmap(lh_ab.metric)(p, t),
-        equal_nan=False
+        jax.vmap(lh_orig.metric)(p, t), jax.vmap(lh_ab.metric)(p, t), equal_nan=False
     )
     nresi_orig = lh_orig.normalized_residual(p)
     nresi_ab = lh_ab.normalized_residual(p)
-    tree_assert_allclose(
-        nresi_orig[key_a], nresi_ab["lh_left"], equal_nan=False
-    )
-    tree_assert_allclose(
-        nresi_orig[key_b], nresi_ab["lh_right"], equal_nan=False
-    )
+    tree_assert_allclose(nresi_orig[key_a], nresi_ab["lh_left"], equal_nan=False)
+    tree_assert_allclose(nresi_orig[key_b], nresi_ab["lh_right"], equal_nan=False)
 
     try:
         jax.vmap(lh_orig.transformation)(p)
@@ -290,14 +249,10 @@ def test_variable_likelihood_add(seed, likelihood, forward_a, forward_b):
     trafo_orig = jax.vmap(lh_orig.transformation)(p)
     trafo_ab = jax.vmap(lh_ab.transformation)(p)
     tree_assert_allclose(
-        tuple(t[key_a] for t in trafo_orig),
-        trafo_ab["lh_left"],
-        equal_nan=False
+        tuple(t[key_a] for t in trafo_orig), trafo_ab["lh_left"], equal_nan=False
     )
     tree_assert_allclose(
-        tuple(t[key_b] for t in trafo_orig),
-        trafo_ab["lh_right"],
-        equal_nan=False
+        tuple(t[key_b] for t in trafo_orig), trafo_ab["lh_right"], equal_nan=False
     )
 
 

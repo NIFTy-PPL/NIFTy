@@ -9,8 +9,8 @@ from jax import numpy as jnp
 from .evi import Samples
 from .tree_math import Vector, get_map
 
-O = TypeVar('O')
-I = TypeVar('I')
+O = TypeVar("O")
+I = TypeVar("I")
 
 
 def _residual_params(inp):
@@ -52,14 +52,11 @@ def reduced_residual_stats(position_or_samples, func=None, *, map="lmap"):
         If samples is None, the second entry of this array is always zero.
     """
     map = get_map(map)
-    if not isinstance(position_or_samples,
-                      Samples) or len(position_or_samples) == 0:
+    if not isinstance(position_or_samples, Samples) or len(position_or_samples) == 0:
         if isinstance(position_or_samples, Samples):
             assert len(position_or_samples) == 0
             position_or_samples = position_or_samples.pos
-        samples = jax.tree_map(
-            lambda x: x[jnp.newaxis, ...], position_or_samples
-        )
+        samples = jax.tree_map(lambda x: x[jnp.newaxis, ...], position_or_samples)
     else:
         assert isinstance(position_or_samples, Samples)
         samples = position_or_samples.samples

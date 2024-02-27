@@ -3,7 +3,11 @@
 
 from .model import WrappedCall
 from .num import (
-    invgamma_prior, laplace_prior, lognormal_prior, normal_prior, uniform_prior
+    invgamma_prior,
+    laplace_prior,
+    lognormal_prior,
+    normal_prior,
+    uniform_prior,
 )
 
 _doc_shared = """name : hashable, optional
@@ -101,7 +105,7 @@ class UniformPrior(WrappedCall):
 
 class InvGammaPrior(WrappedCall):
     @_format_doc
-    def __init__(self, a, scale, loc=0., step=1e-2, **kwargs):
+    def __init__(self, a, scale, loc=0.0, step=1e-2, **kwargs):
         """Transforms standard normally distributed random variables to an
         inverse gamma distribution.
 

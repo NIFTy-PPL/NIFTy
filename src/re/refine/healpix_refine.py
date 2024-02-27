@@ -72,10 +72,8 @@ def get_1st_hp_nbrs(nside, pix, nest: bool = False):
     from healpy import pixelfunc
 
     return np.stack(
-        pixelfunc.pix2vec(
-            nside, get_1st_hp_nbrs_idx(nside, pix, nest=nest), nest=nest
-        ),
-        axis=-1
+        pixelfunc.pix2vec(nside, get_1st_hp_nbrs_idx(nside, pix, nest=nest), nest=nest),
+        axis=-1,
     )
 
 
@@ -88,13 +86,10 @@ def cov_sqrt(chart, kernel, level: int = 0):
 
     nside = chart.nside_at(level)
     pix0s = np.stack(
-        pixelfunc.pix2vec(nside, np.arange(12 * nside**2), nest=chart.nest),
-        axis=-1
+        pixelfunc.pix2vec(nside, np.arange(12 * nside**2), nest=chart.nest), axis=-1
     )
     assert pix0s.ndim == 2
-    pix0s = pix0s.reshape(
-        pix0s.shape[:1] + (1, ) * (chart.ndim - 1) + pix0s.shape[1:]
-    )
+    pix0s = pix0s.reshape(pix0s.shape[:1] + (1,) * (chart.ndim - 1) + pix0s.shape[1:])
     if chart.ndim > 1:
         # NOTE, this works for arbitrary many dimensions but is probably not
         # what the user wants. In 1D for example, the distances are still
@@ -126,8 +121,7 @@ def refine(
     if chart.ndim != 2:
         nie = f"invalid dimensions {chart.ndim!r}; expected `2`"
         raise NotImplementedError(nie)
-    coarse_values = coarse_values[:, np.
-                                  newaxis] if chart.ndim == 1 else coarse_values
+    coarse_values = coarse_values[:, np.newaxis] if chart.ndim == 1 else coarse_values
     nside = sqrt(coarse_values.shape[0] / 12)
     lvl = int(log2(nside) - log2(chart.nside0))
 
@@ -136,7 +130,7 @@ def refine(
             coarse_values[chart.hp_neighbors_idx(lvl, idx_hp)],
             idx_r,
             slice_size=chart.coarse_size,
-            axis=1
+            axis=1,
         )
         f_shp = (chart.fine_size**2, chart.fine_size)
         o = olf[im] if im is not None else olf
@@ -149,9 +143,7 @@ def refine(
     pix_r_off = jnp.arange(chart.shape_at(lvl)[1] - chart.coarse_size + 1)
     # TODO: benchmark swapping these two
     off = index_map is not None
-    vrefine = jax.vmap(
-        refine, in_axes=(None, 0, None, 0, 0 + off, 0 + off, None)
-    )
+    vrefine = jax.vmap(refine, in_axes=(None, 0, None, 0, 0 + off, 0 + off, None))
     in_axes = (None, 0, 0, None)
     in_axes += (0, 0, None) if index_map is None else (None, None, 0)
     vrefine = jax.vmap(vrefine, in_axes=in_axes)

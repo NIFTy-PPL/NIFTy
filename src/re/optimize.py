@@ -2,9 +2,7 @@
 
 from datetime import datetime
 from functools import partial
-from typing import (
-    Any, Callable, Dict, Mapping, NamedTuple, Optional, Tuple, Union
-)
+from typing import Any, Callable, Dict, Mapping, NamedTuple, Optional, Tuple, Union
 
 from jax import lax
 from jax import numpy as jnp
@@ -12,9 +10,9 @@ from jax.tree_util import Partial
 
 from . import conjugate_gradient
 from .logger import logger
-from .tree_math import assert_arithmetics, result_type
+from .tree_math import assert_arithmetics
 from .tree_math import norm as jft_norm
-from .tree_math import size, where, vdot
+from .tree_math import result_type, size, vdot, where
 
 
 class OptimizeResults(NamedTuple):
@@ -43,6 +41,7 @@ class OptimizeResults(NamedTuple):
     nit : int
         Number of iterations performed by the optimizer.
     """
+
     x: Any
     success: Union[bool, jnp.ndarray]
     status: Union[int, jnp.ndarray]
@@ -60,8 +59,7 @@ class OptimizeResults(NamedTuple):
     good_approximation: Union[None, bool, jnp.ndarray] = None
 
 
-def _prepare_vag_hessp(fun, jac, hessp,
-                       fun_and_grad) -> Tuple[Callable, Callable]:
+def _prepare_vag_hessp(fun, jac, hessp, fun_and_grad) -> Tuple[Callable, Callable]:
     """Returns a tuple of functions for computing the value-and-gradient and
     the Hessian-Vector-Product.
     """
@@ -74,6 +72,7 @@ def _prepare_vag_hessp(fun, jac, hessp,
 
             def fun_and_grad(x):
                 return (fun(x), jac(x))
+
         elif fun is not None:
             from jax import value_and_grad
 
@@ -87,7 +86,7 @@ def _prepare_vag_hessp(fun, jac, hessp,
         jac = grad(fun) if jac is None else jac
 
         def hessp(primals, tangents):
-            return jvp(jac, (primals, ), (tangents, ))[1]
+            return jvp(jac, (primals,), (tangents,))[1]
 
     return fun_and_grad, hessp
 
@@ -125,15 +124,12 @@ def _newton_cg(
     xtol = xtol * size(x0)
 
     pos = x0
-    fun_and_grad, hessp = _prepare_vag_hessp(
-        fun, jac, hessp, fun_and_grad=fun_and_grad
-    )
+    fun_and_grad, hessp = _prepare_vag_hessp(fun, jac, hessp, fun_and_grad=fun_and_grad)
     cg_kwargs = {} if cg_kwargs is None else cg_kwargs
     cg_name = name + "CG" if name is not None else None
 
     gradnorm = (
-        partial(jft_norm, ord=norm_ord)
-        if custom_gradnorm is None else custom_gradnorm
+        partial(jft_norm, ord=norm_ord) if custom_gradnorm is None else custom_gradnorm
     )
     energy, g = fun_and_grad(pos)
     nfev, njev, nhev = 1, 1, 0
@@ -150,18 +146,16 @@ def _newton_cg(
         if old_fval and energy_reduction_factor:
             cg_absdelta = energy_reduction_factor * (old_fval - energy)
         else:
-            cg_absdelta = None if absdelta is None else absdelta / 100.
+            cg_absdelta = None if absdelta is None else absdelta / 100.0
         mag_g = jft_norm(g, ord=cg_kwargs.get("norm_ord", 1))
-        cg_resnorm = jnp.minimum(
-            0.5, jnp.sqrt(mag_g)
-        ) * mag_g  # taken from SciPy
+        cg_resnorm = jnp.minimum(0.5, jnp.sqrt(mag_g)) * mag_g  # taken from SciPy
         default_kwargs = {
             "absdelta": cg_absdelta,
             "resnorm": cg_resnorm,
             "norm_ord": 1,
             "_raise_nonposdef": False,  # handle non-pos-def
             "name": cg_name,
-            "time_threshold": time_threshold
+            "time_threshold": time_threshold,
         }
         cg_res = cg(Partial(hessp, pos), g, **{**default_kwargs, **cg_kwargs})
         nat_g, info = cg_res.x, cg_res.info
@@ -171,7 +165,7 @@ def _newton_cg(
 
         naive_ls_it = 0
         dd = nat_g  # negative descent direction
-        grad_scaling = 1.
+        grad_scaling = 1.0
         ls_reset = False
         for naive_ls_it in range(9):
             new_pos = pos - grad_scaling * dd
@@ -186,10 +180,10 @@ def _newton_cg(
                 gam = float(vdot(g, g))
                 curv = float(g.dot(hessp(pos, g)))
                 nhev += 1
-                grad_scaling = 1.
+                grad_scaling = 1.0
                 dd = gam / curv * g
         else:
-            grad_scaling = 0.
+            grad_scaling = 0.0
             nm = "N" if name is None else name
             msg = f"{nm}: WARNING: Energy would increase; aborting"
             logger.warning(msg)
@@ -214,7 +208,7 @@ def _newton_cg(
         if jnp.isnan(new_energy):
             raise ValueError("energy is NaN")
         min_cond = naive_ls_it < 2 and i > miniter
-        if absdelta is not None and 0. <= energy_diff < absdelta and min_cond:
+        if absdelta is not None and 0.0 <= energy_diff < absdelta and min_cond:
             status = 0
             break
         if descent_norm <= xtol and i > miniter:
@@ -236,7 +230,7 @@ def _newton_cg(
         nit=i,
         nfev=nfev,
         njev=njev,
-        nhev=nhev
+        nhev=nhev,
     )
 
 
@@ -264,7 +258,7 @@ def _trust_ncg(
     old_fval=jnp.nan,
     absdelta=None,
     gtol: float = 1e-4,
-    max_trust_radius: Union[float, jnp.ndarray] = 1000.,
+    max_trust_radius: Union[float, jnp.ndarray] = 1000.0,
     initial_trust_radius: Union[float, jnp.ndarray] = 1.0,
     eta: Union[float, jnp.ndarray] = 0.15,
     subproblem=conjugate_gradient._cg_steihaug_subproblem,
@@ -272,7 +266,7 @@ def _trust_ncg(
     hessp: Optional[Callable] = None,
     fun_and_grad: Optional[Callable] = None,
     subproblem_kwargs: Optional[Dict[str, Any]] = None,
-    name: Optional[str] = None
+    name: Optional[str] = None,
 ) -> OptimizeResults:
     from jax.experimental.host_callback import call
 
@@ -283,7 +277,7 @@ def _trust_ncg(
     if not (0 <= eta < 0.25):
         raise Exception("invalid acceptance stringency")
     # Exception("gradient tolerance must be positive")
-    status = jnp.where(gtol < 0., -1, status)
+    status = jnp.where(gtol < 0.0, -1, status)
     # Exception("max trust radius must be positive")
     status = jnp.where(max_trust_radius <= 0, -1, status)
     # ValueError("initial trust radius must be positive")
@@ -292,13 +286,9 @@ def _trust_ncg(
     status = jnp.where(initial_trust_radius >= max_trust_radius, -1, status)
 
     common_dtp = result_type(x0)
-    eps = 6. * jnp.finfo(
-        common_dtp
-    ).eps  # Inspired by SciPy's NewtonCG minimzer
+    eps = 6.0 * jnp.finfo(common_dtp).eps  # Inspired by SciPy's NewtonCG minimzer
 
-    fun_and_grad, hessp = _prepare_vag_hessp(
-        fun, jac, hessp, fun_and_grad=fun_and_grad
-    )
+    fun_and_grad, hessp = _prepare_vag_hessp(fun, jac, hessp, fun_and_grad=fun_and_grad)
     subproblem_kwargs = {} if subproblem_kwargs is None else subproblem_kwargs
     cg_name = name + "SP" if name is not None else None
 
@@ -317,16 +307,16 @@ def _trust_ncg(
         njev=1,
         nhev=0,
         trust_radius=initial_trust_radius,
-        old_fval=old_fval
+        old_fval=old_fval,
     )
 
     def pp(arg):
         i = arg["i"]
         msg = (
             "{name}: ↗:{tr:.6e} ⬤:{hit} ∝:{rho:.2e} #∇²:{nhev:02d}"
-            "\n{name}: Iteration {i} ⛰:{energy:+.6e} Δ⛰:{energy_diff:.6e}" +
-            (" ➽:{absdelta:.6e}" if absdelta is not None else "") +
-            ("\n{name}: Iteration Limit Reached" if i == maxiter else "")
+            "\n{name}: Iteration {i} ⛰:{energy:+.6e} Δ⛰:{energy_diff:.6e}"
+            + (" ➽:{absdelta:.6e}" if absdelta is not None else "")
+            + ("\n{name}: Iteration Limit Reached" if i == maxiter else "")
         )
         logger.info(msg.format(name=name, **arg))
 
@@ -340,7 +330,7 @@ def _trust_ncg(
         if energy_reduction_factor:
             cg_absdelta = energy_reduction_factor * (old_fval - f_k)
         else:
-            cg_absdelta = None if absdelta is None else absdelta / 100.
+            cg_absdelta = None if absdelta is None else absdelta / 100.0
         cg_resnorm = jnp.minimum(0.5, jnp.sqrt(g_k_mag)) * g_k_mag
         # TODO: add an internal success check for future subproblem approaches
         # that might not be solvable
@@ -349,13 +339,10 @@ def _trust_ncg(
             "resnorm": cg_resnorm,
             "trust_radius": tr,
             "norm_ord": 1,
-            "name": cg_name
+            "name": cg_name,
         }
         sub_result = subproblem(
-            f_k, g_k, Partial(hessp, x_k), **{
-                **default_kwargs,
-                **subproblem_kwargs
-            }
+            f_k, g_k, Partial(hessp, x_k), **{**default_kwargs, **subproblem_kwargs}
         )
 
         pred_f_kp1 = sub_result.pred_f
@@ -370,7 +357,8 @@ def _trust_ncg(
         tr_kp1 = jnp.where(rho < 0.25, tr * 0.25, tr)
         tr_kp1 = jnp.where(
             (rho > 0.75) & sub_result.hits_boundary,
-            jnp.minimum(2. * tr, max_trust_radius), tr_kp1
+            jnp.minimum(2.0 * tr, max_trust_radius),
+            tr_kp1,
         )
 
         # compute norm to check for convergence
@@ -378,19 +366,18 @@ def _trust_ncg(
 
         # if the ratio is high enough then accept the proposed step
         f_kp1, x_kp1, g_kp1, g_kp1_mag = where(
-            rho > eta, (f_kp1, x_kp1, g_kp1, g_kp1_mag),
-            (f_k, x_k, g_k, g_k_mag)
+            rho > eta, (f_kp1, x_kp1, g_kp1, g_kp1_mag), (f_k, x_k, g_k, g_k_mag)
         )
 
         # Check whether we arrived at the float precision
         energy_eps = eps * jnp.abs(f_kp1)
-        converged = (actual_reduction
-                     <= energy_eps) & (actual_reduction > -energy_eps)
+        converged = (actual_reduction <= energy_eps) & (actual_reduction > -energy_eps)
 
         converged |= g_kp1_mag < gtol
         if absdelta:
-            converged |= (rho > eta) & (actual_reduction
-                                        > 0.) & (actual_reduction < absdelta)
+            converged |= (
+                (rho > eta) & (actual_reduction > 0.0) & (actual_reduction < absdelta)
+            )
 
         status = jnp.where(converged, 0, params.status)
         status = jnp.where(i >= maxiter, 1, status)
@@ -407,7 +394,7 @@ def _trust_ncg(
             nhev=params.nhev + sub_result.nhev,
             trust_radius=tr_kp1,
             status=status,
-            old_fval=f_k
+            old_fval=f_k,
         )
         if name is not None:
             printable_state = {
@@ -419,7 +406,7 @@ def _trust_ncg(
                 "tr": params.trust_radius,
                 "rho": rho,
                 "nhev": params.nhev,
-                "hit": sub_result.hits_boundary
+                "hit": sub_result.hits_boundary,
             }
             call(pp, printable_state, result_shape=None)
         return params
@@ -427,9 +414,7 @@ def _trust_ncg(
     def _trust_region_cond_f(params: _TrustRegionState) -> bool:
         return jnp.logical_not(params.converged) & (params.status == 0)
 
-    state = lax.while_loop(
-        _trust_region_cond_f, _trust_region_body_f, init_params
-    )
+    state = lax.while_loop(_trust_region_cond_f, _trust_region_body_f, init_params)
 
     return OptimizeResults(
         success=state.converged & (state.status == 0),
@@ -442,7 +427,7 @@ def _trust_ncg(
         nhev=state.nhev,
         jac_magnitude=state.jac_magnitude,
         trust_radius=state.trust_radius,
-        status=state.status
+        status=state.status,
     )
 
 
@@ -459,7 +444,7 @@ def minimize(
     *,
     method: str,
     tol: Optional[float] = None,
-    options: Optional[Mapping[str, Any]] = None
+    options: Optional[Mapping[str, Any]] = None,
 ) -> OptimizeResults:
     """Minimize fun."""
     assert_arithmetics(x0)
@@ -476,9 +461,9 @@ def minimize(
     if tol is not None:
         raise ValueError("use solver-specific options")
 
-    if method.lower() in ('newton-cg', 'newtoncg', 'ncg'):
+    if method.lower() in ("newton-cg", "newtoncg", "ncg"):
         return _newton_cg(fun_with_args, x0, **options)
-    elif method.lower() in ('trust-ncg', 'trustncg'):
+    elif method.lower() in ("trust-ncg", "trustncg"):
         return _trust_ncg(fun_with_args, x0, **options)
 
     raise ValueError(f"method {method} not recognized")

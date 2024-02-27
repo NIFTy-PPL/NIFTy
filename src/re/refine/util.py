@@ -13,15 +13,14 @@ import numpy as np
 from jax import numpy as jnp
 from scipy.spatial import distance_matrix
 
-from ..tree_math import ShapeWithDtype, zeros_like
 from ..logger import logger
 from ..model import LazyModel
+from ..tree_math import ShapeWithDtype, zeros_like
 
 NDARRAY = Union[jnp.ndarray, np.ndarray]
 
 RefinementMatrices = namedtuple(
-    "RefinementMatrices",
-    ("filter", "propagator_sqrt", "cov_sqrt0", "index_map")
+    "RefinementMatrices", ("filter", "propagator_sqrt", "cov_sqrt0", "index_map")
 )
 
 
@@ -97,29 +96,29 @@ def get_refinement_shapewithdtype(
 
     swd = partial(ShapeWithDtype, dtype=dtype)
 
-    shape0 = (shape0, ) if isinstance(shape0, int) else shape0
+    shape0 = (shape0,) if isinstance(shape0, int) else shape0
     ndim = len(shape0)
     exc_shp = [swd(shape0)] if not skip0 else [None]
     if depth > 0:
         if _fine_strategy == "jump":
-            exc_lvl = tuple(el - (csz - 1) for el in shape0) + (fsz**ndim, )
+            exc_lvl = tuple(el - (csz - 1) for el in shape0) + (fsz**ndim,)
         elif _fine_strategy == "extend":
-            exc_lvl = tuple(
-                ceil((el - (csz - 1)) / (fsz // 2)) for el in shape0
-            ) + (fsz**ndim, )
+            exc_lvl = tuple(ceil((el - (csz - 1)) / (fsz // 2)) for el in shape0) + (
+                fsz**ndim,
+            )
         else:
             raise ValueError(f"invalid `_fine_strategy`; got {_fine_strategy}")
         exc_shp += [swd(exc_lvl)]
     for lvl in range(1, depth):
         if _fine_strategy == "jump":
-            exc_lvl = tuple(
-                fsz * el - (csz - 1) for el in exc_shp[-1].shape[:-1]
-            ) + (fsz**ndim, )
+            exc_lvl = tuple(fsz * el - (csz - 1) for el in exc_shp[-1].shape[:-1]) + (
+                fsz**ndim,
+            )
         elif _fine_strategy == "extend":
             exc_lvl = tuple(
                 ceil((fsz * el - (csz - 1)) / (fsz // 2))
                 for el in exc_shp[-1].shape[:-1]
-            ) + (fsz**ndim, )
+            ) + (fsz**ndim,)
         else:
             raise AssertionError()
         if any(el <= 0 for el in exc_lvl):
@@ -142,7 +141,7 @@ def coarse2fine_shape(
     _fine_strategy: Literal["jump", "extend"] = "jump",
 ):
     """Translates a coarse shape to its corresponding fine shape."""
-    shape0 = (shape0, ) if isinstance(shape0, int) else shape0
+    shape0 = (shape0,) if isinstance(shape0, int) else shape0
     csz = int(_coarse_size)  # coarse size
     fsz = int(_fine_size)  # fine size
     if _fine_size % 2 != 0:
@@ -179,7 +178,7 @@ def fine2coarse_shape(
     ceil_sizes: bool = False,
 ):
     """Translates a fine shape to its corresponding coarse shape."""
-    shape = (shape, ) if isinstance(shape, int) else shape
+    shape = (shape,) if isinstance(shape, int) else shape
     csz = int(_coarse_size)  # coarse size
     fsz = int(_fine_size)  # fine size
     if _fine_size % 2 != 0:
@@ -200,11 +199,11 @@ def fine2coarse_shape(
                 for sz_at_cand in range(sz_at_min, ceil(sz_at_max) + 1):
                     try:
                         shp_cand = coarse2fine_shape(
-                            (sz_at_cand, ),
+                            (sz_at_cand,),
                             depth=depth - lvl + 1,
                             _coarse_size=csz,
                             _fine_size=fsz,
-                            _fine_strategy=_fine_strategy
+                            _fine_strategy=_fine_strategy,
                         )[0]
                     except ValueError as e:
                         if "invalid shape" not in "".join(e.args):
@@ -329,8 +328,7 @@ def refinement_covariance(chart_or_model, kernel=None, jit=True):
     probe = jnp.zeros(shape)
     indices = np.indices(shape).reshape(ndim, -1)
     cov_empirical = jax.lax.map(
-        lambda idx: cov_implicit(probe.at[tuple(idx)].set(1.)).ravel(),
-        indices.T
+        lambda idx: cov_implicit(probe.at[tuple(idx)].set(1.0)).ravel(), indices.T
     ).T  # vmap over `indices` w/ `in_axes=1, out_axes=-1`
 
     return cov_empirical
@@ -341,8 +339,9 @@ def true_covariance(chart, kernel, depth=None):
     depth = chart.depth if depth is None else depth
 
     c0_slc = tuple(slice(sz) for sz in chart.shape_at(depth))
-    pos = jnp.stack(chart.ind2cart(jnp.mgrid[c0_slc], depth),
-                    axis=-1).reshape(-1, chart.ndim)
+    pos = jnp.stack(chart.ind2cart(jnp.mgrid[c0_slc], depth), axis=-1).reshape(
+        -1, chart.ndim
+    )
     dist_mat = distance_matrix(pos, pos)
     return kernel(dist_mat)
 
@@ -371,13 +370,13 @@ def refinement_approximation_error(
     cov_truth = true_covariance(chart, kernel)
 
     if cutout is None and all(s > suggested_min_shape for s in chart.shape):
-        cutout = (suggested_min_shape, ) * chart.ndim
+        cutout = (suggested_min_shape,) * chart.ndim
         logger.info(f"cropping field (w/ shape {chart.shape}) to {cutout}")
     if cutout is not None:
         if isinstance(cutout, slice):
-            cutout = (cutout, ) * chart.ndim
+            cutout = (cutout,) * chart.ndim
         elif isinstance(cutout, int):
-            cutout = (slice(cutout), ) * chart.ndim
+            cutout = (slice(cutout),) * chart.ndim
         elif isinstance(cutout, tuple):
             if all(isinstance(el, slice) for el in cutout):
                 pass
@@ -390,8 +389,8 @@ def refinement_approximation_error(
 
         cov_empirical = cov_empirical.reshape(chart.shape * 2)[cutout * 2]
         cov_truth = cov_truth.reshape(chart.shape * 2)[cutout * 2]
-        sz = np.prod(cov_empirical.shape[:chart.ndim])
-        if np.prod(cov_truth.shape[:chart.ndim]) != sz or not sz.dtype == int:
+        sz = np.prod(cov_empirical.shape[: chart.ndim])
+        if np.prod(cov_truth.shape[: chart.ndim]) != sz or not sz.dtype == int:
             raise AssertionError()
         cov_empirical = cov_empirical.reshape(sz, sz)
         cov_truth = cov_truth.reshape(sz, sz)
@@ -404,35 +403,16 @@ def refinement_approximation_error(
 
 
 REFINEMENT_STRATEGIES = [
-    {
-        "_coarse_size": 3,
-        "_fine_size": 2
-    },
-    {
-        "_coarse_size": 3,
-        "_fine_size": 4
-    },
-    {
-        "_coarse_size": 5,
-        "_fine_size": 2
-    },
-    {
-        "_coarse_size": 5,
-        "_fine_size": 4
-    },
-    {
-        "_coarse_size": 5,
-        "_fine_size": 6
-    },
+    {"_coarse_size": 3, "_fine_size": 2},
+    {"_coarse_size": 3, "_fine_size": 4},
+    {"_coarse_size": 5, "_fine_size": 2},
+    {"_coarse_size": 5, "_fine_size": 4},
+    {"_coarse_size": 5, "_fine_size": 6},
 ]
 
 
 def get_optimal_refinement_chart(
-    kernel,
-    *,
-    shape0,
-    refinement_strategies=REFINEMENT_STRATEGIES,
-    **common_kwargs
+    kernel, *, shape0, refinement_strategies=REFINEMENT_STRATEGIES, **common_kwargs
 ):
     """Compute the Kullback-Leibler divergence for a given `kernel`, initial
     `shape0`, and parameters of a coordinate chart (`common_kwargs`); returning
@@ -442,7 +422,7 @@ def get_optimal_refinement_chart(
     from .chart import CoordinateChart
 
     charts = []
-    min_shape = (1 << 31, ) * len(shape0)  # Absurdly large placeholder value
+    min_shape = (1 << 31,) * len(shape0)  # Absurdly large placeholder value
     for kwargs in refinement_strategies:
         cc = CoordinateChart(shape0=shape0, **(common_kwargs | kwargs))
         charts.append(cc)

@@ -9,16 +9,18 @@ from typing import Callable, Optional, Tuple, TypeVar, Union
 import jax
 from jax import numpy as jnp
 from jax import random
-from jax.tree_util import (
-    Partial, register_pytree_node_class, tree_leaves, tree_map
-)
+from jax.tree_util import Partial, register_pytree_node_class, tree_leaves, tree_map
 
 from . import conjugate_gradient, optimize
-from .likelihood import (
-    Likelihood, _parse_point_estimates, partial_insert_and_remove
-)
+from .likelihood import Likelihood, _parse_point_estimates, partial_insert_and_remove
 from .tree_math import (
-    Vector, assert_arithmetics, dot, hide_strings, random_like, stack, vdot
+    Vector,
+    assert_arithmetics,
+    dot,
+    hide_strings,
+    random_like,
+    stack,
+    vdot,
 )
 
 P = TypeVar("P")
@@ -48,11 +50,9 @@ def _cond_raise(condition, exception):
     # Register as few host-callbacks as possible by implicitly hashing the
     # exception type and the strings within
     call(
-        _hcb_maybe_raise, (
-            condition,
-            Partial(exception.__class__, *hide_strings(exception.args))
-        ),
-        result_shape=None
+        _hcb_maybe_raise,
+        (condition, Partial(exception.__class__, *hide_strings(exception.args))),
+        result_shape=None,
     )
 
 
@@ -60,17 +60,15 @@ def _process_point_estimate(x, primals, point_estimates, insert):
     if not point_estimates:
         return x
 
-    point_estimates, _, p_frozen = _parse_point_estimates(
-        point_estimates, primals
-    )
+    point_estimates, _, p_frozen = _parse_point_estimates(point_estimates, primals)
     assert p_frozen is not None
-    fill = tree_map(lambda x: jnp.zeros((1, ) * jnp.ndim(x)), p_frozen)
+    fill = tree_map(lambda x: jnp.zeros((1,) * jnp.ndim(x)), p_frozen)
     in_out = partial_insert_and_remove(
         lambda *x: x[0],
-        insert_axes=(point_estimates, ) if insert else None,
-        flat_fill=(fill, ) if insert else None,
-        remove_axes=None if insert else (point_estimates, ),
-        unflatten=None if insert else Vector
+        insert_axes=(point_estimates,) if insert else None,
+        flat_fill=(fill,) if insert else None,
+        remove_axes=None if insert else (point_estimates,),
+        unflatten=None if insert else Vector,
     )
     return in_out(x)
 
@@ -98,9 +96,7 @@ def draw_linear_residual(
         te = f"`likelihood` of invalid type; got '{type(likelihood)}'"
         raise TypeError(te)
     if point_estimates:
-        lh, p_liquid = likelihood.freeze(
-            point_estimates=point_estimates, primals=pos
-        )
+        lh, p_liquid = likelihood.freeze(point_estimates=point_estimates, primals=pos)
     else:
         lh = likelihood
         p_liquid = pos
@@ -129,16 +125,14 @@ def draw_linear_residual(
     info = 0
     if from_inverse:
         inv_metric_at_p = partial(
-            cg, Partial(ham_metric, p_liquid), **{
-                "name": cg_name,
-                "_raise_nonposdef": _raise_nonposdef,
-                **cg_kwargs
-            }
+            cg,
+            Partial(ham_metric, p_liquid),
+            **{"name": cg_name, "_raise_nonposdef": _raise_nonposdef, **cg_kwargs},
         )
         smpl, info = inv_metric_at_p(smpl, x0=prr_inv_metric_smpl)
         _cond_raise(
             (info < 0) if info is not None else False,
-            ValueError("conjugate gradient failed")
+            ValueError("conjugate gradient failed"),
         )
     smpl = _process_point_estimate(smpl, pos, point_estimates, insert=True)
     return smpl, info
@@ -155,13 +149,11 @@ def _nonlinearly_update_residual_functions(
             primals,
             key,
             point_estimates=point_estimates,
-            from_inverse=False
+            from_inverse=False,
         )
 
     def _residual_vg(e, lh_trafo_at_p, ms_at_p, x, *, point_estimates):
-        lh, e_liquid = likelihood.freeze(
-            point_estimates=point_estimates, primals=e
-        )
+        lh, e_liquid = likelihood.freeze(point_estimates=point_estimates, primals=e)
 
         # t = likelihood.transformation(x) - lh_trafo_at_p
         t = tree_map(jnp.subtract, lh.transformation(x), lh_trafo_at_p)
@@ -174,23 +166,19 @@ def _nonlinearly_update_residual_functions(
         return (res, -ngrad)
 
     def _metric(e, primals, tangents, *, point_estimates):
-        lh, e_liquid = likelihood.freeze(
-            point_estimates=point_estimates, primals=e
-        )
+        lh, e_liquid = likelihood.freeze(point_estimates=point_estimates, primals=e)
         lsm = lh.left_sqrt_metric
         rsm = lh.right_sqrt_metric
         tm = lsm(e_liquid, rsm(primals, tangents)) + tangents
         return lsm(primals, rsm(e_liquid, tm)) + tm
 
     def _sampnorm(e, natgrad, *, point_estimates):
-        lh, e_liquid = likelihood.freeze(
-            point_estimates=point_estimates, primals=e
-        )
+        lh, e_liquid = likelihood.freeze(point_estimates=point_estimates, primals=e)
         fpp = lh.right_sqrt_metric(e_liquid, natgrad)
         return jnp.sqrt(vdot(natgrad, natgrad) + vdot(fpp, fpp))
 
     jit = _parse_jit(jit)
-    jit = partial(jit, static_argnames=("point_estimates", ))
+    jit = partial(jit, static_argnames=("point_estimates",))
     draw_linear_non_inverse = jit(_draw_linear_non_inverse)
     rag = jit(_residual_vg)
     metric = jit(_metric)
@@ -224,31 +212,24 @@ def nonlinearly_update_residual(
     sample = pos + residual_sample
     del residual_sample
     sample = _process_point_estimate(sample, pos, point_estimates, insert=False)
-    metric_sample, _ = draw_lni(
-        pos, metric_sample_key, point_estimates=point_estimates
-    )
+    metric_sample, _ = draw_lni(pos, metric_sample_key, point_estimates=point_estimates)
     metric_sample *= metric_sample_sign
     metric_sample = _process_point_estimate(
         metric_sample, pos, point_estimates, insert=False
     )
     # HACK for skipping the nonlinear update steps and not calling trafo
-    skip = isinstance(minimize_kwargs.get("maxiter", None),
-                      int) and minimize_kwargs["maxiter"] == 0
+    skip = (
+        isinstance(minimize_kwargs.get("maxiter", None), int)
+        and minimize_kwargs["maxiter"] == 0
+    )
     if not skip:
         trafo_at_p = likelihood.transformation(pos)
         options = {
-            "fun_and_grad":
-                partial(
-                    rag,
-                    pos,
-                    trafo_at_p,
-                    metric_sample,
-                    point_estimates=point_estimates
-                ),
-            "hessp":
-                partial(metric, pos, point_estimates=point_estimates),
-            "custom_gradnorm":
-                partial(sampnorm, pos, point_estimates=point_estimates),
+            "fun_and_grad": partial(
+                rag, pos, trafo_at_p, metric_sample, point_estimates=point_estimates
+            ),
+            "hessp": partial(metric, pos, point_estimates=point_estimates),
+            "custom_gradnorm": partial(sampnorm, pos, point_estimates=point_estimates),
         }
         opt_state = minimize(None, x0=sample, **(minimize_kwargs | options))
     else:
@@ -306,13 +287,13 @@ def draw_residual(
     return stack(
         (
             curve(residual_sample, metric_sample_sign=1.0),
-            curve(-residual_sample, metric_sample_sign=-1.0)
+            curve(-residual_sample, metric_sample_sign=-1.0),
         )
     )
 
 
 @register_pytree_node_class
-class Samples():
+class Samples:
     """Storage class for samples (relative to some expansion point) that is
     fully compatible with JAX transformations like vmap, pmap, etc.
 
@@ -329,6 +310,7 @@ class Samples():
     `Metric Gaussian Variational Inference`, Jakob Knollmüller,
     Torsten A. Enßlin, `<https://arxiv.org/abs/1901.11033>`_
     """
+
     def __init__(self, *, pos: P = None, samples: P, keys=None):
         self._pos, self._samples, self._keys = pos, samples, keys
 
@@ -392,9 +374,7 @@ class Samples():
         """Convenience method to merge the two leading axis of stacked samples
         (e.g. from batching).
         """
-        smpls = tree_map(
-            lambda s: s.reshape((-1, ) + s.shape[2:]), self._samples
-        )
+        smpls = tree_map(lambda s: s.reshape((-1,) + s.shape[2:]), self._samples)
         return Samples(pos=self.pos, samples=smpls, keys=self.keys)
 
     def tree_flatten(self):

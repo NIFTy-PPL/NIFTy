@@ -5,14 +5,17 @@ from typing import Any, Callable, TypeVar
 
 import jax
 from jax.tree_util import (
-    Partial, tree_flatten, tree_leaves, tree_map, tree_structure, tree_unflatten
+    Partial,
+    tree_flatten,
+    tree_leaves,
+    tree_map,
+    tree_structure,
+    tree_unflatten,
 )
 
 from .misc import is_iterable_of_non_iterables, isiterable
 from .model import LazyModel, NoValue
-from .tree_math import (
-    ShapeWithDtype, Vector, conj, has_arithmetics, zeros_like
-)
+from .tree_math import ShapeWithDtype, Vector, conj, has_arithmetics, zeros_like
 
 Q = TypeVar("Q")
 P = TypeVar("P")
@@ -205,19 +208,17 @@ class Likelihood(LazyModel):
     lsm_tangents_shape : tree-like structure of ShapeWithDtype
         Structure of the data space.
     """
+
     _lsm_tan_shp: Any = None
 
-    def __init__(
-        self, *, domain=NoValue, init=NoValue, lsm_tangents_shape=None
-    ):
+    def __init__(self, *, domain=NoValue, init=NoValue, lsm_tangents_shape=None):
         # NOTE, `lsm_tangents_shape` is not `normalized_residual` applied to
         # `domain` for e.g. models with a learnable covariance
         self._lsm_tan_shp = _parse_swd(lsm_tangents_shape)
         super().__init__(domain=domain, init=init)
 
     def __call__(self, primals, **primals_kw):
-        """Convenience method to access the `energy` method of this instance.
-        """
+        """Convenience method to access the `energy` method of this instance."""
         return self.energy(primals, **primals_kw)
 
     def energy(self, primals, **primals_kw):
@@ -324,9 +325,7 @@ class Likelihood(LazyModel):
             `left_sqrt_metric_tangents_shape`.
         """
         lsm_at_p = Partial(self.left_sqrt_metric, primals, **primals_kw)
-        rsm_at_p = jax.linear_transpose(
-            lsm_at_p, self.left_sqrt_metric_tangents_shape
-        )
+        rsm_at_p = jax.linear_transpose(lsm_at_p, self.left_sqrt_metric_tangents_shape)
         rsm_at_p = _functional_conj(rsm_at_p)
         return rsm_at_p(tangents)[0]
 
@@ -373,9 +372,7 @@ class Likelihood(LazyModel):
         """Alias for `right_sqrt_metric_tangents_shape`."""
         return self.right_sqrt_metric_tangents_shape
 
-    def amend(
-        self, f: Callable, /, *, domain=NoValue, likelihood_argnames=None
-    ):
+    def amend(self, f: Callable, /, *, domain=NoValue, likelihood_argnames=None):
         """Amend a forward model to the likelihood."""
         return LikelihoodWithModel(
             self, f, domain=domain, likelihood_argnames=likelihood_argnames
@@ -390,14 +387,13 @@ class Likelihood(LazyModel):
         """
         if not point_estimates:
             return self, primals
-        lp = LikelihoodPartial(
-            self, primals=primals, point_estimates=point_estimates
-        )
+        lp = LikelihoodPartial(self, primals=primals, point_estimates=point_estimates)
         return lp, lp.splitx(primals)[0]
 
 
 class LikelihoodPartial(Likelihood):
     """Likelihood with partially inserted `primals`."""
+
     likelihood: Likelihood = field(metadata=dict(static=False))
     primals_frozen: Any = field(metadata=dict(static=False))
 
@@ -417,25 +413,25 @@ class LikelihoodPartial(Likelihood):
         self.unflatten = Vector if self.insert_axes else None
         super().__init__(
             domain=jax.tree_map(ShapeWithDtype.from_leave, pl),
-            lsm_tangents_shape=self.likelihood.lsm_tangents_shape
+            lsm_tangents_shape=self.likelihood.lsm_tangents_shape,
         )
 
     @property
     def energy(self):
         return partial_insert_and_remove(
             self.likelihood.energy,
-            insert_axes=(self.insert_axes, ),
-            flat_fill=(self.primals_frozen, ),
-            remove_axes=None
+            insert_axes=(self.insert_axes,),
+            flat_fill=(self.primals_frozen,),
+            remove_axes=None,
         )
 
     @property
     def transformation(self):
         return partial_insert_and_remove(
             self.likelihood.transformation,
-            insert_axes=(self.insert_axes, ),
-            flat_fill=(self.primals_frozen, ),
-            remove_axes=None
+            insert_axes=(self.insert_axes,),
+            flat_fill=(self.primals_frozen,),
+            remove_axes=None,
         )
 
     @property
@@ -471,9 +467,9 @@ class LikelihoodPartial(Likelihood):
     def normalized_residual(self):
         return partial_insert_and_remove(
             self.likelihood.normalized_residual,
-            insert_axes=(self.insert_axes, ),
-            flat_fill=(self.primals_frozen, ),
-            remove_axes=None
+            insert_axes=(self.insert_axes,),
+            flat_fill=(self.primals_frozen,),
+            remove_axes=None,
         )
 
     def splitx(self, primals):
@@ -530,20 +526,17 @@ class LikelihoodWithModel(Likelihood):
             te = f"second argument to {self.__class__.__name__} must be callable; got {f!r}"
             raise TypeError(te)
         self.forward = f if isinstance(f, LazyModel) else Partial(f)
-        likelihood_argnames = (
-        ) if likelihood_argnames is None else likelihood_argnames
+        likelihood_argnames = () if likelihood_argnames is None else likelihood_argnames
         if not isinstance(likelihood_argnames, (tuple, list)):
             te = f"invalid `likelihood_argnames` {self.likelihood_argnames!r}"
             raise TypeError(te)
         self.likelihood_argnames = likelihood_argnames
-        domain = f.domain if domain is NoValue and isinstance(
-            f, LazyModel
-        ) else domain
+        domain = f.domain if domain is NoValue and isinstance(f, LazyModel) else domain
         init = f.init if init is NoValue and isinstance(f, LazyModel) else init
         super().__init__(
             domain=domain,
             init=init,
-            lsm_tangents_shape=self.likelihood.lsm_tangents_shape
+            lsm_tangents_shape=self.likelihood.lsm_tangents_shape,
         )
 
     def _split_kwargs(self, **kwargs):
@@ -562,9 +555,7 @@ class LikelihoodWithModel(Likelihood):
 
     def transformation(self, primals, **kwargs):
         kw_l, kw_r = self._split_kwargs(**kwargs)
-        return self.likelihood.transformation(
-            self.forward(primals, **kw_r), **kw_l
-        )
+        return self.likelihood.transformation(self.forward(primals, **kw_r), **kw_l)
 
     def metric(self, primals, tangents, **kwargs):
         kw_l, kw_r = self._split_kwargs(**kwargs)
@@ -596,11 +587,13 @@ class LikelihoodWithModel(Likelihood):
         left_argnames=None,
         likelihood_argnames=None,
     ):
-        domain = f.domain if domain is NoValue and isinstance(
-            f, LazyModel
-        ) else domain
+        domain = f.domain if domain is NoValue and isinstance(f, LazyModel) else domain
         left_argnames = () if left_argnames is None else left_argnames
-        likelihood_argnames = self.likelihood_argnames if likelihood_argnames is None else likelihood_argnames
+        likelihood_argnames = (
+            self.likelihood_argnames
+            if likelihood_argnames is None
+            else likelihood_argnames
+        )
 
         def ff(primals, **kwargs):
             kw_l = {k: kwargs.pop(k) for k in left_argnames}
@@ -638,13 +631,18 @@ class LikelihoodSum(Likelihood):
         self._lkey, self._rkey = _left_key, _right_key
         joined_tangents_shape = {
             self._lkey: left._lsm_tan_shp,
-            self._rkey: right._lsm_tan_shp
+            self._rkey: right._lsm_tan_shp,
         }
-        if isinstance(left._lsm_tan_shp,
-                      Vector) or isinstance(right._lsm_tan_shp, Vector):
+        if isinstance(left._lsm_tan_shp, Vector) or isinstance(
+            right._lsm_tan_shp, Vector
+        ):
             joined_tangents_shape = Vector(joined_tangents_shape)
 
-        if domain is NoValue and left.domain is not NoValue and right.domain is not NoValue:
+        if (
+            domain is NoValue
+            and left.domain is not NoValue
+            and right.domain is not NoValue
+        ):
             lvec = isinstance(left.domain, Vector)
             rvec = isinstance(right.domain, Vector)
             ldomain = left.domain.tree if lvec else left.domain
@@ -693,20 +691,15 @@ class LikelihoodSum(Likelihood):
         return res
 
     def left_sqrt_metric(self, primals, tangents, **kwargs):
-        return (
-            self.left_likelihood.
-            left_sqrt_metric(primals, tangents[self._lkey], **kwargs) +
-            self.right_likelihood.
-            left_sqrt_metric(primals, tangents[self._rkey], **kwargs)
+        return self.left_likelihood.left_sqrt_metric(
+            primals, tangents[self._lkey], **kwargs
+        ) + self.right_likelihood.left_sqrt_metric(
+            primals, tangents[self._rkey], **kwargs
         )
 
     def right_sqrt_metric(self, primals, tangents, **kwargs):
-        lres = self.left_likelihood.right_sqrt_metric(
-            primals, tangents, **kwargs
-        )
-        rres = self.right_likelihood.right_sqrt_metric(
-            primals, tangents, **kwargs
-        )
+        lres = self.left_likelihood.right_sqrt_metric(primals, tangents, **kwargs)
+        rres = self.right_likelihood.right_sqrt_metric(primals, tangents, **kwargs)
         lvec, rvec = isinstance(lres, Vector), isinstance(rres, Vector)
         res = {self._lkey: lres, self._rkey: rres}
         res = Vector(res) if lvec or rvec else res

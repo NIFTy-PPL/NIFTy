@@ -12,15 +12,19 @@ from jax import eval_shape
 from jax import numpy as jnp
 from jax import random
 from jax.tree_util import (
-    register_pytree_node, tree_leaves, tree_map, tree_structure, tree_unflatten
+    register_pytree_node,
+    tree_leaves,
+    tree_map,
+    tree_structure,
+    tree_unflatten,
 )
 
 from .misc import wrap
 from .tree_math import PyTreeString, ShapeWithDtype, random_like
 
 
-class Initializer():
-    domain = ShapeWithDtype((2, ), jnp.uint32)
+class Initializer:
+    domain = ShapeWithDtype((2,), jnp.uint32)
 
     def __new__(cls, call_or_struct):
         if isinstance(call_or_struct, Initializer):
@@ -34,9 +38,7 @@ class Initializer():
         if not self.stupid:
             struct = tree_structure(self._call_or_struct)
             # Cast the subkeys to the structure of `primals`
-            subkeys = tree_unflatten(
-                struct, random.split(key, struct.num_leaves)
-            )
+            subkeys = tree_unflatten(struct, random.split(key, struct.num_leaves))
 
             def draw(init, key):
                 return init(key, *args, **kwargs)
@@ -90,6 +92,7 @@ class ModelMeta(abc.ABCMeta):
     For any dataclasses.Field property with a metadata-entry named "static",
     we will either hide or expose the property to JAX depending on the value.
     """
+
     def __new__(mcs, name, bases, dict_, /, **kwargs):
         cls = super().__new__(mcs, name, bases, dict_, **kwargs)
         cls = dataclass(init=False, repr=False, eq=False)(cls)
@@ -121,7 +124,7 @@ class ModelMeta(abc.ABCMeta):
         return cls
 
 
-class NoValue():
+class NoValue:
     pass
 
 
@@ -159,9 +162,7 @@ class LazyModel(metaclass=ModelMeta):
             )
             warn(msg)
             return Initializer(
-                tree_map(
-                    lambda p: partial(random_like, primals=p), self.domain
-                )
+                tree_map(lambda p: partial(random_like, primals=p), self.domain)
             )
         return self._init
 
@@ -175,6 +176,7 @@ class Model(LazyModel):
     metaprogramming. By default all properties are hidden from JAX except those
     marked via `dataclasses.field(metadata=dict(static=False))` as non-static.
     """
+
     def __init__(
         self,
         call: Optional[Callable] = None,
@@ -280,6 +282,4 @@ class WrappedCall(Model):
         if name is not None:
             call = wrap(call, name=name)
             domain = {name: domain}
-        super().__init__(
-            call, domain=domain, target=target, white_init=white_init
-        )
+        super().__init__(call, domain=domain, target=target, white_init=white_init)

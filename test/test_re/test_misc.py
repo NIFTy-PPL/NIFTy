@@ -1,6 +1,7 @@
-import pytest
-import nifty8.re as jft
 import numpy as np
+import pytest
+
+import nifty8.re as jft
 
 pmp = pytest.mark.parametrize
 

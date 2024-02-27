@@ -46,10 +46,10 @@ def get_fourier_mode_distributor(
     mode_multiplicity : jnp.ndarray
         Multiplicity for each unique Fourier mode length.
     """
-    shape = (shape, ) if isinstance(shape, int) else tuple(shape)
+    shape = (shape,) if isinstance(shape, int) else tuple(shape)
 
     # Compute length of modes
-    mspc_distances = 1. / (jnp.array(shape) * jnp.array(distances))
+    mspc_distances = 1.0 / (jnp.array(shape) * jnp.array(distances))
     m_length = jnp.arange(shape[0], dtype=jnp.float64)
     m_length = jnp.minimum(m_length, shape[0] - m_length) * mspc_distances[0]
     if len(shape) != 1:
@@ -78,30 +78,32 @@ def get_fourier_mode_distributor(
 
 
 RegularCartesianGrid = namedtuple(
-    "RegularCartesianGrid", (
+    "RegularCartesianGrid",
+    (
         "shape",
         "total_volume",
         "distances",
         "harmonic_grid",
     ),
-    defaults=(None, )
+    defaults=(None,),
 )
 
 RegularFourierGrid = namedtuple(
-    "RegularFourierGrid", (
+    "RegularFourierGrid",
+    (
         "shape",
         "power_distributor",
         "mode_multiplicity",
         "mode_lengths",
         "relative_log_mode_lengths",
         "log_volume",
-    )
+    ),
 )
 
 
 def _make_grid(shape, distances, harmonic_type) -> RegularCartesianGrid:
     """Creates the grid for the amplitude model"""
-    shape = (shape, ) if isinstance(shape, int) else tuple(shape)
+    shape = (shape,) if isinstance(shape, int) else tuple(shape)
     distances = tuple(np.broadcast_to(distances, jnp.shape(shape)))
 
     totvol = jnp.prod(jnp.array(shape) * jnp.array(distances))
@@ -113,13 +115,11 @@ def _make_grid(shape, distances, harmonic_type) -> RegularCartesianGrid:
     )
     # Pre-compute lengths of modes and indices for distributing power
     if harmonic_type.lower() == "fourier":
-        m_length_idx, m_length, m_count = get_fourier_mode_distributor(
-            shape, distances
-        )
+        m_length_idx, m_length, m_count = get_fourier_mode_distributor(shape, distances)
         um = m_length.copy()
         um = um.at[1:].set(jnp.log(um[1:]))
         um = um.at[1:].add(-um[1])
-        assert um[0] == 0.
+        assert um[0] == 0.0
         log_vol = um[2:] - um[1:-1]
         assert um.shape[0] - 2 == log_vol.shape[0]
         harmonic_grid = RegularFourierGrid(
@@ -183,21 +183,17 @@ def matern_amplitude(
         ctf = cutoff(primals)
         slp = loglogslope(primals)
 
-        ln_spectrum = 0.25 * slp * jnp.log1p((mode_lengths / ctf)**2)
+        ln_spectrum = 0.25 * slp * jnp.log1p((mode_lengths / ctf) ** 2)
 
         spectrum = jnp.exp(ln_spectrum)
 
-        norm = 1.
+        norm = 1.0
         if renormalize_amplitude:
             logger.warning("Renormalize amplidude is not yet tested!")
             if kind.lower() == "amplitude":
-                norm = jnp.sqrt(
-                    jnp.sum(mode_multiplicity[1:] * spectrum[1:]**4)
-                )
+                norm = jnp.sqrt(jnp.sum(mode_multiplicity[1:] * spectrum[1:] ** 4))
             elif kind.lower() == "power":
-                norm = jnp.sqrt(
-                    jnp.sum(mode_multiplicity[1:] * spectrum[1:]**2)
-                )
+                norm = jnp.sqrt(jnp.sum(mode_multiplicity[1:] * spectrum[1:] ** 2))
             norm /= jnp.sqrt(totvol)  # Due to integral in harmonic space
         spectrum = scl * (jnp.sqrt(totvol) / norm) * spectrum
         spectrum = spectrum.at[0].set(totvol)
@@ -207,9 +203,7 @@ def matern_amplitude(
             raise ValueError(f"invalid kind specified {kind!r}")
         return spectrum
 
-    return Model(
-        correlate, domain=ptree, init=partial(random_like, primals=ptree)
-    )
+    return Model(correlate, domain=ptree, init=partial(random_like, primals=ptree))
 
 
 def non_parametric_amplitude(
@@ -256,15 +250,13 @@ def non_parametric_amplitude(
         assert log_vol is not None
         assert rel_log_mode_len.ndim == log_vol.ndim == 1
         if asperity is not None:
-            asperity = WrappedCall(
-                asperity, name=prefix + "asperity", white_init=True
-            )
+            asperity = WrappedCall(asperity, name=prefix + "asperity", white_init=True)
         deviations = IntegratedWienerProcess(
-            jnp.zeros((2, )),
+            jnp.zeros((2,)),
             flexibility,
             log_vol,
             name=prefix + "spectrum",
-            asperity=asperity
+            asperity=asperity,
         )
         ptree.update(deviations.domain)
     else:
@@ -279,7 +271,7 @@ def non_parametric_amplitude(
         if deviations is not None:
             twolog = deviations(primals)
             # Prepend zeromode
-            twolog = jnp.concatenate((jnp.zeros((1, )), twolog[:, 0]))
+            twolog = jnp.concatenate((jnp.zeros((1,)), twolog[:, 0]))
             ln_spectrum += _remove_slope(rel_log_mode_len, twolog)
 
         # Exponentiate and norm the power spectrum
@@ -287,7 +279,7 @@ def non_parametric_amplitude(
         # Take the sqrt of the integral of the slope w/o fluctuations and
         # zero-mode while taking into account the multiplicity of each mode
         if kind.lower() == "amplitude":
-            norm = jnp.sqrt(jnp.sum(mode_multiplicity[1:] * spectrum[1:]**2))
+            norm = jnp.sqrt(jnp.sum(mode_multiplicity[1:] * spectrum[1:] ** 2))
             norm /= jnp.sqrt(totvol)  # Due to integral in harmonic space
             amplitude = flu * (jnp.sqrt(totvol) / norm) * spectrum
         elif kind.lower() == "power":
@@ -299,12 +291,10 @@ def non_parametric_amplitude(
         amplitude = amplitude.at[0].set(totvol)
         return amplitude
 
-    return Model(
-        correlate, domain=ptree, init=partial(random_like, primals=ptree)
-    )
+    return Model(correlate, domain=ptree, init=partial(random_like, primals=ptree))
 
 
-class CorrelatedFieldMaker():
+class CorrelatedFieldMaker:
     """Construction helper for hierarchical correlated field models.
 
     The correlated field models are parametrized by creating square roots of
@@ -320,6 +310,7 @@ class CorrelatedFieldMaker():
     See the method's initialization, :func:`add_fluctuations`,
     :func:`add_fluctuations_matern` and :func:`finalize` for further
     usage information."""
+
     def __init__(self, prefix: str):
         """Instantiate a CorrelatedFieldMaker object.
 
@@ -598,9 +589,10 @@ class CorrelatedFieldMaker():
         zero-mode. Their scales are only meaningful relative to one another.
         Their absolute scale bares no information.
         """
+
         def _mk_normed_amp(amp):  # Avoid late binding
             def normed_amplitude(p):
-                return amp(p).at[1:].mul(1. / self.azm(p))
+                return amp(p).at[1:].mul(1.0 / self.azm(p))
 
             return normed_amplitude
 
@@ -611,9 +603,9 @@ class CorrelatedFieldMaker():
         """Returns the added fluctuation, i.e. un-normalized amplitude"""
         if len(self._fluctuations) > 1:
             s = (
-                'If more than one spectrum is present in the model,'
-                ' no unique set of amplitudes exist because only the'
-                ' relative scale is determined.'
+                "If more than one spectrum is present in the model,"
+                " no unique set of amplitudes exist because only the"
+                " relative scale is determined."
             )
             raise NotImplementedError(s)
         amp = self._fluctuations[0]
@@ -629,7 +621,7 @@ class CorrelatedFieldMaker():
         amp = self.amplitude
 
         def power(p):
-            return amp(p)**2
+            return amp(p) ** 2
 
         return power
 
@@ -647,10 +639,8 @@ class CorrelatedFieldMaker():
             axes = tuple(range(n - len(sub_shp), n))
 
             # TODO: Generalize to complex
-            harmonic_dvol = 1. / sgrid.total_volume
-            harmonic_transforms.append(
-                (harmonic_dvol, partial(hartley, axes=axes))
-            )
+            harmonic_dvol = 1.0 / sgrid.total_volume
+            harmonic_transforms.append((harmonic_dvol, partial(hartley, axes=axes)))
         # Register the parameters for the excitations in harmonic space
         # TODO: actually account for the dtype here
         pfx = self._prefix + "xi"
@@ -689,12 +679,9 @@ class CorrelatedFieldMaker():
             return self._offset_mean + outer_harmonic_transform(cf_h)
 
         init = {
-            k: partial(random_like, primals=v)
-            for k, v in self._parameter_tree.items()
+            k: partial(random_like, primals=v) for k, v in self._parameter_tree.items()
         }
-        cf = Model(
-            correlated_field, domain=self._parameter_tree.copy(), init=init
-        )
+        cf = Model(correlated_field, domain=self._parameter_tree.copy(), init=init)
         cf.normalized_amplitudes = namps
         cf.target_grids = tuple(self._target_grids)
         return cf

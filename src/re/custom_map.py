@@ -67,7 +67,7 @@ def _generic_smap(fun, in_axes, out_axes, unroll, *x, _scan=lax.scan, **k):
         fun=fun,
         unmapped=unmapped,
         unflatten=partial(tree_unflatten, x_td),
-        in_axes=in_axes
+        in_axes=in_axes,
     )
     _, y = _scan(fun_reord, None, mapped, unroll=unroll)
 
@@ -98,8 +98,7 @@ def _generic_smap(fun, in_axes, out_axes, unroll, *x, _scan=lax.scan, **k):
 # unnecessary recompiles. Ensure scan is compiled only once by compiling the
 # whole data dependence.
 _smap = jax.jit(
-    _generic_smap,
-    static_argnames=("fun", "in_axes", "out_axes", "unroll", "_scan")
+    _generic_smap, static_argnames=("fun", "in_axes", "out_axes", "unroll", "_scan")
 )
 
 
@@ -123,7 +122,7 @@ def smap(fun, in_axes=0, out_axes=0, *, unroll=1):
     return partial(_smap, fun, in_axes, out_axes, unroll)
 
 
-@partial(jax.jit, donate_argnames=("x", ))
+@partial(jax.jit, donate_argnames=("x",))
 def _unsafe_index_update_inplace(x, idx, y):
     return x.at[idx].set(y)
 
@@ -150,12 +149,9 @@ def _lscan(f, init, xs, length=None, unroll=1):
             # device as `y`.
             with jax.default_device(like_device):
                 ys = jax.tree_map(
-                    lambda x: jnp.
-                    empty_like(x, shape=(length, ) + jnp.shape(x)), y
+                    lambda x: jnp.empty_like(x, shape=(length,) + jnp.shape(x)), y
                 )
-        ys = jax.tree_map(
-            lambda ys, y: _unsafe_index_update_inplace(ys, i, y), ys, y
-        )
+        ys = jax.tree_map(lambda ys, y: _unsafe_index_update_inplace(ys, i, y), ys, y)
     return carry, ys
 
 

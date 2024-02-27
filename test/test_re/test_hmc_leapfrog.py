@@ -14,20 +14,20 @@ pmp = pytest.mark.parametrize
 
 pot_and_tol = (
     (
-        lambda q: jnp.
-        sum(q.T @ jnp.linalg.inv(jnp.array([[1, 0.95], [0.95, 1]])) @ q / 2.),
-        0.2
-    ), (lambda q: -1 / jnp.linalg.norm(q), 2e-2)
+        lambda q: jnp.sum(
+            q.T @ jnp.linalg.inv(jnp.array([[1, 0.95], [0.95, 1]])) @ q / 2.0
+        ),
+        0.2,
+    ),
+    (lambda q: -1 / jnp.linalg.norm(q), 2e-2),
 )
 
 
 @pmp("potential_energy, rtol", pot_and_tol)
-def test_leapfrog_energy_conservation(
-    potential_energy, rtol, interactive=False
-):
-    dims = (2, )
+def test_leapfrog_energy_conservation(potential_energy, rtol, interactive=False):
+    dims = (2,)
     mass_matrix = jnp.ones(shape=dims)
-    kinetic_energy = lambda p: jnp.sum(p**2 / mass_matrix / 2.)
+    kinetic_energy = lambda p: jnp.sum(p**2 / mass_matrix / 2.0)
 
     potential_energy_gradient = grad(potential_energy)
     positions = [jnp.array([-1.5, -1.55])]
@@ -38,7 +38,7 @@ def test_leapfrog_energy_conservation(
             potential_energy_gradient=potential_energy_gradient,
             kinetic_energy_gradient=lambda x, y: x * y,
             step_size=0.25,
-            inverse_mass_matrix=1. / mass_matrix
+            inverse_mass_matrix=1.0 / mass_matrix,
         )
         positions.append(new_qp.position)
         momenta.append(new_qp.momentum)
@@ -89,10 +89,10 @@ if __name__ == "__main__":
 
     # Value of Hamiltonian
     # does not look exactly the same as in Neal (2011) unfortunately!
-    plt.plot(kinetic_energies, label='kin')
-    plt.plot(potential_energies, label='pot')
-    plt.plot(kinetic_energies + potential_energies, label='total')
-    plt.xlabel('time')
-    plt.ylabel('energy')
+    plt.plot(kinetic_energies, label="kin")
+    plt.plot(potential_energies, label="pot")
+    plt.plot(kinetic_energies + potential_energies, label="total")
+    plt.xlabel("time")
+    plt.ylabel("energy")
     plt.legend()
     plt.show()

@@ -5,8 +5,8 @@ from typing import Any, Callable, Dict, Hashable, Mapping, TypeVar
 import jax
 from jax import numpy as jnp
 
-O = TypeVar('O')
-I = TypeVar('I')
+O = TypeVar("O")
+I = TypeVar("I")
 
 
 def hvp(f, primals, tangents):
@@ -75,7 +75,7 @@ def wrap_left(
     return named_call
 
 
-def interpolate(xmin=-7., xmax=7., N=14000) -> Callable:
+def interpolate(xmin=-7.0, xmax=7.0, N=14000) -> Callable:
     """Replaces a local nonlinearity such as jnp.exp with a linear interpolation
 
     Interpolating functions speeds up code and increases numerical stability in
@@ -90,6 +90,7 @@ def interpolate(xmin=-7., xmax=7., N=14000) -> Callable:
     N : int
         Number of points used for the interpolation. Default: 14000
     """
+
     def decorator(f):
         from functools import wraps
 

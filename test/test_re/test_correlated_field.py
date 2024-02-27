@@ -16,14 +16,14 @@ import nifty8.re as jft
 pmp = pytest.mark.parametrize
 
 
-@pmp('shape', [(2, ), (3, 3)])
-@pmp('distances', [.1])
-@pmp('offset_mean', [0])
-@pmp('offset_std', [(.1, .1)])
-@pmp('asperity', [None, (1., 1.)])
-@pmp('flexibility', [None, (1., 1.)])
-@pmp('fluctuations', [(1., 1.)])
-@pmp('loglogavgslope', [(1., 1.)])
+@pmp("shape", [(2,), (3, 3)])
+@pmp("distances", [0.1])
+@pmp("offset_mean", [0])
+@pmp("offset_std", [(0.1, 0.1)])
+@pmp("asperity", [None, (1.0, 1.0)])
+@pmp("flexibility", [None, (1.0, 1.0)])
+@pmp("fluctuations", [(1.0, 1.0)])
+@pmp("loglogavgslope", [(1.0, 1.0)])
 def test_correlated_field_non_parametric_init(
     shape,
     distances,
@@ -35,9 +35,7 @@ def test_correlated_field_non_parametric_init(
     flexibility,
 ):
     cf = jft.CorrelatedFieldMaker("cf")
-    cf.set_amplitude_total_offset(
-        offset_mean=offset_mean, offset_std=offset_std
-    )
+    cf.set_amplitude_total_offset(offset_mean=offset_mean, offset_std=offset_std)
     cf.add_fluctuations(
         shape,
         distances=distances,
@@ -51,13 +49,13 @@ def test_correlated_field_non_parametric_init(
     assert correlated_field.domain
 
 
-@pmp('shape', [(2, ), (3, 3)])
-@pmp('distances', [.1])
-@pmp('offset_mean', [0])
-@pmp('offset_std', [(.1, .1)])
-@pmp('scale', [(1., 1.)])
-@pmp('loglogslope', [(1., 1.)])
-@pmp('cutoff', [(1., 1.)])
+@pmp("shape", [(2,), (3, 3)])
+@pmp("distances", [0.1])
+@pmp("offset_mean", [0])
+@pmp("offset_std", [(0.1, 0.1)])
+@pmp("scale", [(1.0, 1.0)])
+@pmp("loglogslope", [(1.0, 1.0)])
+@pmp("cutoff", [(1.0, 1.0)])
 def test_correlated_field_matern_init(
     shape,
     distances,
@@ -68,9 +66,7 @@ def test_correlated_field_matern_init(
     cutoff,
 ):
     cf = jft.CorrelatedFieldMaker("cf")
-    cf.set_amplitude_total_offset(
-        offset_mean=offset_mean, offset_std=offset_std
-    )
+    cf.set_amplitude_total_offset(offset_mean=offset_mean, offset_std=offset_std)
     cf.add_fluctuations_matern(
         shape,
         distances=distances,
@@ -89,16 +85,18 @@ def test_correlated_field_matern_init(
 @pmp("flx", ([1e-1], [1e-1, 5e-3], [1e-1, 5e-3, 5e-3], 1e-1))
 @pmp("asp", ([1e-1], [1e-1, 5e-3], [1e-1, 5e-3, 5e-3], 1e-1))
 def test_correlated_field_non_parametric_init_validation(flu, slp, flx, asp):
-    dims = (16, )
+    dims = (16,)
     if all(
         (
-            isinstance(el, (tuple, list)) and len(el) == 2 and
-            all(isinstance(f, float) for f in el)
-        ) for el in (flu, slp, flx, asp)
+            isinstance(el, (tuple, list))
+            and len(el) == 2
+            and all(isinstance(f, float) for f in el)
+        )
+        for el in (flu, slp, flx, asp)
     ):
         return
     with pytest.raises(TypeError):
-        cf_zm = dict(offset_mean=0., offset_std=(1e-3, 1e-4))
+        cf_zm = dict(offset_mean=0.0, offset_std=(1e-3, 1e-4))
         cf_fl = dict(
             fluctuations=flu,
             loglogavgslope=slp,
@@ -109,39 +107,44 @@ def test_correlated_field_non_parametric_init_validation(flu, slp, flx, asp):
         cfm.set_amplitude_total_offset(**cf_zm)
         cfm.add_fluctuations(
             shape=dims,
-            distances=tuple(1. / d for d in dims),
+            distances=tuple(1.0 / d for d in dims),
             **cf_fl,
             prefix="ax1",
-            non_parametric_kind="power"
+            non_parametric_kind="power",
         )
         cfm.finalize()
 
 
-@pmp('seed', [0, 42])
-@pmp('shape', [(4, ), (3, 3)])
-@pmp('distances', [.1, 5.])
-@pmp('offset_mean', [0])
-@pmp('offset_std', [(.1, .1)])
-@pmp('fluctuations', [(1., .1), (3., 2.)])
-@pmp('loglogavgslope', [(-1., .1), (4., 1.)])
-@pmp('flexibility', [(1., .1), (3., 2.)])
-@pmp('asperity', [None, (.2, 2.e-2)])
+@pmp("seed", [0, 42])
+@pmp("shape", [(4,), (3, 3)])
+@pmp("distances", [0.1, 5.0])
+@pmp("offset_mean", [0])
+@pmp("offset_std", [(0.1, 0.1)])
+@pmp("fluctuations", [(1.0, 0.1), (3.0, 2.0)])
+@pmp("loglogavgslope", [(-1.0, 0.1), (4.0, 1.0)])
+@pmp("flexibility", [(1.0, 0.1), (3.0, 2.0)])
+@pmp("asperity", [None, (0.2, 2.0e-2)])
 def test_nifty_vs_niftyre_non_parametric_cf(
-    seed, shape, distances, offset_mean, offset_std, fluctuations,
-    loglogavgslope, asperity, flexibility
+    seed,
+    shape,
+    distances,
+    offset_mean,
+    offset_std,
+    fluctuations,
+    loglogavgslope,
+    asperity,
+    flexibility,
 ):
     key = random.PRNGKey(seed)
     fluct_kwargs = dict(
         fluctuations=fluctuations,
         loglogavgslope=loglogavgslope,
         asperity=asperity,
-        flexibility=flexibility
+        flexibility=flexibility,
     )
 
     jcfm = jft.CorrelatedFieldMaker("")
-    jcfm.set_amplitude_total_offset(
-        offset_mean=offset_mean, offset_std=offset_std
-    )
+    jcfm.set_amplitude_total_offset(offset_mean=offset_mean, offset_std=offset_std)
     jcfm.add_fluctuations(
         shape,
         distances=distances,
@@ -164,14 +167,14 @@ def test_nifty_vs_niftyre_non_parametric_cf(
     assert_allclose(cf(npos).val, jcf(pos))
 
 
-@pmp('seed', [0, 42])
-@pmp('shape', [(2, ), (3, 3)])
-@pmp('distances', [.1, 5.])
-@pmp('offset_mean', [0])
-@pmp('offset_std', [(.1, .1)])
-@pmp('scale', [(1., 1.), (3., 2.)])
-@pmp('loglogslope', [(1., 1.), (5., 0.5)])
-@pmp('cutoff', [(1., 1.), (0.1, 0.01)])
+@pmp("seed", [0, 42])
+@pmp("shape", [(2,), (3, 3)])
+@pmp("distances", [0.1, 5.0])
+@pmp("offset_mean", [0])
+@pmp("offset_std", [(0.1, 0.1)])
+@pmp("scale", [(1.0, 1.0), (3.0, 2.0)])
+@pmp("loglogslope", [(1.0, 1.0), (5.0, 0.5)])
+@pmp("cutoff", [(1.0, 1.0), (0.1, 0.01)])
 def test_nifty_vs_niftyre_matern_cf(
     seed, shape, distances, offset_mean, offset_std, scale, cutoff, loglogslope
 ):
@@ -179,9 +182,7 @@ def test_nifty_vs_niftyre_matern_cf(
     fluct_kwargs = dict(scale=scale, cutoff=cutoff, loglogslope=loglogslope)
 
     jcfm = jft.CorrelatedFieldMaker("")
-    jcfm.set_amplitude_total_offset(
-        offset_mean=offset_mean, offset_std=offset_std
-    )
+    jcfm.set_amplitude_total_offset(offset_mean=offset_mean, offset_std=offset_std)
     jcfm.add_fluctuations_matern(
         shape,
         distances=distances,

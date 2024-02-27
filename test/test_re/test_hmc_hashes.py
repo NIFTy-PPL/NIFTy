@@ -43,11 +43,11 @@ def test_hmc_hash():
     x0 = jnp.array([0.1, 1.223], dtype=jnp.float32)
     sampler = jft.HMCChain(
         potential_energy=lambda x: jnp.sum(x**2),
-        inverse_mass_matrix=1.,
+        inverse_mass_matrix=1.0,
         position_proto=x0,
         step_size=0.193,
         num_steps=100,
-        max_energy_difference=1.
+        max_energy_difference=1.0,
     )
     chain, (key, pos) = sampler.generate_n_samples(
         key=42, initial_position=x0, num_samples=1000, save_intermediates=True
@@ -68,12 +68,12 @@ def test_nuts_hash():
     x0 = jnp.array([0.1, 1.223], dtype=jnp.float32)
     sampler = jft.NUTSChain(
         potential_energy=lambda x: jnp.sum(x**2),
-        inverse_mass_matrix=1.,
+        inverse_mass_matrix=1.0,
         position_proto=x0,
         step_size=0.193,
         max_tree_depth=10,
         bias_transition=False,
-        max_energy_difference=1.
+        max_energy_difference=1.0,
     )
     chain, (key, pos) = sampler.generate_n_samples(
         key=42, initial_position=x0, num_samples=1000, save_intermediates=False

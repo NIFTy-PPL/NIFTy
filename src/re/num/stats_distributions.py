@@ -58,12 +58,12 @@ def lognormal_moments(mean, std):
     """Compute the cumulants a log-normal process would need to comply with the
     provided mean and standard-deviation `std`
     """
-    if tree_any(mean <= 0.):
+    if tree_any(mean <= 0.0):
         raise ValueError(f"`mean` must be greater zero; got {mean!r}")
-    if tree_any(std <= 0.):
+    if tree_any(std <= 0.0):
         raise ValueError(f"`std` must be greater zero; got {std!r}")
 
-    logstd = sqrt(log1p((std / mean)**2))
+    logstd = sqrt(log1p((std / mean) ** 2))
     logmean = log(mean) - 0.5 * logstd**2
     return logmean, logstd
 
@@ -105,7 +105,7 @@ def _standard_to_uniform(xi, *, a_min, scale):
     return a_min + scale * tree_map(norm.cdf, xi)
 
 
-def uniform_prior(a_min=0., a_max=1.) -> Partial:
+def uniform_prior(a_min=0.0, a_max=1.0) -> Partial:
     """Transform a standard normal into a uniform distribution.
 
     Parameters
@@ -117,9 +117,12 @@ def uniform_prior(a_min=0., a_max=1.) -> Partial:
     """
     from jax.scipy.stats import norm
 
-    if isinstance(a_min, float) and isinstance(
-        a_max, float
-    ) and a_min == 0. and a_max == 1.:
+    if (
+        isinstance(a_min, float)
+        and isinstance(a_max, float)
+        and a_min == 0.0
+        and a_max == 1.0
+    ):
         return Partial(partial(tree_map, norm.cdf))
 
     scale = a_max - a_min
@@ -135,7 +138,7 @@ def interpolator(
     num: Optional[int] = None,
     table_func: Optional[Callable] = None,
     inv_table_func: Optional[Callable] = None,
-    return_inverse: Optional[bool] = False
+    return_inverse: Optional[bool] = False,
 ):  # Adapted from NIFTy
     """
     Evaluate a function point-wise by interpolation.  Can be supplied with a
@@ -206,7 +209,7 @@ def interpolator(
     return interp
 
 
-def invgamma_prior(a, scale, loc=0., step=1e-2) -> Callable:
+def invgamma_prior(a, scale, loc=0.0, step=1e-2) -> Callable:
     """Transform a standard normal into an inverse gamma distribution.
 
     The pdf of the inverse gamma distribution is defined as follows using
@@ -243,7 +246,7 @@ def invgamma_prior(a, scale, loc=0., step=1e-2) -> Callable:
             f"; got {type(a)} and {type(loc)} respectively"
         )
         raise TypeError(te)
-    if loc == 0.:
+    if loc == 0.0:
         # Pull out `scale` to interpolate less
         s2i = lambda x: invgamma.ppf(norm._cdf(x), a=a)
     elif jnp.isscalar(scale):
@@ -259,14 +262,14 @@ def invgamma_prior(a, scale, loc=0., step=1e-2) -> Callable:
     def standard_to_invgamma(x):
         # Allow for array-like `scale` without separate interpolations and only
         # interpolate for shape `a` and `loc`
-        if loc == 0.:
+        if loc == 0.0:
             return standard_to_invgamma_interp(x) * scale
         return standard_to_invgamma_interp(x)
 
     return standard_to_invgamma
 
 
-def invgamma_invprior(a, scale, loc=0., step=1e-2) -> Callable:
+def invgamma_invprior(a, scale, loc=0.0, step=1e-2) -> Callable:
     """Get the inverse transformation to `invgamma_prior`."""
     from scipy.stats import invgamma, norm
 
@@ -278,6 +281,6 @@ def invgamma_invprior(a, scale, loc=0., step=1e-2) -> Callable:
         step=step,
         table_func=jnp.log,
         inv_table_func=jnp.exp,
-        return_inverse=True
+        return_inverse=True,
     )
     return invgamma_to_standard

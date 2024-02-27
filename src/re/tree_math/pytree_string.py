@@ -45,12 +45,12 @@ def _fwd_rev_binary_op(op, name=None):
 
 
 @register_pytree_node_class
-class PyTreeString():
+class PyTreeString:
     def __init__(self, str):
         self._str = str
 
     def tree_flatten(self):
-        return ((), (self._str, ))
+        return ((), (self._str,))
 
     @classmethod
     def tree_unflatten(cls, aux, _):

@@ -20,7 +20,7 @@ def f(u, v):
 
 @pmp("map", (jft.smap, jft.lmap))
 @pmp("in_axes", ((0, None), (1, None), (None, 0), (0, 0), (1, 1)))
-@pmp("out_axes", (0, ))
+@pmp("out_axes", (0,))
 @pmp("seed", (32, 42, 43))
 def test_map_f(map, in_axes, out_axes, seed):
     fixed_shp = 3
@@ -32,7 +32,7 @@ def test_map_f(map, in_axes, out_axes, seed):
     inp = []
     for i, k in zip(in_axes, random.split(key, len(in_axes))):
         if i is None:
-            shp = (fixed_shp, )
+            shp = (fixed_shp,)
         elif i == 0:
             shp = (batched_shp, fixed_shp)
         else:
@@ -59,7 +59,7 @@ def test_map_g(map, in_axes, out_axes, seed):
     inp = []
     for i, k in zip(in_axes, random.split(key, len(in_axes))):
         if i is None:
-            shp = (fixed_shp, )
+            shp = (fixed_shp,)
         elif i == 0:
             shp = (batched_shp, fixed_shp)
         else:
@@ -72,8 +72,7 @@ def test_map_g(map, in_axes, out_axes, seed):
 
 
 def h(u, v, w):
-    return v + w.sum() - u.sum(), w * jnp.sin(u.sum() * v.sum()
-                                             ), u + v.sum() * w.sum()
+    return v + w.sum() - u.sum(), w * jnp.sin(u.sum() * v.sum()), u + v.sum() * w.sum()
 
 
 @pmp("map", (jft.smap, jft.lmap))
