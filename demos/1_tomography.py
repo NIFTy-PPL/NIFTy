@@ -1,14 +1,18 @@
-# %%
-import dataclasses
-from functools import partial
+#!/usr/bin/env python3
 
+# Copyright(C) 2013-2021 Max-Planck-Society
+# SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
+
+# %% [markdown]
+# # 3D Tomography Example with known start- and end-points
+
+# %%
 import jax
 import matplotlib.pyplot as plt
 import numpy as np
 import plotly.graph_objects as go
 from jax import numpy as jnp
 from jax import random
-from jax.scipy.ndimage import map_coordinates
 
 import nifty8.re as jft
 
@@ -28,86 +32,6 @@ cfm.add_fluctuations(  # Axis over which the kernle is defined
     non_parametric_kind="power",
 )
 correlated_field = cfm.finalize()  # forward model for a GP prior
-
-
-# %%
-def _los(x, /, start, end, *, distances, shape, n_sampling_points, order=1):
-    from jax.scipy.ndimage import map_coordinates
-
-    l2i = ((shape - 1) / shape) / distances
-    start_iloc = start * l2i
-    end_iloc = end * l2i
-    ddi = (end_iloc - start_iloc) / n_sampling_points
-    adi = jnp.arange(0, n_sampling_points) + 0.5
-    dist = jnp.linalg.norm(end - start)
-    pp = start_iloc[:, jnp.newaxis] + ddi[:, jnp.newaxis] * adi[jnp.newaxis]
-    return map_coordinates(x, pp, order=order, cval=jnp.nan).sum() * (
-        dist / n_sampling_points
-    )
-
-
-class LOS(jft.Model):
-    start: jax.Array = dataclasses.field(metadata=dict(static=False))
-    end: jax.Array = dataclasses.field(metadata=dict(static=False))
-    distances: jax.Array = dataclasses.field(metadata=dict(static=False))
-
-    def __init__(
-        self,
-        start,
-        end,
-        distances,
-        shape,
-        n_sampling_points=500,
-        interpolation_order=1,
-    ):
-        # We assume that `start` and `end` are of shape (n_points, n_dimensions)
-        self.start = jnp.array(start)
-        self.end = jnp.array(end)
-        self.distances = jnp.array(distances)
-        self.shape = jnp.array(shape)
-        self._los = partial(
-            _los,
-            n_sampling_points=n_sampling_points,
-            order=interpolation_order,
-            distances=self.distances,
-            shape=self.shape,
-        )
-
-    def __call__(self, x):
-        in_axes = (None, 0, 0)
-        if self.start.ndim < self.end.ndim:
-            in_axes = (None, None, 0)
-        elif self.start.ndim > self.end.ndim:
-            in_axes = (None, 0, None)
-        return jax.vmap(self._los, in_axes=in_axes)(x, self.start, self.end)
-
-
-test_key = random.PRNGKey(42)
-for test_shape in ((10,), (25,), (12, 12), (6, 6, 6)):
-    n_test_points = 1_000
-    test_los = LOS(
-        np.zeros((len(test_shape),)),
-        np.ones((len(test_shape),))[np.newaxis],
-        distances=tuple(1.0 / s for s in test_shape),
-        shape=test_shape,
-        n_sampling_points=n_test_points,
-    )
-    for test_x in (jnp.ones(test_shape), random.normal(test_key, test_shape)):
-        desired = map_coordinates(
-            test_x,
-            [
-                np.linspace(0, s - 1, num=n_test_points, endpoint=False)
-                for s in test_x.shape
-            ],
-            order=1,
-            cval=np.nan,
-        ).mean()
-        desired *= np.linalg.norm(np.ones((len(test_shape),)))
-        np.testing.assert_allclose(
-            test_los(test_x).sum(),
-            desired,
-            rtol=1e-2,
-        )
 
 
 # %%
@@ -141,22 +65,22 @@ end = random.uniform(
 )
 
 n_sampling_points = 256
-los = LOS(
+los = jft.SamplingCartesianGridLOS(
     start,
     end,
     distances=distances,
     shape=correlated_field.target.shape,
+    dtype=correlated_field.target.dtype,
     n_sampling_points=n_sampling_points,
 )
 forward = Forward(correlated_field, los)
 
 # %%
-key, sk = random.split(key)
-synth_pos = forward.init(sk)
+key, k_f, k_n = random.split(key, 3)
+synth_pos = forward.init(k_f)
 synth_truth = forward(synth_pos)
-key, sk = random.split(key)
 noise_scl = 0.15
-synth_noise = random.normal(sk, synth_truth.shape, synth_truth.dtype)
+synth_noise = random.normal(k_n, synth_truth.shape, synth_truth.dtype)
 synth_noise = synth_noise * noise_scl * synth_truth
 synth_data = synth_truth + synth_noise
 
@@ -167,30 +91,19 @@ lh = jft.Gaussian(synth_data, noise_cov_inv=1.0 / synth_noise**2).amend(forward)
 n_vi_iterations = 6
 delta = 1e-4
 n_samples = 4
-odir = "los_playground"
 
-key, sk = random.split(key)
-pos_init = jft.Vector(lh.init(sk))
-# NOTE, changing the number of samples always triggers a resampling even if
-# `resamples=False`, as more samples have to be drawn that did not exist before.
+key, k_i, k_o = random.split(key, 3)
+pos_init = jft.Vector(lh.init(k_i))
 samples, state = jft.optimize_kl(
     lh,
     pos_init,
     n_total_iterations=n_vi_iterations,
     n_samples=lambda i: n_samples // 2 if i < 2 else n_samples,
-    # Source for the stochasticity for sampling
-    key=key,
-    # Names of parameters that should not be sampled but still optimized
-    # can be specified as point_estimates (effectively we are doing MAP for
-    # these degrees of freedom).
-    # point_estimates=("cfax1flexibility", "cfax1asperity"),
-    # Arguments for the conjugate gradient method used to drawing samples from
-    # an implicit covariance matrix
+    key=k_o,
     draw_linear_kwargs=dict(
         cg_name="SL",
-        cg_kwargs=dict(absdelta=delta * jft.size(pos_init) / 10.0, maxiter=100),
+        cg_kwargs=dict(absdelta=delta * jft.size(lh.domain) / 10.0, maxiter=100),
     ),
-    # Arguements for the minimizer in the nonlinear updating of the samples
     nonlinearly_update_kwargs=dict(
         minimize_kwargs=dict(
             name="SN",
@@ -199,14 +112,13 @@ samples, state = jft.optimize_kl(
             maxiter=5,
         )
     ),
-    # Arguments for the minimizer of the KL-divergence cost potential
     kl_kwargs=dict(
         minimize_kwargs=dict(
             name="M", xtol=delta, cg_kwargs=dict(name="MCG"), maxiter=35
         )
     ),
     sample_mode="linear_resample",
-    odir=odir,
+    odir="results_nifty_re",
     resume=False,
 )
 
@@ -228,6 +140,8 @@ for i, (ax_t, ax_p, ax_ps) in enumerate(axs):
     # )
     ax_p.imshow(post_density.mean(axis=0).sum(axis=i), extent=extent)
     ax_ps.imshow(post_density.std(axis=0).sum(axis=i), extent=extent)
+for title, ax in zip(("Truth", "Posterior mean", "Posterior std."), axs[0]):
+    ax.set_title(title)
 plt.show()
 
 # %%
