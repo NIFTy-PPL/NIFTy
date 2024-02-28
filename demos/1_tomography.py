@@ -130,13 +130,19 @@ extent = (0, 1, 0, 1)
 fig, axs = plt.subplots(3, 3, dpi=500)
 for i, (ax_t, ax_p, ax_ps) in enumerate(axs):
     ax_t.imshow(synth_density.sum(axis=i), extent=extent)
-    # not_i = tuple(set.difference({0, 1, 2}, {i}))
-    # ax_p.plot(
-    #     *end[:, not_i].T,
-    #     "+",
-    #     markersize=0.5,
-    #     color="red",
-    # )
+    not_i = tuple(set.difference({0, 1, 2}, {i}))
+    ax_t.plot(
+        *end[:, not_i].T,
+        "+",
+        markersize=0.5,
+        color="red",
+    )
+    ax_t.plot(
+        *np.atleast_2d(start)[:, not_i].T,
+        ".",
+        markersize=6,
+        color="red",
+    )
     ax_p.imshow(post_density.mean(axis=0).sum(axis=i), extent=extent)
     ax_ps.imshow(post_density.std(axis=0).sum(axis=i), extent=extent)
 for title, ax in zip(("Truth", "Posterior mean", "Posterior std."), axs[0]):
