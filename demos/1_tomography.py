@@ -16,6 +16,8 @@ from jax import random
 import nifty8.re as jft
 
 # %%
+key = random.PRNGKey(42)
+
 dims = (64, 64, 64)
 distances = tuple(1.0 / d for d in dims)
 cfm = jft.CorrelatedFieldMaker("cf")
@@ -34,8 +36,30 @@ correlated_field = cfm.finalize()  # forward model for a GP prior
 
 
 # %%
-class Forward(jft.Model):
+# Draw synthetic end points
+n_synth_points = 100
+key, sk = random.split(key)
+end = random.uniform(
+    sk,
+    (n_synth_points, len(dims)),
+    minval=0.05,
+    maxval=0.95,
+)
 
+# %%
+start = (0.5, 0.5, 0.5)
+n_sampling_points = 256
+los = jft.SamplingCartesianGridLOS(
+    start,
+    end,
+    distances=distances,
+    shape=correlated_field.target.shape,
+    dtype=correlated_field.target.dtype,
+    n_sampling_points=n_sampling_points,
+)
+
+
+class Forward(jft.Model):
     def __init__(self, log_density, los):
         self.log_density = log_density
         self.los = los
@@ -50,28 +74,6 @@ class Forward(jft.Model):
         return self.los(self.density(x))
 
 
-key = random.PRNGKey(42)
-
-start = (0.5, 0.5, 0.5)
-# NOTE, synthetic end
-n_synth_points = 100
-key, sk = random.split(key)
-end = random.uniform(
-    sk,
-    (n_synth_points, np.shape(start)[-1]),
-    minval=0.05,
-    maxval=0.95,
-)
-
-n_sampling_points = 256
-los = jft.SamplingCartesianGridLOS(
-    start,
-    end,
-    distances=distances,
-    shape=correlated_field.target.shape,
-    dtype=correlated_field.target.dtype,
-    n_sampling_points=n_sampling_points,
-)
 forward = Forward(correlated_field, los)
 
 # %%
@@ -92,10 +94,9 @@ delta = 1e-4
 n_samples = 4
 
 key, k_i, k_o = random.split(key, 3)
-pos_init = jft.Vector(lh.init(k_i))
 samples, state = jft.optimize_kl(
     lh,
-    pos_init,
+    jft.Vector(lh.init(k_i)),
     n_total_iterations=n_vi_iterations,
     n_samples=lambda i: n_samples // 2 if i < 2 else n_samples,
     key=k_o,
@@ -117,7 +118,7 @@ samples, state = jft.optimize_kl(
         )
     ),
     sample_mode="linear_resample",
-    odir="results_nifty_re",
+    odir="results_tomography",
     resume=False,
 )
 
