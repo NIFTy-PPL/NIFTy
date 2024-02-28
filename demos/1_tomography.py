@@ -10,7 +10,6 @@
 import jax
 import matplotlib.pyplot as plt
 import numpy as np
-import plotly.graph_objects as go
 from jax import numpy as jnp
 from jax import random
 
@@ -143,57 +142,3 @@ for i, (ax_t, ax_p, ax_ps) in enumerate(axs):
 for title, ax in zip(("Truth", "Posterior mean", "Posterior std."), axs[0]):
     ax.set_title(title)
 plt.show()
-
-# %%
-post_density_mean = post_density.mean(axis=0)
-
-X, Y, Z = np.mgrid[
-    tuple(slice(0, 1, sz * 1j) for sz in forward.log_density.target.shape)
-]
-n_highest_points = 10_000
-q_pm = np.quantile(post_density_mean, 1 - n_highest_points / post_density_mean.size)
-q_s = np.quantile(synth_density, 1 - n_highest_points / synth_density.size)
-q = max(q_pm, q_s)
-ss_pm = post_density_mean >= q
-ss_s = synth_density >= q
-fig = go.Figure(
-    data=[
-        go.Scatter3d(
-            x=X[ss_pm].flatten(),
-            y=Y[ss_pm].flatten(),
-            z=Z[ss_pm].flatten(),
-            mode="markers",
-            marker=dict(size=3, color="blue", opacity=0.1),
-            name="Posterior Mean",
-        ),
-        go.Scatter3d(
-            x=X[ss_s].flatten(),
-            y=Y[ss_s].flatten(),
-            z=Z[ss_s].flatten(),
-            mode="markers",
-            marker=dict(size=3, color="gray", opacity=0.1),
-            name="Truth",
-        ),
-        # go.Scatter3d(
-        #     x=end[:, 0],
-        #     y=end[:, 1],
-        #     z=end[:, 2],
-        #     mode="markers",
-        #     marker=dict(size=1),
-        # )
-    ]
-)
-axis_range = list(zip(end.min(axis=0), end.max(axis=0)))
-fig.update_layout(
-    showlegend=True,
-    template="plotly_white",
-    scene=dict(
-        aspectmode="data",
-        xaxis=dict(nticks=4, range=axis_range[0]),
-        yaxis=dict(nticks=4, range=axis_range[1]),
-        zaxis=dict(nticks=4, range=axis_range[2]),
-    ),
-    width=720,
-    height=480,
-)
-fig.show()
