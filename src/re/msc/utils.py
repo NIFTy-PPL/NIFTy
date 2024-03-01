@@ -100,7 +100,35 @@ def axes_matmul(array, kernels, select, axes, ker_selects):
         return res
     return vmap(my_mul, (0, (0,)*ndim), 0)(select, ker_selects)
 
-def get_all_kneighbours(nside, pix, level, nest):
+def get_all_kneighbours(nside, pix, level, nest=True):
+    if level>1:
+        raise NotImplementedError
+    totpix = hp.nside2npix(nside)
+    assert np.all(pix >= 0)
+    assert np.all(pix < totpix)
+    if level == 0:
+        all_pix = pix[np.newaxis, ...]
+        return all_pix, np.zeros(all_pix.shape, dtype=bool)
+    shp = pix.shape
+    pix = pix.flatten()
+    new = hp.get_all_neighbours(nside, pix, nest=nest)
+    new = np.concatenate((pix[np.newaxis, ...], new), axis=0)
+    is_bad = new == -1
+
+    good = is_bad.sum(axis=0) == 0
+    new = new.T
+    is_bad = is_bad.T
+
+    tmp = new[~good]
+    for id in range(tmp.shape[0]):
+        tmp[id][tmp[id]==-1] = tmp[id,0]
+    new[~good] = tmp
+    return new.T.reshape((9,) + shp), is_bad.T.reshape((9,) + shp)
+
+
+
+
+def old_get_all_kneighbours(nside, pix, level, nest):
     """Extends/Modifies healpy's `get_all_neighbours` function to the
     (k-)nearest-neighbours of a pixel on a healpixsphere. If a neighbour does
     not exist (see `healpy.get_all_neighbours` docu for the reasons), the id of

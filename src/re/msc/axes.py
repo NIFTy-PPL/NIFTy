@@ -850,11 +850,38 @@ class HPAxis(RegularAxis):
             return ids, trafo
         return ids
 
+    def _batch_trafos(self):
+        ids = np.zeros((16,4,9),dtype=bool)
+        ids[:9,0,:] = np.eye(9, dtype=bool)
+        ids[9:12,1,4:7] = np.eye(3, dtype=bool)
+        ids[12:15,2,2:5] = np.eye(3, dtype=bool)
+        ids[15,3,4] = 1
+
+        trafo = np.zeros((4,16,4,9), dtype=bool)
+        arrs = (tuple(i for i in range(9)),
+                ( 5, 0, 3, 4, 9,10,11, 6, 7),
+                ( 3, 2,12,13,14, 4, 5, 0, 1),
+                ( 4, 3,13,14,15, 9,10, 5, 0))
+        for i, ar in enumerate(arrs):
+            trafo[i,ar,i,:] = np.eye(9, dtype=bool)
+        return ids, trafo
+
     def kernel_to_batchkernel(self, index):
-        return self._batch_kernel(index, want_kernel=True)[1]
+        return self._batch_trafos()[1][np.newaxis, ...]
+        #return self._batch_kernel(index, want_kernel=True)[1]
 
     def get_batch_kernel_window(self, index):
-        return self._batch_kernel(index)
+        fax = self.fine_axis
+        fids = self.get_fine_indices(index)
+        shp = fids.shape
+        windows, bad = fax.get_kernel_window_ids(fids.flatten(),
+                                                 want_isbad=True)
+        windows, bad = windows.reshape(shp+(-1,)), bad.reshape(shp+(-1,))
+        idtrafo = self._batch_trafos()[0]
+        windows = np.tensordot(windows, idtrafo, ((1,2),(1,2)))
+        bad = np.tensordot(bad, idtrafo, ((1,2),(1,2)))
+        return windows
+        #return self._batch_kernel(index)
 
     def refine_mat(self, fine_index):
         """Finds the bin and builds the matrix to refine the input from this
@@ -901,8 +928,8 @@ class HPAxis(RegularAxis):
         return window
 
     def _select_pairs(self):
-        return {0:np.array([0,1,7,8]), 1:np.array([0,7,5,6]),
-                2:np.array([0,3,1,2]), 3:np.array([0,5,3,4])}
+        return (np.array([0,1,7,8]), np.array([0,7,5,6]),
+                np.array([0,3,1,2]), np.array([0,5,3,4]))
 
     def batch_window_to_window(self):
         if self._omethod == 'nearest':
@@ -958,13 +985,12 @@ class HPAxis(RegularAxis):
             fine_index = self.get_fine_indices(kernel_index).flatten()
             dm = fine_index - 4*kid
 
-            select_pairs = self._select_pairs()
             all_coarse = np.zeros(fine_index.shape + (4,), dtype=coarse.dtype)
             all_bad = np.zeros(fine_index.shape + (4,), dtype=bad.dtype)
-            for i in range(4):
+            for i, pair in enumerate(self._select_pairs()):
                 cond = dm == i
-                all_coarse[cond] += coarse[cond][:,select_pairs[i]]
-                all_bad[cond] = bad[cond][:,select_pairs[i]]
+                all_coarse[cond] += coarse[cond][:,pair]
+                all_bad[cond] = bad[cond][:,pair]
             assert np.all(np.sum(all_bad[:,:-1], axis=1) == 0)
 
             angles = _int_to_basis(self.nside, fine_index, all_coarse.T,
