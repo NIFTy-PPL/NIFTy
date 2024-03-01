@@ -3,6 +3,7 @@
 
 import jax.numpy as jnp
 import numpy as np
+from jax import jit
 from functools import partial, reduce
 from scipy.special import sici, j0
 
@@ -152,6 +153,7 @@ def distfunc_from_specfunk(r_min, r_max, N, d, normalize = True):
         return f(spec)
     return func
 
+@jit
 def distmat(*params):
     dsq = reduce(lambda a,b:a+b, (dd**2 for dd in params[len(params)//2:]))
     return jnp.sqrt(dsq[0])
@@ -173,7 +175,7 @@ def get_rminmax(chart):
 class _MSSpectralGP(Model):
     def __init__(self, chart, specfunc, logamp, offset, offset_logamp, r_minmax,
                  N, prefix = "", dtype = jnp.float64, stationary_axes = False,
-                 scan_kernel = False, scan_use_latent = True,
+                 scan_kernel = False, scan_use_latent = False,
                  atol = 1E-5, rtol = 1E-5, buffer_size = 10000, nbatch = 10):
         """Abstract base class for isotropic GPs with a kernel defined via a
         power spectrum.
@@ -303,7 +305,7 @@ class _MSSpectralGP(Model):
         normker = self._ker_from_spec(spec)
         amp = self.get_amplitude(p)
 
-        return lambda *params: amp * normker(distmat(*params))
+        return jit(lambda *params: amp * normker(distmat(*params)))
 
     def get_kernel(self, p):
         d = self.kernel_dists
