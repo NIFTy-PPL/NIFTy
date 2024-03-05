@@ -51,7 +51,6 @@ def test_const_wiener(x0, dts, seed):
     assert_allclose(res2, gpres)
 
 
-
 @pmp('x0', [np.array([0.1, 0.5]), np.array([-1.2, 0.7])])
 @pmp('dts', [np.ones((10, )) * 0.2, np.array([0.2, 0.5, 0.1])])
 def test_drift_integrated_wiener(x0, dts):
@@ -64,7 +63,6 @@ def test_drift_integrated_wiener(x0, dts):
     assert_allclose(myres[:, 0], res)
     # Check that derivative is const.
     assert_allclose(myres[:, 1], x0[1])
-
 
 
 @pmp('dts', [np.ones((10, )) * 0.2, np.array([0.2, 0.5, 0.1])])
