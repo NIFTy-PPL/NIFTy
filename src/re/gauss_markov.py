@@ -92,11 +92,14 @@ def scalar_gauss_markov_process(xi, x0, drift, diffamp):
 
 
 def wiener_process(
-    xi: Array, x0: float, sigma: Union[float, Array], dt: Union[float, Array]
+    xi: Array,
+    x0: Union[float, Array],
+    sigma: Union[float, Array],
+    dt: Union[float, Array],
 ):
     """Implements the Wiener process (WP)."""
     amp = jnp.sqrt(dt) * sigma
-    return jnp.cumsum(jnp.concatenate((jnp.array([x0]).flatten(), amp * xi)))
+    return jnp.cumsum(jnp.concatenate((jnp.atleast_1d(x0).flatten(), amp * xi)))
 
 
 def integrated_wiener_process(
