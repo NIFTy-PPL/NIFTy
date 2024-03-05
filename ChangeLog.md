@@ -3,6 +3,11 @@ Changes since NIFTy 8
 
 Minimum Python version increased to 3.10
 
+`optimize_kl`
+-------------
+
+Make the iteration number a counter instead of an index, i.e., initialize at zero instead of at negative one.
+
 Changes since NIFTy 7
 =====================
 
