@@ -4,7 +4,8 @@
 import jax
 import numpy as np
 import pytest
-from jax import random
+import jax.numpy as jnp
+from jax import random, vmap
 from numpy.testing import assert_allclose
 
 import nifty8.re as jft
@@ -45,6 +46,11 @@ def test_const_wiener(x0, dts, seed):
     gpres = gp(p)
     assert_allclose(res, gpres[1:])
 
+    amp = np.sqrt(dts)
+    res2 = jft.gauss_markov.scalar_gauss_markov_process(p['wp'], x0, 1., amp)
+    assert_allclose(res2, gpres)
+
+
 
 @pmp('x0', [np.array([0.1, 0.5]), np.array([-1.2, 0.7])])
 @pmp('dts', [np.ones((10, )) * 0.2, np.array([0.2, 0.5, 0.1])])
@@ -58,6 +64,32 @@ def test_drift_integrated_wiener(x0, dts):
     assert_allclose(myres[:, 0], res)
     # Check that derivative is const.
     assert_allclose(myres[:, 1], x0[1])
+
+
+
+@pmp('dts', [np.ones((10, )) * 0.2, np.array([0.2, 0.5, 0.1])])
+def test_iwp_cumsum_vs_fori(dts):
+    """Implements the (generalized) Integrated Wiener process (IWP)."""
+    x0 = np.array([0.1, 0.5])
+    sigma = 1.
+    asperity = 0.1
+    gp = jft.IntegratedWienerProcess(x0, sigma, dts, asperity=asperity)
+
+    rnd = gp.init(random.PRNGKey(10))
+    res = gp(rnd)
+    xi = rnd['iwp']
+
+    def drift_amp(d, sig, asp):
+        drift = jnp.array([[1., d], [0., 1.]])
+        amp = jnp.array([[jnp.sqrt(d**2 / 12. + asp), d / 2.], [0., 1.]])
+        amp *= sig * jnp.sqrt(d)
+        return drift, amp
+
+    axs = (0, None, None)
+    drift, amp = vmap(drift_amp, axs, (0, 0))(dts, sigma, asperity)
+    res2 = jft.gauss_markov.discrete_gauss_markov_process(xi, x0, drift, amp)
+
+    assert_allclose(res, res2)
 
 
 @pmp('x0', [1., (0., 1.5), jft.UniformPrior(-1., 1., name='x0')])

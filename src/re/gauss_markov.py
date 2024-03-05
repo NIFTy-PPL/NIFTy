@@ -106,13 +106,13 @@ def integrated_wiener_process(
     """Implements the (generalized) Integrated Wiener process (IWP)."""
     asperity = 0. if asperity is None else asperity
     dt = jnp.ones(xi.shape[0]) * dt if _isscalar(dt) else dt
-    dtsq = jnp.sqrt(dt)
-    res1 = sigma*dtsq*xi[:,1]
-    res0 = sigma*dtsq*jnp.sqrt(dt**2 / 12. + asperity)*xi[:,0] + 0.5*dt*res1
-    res1 = jnp.cumsum(jnp.concatenate((x0[1:], res1)))
-    res0 += dtsq*res1[:-1]
-    res0 = jnp.cumsum(res0)
-    return jnp.stack([res0, res1], axis=1)
+    res = (sigma*jnp.sqrt(dt))[:,jnp.newaxis]*xi
+    res = res.at[:,0].mul(jnp.sqrt(dt**2 / 12. + asperity))
+    res = res.at[:,0].add(0.5*dt*res[:,1])
+    res = jnp.concatenate((x0[jnp.newaxis,...], res), axis=0)
+    res = res.at[:,1].set(jnp.cumsum(res[:,1]))
+    res = res.at[1:,0].add(dt*res[:-1,1])
+    return res.at[:,0].set(jnp.cumsum(res[:,0]))
 
 
 def ornstein_uhlenbeck_process(
