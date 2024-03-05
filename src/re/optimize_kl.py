@@ -685,7 +685,7 @@ def optimize_kl(
                 # TODO: Make all arrays numpy arrays as to not instantiate on
                 # the main device when loading
                 pickle.dump((samples, opt_vi_st._replace(config={})), f)
-        if callback != None:
+        if callback is not None:
             callback(samples, opt_vi_st)
 
     return samples, opt_vi_st
