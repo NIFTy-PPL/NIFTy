@@ -674,7 +674,7 @@ def optimize_kl(
         makedirs(odir, exist_ok=True)
 
     nm = "OPTIMIZE_KL"
-    for i in range(opt_vi_st.nit, opt_vi.n_total_iterations - 1):
+    for i in range(opt_vi_st.nit, opt_vi.n_total_iterations):
         logger.info(f"{nm}: Starting {i+1:04d}")
         samples, opt_vi_st = opt_vi.update(samples, opt_vi_st)
         msg = opt_vi.get_status_message(samples, opt_vi_st, name=nm)
