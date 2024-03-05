@@ -75,6 +75,7 @@ def discrete_gauss_markov_process(xi: Array, x0: Array, drift: Array, diffamp: A
     return fori_loop(0, res.size, loop, res)
 
 
+
 def scalar_gauss_markov_process(xi, x0, drift, diffamp):
     """Simple wrapper of `discrete_gm_general` for 1D scalar processes.
     """
@@ -91,9 +92,8 @@ def wiener_process(
     xi: Array, x0: float, sigma: Union[float, Array], dt: Union[float, Array]
 ):
     """Implements the Wiener process (WP)."""
-    drift = 1.
     amp = jnp.sqrt(dt) * sigma
-    return scalar_gauss_markov_process(xi, x0, drift, amp)
+    return jnp.cumsum(jnp.concatenate((jnp.array([x0]).flatten(), amp*xi)))
 
 
 def integrated_wiener_process(
@@ -106,18 +106,13 @@ def integrated_wiener_process(
     """Implements the (generalized) Integrated Wiener process (IWP)."""
     asperity = 0. if asperity is None else asperity
     dt = jnp.ones(xi.shape[0]) * dt if _isscalar(dt) else dt
-
-    def drift_amp(d, sig, asp):
-        drift = jnp.array([[1., d], [0., 1.]])
-        amp = jnp.array([[jnp.sqrt(d**2 / 12. + asp), d / 2.], [0., 1.]])
-        amp *= sig * jnp.sqrt(d)
-        return drift, amp
-
-    axs = (
-        0, None if _isscalar(sigma) else 0, None if _isscalar(asperity) else 0
-    )
-    drift, amp = vmap(drift_amp, axs, (0, 0))(dt, sigma, asperity)
-    return discrete_gauss_markov_process(xi, x0, drift, amp)
+    dtsq = jnp.sqrt(dt)
+    res1 = sigma*dtsq*xi[:,1]
+    res0 = sigma*dtsq*jnp.sqrt(dt**2 / 12. + asperity)*xi[:,0] + 0.5*dt*res1
+    res1 = jnp.cumsum(jnp.concatenate((x0[1:], res1)))
+    res0 += dtsq*res1[:-1]
+    res0 = jnp.cumsum(res0)
+    return jnp.stack([res0, res1], axis=1)
 
 
 def ornstein_uhlenbeck_process(
