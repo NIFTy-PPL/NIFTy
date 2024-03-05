@@ -20,7 +20,9 @@ def _isscalar(x):
     return jnp.ndim(x) == 0
 
 
-def discrete_gauss_markov_process(xi: Array, x0: Array, drift: Array, diffamp: Array):
+def discrete_gauss_markov_process(
+    xi: Array, x0: Array, drift: Array, diffamp: Array
+):
     """Generator for a Gauss-Markov process  (GMP).
 
     Given the discrete transition probabilities via the `drift` and `diffamp`
@@ -84,16 +86,20 @@ def scalar_gauss_markov_process(xi, x0, drift, diffamp):
         diffamp = diffamp[:, jnp.newaxis, jnp.newaxis]
     if _isscalar(x0):
         x0 = jnp.array([x0])
-    return discrete_gauss_markov_process(xi[:, jnp.newaxis], x0, drift, diffamp)[:, 0]
+    return discrete_gauss_markov_process(
+        xi[:, jnp.newaxis], x0, drift, diffamp
+    )[:, 0]
 
 
 def wiener_process(
-    xi: Array, x0: float, sigma: Union[float, Array], dt: Union[float, Array]
+    xi: Array,
+    x0: Union[float, Array],
+    sigma: Union[float, Array],
+    dt: Union[float, Array],
 ):
     """Implements the Wiener process (WP)."""
-    drift = 1.
     amp = jnp.sqrt(dt) * sigma
-    return scalar_gauss_markov_process(xi, x0, drift, amp)
+    return jnp.cumsum(jnp.concatenate((jnp.atleast_1d(x0).flatten(), amp * xi)))
 
 
 def integrated_wiener_process(
@@ -106,18 +112,13 @@ def integrated_wiener_process(
     """Implements the (generalized) Integrated Wiener process (IWP)."""
     asperity = 0. if asperity is None else asperity
     dt = jnp.ones(xi.shape[0]) * dt if _isscalar(dt) else dt
-
-    def drift_amp(d, sig, asp):
-        drift = jnp.array([[1., d], [0., 1.]])
-        amp = jnp.array([[jnp.sqrt(d**2 / 12. + asp), d / 2.], [0., 1.]])
-        amp *= sig * jnp.sqrt(d)
-        return drift, amp
-
-    axs = (
-        0, None if _isscalar(sigma) else 0, None if _isscalar(asperity) else 0
-    )
-    drift, amp = vmap(drift_amp, axs, (0, 0))(dt, sigma, asperity)
-    return discrete_gauss_markov_process(xi, x0, drift, amp)
+    res = (sigma * jnp.sqrt(dt))[:, jnp.newaxis] * xi
+    res = res.at[:, 0].mul(jnp.sqrt(dt**2 / 12. + asperity))
+    res = res.at[:, 0].add(0.5 * dt * res[:, 1])
+    res = jnp.concatenate((x0[jnp.newaxis, ...], res), axis=0)
+    res = res.at[:, 1].set(jnp.cumsum(res[:, 1]))
+    res = res.at[1:, 0].add(dt * res[:-1, 1])
+    return res.at[:, 0].set(jnp.cumsum(res[:, 0]))
 
 
 def ornstein_uhlenbeck_process(
