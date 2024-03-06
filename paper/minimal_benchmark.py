@@ -168,7 +168,7 @@ for dev, dims in tqdm(
         lh_nft = get_model_nft(dims, data=lh_jft.likelihood.data)
         pos_nft = ift.MultiField.from_dict(
             {
-                k: ift.Field(d, np.array(v))
+                k: ift.Field(d, np.array(v if not k.endswith("spectrum") else v.T))
                 for (k, d), v in zip(lh_nft.domain.items(), pos.tree.values())
             }
         )
@@ -179,11 +179,10 @@ for dev, dims in tqdm(
             timeit(lambda: lh_metric_nft(pos_nft))._asdict()
         )
         if np.prod(dims) < 1e6:
-            jax.tree_map(
-                partial(np.testing.assert_allclose, atol=1e-6, rtol=1e-7),
-                lh_met_wm,
-                lh_metric_nft(pos_nft).val,
-            )
+            assert sorted(lh_metric_nft.target.keys()) == sorted(lh_met_wm.keys())
+            for k, v in lh_metric_nft(pos_nft).val.items():
+                v = v if not k.endswith("spectrum") else v.T
+                np.testing.assert_allclose(v, lh_met_wm[k], atol=1e-6, rtol=1e-7)
 
 # %%
 devs_nm = "+".join(dev.device_kind for dev in all_devices)
