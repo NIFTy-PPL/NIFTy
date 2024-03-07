@@ -37,12 +37,36 @@ class SamplingCartesianGridLOS(Model):
         start,
         end,
         *,
-        distances,
         shape,
-        dtype=None,
+        distances,
         n_sampling_points=500,
         interpolation_order=1,
+        dtype=None,
     ):
+        """Sampling Line-Of-Sight (LOS) intergrator.
+
+        Samples the LOS at a number of points and sum up the result to estimate
+        the integral from a starting point to an end point in n-dimensional space.
+
+        Parameters
+        ----------
+        start :
+            Location of the start point(s) in Cartesian space of shape
+            `(n_points, n_dim)`.
+        end :
+            Location of the end point(s) in Cartesian space of shape
+            `(n_points, n_dim)`.
+        shape :
+            Shape of the input.
+        distances :
+            Tuple of distances for each axis of the shape of the input
+        n_sampling_points :
+            Number of sampling points per LOS for the integration.
+        dtype :
+            Hint specifying the dtype for the construction of the domain.
+        interpolation_order :
+            Order of the interpolation for reading out the sampling points.
+        """
         # We assume that `start` and `end` are of shape (n_points, n_dimensions)
         self.start = jnp.array(start)
         self.end = jnp.array(end)
