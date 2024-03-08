@@ -245,13 +245,36 @@ class HEALPixAxis(GridAxis):
         )
 
 
+def _stack_outer(*arrays, outer_axis=-1, stack_axis=0):
+    arrays = tuple(arrays)
+    ndim = len(arrays)
+    outer_axis %= len(arrays[0].shape)
+    window_shape = tuple(a.shape[outer_axis] for a in arrays)
+    out_shp = (
+        arrays[0].shape[:outer_axis] + window_shape +
+        arrays[0].shape[(outer_axis+1):]
+    )
+    stack_axis %= len(out_shp)
+    out_shp = out_shp[:stack_axis] + (ndim,) + out_shp[stack_axis:]
+
+    res = np.zeros(out_shp, dtype=arrays[0].dtype)
+    for i, a in enumerate(arrays):
+        a = a.reshape(
+                a.shape[:outer_axis] +
+                (1,) * i + (window_shape, ) + (1,) * (ndim-i-1) +
+                a.shape[(outer_axis+1):]
+            )
+        res[(slice(None), ) * stack_axis + (i,)] += a
+    return res
+
+
 @dataclass(kw_only=True)
 class OGridAtLevel:
     grids: tuple[GridAxisAtLevel]
     index2cart: callable
 
     def __init__(self, *grids):
-        self.grids = grids
+        self.grids = tuple(grids)
 
     @property
     def shape(self):
@@ -262,15 +285,25 @@ class OGridAtLevel:
         return reduce(operator.mul, self.shape, 1)
 
     def children(self, index) -> np.ndarray:
-        dtp = np.result_type(index)
-        # TODO
+        window = (g.children(index[i]) for i, g in enumerate(self.grids))
+        window = _stack_outer(window, outer_axis=-1, stack_axis=0)
+        assert window.dtype == np.result_type(index)
+        return window
 
     def neighborhood(self, index, window_size: tuple[int]):
-        dtp = np.result_type(index)
-        # TODO
+        window = (
+            g.neighborhood(index[i], w) for i, (g, w) in
+            enumerate(zip(self.grids, window_size))
+        )
+        window = _stack_outer(window, outer_axis=-1, stack_axis=0)
+        assert window.dtype == np.result_type(index)
+        return window
 
     def parent(self, index):
-        dtp = np.result_type(index)
+        parid = tuple(g.parent(index[i]) for i, g in enumerate(self.grids))
+        parid = np.stack(parid, axis=0)
+        assert parid.dtype == np.result_type(index)
+        return parid
 
 
 @dataclass(kw_only=True)
