@@ -334,11 +334,23 @@ class OGridAtLevel:
 class OGrid:
     grids: tuple[GridAxis]
     index2cart: callable
+    depth: int
 
     def __init__(self, *grids, index2cart=default_index2cart):
         self.grids = tuple(grids)
+        for g in grids:
+            if not isinstance(g, GridAxis):
+                raise ValueError(f"Grid {g.__name__} not of type `GridAxis`")
+        self.depth = self.grids[0].depth
+        for i, g in enumerate(grids):
+            if g.depth != self.depth:
+                msg = f"Grid {g.__name__} at index {i} of incompatible depth {g.depth}"
+                raise ValueError(msg)
+        self.index2cart = index2cart
 
-
+    def amend(self, *grid_kwargs: tuple[dict]):
+        grids = (g.amend(*kwargs) for g, kwargs in zip(self.grids, grid_kwargs))
+        return OGrid(*grids, index2cart=self.index2cart)
 
     def at(self, level: int) -> HEALPixAxisAtLevel:
         grids = (g.at(level) for g in self.grids)
