@@ -133,6 +133,14 @@ run_getting_started_niftyre_intro:
     paths:
       - '*.png'
 
+run_getting_started_niftyre_tomography:
+  stage: demo_runs
+  script:
+    - python3 demos/1_tomography.py
+  artifacts:
+    paths:
+      - '*.png'
+
 run_getting_started_niftyre_nonlinear_regression:
   stage: demo_runs
   script:
