@@ -268,13 +268,37 @@ def _stack_outer(*arrays, outer_axis=-1, stack_axis=0):
     return res
 
 
+def regularAxis_index2cart(index, size):
+    # Map onto bincenter
+    cc = (index + 0.5) / size
+    # Add dummy axis for 1D space
+    return cc[np.newaxis]
+
+
+def healpixAxis_index2cart(index, nside, nest):
+    from healpy.pixelfunc import pix2vec
+    shp = index.shape[1:]
+    cc = pix2vec(nside, np.ravel(index), nest=nest)
+    return np.stack(cc, axis=0).reshape((3,) + shp)
+
+
+def default_index2cart(index, grids):
+    coords = tuple(
+        healpixAxis_index2cart(index[i], g.nside, g.nest)
+        if isinstance(g, HEALPixAxisAtLevel) else
+        regularAxis_index2cart(index[i], g.size) for i, g in enumerate(grids)
+    )
+    return coords #TODO better concatenate instead of tuple?
+
+
 @dataclass(kw_only=True)
 class OGridAtLevel:
     grids: tuple[GridAxisAtLevel]
     index2cart: callable
 
-    def __init__(self, *grids):
+    def __init__(self, *grids, index2cart=default_index2cart):
         self.grids = tuple(grids)
+        self.index2cart = index2cart
 
     @property
     def shape(self):
@@ -310,6 +334,11 @@ class OGridAtLevel:
 class OGrid:
     grids: tuple[GridAxis]
     index2cart: callable
+
+    def __init__(self, *grids, index2cart=default_index2cart):
+        self.grids = tuple(grids)
+
+
 
     def at(self, level: int) -> HEALPixAxisAtLevel:
         grids = (g.at(level) for g in self.grids)
