@@ -311,6 +311,10 @@ class OGrid:
     grids: tuple[GridAxis]
     index2cart: callable
 
+    def at(self, level: int) -> HEALPixAxisAtLevel:
+        grids = (g.at(level) for g in self.grids)
+        return OGridAtLevel(grids)
+
 
 class UniqueGrid:
     """Same as :class:`OGrid` but with a single global integer index for each voxel."""
