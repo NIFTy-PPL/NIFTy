@@ -174,7 +174,7 @@ noise_truth = (
 ) * jft.random_like(key, signal_response.target)
 data = signal_response_truth + noise_truth
 
-nll = jft.Gaussian(data, noise_cov_inv).amend(signal_response)
+lh = jft.Gaussian(data, noise_cov_inv).amend(signal_response)
 
 # %% [markdown]
 # ## The inference
@@ -188,8 +188,8 @@ key, k_i, k_o = random.split(key, 3)
 # NOTE, changing the number of samples always triggers a resampling even if
 # `resamples=False`, as more samples have to be drawn that did not exist before.
 samples, state = jft.optimize_kl(
-    nll,
-    jft.Vector(jft.random_like(k_i, signal_response.domain)),
+    lh,
+    jft.Vector(lh.init(k_i)),
     n_total_iterations=n_vi_iterations,
     n_samples=lambda i: n_samples // 2 if i < 2 else n_samples,
     # Source for the stochasticity for sampling
@@ -202,7 +202,7 @@ samples, state = jft.optimize_kl(
     # an implicit covariance matrix
     draw_linear_kwargs=dict(
         cg_name="SL",
-        cg_kwargs=dict(absdelta=delta * jft.size(nll.domain) / 10.0, maxiter=100),
+        cg_kwargs=dict(absdelta=delta * jft.size(lh.domain) / 10.0, maxiter=100),
     ),
     # Arguements for the minimizer in the nonlinear updating of the samples
     nonlinearly_update_kwargs=dict(
