@@ -52,20 +52,20 @@ class SamplingCartesianGridLOS(Model):
         ----------
         start :
             Location of the start point(s) in Cartesian space of shape
-            `(n_points, n_dim)`.
+            `(n_points, n_dim)` or `(n_dim,)`.
         end :
             Location of the end point(s) in Cartesian space of shape
-            `(n_points, n_dim)`.
+            `(n_points, n_dim)` or `(n_dim,)`.
         shape :
             Shape of the input.
         distances :
             Tuple of distances for each axis of the shape of the input
-        n_sampling_points :
+        n_sampling_points : int, optional
             Number of sampling points per LOS for the integration.
-        dtype :
-            Hint specifying the dtype for the construction of the domain.
-        interpolation_order :
+        interpolation_order : int, optional
             Order of the interpolation for reading out the sampling points.
+        dtype : data-type, optional
+            Hint specifying the dtype for the construction of the domain.
         """
         # We assume that `start` and `end` are of shape (n_points, n_dimensions)
         self.start = jnp.array(start)
