@@ -11,6 +11,7 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 from jax import random
+from jax.tree_util import tree_map
 from numpy.testing import assert_allclose, assert_array_equal
 
 import nifty8.re as jft
@@ -25,7 +26,7 @@ def random_draw(key, shape, dtype, method):
             return reduce(lambda a, b: a * b, (isinstance(ii, int) for ii in x))
         return False
 
-    swd = jax.tree_map(
+    swd = tree_map(
         lambda x: jft.ShapeWithDtype(x, dtype), shape, is_leaf=_isleaf
     )
     return jft.random_like(key, jft.Vector(swd), method)
@@ -66,7 +67,7 @@ LH_INIT = (
                     method=partial(random.poisson, lam=3.14)
                 ),
         },
-        lambda key, shape: jax.tree_map(
+        lambda key, shape: tree_map(
             lambda x: x.astype(float), 6. +
             random_draw(key, shape, int, partial(random.poisson, lam=3.14))
         ),
@@ -92,7 +93,7 @@ LH_INIT = (
         lambda key, shape: jft.Vector(
             (
                 random_draw(key, shape, float, random.normal),
-                jax.tree_map(
+                tree_map(
                     jnp.exp, 3. + 1e-1 *
                     random_draw(key, shape, float, random.normal)
                 )
@@ -194,7 +195,7 @@ def test_optimize_kl_sample_consistency(
     residual_diy = jft.stack((residual_diy_l1, -residual_diy_l1))
     _assert_zero_point_estimate_residuals(residual_diy, point_estimates)
     if sample_mode.lower() == "linear":
-        jax.tree_map(aallclose, residual_draw, residual_diy)
+        tree_map(aallclose, residual_draw, residual_diy)
 
     residual_diy_n1, _ = jft.nonlinearly_update_residual(
         lh,
@@ -218,7 +219,7 @@ def test_optimize_kl_sample_consistency(
     )
     residual_diy = jft.stack((residual_diy_n1, residual_diy_n2))
     _assert_zero_point_estimate_residuals(residual_diy, point_estimates)
-    jax.tree_map(aallclose, residual_draw, residual_diy)
+    tree_map(aallclose, residual_draw, residual_diy)
 
     key, sk = random.split(key)
     samples_opt, _ = jft.optimize_kl(
@@ -246,7 +247,7 @@ def test_optimize_kl_sample_consistency(
         **draw_linear_kwargs,
     )
     _assert_zero_point_estimate_residuals(residual_draw, point_estimates)
-    jax.tree_map(aallclose, samples_opt._samples, residual_draw)
+    tree_map(aallclose, samples_opt._samples, residual_draw)
 
 
 if __name__ == "__main__":
