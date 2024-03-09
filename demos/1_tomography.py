@@ -148,4 +148,5 @@ for i, (ax_t, ax_p, ax_ps) in enumerate(axs):
     ax_ps.imshow(post_density.std(axis=0).sum(axis=i), extent=extent)
 for title, ax in zip(("Truth", "Posterior mean", "Posterior std."), axs[0]):
     ax.set_title(title)
+fig.savefig("results_tomography_projected_full_reconstruction.png", dpi=400)
 plt.show()

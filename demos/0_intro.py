@@ -247,5 +247,5 @@ for ax, (title, field, tp) in zip(axs.flat, to_plot):
         for f in field:
             ax_plot(f, alpha=0.7)
 fig.tight_layout()
-fig.savefig("cf_w_unknown_spectrum.png", dpi=400)
+fig.savefig("results_intro_full_reconstruction.png", dpi=400)
 plt.show()
