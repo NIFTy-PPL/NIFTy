@@ -1,39 +1,18 @@
-image: $CONTAINER_TEST_IMAGE
+image: pandoc/latex
 
 variables:
-  CONTAINER_TEST_IMAGE: gitlab-registry.mpcdf.mpg.de/$CI_PROJECT_PATH:$CI_COMMIT_REF_NAME
+  MPLBACKEND: agg
   OMP_NUM_THREADS: 1
+
+cache:
+  paths:
+    - .cache/pip
 
 stages:
   - static_checks
-  - build_docker
   - test
   - release
   - demo_runs
-
-build_docker_from_scratch:
-  only:
-    - schedules
-  image: docker
-  stage: build_docker
-  before_script:
-    - ls
-  script:
-    - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN gitlab-registry.mpcdf.mpg.de
-    - docker build -t $CONTAINER_TEST_IMAGE --no-cache .
-    - docker push $CONTAINER_TEST_IMAGE
-
-build_docker_from_cache:
-  except:
-    - schedules
-  image: docker
-  stage: build_docker
-  before_script:
-    - ls
-  script:
-    - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN gitlab-registry.mpcdf.mpg.de
-    - docker build -t $CONTAINER_TEST_IMAGE .
-    - docker push $CONTAINER_TEST_IMAGE
 
 test_serial:
   stage: test
@@ -67,7 +46,7 @@ pages:
   - NIFTy_8
 
 before_script:
-  - python3 -m pip install --user --break-system-packages .
+  - python3 -m pip install --user --break-system-packages .[all]
 
 run_ipynb0:
   stage: demo_runs
