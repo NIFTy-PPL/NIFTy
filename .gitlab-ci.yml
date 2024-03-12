@@ -1,18 +1,53 @@
-image: pandoc/latex
-
-variables:
-  MPLBACKEND: agg
-  OMP_NUM_THREADS: 1
+image: $CONTAINER_TEST_IMAGE
 
 cache:
   paths:
     - .cache/pip
 
+variables:
+  CONTAINER_TEST_IMAGE: gitlab-registry.mpcdf.mpg.de/$CI_PROJECT_PATH:$CI_COMMIT_REF_NAME
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+  MPLBACKEND: agg
+  OMP_NUM_THREADS: 1
+
 stages:
   - static_checks
+  - build_docker
   - test
   - release
   - demo_runs
+
+before_script:
+  - python3 -V
+  - python3 -m venv venv
+  - source venv/bin/activate
+  - python3 -m pip install '.[all]'
+
+build_docker_from_scratch:
+  only:
+    - schedules
+  image: docker
+  stage: build_docker
+  cache:
+  before_script:
+    - ls
+  script:
+    - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN gitlab-registry.mpcdf.mpg.de
+    - docker build -t $CONTAINER_TEST_IMAGE --no-cache .
+    - docker push $CONTAINER_TEST_IMAGE
+
+build_docker_from_cache:
+  except:
+    - schedules
+  image: docker
+  stage: build_docker
+  cache:
+  before_script:
+    - ls
+  script:
+    - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN gitlab-registry.mpcdf.mpg.de
+    - docker build -t $CONTAINER_TEST_IMAGE .
+    - docker push $CONTAINER_TEST_IMAGE
 
 test_serial:
   stage: test
@@ -34,19 +69,16 @@ pages:
   before_script:
     - ls
   script:
-    - python3 setup.py install --user -f
+    - python3 -m pip install '.[doc]'
     - git config --global --add safe.directory /builds/ift/nifty
     - git clean -xfd docs/source
-    - bash docs/generate.sh
+    - sh docs/generate.sh
     - mv docs/build/ public/
   artifacts:
     paths:
     - public
   only:
   - NIFTy_8
-
-before_script:
-  - python3 -m pip install --user --break-system-packages .[all]
 
 run_ipynb0:
   stage: demo_runs
