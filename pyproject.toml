@@ -1,3 +1,76 @@
+[project]
+name = "nifty8"
+description = "Probabilistic programming framework for signal inference algorithms that operate regardless of the underlying grids and their resolutions"
+readme = "README.md"
+authors = [
+    {name = "Martin Reinecke", email = "martin@mpa-garching.mpg.de"},
+]
+requires-python = ">=3.10"
+dependencies = [
+    "numpy >= 1.17.0",
+    "scipy >= 1.9.0",
+]
+license = {file = "LICENSE"}
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Mathematics",
+    "Topic :: Scientific/Engineering :: Physics",
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+]
+dynamic = ["version"]
+
+[tool.setuptools.dynamic]
+version = {attr = "nifty8.__version__"}
+
+[project.urls]
+Homepage = "https://github.com/nifty-ppl/nifty"
+"Source Code" = "https://github.com/nifty-ppl/nifty"
+"Bug Tracker" = "https://github.com/nifty-ppl/nifty/issues"
+"Documentation" = "https://ift.pages.mpcdf.de/nifty/"
+"Changelog" = "https://github.com/NIFTy-PPL/NIFTy/blob/NIFTy_8/ChangeLog.md"
+
+[project.optional-dependencies]
+re = [
+    "jax",
+    "jaxlib",
+]
+native = [
+    "ducc0>=0.27.0",
+]
+parallel = [
+    "mpi4py",
+]
+doc = [
+    "sphinx",
+    "pydata-sphinx-theme",
+    "myst-parser",
+    "jupyter",
+    "nbconvert",
+    "jupytext",
+]
+util = [
+    "astropy",
+    "healpy",
+    "h5py",
+    "matplotlib",
+]
+test = [
+    "pytest",
+    "pytest-cov",
+    "scipy",
+    "ducc0",
+]
+
 [build-system]
-requires = ["setuptools >= 65.7.0", "numpy >= 1.23.0", "scipy >= 1.9.0"]
+requires = [
+    "setuptools >= 65.7.0",
+    "numpy >= 1.23.0",
+    "scipy >= 1.9.0",
+]
 build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["nifty8", "nifty8*"]

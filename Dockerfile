@@ -8,15 +8,10 @@ RUN apt-get update && apt-get install -y \
     # Dependency of mpi4py
     libopenmpi-dev \
     && rm -rf /var/lib/apt/lists/*
-RUN DUCC0_OPTIMIZATION=portable pip3 install --break-system-packages\
-    # Packages needed for NIFTy
-    scipy \
-    # Optional nifty dependencies
-    matplotlib h5py astropy ducc0 jax jaxlib mpi4py \
-    # Testing dependencies
-    pytest pytest-cov \
-    # Documentation build dependencies
-    jupyter nbconvert jupytext sphinx pydata-sphinx-theme myst-parser
+RUN pip install --break-system-packages pip-tools \
+    # Source all dependencies from the pyprojects.toml
+    && pip-compile --all-extras --output-file=requirements.txt pyproject.toml \
+    && pip install --break-system-packages -r requirements.txt
 
 # Set matplotlib backend
 ENV MPLBACKEND agg
