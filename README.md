@@ -171,13 +171,7 @@ Note: Make sure that you reinstall nifty after each change since sphinx imports 
 
 ### Run the tests
 
-To run the tests, additional packages are required:
-
-```
-sudo apt-get install python3-pytest-cov
-```
-
-Afterwards the tests (including a coverage report) can be run using the following command in the repository root:
+To run the tests, install the `test` extra requirements and afterwards run pytest (and create a coverage report) via
 
 ```
 pytest --cov=nifty8 test
