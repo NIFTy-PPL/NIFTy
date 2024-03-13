@@ -3,23 +3,22 @@
 import operator
 from dataclasses import dataclass
 from functools import reduce
-from typing import Any, Callable, Iterable, Optional, Union
+from typing import Callable, Optional, Iterable
 
 import numpy as np
+import numpy.typing as npt
 
-_kind_of_int = Union[tuple[int], list[int], int]
 
-
-@dataclass(kw_only=True)
+@dataclass()
 class GridAtLevel:
-    shape: tuple[int]
-    refinement_shape: tuple[int]
-    parent_refinement_shape: Optional[tuple[int]] = None
+    shape: npt.NDArray[np.int_]
+    splits: npt.NDArray[np.int_]
+    parent_splits: Optional[npt.NDArray[np.int_]] = None
 
-    def __init__(self, shape, refinement_shape, parent_refinement_shape):
-        self.shape = np.asarray(shape)
-        self.refinement_shape = np.asarray(refinement_shape)
-        self.parent_refinement_shape = np.asarray(parent_refinement_shape)
+    def __init__(self, shape, splits, parent_splits):
+        self.shape = np.atleast_1d(shape)
+        self.splits = np.atleast_1d(splits)
+        self.parent_splits = np.atleast_1d(parent_splits)
 
     def _parse_index(self, index):
         index = np.asarray(index)
@@ -31,36 +30,46 @@ class GridAtLevel:
 
     @property
     def size(self):
+        return reduce(operator.mul, self.shape, 1)
+
+    @property
+    def ndim(self):
         return len(self.shape)
 
     def children(self, index) -> np.ndarray:
         index = self._parse_index(index)
         dtp = np.result_type(index)
-        rs = self.refinement_shape[(slice(None),) + (None,) * (index.ndim - 1)]
-        rs_bc = (slice(None),) * index.ndim, (None,) * len(self.refinement_shape)
-        c = np.mgrid[tuple(slice(0, sz) for sz in self.refinement_shape)].astype(dtp)
+        f = self.splits[(slice(None),) + (np.newaxis,) * (index.ndim - 1)]
+        c = np.mgrid[tuple(slice(sz) for sz in self.splits)].astype(dtp)
         c_bc = (
             (slice(None),)
-            + (None,) * (index.ndim - 1)
-            + (slice(None),) * len(self.refinement_shape)
+            + (np.newaxis,) * (index.ndim - 1)
+            + (slice(None),) * self.ndim
         )
-        return rs[rs_bc] + c[c_bc]
+        return (index * f)[..., (np.newaxis,) * self.ndim] + c[c_bc]
 
-    def neighborhood(self, index, window_size: int, ensemble_axis=None):
+    def neighborhood(self, index, window_size: Iterable[int], ensemble_axis=None):
         index = self._parse_index(index)
         dtp = np.result_type(index)
-        # TODO
-        return (
-            np.add.outer(index, np.arange(window_size, dtype=dtp) - window_size // 2)
-            % self.size
+        if ensemble_axis is not None:
+            raise NotImplementedError()
+        window_size = np.asarray(window_size)
+        c = np.mgrid[tuple(slice(sz) for sz in window_size)].astype(dtp)
+        c -= (window_size // 2)[:, (np.newaxis,) * self.ndim]
+        c_bc = (
+            (slice(None),)
+            + (np.newaxis,) * (index.ndim - 1)
+            + (slice(None),) * self.ndim
         )
+        m_bc = (slice(None),) + (np.newaxis,) * (index.ndim - 1 + self.ndim)
+        return (index[..., (np.newaxis,) * self.ndim] + c[c_bc]) % self.shape[m_bc]
 
     def parent(self, index):
-        if self.parent_refinement_shape is None:
+        if self.parent_splits is None:
             raise IndexError("you are alone in this world")
         index = self._parse_index(index)
         bc = (slice(None),) + (np.newaxis,) * (index.ndim - 1)
-        return index // self.parent_refinement_shape[bc]
+        return index // self.parent_splits[bc]
 
     def index2coord(self, index, **kwargs):
         return NotImplementedError()
@@ -72,61 +81,58 @@ class GridAtLevel:
         return NotImplementedError()
 
 
+@dataclass()
 class Grid:
     """Dense (single) axis with periodic boundary conditions.
 
     Open boundary conditions can be emulated by leaving out indices."""
 
+    shape0: npt.NDArray[np.int_]
+    splits: tuple[npt.NDArray[np.int_]]
     atLevel: Callable
 
-    def __init__(
-        self,
-        *,
-        shape0: int,
-        refinement_shape: tuple[_kind_of_int],
-        atLevel=GridAtLevel,
-    ):
-        # TODO
-        self.size0 = size0
-        refinement_size = (
-            (refinement_size,) if isinstance(refinement_size, int) else refinement_size
-        )
-        self.refinement_size = tuple(refinement_size)
-        self.depth = len(self.refinement_size)
+    def __init__(self, *, shape0, splits, atLevel=GridAtLevel):
+        self.shape0 = np.asarray(shape0)
+        splits = (splits,) if isinstance(splits, int) else splits
+        self.splits = tuple(np.atleast_1d(s) for s in splits)
+        self.atLevel = atLevel
+
+    @property
+    def depth(self):
+        return len(self.splits)
 
     def _parse_level(self, level):
-        # TODO
         if np.abs(level) >= self.depth:
             raise IndexError(f"{self.__class__.__name__} does not have level {level}")
         return level % self.depth
 
-    def amend(self, refinement_size: _kind_of_int):
-        # TODO
-        refinement_size = (
-            (refinement_size,) if isinstance(refinement_size, int) else refinement_size
-        )
-        return self.__class__(
-            size0=self.size0,
-            refinement_size=self.refinement_size + tuple(refinement_size),
-        )
+    def amend(self, splits):
+        splits = (splits,) if isinstance(splits, int) else splits
+        splits = tuple(np.atleast_1d(s) for s in splits)
+        return self.__class__(shape0=self.shape0, splits=self.splits + splits)
 
     def at(self, level: int) -> GridAtLevel:
-        # TODO
         level = self._parse_level(level)
-        size = self.size0 * reduce(operator.mul, self.refinement_size[:level], 1)
-        rs = self.refinement_size[level]
-        rs_p = self.refinement_size[level - 1] if level >= 1 else None
+        fct = np.array(
+            [reduce(operator.mul, si, 1) for si in zip(*self.splits[:level])]
+        )
         return self.atLevel(
-            size=size, refinement_shape=rs, parent_refinement_shape=rs_p
+            shape=self.shape0 * fct,
+            splits=self.splits[level],
+            parent_splits=self.splits[level - 1] if level >= 1 else None,
         )
 
 
 class RegularGridAxisAtLevel(GridAtLevel):
-    def index2coord():
-        pass
+    def index2coord(self, index):
+        return index / self.shape[:, (np.newaxis,) * (index.ndim - 1)]
 
-    def index2volume():
-        pass
+    def coord2index(self, coord):
+        return coord * self.shape[:, (np.newaxis,) * (coord.ndim - 1)]
+
+    def index2volume(self, index):
+        v = np.prod(1.0 / self.shape[:, (np.newaxis,) * (index.ndim - 1)])
+        return v[(np.newaxis,) * index.ndim]
 
 
 def _fill_bad_healpix_neighbors(nside, neighbors, nest: bool = True):
@@ -176,37 +182,36 @@ class HEALPixGridAtLevel(GridAtLevel):
     nest: True
 
     def __init__(
-        self,
-        *,
-        nside: int,
-        nest=True,
-        refinement_size: int = 4,
-        parent_refinement_size: Optional[_kind_of_int] = None,
+        self, shape=None, splits=4, parent_splits=None, *, nside: int = None, nest=True
     ):
+        if shape is not None:
+            assert nside is None
+            assert isinstance(shape, int) or np.ndim(shape) == 0
+            shape = shape[0] if np.ndim(shape) > 0 else shape
+            nside = (shape / 12) ** 0.5
         if int(nside) != nside:
             raise TypeError(f"invalid nside {nside!r}; expected int")
         if nest is not True:
             raise NotImplementedError("only nested order currently supported")
+        assert isinstance(splits, int) or np.ndim(splits) == 0
+        splits = splits[0] if np.ndim(splits) > 0 else splits
         if not (
-            (refinement_size == 1 or refinement_size % 4 == 0)
-            and (
-                refinement_size == 1
-                or refinement_size % 4 == 0
-                or parent_refinement_size is None
-            )
+            (splits == 1 or splits % 4 == 0)
+            and (splits == 1 or splits % 4 == 0 or parent_splits is None)
         ):
             raise AssertionError()
         self.nside = int(nside)
         self.nest = nest
         size = 12 * nside**2
-        super().__init__(
-            size=size,
-            refinement_size=refinement_size,
-            parent_refinement_size=parent_refinement_size,
-        )
+        super().__init__(shape=size, splits=splits, parent_splits=parent_splits)
 
-    def neighborhood(self, index, window_size: int, fill_strategy="same"):
+    def neighborhood(
+        self, index, window_size: int, ensemble_axis=None, *, fill_strategy="same"
+    ):
         from healpy.pixelfunc import get_all_neighbours
+
+        if ensemble_axis is not None:
+            raise NotImplementedError()
 
         dtp = np.result_type(index)
         if window_size not in (1, 9, self.size):
@@ -238,7 +243,19 @@ class HEALPixGridAtLevel(GridAtLevel):
 
         neighbors = np.squeeze(neighbors, axis=0) if index_shape == () else neighbors
         neighbors = neighbors.reshape(index_shape + (window_size,))
-        return neighbors.astype(dtp)
+        return neighbors.astype(dtp)[np.newaxis]
+
+    def index2coord(self, index, **kwargs):
+        # TODO
+        return
+
+    def coord2index(self, coord, **kwargs):
+        # TODO
+        return NotImplementedError()
+
+    def index2volume(self, index, **kwargs):
+        # TODO
+        return NotImplementedError()
 
 
 class HEALPixGrid(Grid):
@@ -248,48 +265,36 @@ class HEALPixGrid(Grid):
         nside0: Optional[int] = None,
         depth: Optional[int] = None,
         nest=True,
-        size0: Optional[int] = None,
-        refinement_size: Optional[_kind_of_int] = None,
+        shape0=None,
+        splits=None,
     ):
         self.nest = nest
-        if size0 is not None:
+        if shape0 is not None:
             assert nside0 is None
-            nside0 = (size0 / 12) ** 0.5
+            assert isinstance(shape0, int) or np.ndim(shape0) == 0
+            shape0 = shape0[0] if np.ndim(shape0) > 0 else shape0
+            nside0 = (shape0 / 12) ** 0.5
             assert int(nside0) == nside0
             nside0 = int(nside0)
         self.nside0 = nside0
-        if refinement_size is None:
-            refinement_size = (4,) * depth
-        super().__init__(size0=12 * self.nside0**2, refinement_size=refinement_size)
+        if splits is None:
+            splits = (4,) * depth
+        super().__init__(
+            shape0=12 * self.nside0**2, splits=splits, atLevel=HEALPixGridAtLevel
+        )
 
-    def amend(self, *, added_depth: Optional[int] = None, refinement_size=None):
-        if added_depth is not None and refinement_size is not None:
-            ve = "only one of `additional_depth` and `refinement_size` allowed"
+    def amend(self, splits=None, *, added_depth: Optional[int] = None):
+        if added_depth is not None and splits is not None:
+            ve = "only one of `additional_depth` and `splits` allowed"
             raise ValueError(ve)
         if added_depth is not None:
-            rss = (4,) * added_depth
+            splits = (4,) * added_depth
         else:
-            assert refinement_size is not None
-            rss = refinement_size
-            rss = (rss,) if isinstance(rss, int) else rss
-        return HEALPixGrid(
-            nside0=self.nside0,
-            size0=self.size0,
-            refinement_size=self.refinement_size + rss,
-        )
-
-    def at(self, level: int) -> HEALPixGridAtLevel:
-        level = self._parse_level(level)
-        assert all(rs % 2 == 0 or rs == 1 for rs in self.refinement_size)
-        nside = self.nside0 * reduce(
-            operator.mul,
-            ((rs // 2 if rs != 1 else 1) for rs in self.refinement_size[:level]),
-            1,
-        )
-        rs = self.refinement_size[level]
-        rs_p = self.refinement_size[level - 1] if level >= 1 else None
-        return HEALPixGridAtLevel(
-            nside=nside, refinement_size=rs, parent_refinement_size=rs_p
+            assert splits is not None
+            splits = (splits,) if isinstance(splits, int) else splits
+        splits = tuple(np.atleast_1d(s) for s in splits)
+        return self.__class__(
+            nside0=self.nside0, shape0=self.shape0, splits=self.splits + splits
         )
 
 
