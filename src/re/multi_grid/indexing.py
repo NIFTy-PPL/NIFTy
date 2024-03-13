@@ -83,7 +83,7 @@ class GridAtLevel:
 
 @dataclass()
 class Grid:
-    """Dense (single) axis with periodic boundary conditions.
+    """Dense grid with periodic boundary conditions.
 
     Open boundary conditions can be emulated by leaving out indices."""
 
