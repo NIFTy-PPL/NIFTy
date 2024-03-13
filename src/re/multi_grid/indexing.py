@@ -111,7 +111,7 @@ class Grid:
         splits = tuple(np.atleast_1d(s) for s in splits)
         return self.__class__(shape0=self.shape0, splits=self.splits + splits)
 
-    def at(self, level: int) -> GridAtLevel:
+    def at(self, level: int):
         level = self._parse_level(level)
         fct = np.array(
             [reduce(operator.mul, si, 1) for si in zip(*self.splits[:level])]
@@ -326,7 +326,7 @@ def _stack_outer(*arrays, outer_axis=-1, stack_axis=0):
     return res
 
 
-@dataclass(kw_only=True)
+@dataclass()
 class OGridAtLevel(GridAtLevel):
     grids: tuple[GridAtLevel]
 
@@ -335,19 +335,23 @@ class OGridAtLevel(GridAtLevel):
 
     @property
     def shape(self):
-        return tuple(s for s in self.grids.size)
+        return reduce(operator.add, (g.shape for g in self.grids))
 
     @property
-    def size(self):
-        return reduce(operator.mul, self.shape, 1)
+    def ngrids(self):
+        return len(self.grids)
 
     def children(self, index) -> np.ndarray:
-        window = (g.children(index[i]) for i, g in enumerate(self.grids))
-        window = _stack_outer(window, outer_axis=-1, stack_axis=0)
-        assert window.dtype == np.result_type(index)
-        return window
+        ndims_off = tuple(np.cumsum(tuple(g.ndim for g in self.grids)))
+        islice = tuple(slice(l, r) for l, r in zip((0,) + ndims_off[:-1], ndims_off))
+        c = tuple(g.children(index[i]) for i, g in zip(islice, self.grids))
+        # TODO
+        # window = _stack_outer(window, outer_axis=-1, stack_axis=0)
+        # assert window.dtype == np.result_type(index)
+        # return window
 
     def neighborhood(self, index, window_size: tuple[int]):
+        # TODO
         window = (
             g.neighborhood(index[i], w)
             for i, (g, w) in enumerate(zip(self.grids, window_size))
@@ -357,35 +361,50 @@ class OGridAtLevel(GridAtLevel):
         return window
 
     def parent(self, index):
+        # TODO
         parid = tuple(g.parent(index[i]) for i, g in enumerate(self.grids))
         parid = np.stack(parid, axis=0)
         assert parid.dtype == np.result_type(index)
         return parid
 
+    def index2coord(self, index, **kwargs):
+        return NotImplementedError()
 
-@dataclass(kw_only=True)
+    def coord2index(self, coord, **kwargs):
+        return NotImplementedError()
+
+    def index2volume(self, index, **kwargs):
+        return NotImplementedError()
+
+
+@dataclass()
 class OGrid(Grid):
     grids: tuple[Grid]
-    depth: int
 
-    def __init__(self, *grids):
+    def __init__(self, *grids, atLevel=OGridAtLevel):
         self.grids = tuple(grids)
-        for g in grids:
-            if not isinstance(g, Grid):
-                raise ValueError(f"Grid {g.__name__} not of type `GridAxis`")
         self.depth = self.grids[0].depth
         for i, g in enumerate(grids):
+            if not isinstance(g, Grid):
+                raise TypeError(f"Grid {g.__name__} at index {i} of invalid type")
             if g.depth != self.depth:
-                msg = f"Grid {g.__name__} at index {i} of incompatible depth {g.depth}"
-                raise ValueError(msg)
+                raise ValueError(f"Grid {g.__name__} at index {i} not of same depth")
+        self.atLevel = atLevel
 
-    def amend(self, *grid_kwargs: tuple[dict]):
-        grids = (g.amend(*kwargs) for g, kwargs in zip(self.grids, grid_kwargs))
-        return OGrid(*grids, index2cart=self.index2cart)
+    def amend(self, splits):
+        splits = (splits,) if isinstance(splits, int) else splits
+        splits = tuple(np.atleast_1d(s) for s in splits)
+        # Create slices for indexing individal grid regions in split
+        ndims_off = tuple(np.cumsum(tuple(g.ndim for g in self.grids)))
+        islice = tuple(slice(l, r) for l, r in zip((0,) + ndims_off[:-1], ndims_off))
+        # Separate shared splits into splits for the individual grids
+        spg = tuple(zip(*(tuple(spl[i] for i in islice) for spl in splits)))
+        grids = tuple(g.amend(s) for g, s in zip(self.grids, spg))
+        return self.__class__(*grids, atLevel=self.atLevel)
 
-    def at(self, level: int) -> HEALPixGridAtLevel:
-        grids = (g.at(level) for g in self.grids)
-        return OGridAtLevel(grids)
+    def at(self, level: int):
+        level = self._parse_level(level)
+        return self.atLevel(tuple(g.at(level) for g in self.grids))
 
 
 class FlatGridAtLevel:
