@@ -125,14 +125,13 @@ class Grid:
 
 class RegularGridAxisAtLevel(GridAtLevel):
     def index2coord(self, index):
-        return index / self.shape[:, (np.newaxis,) * (index.ndim - 1)]
+        return (index + 0.5) / self.shape[:, (np.newaxis,) * (index.ndim - 1)]
 
     def coord2index(self, coord):
-        return coord * self.shape[:, (np.newaxis,) * (coord.ndim - 1)]
+        return coord * self.shape[:, (np.newaxis,) * (coord.ndim - 1)] - 0.5
 
     def index2volume(self, index):
-        v = np.prod(1.0 / self.shape[:, (np.newaxis,) * (index.ndim - 1)])
-        return v[(np.newaxis,) * index.ndim]
+        return np.array(1.0 / self.size)[(np.newaxis,) * index.ndim]
 
 
 def _fill_bad_healpix_neighbors(nside, neighbors, nest: bool = True):
@@ -246,16 +245,19 @@ class HEALPixGridAtLevel(GridAtLevel):
         return neighbors.astype(dtp)[np.newaxis]
 
     def index2coord(self, index, **kwargs):
-        # TODO
-        return
+        from healpy.pixelfunc import pix2vec
+
+        shp = index.shape[1:]
+        cc = pix2vec(self.nside, np.ravel(index), nest=self.nest)
+        return np.stack(cc, axis=0).reshape((3,) + shp)
 
     def coord2index(self, coord, **kwargs):
-        # TODO
         return NotImplementedError()
 
     def index2volume(self, index, **kwargs):
-        # TODO
-        return NotImplementedError()
+        r = 1.0
+        surface = 4 * np.pi * r**2
+        return (surface / self.size)[(np.newaxis,) * index.ndim]
 
 
 class HEALPixGrid(Grid):
@@ -322,33 +324,6 @@ def _stack_outer(*arrays, outer_axis=-1, stack_axis=0):
         )
         res[(slice(None),) * stack_axis + (i,)] += a
     return res
-
-
-def regularAxis_index2cart(index, size):
-    # Map onto bincenter
-    cc = (index + 0.5) / size
-    # Add dummy axis for 1D space
-    return cc[np.newaxis]
-
-
-def healpixAxis_index2cart(index, nside, nest):
-    from healpy.pixelfunc import pix2vec
-
-    shp = index.shape[1:]
-    cc = pix2vec(nside, np.ravel(index), nest=nest)
-    return np.stack(cc, axis=0).reshape((3,) + shp)
-
-
-def default_index2cart(index, grids):
-    coords = tuple(
-        (
-            healpixAxis_index2cart(index[i], g.nside, g.nest)
-            if isinstance(g, HEALPixGridAtLevel)
-            else regularAxis_index2cart(index[i], g.size)
-        )
-        for i, g in enumerate(grids)
-    )
-    return coords  # TODO better concatenate instead of tuple?
 
 
 @dataclass(kw_only=True)
