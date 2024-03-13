@@ -1,14 +1,14 @@
 image: $CONTAINER_TEST_IMAGE
 
-cache:
-  paths:
-    - .cache/pip
-
 variables:
   CONTAINER_TEST_IMAGE: gitlab-registry.mpcdf.mpg.de/$CI_PROJECT_PATH:$CI_COMMIT_REF_NAME
   PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
   MPLBACKEND: agg
   OMP_NUM_THREADS: 1
+
+cache:
+  paths:
+    - .cache/pip
 
 stages:
   - static_checks
@@ -28,7 +28,6 @@ build_docker_from_scratch:
     - schedules
   image: docker
   stage: build_docker
-  cache:
   before_script:
     - ls
   script:
@@ -41,7 +40,6 @@ build_docker_from_cache:
     - schedules
   image: docker
   stage: build_docker
-  cache:
   before_script:
     - ls
   script:
@@ -66,10 +64,7 @@ test_mpi:
 
 pages:
   stage: release
-  before_script:
-    - ls
   script:
-    - python3 -m pip install '.[doc]'
     - git config --global --add safe.directory /builds/ift/nifty
     - git clean -xfd docs/source
     - sh docs/generate.sh
