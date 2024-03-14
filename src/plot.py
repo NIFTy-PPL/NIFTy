@@ -529,7 +529,6 @@ def _plot(f, ax, **kwargs):
     _register_cmaps()
     if isinstance(f, (Field, EnergyHistory)):
         f = [f]
-    f = list(f)
     if isinstance(f[0], EnergyHistory):
         _plot_history(f, ax, **kwargs)
         return
