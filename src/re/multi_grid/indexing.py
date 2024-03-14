@@ -407,10 +407,128 @@ class OGrid(Grid):
         return self.atLevel(tuple(g.at(level) for g in self.grids))
 
 
-class FlatGridAtLevel:
+class FlatGridAtLevel(GridAtLevel):
     """Same as :class:`Grid` but with a single global integer index for each voxel."""
 
-    ogrid: OGrid
+    gridAtLevel: GridAtLevel
+    shape0: npt.NDArray[np.int_]
+    all_parent_splits: tuple[npt.NDArray[np.int_]]
+    ordering: str
+
+    def __init__(self, gridAtLevel, shape0, all_parent_splits, ordering='serial'):
+        if not isinstance(gridAtLevel, GridAtLevel):
+            raise TypeError(f"Grid {gridAtLevel.__name__} of invalid type")
+        self.gridAtLevel = gridAtLevel
+        self.ordering = ordering
+        if ordering not in ['serial', 'nest']:
+            raise ValueError(f"Unknown flat index ordering scheme {ordering}")
+
+        self.shape0 = np.asarray(shape0)
+        self.all_parent_splits = tuple(
+            np.atleast_1d(s) for s in all_parent_splits
+        )
+        super().__init__(
+            self.gridAtLevel.shape,
+            self.gridAtLevel.splits,
+            self.gridAtLevel.parent_splits
+        )
+
+    def _parse_index(self, index):
+        index = np.asarray(index)
+        if np.any(np.abs(index) >= self.size):
+            nm = self.__class__.__name__
+            ve = f"index {index} is out of bounds for {nm} with size {self.size}"
+            raise IndexError(ve)
+        return index % self.size
+
+    def _weights_serial(self, levelshift):
+        shape = self.shape
+        if levelshift == 1:
+            shape *= self.splits
+        elif levelshift == -1:
+            shape //= self.parent_splits
+        else:
+            raise ValueError(f"Inconsistent shift in level: {levelshift}")
+        wgt = np.append(shape[1:], 1)
+        return np.cumprod(wgt[::-1])[::-1]
+
+    def index_to_flatindex(self, index, levelshift = 0):
+        if self.ordering == 'serial':
+            wgt = self._weights_serial(levelshift)
+            wgt = wgt[(slice(None), ) + (np.newaxis,) * (index.ndim - 1)]
+            return (wgt * index).sum(axis = 0).astype(index)
+        if self.ordering == 'nest':
+            raise NotImplementedError
+        raise RuntimeError
+
+    def flatindex_to_index(self, index, levelshift = 0):
+        if self.ordering == 'serial':
+            wgt = self._weights_serial(levelshift)
+            res = np.zeros(wgt.shape + index.shape, dtype=index.dtype)
+            tm = np.copy(index)
+            for i, w in enumerate(wgt):
+                res[i] = tm // w
+                tm -= w * res[i]
+            return res.astype(index.dtype)
+        if self.ordering == 'nest':
+            raise NotImplementedError
+        raise RuntimeError
+
+    def children(self, index) -> np.ndarray:
+        index = self._parse_index(index)
+        index = self.flatindex_to_index(index)
+        children = self.grid.at(self.level).children(index)
+        return self.index_to_flatindex(children, +1)
+
+    def neighborhood(self, index, window_size: Iterable[int], ensemble_axis=None):
+        index = self._parse_index(index)
+        index = self.flatindex_to_index(index)
+        window = self.grid.at(self.level).neighborhood(
+            index,
+            window_size = window_size,
+            ensemble_axis = ensemble_axis
+        )
+        return self.index_to_flatindex(window)
+
+    def parent(self, index):
+        index = self._parse_index(index)
+        index = self.flatindex_to_index(index)
+        window = self.grid.at(self.level).parent(index)
+        return self.index_to_flatindex(window, -1)
+
+    def index2coord(self, index, **kwargs):
+        index = self.flatindex_to_index(index)
+        return self.gridAtLevel.index2coord(index, **kwargs)
+
+    def coord2index(self, coord, **kwargs):
+        index = self.gridAtLevel.coord2index(coord, **kwargs)
+        return self.index_to_flatindex(index)
+
+    def index2volume(self, index, **kwargs):
+        index = self.flatindex_to_index(index)
+        return self.gridAtLevel.index2volume(index, **kwargs)
+
+
+class FlatGrid(Grid):
+    """Same as :class:`Grid` but with a single global integer index for each voxel."""
+    grid: Grid
+    nest: bool
+
+    def __init__(self, grid: Grid, nest=True):
+        self.grid = grid
+        self.nest = nest
+        super().__init__(
+            shape0=grid.shape0, splits=grid.splits, atLevel=FlatGridAtLevel
+        )
+
+    def amend(self, splits, **kwargs):
+        grid = self.grid.amend(splits, **kwargs)
+        return self.__class__(grid, nest=self.nest)
+
+    def at(self, level: int):
+        level = self._parse_level(level)
+
+
 
 
 class SparseGridAtLevel(FlatGridAtLevel):
