@@ -384,7 +384,7 @@ def _plot1D(f, ax, **kwargs):
 
 
 def plottable1D(f):
-    dom = tuple(f)[0].domain
+    dom = f[0].domain
     is_1d_plottable = isinstance(dom[0], (RGSpace, PowerSpace))
     is_1d_plottable &= (len(dom) == 1) and (len(dom.shape) == 1)
     is_1d_plottable &= all(dom == el.domain for el in f)
