@@ -2,13 +2,8 @@ image: $CONTAINER_TEST_IMAGE
 
 variables:
   CONTAINER_TEST_IMAGE: gitlab-registry.mpcdf.mpg.de/$CI_PROJECT_PATH:$CI_COMMIT_REF_NAME
-  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
   MPLBACKEND: agg
   OMP_NUM_THREADS: 1
-
-cache:
-  paths:
-    - .cache/pip
 
 stages:
   - static_checks
@@ -18,10 +13,7 @@ stages:
   - demo_runs
 
 before_script:
-  - python3 -V
-  - python3 -m venv venv
-  - source venv/bin/activate
-  - python3 -m pip install '.[all]'
+  - python3 -m pip install --user --break-system-packages .
 
 build_docker_from_scratch:
   only:
