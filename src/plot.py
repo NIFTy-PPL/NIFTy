@@ -388,16 +388,11 @@ def _plot1D(f, ax, **kwargs):
 
 
 def plottable1D(f):
-    plottable = []
-    for i, fld in enumerate(f):
-        if i == 0:
-            dom = fld.domain
-            plottable.append(len(dom) == 1)
-            plottable.append(len(dom.shape) == 1)
-        plottable.append(fld.domain == dom)
-    dom = dom[0]
-    plottable.append(isinstance(dom, (RGSpace, PowerSpace)))
-    return all(plottable)
+    dom = tuple(f)[0].domain
+    is_1d_plottable = isinstance(dom[0], (RGSpace, PowerSpace))
+    is_1d_plottable &= (len(dom) == 1) and (len(dom.shape) == 1)
+    is_1d_plottable &= all(dom == el.domain for el in f)
+    return is_1d_plottable
 
 
 def plottable2D(fld, f_space=1):
