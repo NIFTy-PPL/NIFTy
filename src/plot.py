@@ -356,11 +356,7 @@ def _plot_history(f, ax, **kwargs):
 def _plot1D(f, ax, **kwargs):
     import matplotlib.pyplot as plt
 
-    for i, fld in enumerate(f):
-        if i == 0:
-            dom = fld.domain
-    dom = dom[0]
-
+    dom = f[0].domain[0]
     add_kwargs, with_legend = _extract_list_kwargs(kwargs, ("label", "alpha", "color", "linewidth"), len(f))
 
     if isinstance(dom, RGSpace):
