@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# SPDX-License-Identifier: BSD-2-Clause
+# SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 # Authors: Philipp Frank, Jakob Roth, Gordian Edenhofer
 
 import inspect
@@ -37,20 +37,20 @@ def get_status_message(
     msg_smpl = ""
     if isinstance(state.sample_state, optimize.OptimizeResults):
         nlsi = tuple(int(el) for el in state.sample_state.nit)
-        msg_smpl = f"\n#(Nonlinear Sampling Steps) {nlsi}"
+        msg_smpl = f"\n{name}: #(Nonlinear sampling steps) {nlsi}"
     elif isinstance(state.sample_state, (np.ndarray, jax.Array)):
         nlsi = tuple(int(el) for el in state.sample_state)
-        msg_smpl = f"\nLinear Sampling Status {nlsi}"
+        msg_smpl = f"\n{name}: Linear sampling status {nlsi}"
     mini_res = ""
     if residual is not None:
         _, mini_res = minisanity(samples, residual, map=map)
     _, mini_pr = minisanity(samples, map=map)
     msg = (
-        f"Post {name}: Iteration {state.nit - 1:04d} ⛰:{energy:+2.4e}"
+        f"{name}: Iteration {state.nit:04d} ⛰:{energy:+2.4e}"
         f"{msg_smpl}"
-        f"\n#(KL minimization steps) {state.minimization_state.nit}"
-        f"\nLikelihood residual(s):\n{mini_res}"
-        f"\nPrior residual(s):\n{mini_pr}"
+        f"\n{name}: #(KL minimization steps) {state.minimization_state.nit}"
+        f"\n{name}: Likelihood residual(s):\n{mini_res}"
+        f"\n{name}: Prior residual(s):\n{mini_pr}"
         f"\n"
     )
     return msg
@@ -175,10 +175,13 @@ class OptimizeVI:
     transformed in this way has the inverse metric as covariance. The first
     part is trivial since we can use the left square root of the metric
     :math:`L` associated with every likelihood:
+
     .. math::
         \\tilde{d} \\leftarrow \\mathcal{G}(0,\\mathbb{1}) \\
         t = L \\tilde{d}
+
     with :math:`t` now having a covariance structure of
+
     .. math::
         <t t^\\dagger> = L <\\tilde{d} \\tilde{d}^\\dagger> L^\\dagger = M .
 
@@ -186,9 +189,11 @@ class OptimizeVI:
     metric. We can do so using the conjugate gradient algorithm (CG). The CG
     algorithm yields the solution to :math:`M s = t`, i.e. applies the
     inverse of :math:`M` to :math:`t`:
+
     .. math::
         M &s =  t \\\\
         &s = M^{-1} t = cg(M, t) .
+
     The linear sample is :math:`s`.
 
     The nonlinear sampling uses :math:`s` as a starting value and curves it in
@@ -223,7 +228,7 @@ class OptimizeVI:
         """JaxOpt style minimizer for a VI approximation of a distribution with
         samples.
 
-        Parameters:
+        Parameters
         ----------
         likelihood: :class:`~nifty8.re.likelihood.Likelihood`
             Likelihood to be used for inference.
@@ -243,8 +248,8 @@ class OptimizeVI:
         mirror_samples: bool
             Whether to mirror the samples or not.
 
-        Notes:
-        ------
+        Notes
+        -----
         Implements the base logic present in conditional VI approximations
         such as MGVI and geoVI. First samples are generated (and/or updated)
         and then their collective mean is optimized for using the sample
@@ -425,7 +430,7 @@ class OptimizeVI:
         self,
         key,
         *,
-        nit=-1,
+        nit=0,
         n_samples: Union[int, Callable[[int], int]],
         draw_linear_kwargs: DICT_OR_CALL4DICT_TYP = dict(
             cg_name="SL", cg_kwargs=dict()
@@ -510,9 +515,7 @@ class OptimizeVI:
         """
         assert isinstance(samples, Samples)
         assert isinstance(state, OptimizeVIState)
-        nit = state.nit + 1
-        key = state.key
-        config = state.config
+        nit, key, config = state.nit, state.key, state.config
 
         constants = _getitem_at_nit(config, "constants", nit)
         if not (constants == () or constants is None):
@@ -547,7 +550,7 @@ class OptimizeVI:
         )
 
         state = state._replace(
-            nit=nit,
+            nit=nit + 1,
             key=key,
             sample_state=st_smpls,
             minimization_state=kl_opt_state,
@@ -556,10 +559,13 @@ class OptimizeVI:
 
     def run(self, samples, *args, **kwargs) -> tuple[Samples, OptimizeVIState]:
         state = self.init_state(*args, **kwargs)
-        for i in range(state.nit, self.n_total_iterations - 1):
-            logger.info(f"{self.__class__.__name__} :: {i+1:04d}")
+        nm = self.__class__.__name__
+        for i in range(state.nit, self.n_total_iterations):
+            logger.info(f"{nm}: Starting {i+1:04d}")
             samples, state = self.update(samples, state)
-            msg = self.get_status_message(samples, state, map=self.residual_map)
+            msg = self.get_status_message(
+                samples, state, map=self.residual_map, name=nm
+            )
             logger.info(msg)
         return samples, state
 
@@ -606,6 +612,7 @@ def optimize_kl(
         optimization state.
     odir : str or None
         Path at which all output files are saved.
+
 
     See :class:`OptimizeVI` and :func:`OptimizeVI.init_state` for the remaining
     parameters and further details on the optimization.
@@ -666,10 +673,11 @@ def optimize_kl(
     if odir:
         makedirs(odir, exist_ok=True)
 
-    for i in range(opt_vi_st.nit, opt_vi.n_total_iterations - 1):
-        logger.info(f"OPTIMIZE_KL Iteration {i+1:04d}")
+    nm = "OPTIMIZE_KL"
+    for i in range(opt_vi_st.nit, opt_vi.n_total_iterations):
+        logger.info(f"{nm}: Starting {i+1:04d}")
         samples, opt_vi_st = opt_vi.update(samples, opt_vi_st)
-        msg = opt_vi.get_status_message(samples, opt_vi_st)
+        msg = opt_vi.get_status_message(samples, opt_vi_st, name=nm)
         logger.info(msg)
         if sanity_fn is not None:
             with open(sanity_fn, "a") as f:
@@ -679,7 +687,7 @@ def optimize_kl(
                 # TODO: Make all arrays numpy arrays as to not instantiate on
                 # the main device when loading
                 pickle.dump((samples, opt_vi_st._replace(config={})), f)
-        if callback != None:
+        if callback is not None:
             callback(samples, opt_vi_st)
 
     return samples, opt_vi_st

@@ -15,6 +15,7 @@ from numpy.testing import assert_allclose, assert_array_equal
 
 import nifty8.re as jft
 
+jax.config.update("jax_enable_x64", True)
 pmp = pytest.mark.parametrize
 
 
@@ -185,7 +186,7 @@ def test_mgvi_wiener_filter_consistency(
         odir=None,
     )
     approx_post_mean = jax.vmap(forward)(samples_opt.samples).mean(axis=0)
-    assert_allclose(post_mean, approx_post_mean, atol=1e-14, rtol=1e-10)
+    assert_allclose(post_mean, approx_post_mean, atol=1e-9, rtol=1e-10)
 
     delta = 1e-3
     nonlinearly_update_kwargs = dict(

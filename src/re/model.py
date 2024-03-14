@@ -269,6 +269,7 @@ class WrappedCall(Model):
             which `call` acts. This is redundant if `shape` already encodes the
             `dtype`.
 
+
         See :class:`Model` for details on the remaining arguments.
         """
         leaves = tree_leaves(shape)

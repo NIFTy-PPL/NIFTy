@@ -7,6 +7,7 @@ pytest.importorskip("jax")
 import jax
 import jax.numpy as jnp
 from jax import random
+from jax.tree_util import tree_map
 from numpy.testing import assert_array_equal
 
 import nifty8.re as jft
@@ -68,7 +69,7 @@ def test_map_g(map, in_axes, out_axes, seed):
         inp.append(random.normal(k, shape=shp))
     v = vf(*inp)
     s = sf(*inp)
-    jax.tree_map(assert_array_equal, v, s)
+    tree_map(assert_array_equal, v, s)
 
 
 def h(u, v, w):
@@ -88,4 +89,4 @@ def test_map_h(map, in_axes, out_axes, seed):
     inp = [random.normal(k, shape=(1, 2, 3)) for k in random.split(key, 3)]
     v = vf(*inp)
     s = sf(*inp)
-    jax.tree_map(assert_array_equal, v, s)
+    tree_map(assert_array_equal, v, s)

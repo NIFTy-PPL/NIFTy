@@ -3,6 +3,11 @@
 # Copyright(C) 2013-2021 Max-Planck-Society
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 
+# %% [markdown]
+# # Demonstration of the non-parametric correlated field model in NIFTy.re
+
+# ## The Model
+
 # %%
 import jax
 import matplotlib.pyplot as plt
@@ -18,25 +23,21 @@ key = random.PRNGKey(seed)
 
 dims = (128, 128)
 
-cf_zm = dict(offset_mean=0., offset_std=(1e-3, 1e-4))
+cf_zm = dict(offset_mean=0.0, offset_std=(1e-3, 1e-4))
 cf_fl = dict(
     fluctuations=(1e-1, 5e-3),
-    loglogavgslope=(-1., 1e-2),
-    flexibility=(1e+0, 5e-1),
+    loglogavgslope=(-1.0, 1e-2),
+    flexibility=(1e0, 5e-1),
     asperity=(5e-1, 5e-2),
 )
 cfm = jft.CorrelatedFieldMaker("cf")
 cfm.set_amplitude_total_offset(**cf_zm)
 cfm.add_fluctuations(
-    dims,
-    distances=1. / dims[0],
-    **cf_fl,
-    prefix="ax1",
-    non_parametric_kind="power"
+    dims, distances=1.0 / dims[0], **cf_fl, prefix="ax1", non_parametric_kind="power"
 )
 correlated_field = cfm.finalize()
 
-scaling = jft.LogNormalPrior(3., 1., name="scaling", shape=(1, ))
+scaling = jft.LogNormalPrior(3.0, 1.0, name="scaling", shape=(1,))
 
 
 class Signal(jft.Model):
@@ -60,7 +61,7 @@ class Signal(jft.Model):
 signal = Signal(correlated_field, scaling)
 
 # %% [markdown]
-# ## NIFTy to NIFTY.re
+# ### NIFTy to NIFTy.re
 
 # The equivalent model for the correlated field in numpy-based NIFTy reads
 
@@ -76,7 +77,7 @@ signal = Signal(correlated_field, scaling)
 # cfm_nft.add_fluctuations(position_space, **cf_fl_nft, prefix="ax1")
 # cfm_nft.set_amplitude_total_offset(**cf_zm)
 # correlated_field_nft = cfm_nft.finalize()
-#```
+# ```
 
 # For convience, NIFTy implements a method to translate numpy-based NIFTy
 # operators to NIFTy.re. One can access the equivalent expression in JAX for a
@@ -87,7 +88,7 @@ signal = Signal(correlated_field, scaling)
 # domains, they return [JAX PyTrees](TODO:cite PyTree docu) of shape-and-dtype
 # objects.
 
-#```python
+# ```python
 # # Convenience method to get JAX expression as NIFTy.re model which tracks
 # # domain and target
 # correlated_field_nft: jft.Model = ift.nifty2jax.convert(
@@ -110,14 +111,14 @@ signal = Signal(correlated_field, scaling)
 # care when translating them to NIFTy.re/JAX which requires known dtypes.
 
 # %% [markdown]
-# ## Notes on Refinement Field
+# ### Notes on Refinement Field
 
-# The above could cust as well be a refinement field e.g. on a HEALPix sphere
+# The above could just as well be a refinement field e.g. on a HEALPix sphere
 # with logarithmically spaced radial voxels. All of NIFTy.re is agnostic to the
 # specifics of the forward model. The sampling and minimization always works the
 # same.
 
-# %%
+# ```python
 # def matern_kernel(distance, scale=1., cutoff=1., dof=1.5):
 #     if dof == 0.5:
 #         cov = scale**2 * jnp.exp(-distance / cutoff)
@@ -153,6 +154,10 @@ signal = Signal(correlated_field, scaling)
 # correlated_field = jft.Model(
 #     partial(rf, kernel=rfm), domain=rf.domain, init=rf.init
 # )
+# ```
+
+# %% [markdown]
+# ## The likelihood
 
 # %%
 signal_response = signal
@@ -164,38 +169,31 @@ key, subkey = random.split(key)
 pos_truth = jft.random_like(subkey, signal_response.domain)
 signal_response_truth = signal_response(pos_truth)
 key, subkey = random.split(key)
-noise_truth = ((noise_cov(jft.ones_like(signal_response.target)))**
-               0.5) * jft.random_like(key, signal_response.target)
+noise_truth = (
+    (noise_cov(jft.ones_like(signal_response.target))) ** 0.5
+) * jft.random_like(key, signal_response.target)
 data = signal_response_truth + noise_truth
 
-nll = jft.Gaussian(data, noise_cov_inv).amend(signal_response)
+lh = jft.Gaussian(data, noise_cov_inv).amend(signal_response)
+
+# %% [markdown]
+# ## The inference
 
 # %%
 n_vi_iterations = 6
 delta = 1e-4
-absdelta = delta * jnp.prod(jnp.array(dims))
 n_samples = 4
 
-
-def sample_mode_update(i):
-    if i < 2:
-        return "linear_resample"
-    if i < 4:
-        return "nonlinear_resample"
-    return "nonlinear_update"
-
-
-key, subkey = random.split(key)
-pos_init = jft.Vector(jft.random_like(subkey, signal_response.domain))
+key, k_i, k_o = random.split(key, 3)
 # NOTE, changing the number of samples always triggers a resampling even if
 # `resamples=False`, as more samples have to be drawn that did not exist before.
 samples, state = jft.optimize_kl(
-    nll,
-    pos_init,
+    lh,
+    jft.Vector(lh.init(k_i)),
     n_total_iterations=n_vi_iterations,
     n_samples=lambda i: n_samples // 2 if i < 2 else n_samples,
     # Source for the stochasticity for sampling
-    key=key,
+    key=k_o,
     # Names of parameters that should not be sampled but still optimized
     # can be specified as point_estimates (effectively we are doing MAP for
     # these degrees of freedom).
@@ -203,7 +201,8 @@ samples, state = jft.optimize_kl(
     # Arguments for the conjugate gradient method used to drawing samples from
     # an implicit covariance matrix
     draw_linear_kwargs=dict(
-        cg_name="SL", cg_kwargs=dict(absdelta=absdelta / 10., maxiter=100)
+        cg_name="SL",
+        cg_kwargs=dict(absdelta=delta * jft.size(lh.domain) / 10.0, maxiter=100),
     ),
     # Arguements for the minimizer in the nonlinear updating of the samples
     nonlinearly_update_kwargs=dict(
@@ -217,13 +216,14 @@ samples, state = jft.optimize_kl(
     # Arguments for the minimizer of the KL-divergence cost potential
     kl_kwargs=dict(
         minimize_kwargs=dict(
-            name="M", absdelta=absdelta, cg_kwargs=dict(name="MCG"), maxiter=35
+            name="M", xtol=delta, cg_kwargs=dict(name=None), maxiter=35
         )
     ),
-    sample_mode=sample_mode_update,
-    odir="results_nifty_re",
+    sample_mode="nonlinear_resample",
+    odir="results_intro",
     resume=False,
 )
+
 # %%
 namps = cfm.get_normalized_amplitudes()
 post_sr_mean = jft.mean(tuple(signal(s) for s in samples))
@@ -243,9 +243,9 @@ for ax, (title, field, tp) in zip(axs.flat, to_plot):
         plt.colorbar(im, ax=ax, orientation="horizontal")
     else:
         ax_plot = ax.loglog if tp == "loglog" else ax.plot
-        field = field if isinstance(field, (tuple, list)) else (field, )
+        field = field if isinstance(field, (tuple, list)) else (field,)
         for f in field:
             ax_plot(f, alpha=0.7)
 fig.tight_layout()
-fig.savefig("cf_w_unknown_spectrum.png", dpi=400)
-plt.close()
+fig.savefig("results_intro_full_reconstruction.png", dpi=400)
+plt.show()

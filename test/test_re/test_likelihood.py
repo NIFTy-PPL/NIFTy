@@ -8,6 +8,7 @@ import jax
 import pytest
 from jax import numpy as jnp
 from jax import random
+from jax.tree_util import tree_map
 from numpy.testing import assert_allclose
 
 import nifty8.re as jft
@@ -21,7 +22,7 @@ def _identity(x):
 
 
 def tree_assert_allclose(a, b, **kwargs):
-    return jax.tree_map(partial(assert_allclose, **kwargs), a, b)
+    return tree_map(partial(assert_allclose, **kwargs), a, b)
 
 
 def test_partial_insert_and_remove():
@@ -55,7 +56,7 @@ def test_likelihood_partial(seed, forward):
     aallclose = partial(assert_allclose, rtol=rtol, atol=atol)
 
     key = random.PRNGKey(seed)
-    forward = partial(jax.tree_map, forward)
+    forward = partial(tree_map, forward)
 
     domain = jft.Vector(
         {
@@ -74,14 +75,14 @@ def test_likelihood_partial(seed, forward):
     )
     assert primals_liquid.tree[0].shape == domain["a"].shape
     aallclose(gaussian_part(primals_liquid), gaussian(primals))
-    jax.tree_map(
+    tree_map(
         aallclose,
         gaussian_part.left_sqrt_metric(primals_liquid, data).tree[0],
         gaussian.left_sqrt_metric(primals, data).tree["a"],
     )
     rsm_orig = gaussian.right_sqrt_metric(primals, primals)
     rsm_orig.tree["b"] = jft.zeros_like(rsm_orig.tree["b"])
-    jax.tree_map(
+    tree_map(
         aallclose,
         gaussian_part.right_sqrt_metric(primals_liquid, primals_liquid),
         rsm_orig,
@@ -102,7 +103,7 @@ def test_likelihood_domain():
 
 
 def _Poissonian(x):
-    return jft.Poissonian(jax.tree_map(lambda y: jnp.exp(y).astype(int), x))
+    return jft.Poissonian(tree_map(lambda y: jnp.exp(y).astype(int), x))
 
 
 @pmp("seed", (33, 42, 43))
@@ -117,14 +118,14 @@ def test_nonvariable_likelihood_add(seed, likelihood, forward_a, forward_b):
     key_a, key_b = "a", "b"
 
     def fwd_a(x):
-        x = jax.tree_map(forward_a, x[key_a])
+        x = tree_map(forward_a, x[key_a])
         everything_pos = likelihood is _Poissonian
-        return jax.tree_map(jnp.abs, x) if everything_pos else x
+        return tree_map(jnp.abs, x) if everything_pos else x
 
     def fwd_b(x):
-        x = jax.tree_map(forward_b, x[key_b])
+        x = tree_map(forward_b, x[key_b])
         everything_pos = likelihood is _Poissonian
-        return jax.tree_map(jnp.abs, x) if everything_pos else x
+        return tree_map(jnp.abs, x) if everything_pos else x
 
     def forward(x):
         return jft.Vector({key_a: fwd_a(x), key_b: fwd_b(x)})
@@ -210,12 +211,12 @@ def test_variable_likelihood_add(seed, likelihood, forward_a, forward_b):
     key_a, key_b = "a", "b"
 
     def fwd_a(x):
-        x1, x2 = jax.tree_map(forward_a, x[key_a])
-        return (x1, jax.tree_map(jnp.abs, x2))
+        x1, x2 = tree_map(forward_a, x[key_a])
+        return (x1, tree_map(jnp.abs, x2))
 
     def fwd_b(x):
-        x1, x2 = jax.tree_map(forward_b, x[key_b])
-        return (x1, jax.tree_map(jnp.abs, x2))
+        x1, x2 = tree_map(forward_b, x[key_b])
+        return (x1, tree_map(jnp.abs, x2))
 
     def forward(x):
         a1, a2 = fwd_a(x)
