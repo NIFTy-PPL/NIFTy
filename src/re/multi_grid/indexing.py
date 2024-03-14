@@ -408,7 +408,7 @@ class OGrid(Grid):
 
 
 class FlatGridAtLevel(GridAtLevel):
-    """Same as :class:`Grid` but with a single global integer index for each voxel."""
+    """Same as :class:`GridAtLevel` but with a single global integer index for each voxel."""
 
     gridAtLevel: GridAtLevel
     shape0: npt.NDArray[np.int_]
@@ -508,13 +508,13 @@ class FlatGridAtLevel(GridAtLevel):
     def children(self, index) -> np.ndarray:
         index = self._parse_index(index)
         index = self.flatindex_to_index(index)
-        children = self.grid.at(self.level).children(index)
+        children = self.gridAtLevel.children(index)
         return self.index_to_flatindex(children, +1)
 
     def neighborhood(self, index, window_size: Iterable[int], ensemble_axis=None):
         index = self._parse_index(index)
         index = self.flatindex_to_index(index)
-        window = self.grid.at(self.level).neighborhood(
+        window = self.gridAtLevel.neighborhood(
             index,
             window_size = window_size,
             ensemble_axis = ensemble_axis
@@ -524,7 +524,7 @@ class FlatGridAtLevel(GridAtLevel):
     def parent(self, index):
         index = self._parse_index(index)
         index = self.flatindex_to_index(index)
-        window = self.grid.at(self.level).parent(index)
+        window = self.gridAtLevel.parent(index)
         return self.index_to_flatindex(window, -1)
 
     def index2coord(self, index, **kwargs):
