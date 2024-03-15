@@ -356,22 +356,7 @@ def _plot_history(f, ax, **kwargs):
 def _plot1D(f, ax, **kwargs):
     import matplotlib.pyplot as plt
 
-    for i, fld in enumerate(f):
-        if not isinstance(fld, Field):
-            raise TypeError("incorrect data type")
-        if i == 0:
-            dom = fld.domain
-            if len(dom) != 1:
-                raise ValueError("input field must have exactly one domain")
-            if len(dom.shape) != 1:
-                raise ValueError("input field must have exactly one dimension")
-        else:
-            check_object_identity(fld.domain, dom)
-    dom = dom[0]
-
-    if not isinstance(dom, (RGSpace, PowerSpace)):
-        raise ValueError("Field type not(yet) supported")
-
+    dom = f[0].domain[0]
     add_kwargs, with_legend = _extract_list_kwargs(kwargs, ("label", "alpha", "color", "linewidth"), len(f))
 
     if isinstance(dom, RGSpace):
@@ -396,6 +381,14 @@ def _plot1D(f, ax, **kwargs):
     _limit_xy(**kwargs)
     if with_legend:
         ax.legend(loc="upper right")
+
+
+def plottable1D(f):
+    dom = f[0].domain
+    is_1d_plottable = isinstance(dom[0], (RGSpace, PowerSpace))
+    is_1d_plottable &= (len(dom) == 1) and (len(dom.shape) == 1)
+    is_1d_plottable &= all(dom == el.domain for el in f)
+    return is_1d_plottable
 
 
 def plottable2D(fld, f_space=1):
@@ -447,8 +440,6 @@ def _plot2D(f, ax, **kwargs):
     import matplotlib.pyplot as plt
     from mpl_toolkits.axes_grid1 import make_axes_locatable
 
-    if len(f) != 1:
-        raise ValueError("Can plot only one 2d field")
     f = f[0]
     dom = f.domain
 
@@ -536,30 +527,20 @@ def _plotHist(f, ax, **kwargs):
 
 def _plot(f, ax, **kwargs):
     _register_cmaps()
-    if isinstance(f, (Field, EnergyHistory)):
-        f = [f]
-    f = list(f)
-    if len(f) == 0:
-        raise ValueError("need something to plot")
     if isinstance(f[0], EnergyHistory):
         _plot_history(f, ax, **kwargs)
         return
-    if not isinstance(f[0], Field):
-        raise TypeError("incorrect data type")
 
     ax.set_title(kwargs.pop("title", ""))
     ax.set_xlabel(kwargs.pop("xlabel", ""))
     ax.set_ylabel(kwargs.pop("ylabel", ""))
-    try:
+
+    if plottable1D(f):
         _plot1D(f, ax, **kwargs)
         return
-    except ValueError:
-        pass
-    try:
+    if plottable2D(f[0], kwargs.get("freq_space_idx", 1)):
         _plot2D(f, ax, **kwargs)
         return
-    except ValueError:
-        pass
     _plotHist(f, ax, **kwargs)
 
 
@@ -612,6 +593,8 @@ class Plot:
             return
         if isinstance(f, (MultiField, Field, EnergyHistory)):
             f = [f]
+        if not isinstance(f[0], (MultiField, Field, EnergyHistory)):
+            raise TypeError("Incorrect data type. You can only add Fields or EnergyHistories, or None")
         if hasattr(f, "__len__") and all(isinstance(ff, MultiField) for ff in f):
             for kk in f[0].domain.keys():
                 self._plots.append([ff[kk] for ff in f])
@@ -680,6 +663,8 @@ class Plot:
             return
 
         nplot = len(self._plots)
+        if nplot == 0:
+            raise ValueError("Use .add to add plots to your plotting routine.")
         fig = plt.figure()
         if "title" in kwargs:
             plt.suptitle(kwargs.pop("title"))
