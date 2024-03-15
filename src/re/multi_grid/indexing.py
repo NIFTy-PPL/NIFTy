@@ -543,6 +543,39 @@ class FlatGridAtLevel(GridAtLevel):
         return self.gridAtLevel.index2volume(index, **kwargs)
 
 
+class FlatGrid(Grid):
+    """Same as :class:`Grid` but with a single global integer index for each voxel."""
+
+    grid: Grid
+    ordering: str
+
+    def __init__(self, grid, ordering = 'nest'):
+        if not isinstance(grid, Grid):
+            raise TypeError(f"Grid {grid.__name__} of invalid type")
+        self.grid = grid
+        if ordering not in ['serial', 'nest']:
+            raise ValueError(f"Unknown flat index ordering scheme {ordering}")
+        self.ordering = ordering
+        super().__init__(
+            shape0 = grid.shape0,
+            splits=grid.splits,
+            atLevel=FlatGridAtLevel
+        )
+
+    def amend(self, splits):
+        grid = self.grid.amend(splits)
+        return self.__class__(grid=grid, ordering=self.ordering)
+
+    def at(self, level: int):
+        level = self._parse_level(level)
+        gridAtLevel =  self.grid.at(level)
+        return self.atLevel(gridAtLevel,
+                            self.grid.shape0,
+                            self.grid.splits[:level],
+                            ordering=self.ordering
+        )
+
+# TODO still work in progress...
 class SparseGridAtLevel(FlatGridAtLevel):
     real2flat: npt.NDArray[np.int_]
     flat2real: dict
