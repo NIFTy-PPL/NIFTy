@@ -587,8 +587,8 @@ class SparseGridAtLevel(FlatGridAtLevel):
 
     def __init__(self,
                  gridAtLevel,
-                 shape0,
-                 all_parent_splits,
+                 gridshape0,
+                 grid_all_splits,
                  mapping,
                  ordering='nest',
                  parent_mapping=None,
@@ -600,8 +600,8 @@ class SparseGridAtLevel(FlatGridAtLevel):
         self.children_mapping = children_mapping
         super().__init__(
             gridAtLevel=gridAtLevel,
-            shape0=shape0,
-            all_parent_splits=all_parent_splits,
+            gridshape0=gridshape0,
+            grid_all_splits=grid_all_splits,
             ordering=ordering
         )
         self.shape = (self.mapping.size, )
