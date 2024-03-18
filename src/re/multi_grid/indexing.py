@@ -415,26 +415,24 @@ class FlatGridAtLevel(GridAtLevel):
     grid_all_splits: tuple[npt.NDArray[np.int_]]
     ordering: str
 
-    def __init__(self, gridAtLevel, gridshape0, grid_all_splits, ordering='nest'):
+    def __init__(self, gridAtLevel, gridshape0, grid_all_splits, ordering="nest"):
         if not isinstance(gridAtLevel, GridAtLevel):
             raise TypeError(f"Grid {gridAtLevel.__name__} of invalid type")
         self.gridAtLevel = gridAtLevel
         self.ordering = ordering
-        if ordering not in ['serial', 'nest']:
+        if ordering not in ["serial", "nest"]:
             raise ValueError(f"Unknown flat index ordering scheme {ordering}")
 
         self.gridshape0 = np.asarray(gridshape0)
-        self.grid_all_splits = tuple(
-            np.atleast_1d(s) for s in grid_all_splits
-        )
+        self.grid_all_splits = tuple(np.atleast_1d(s) for s in grid_all_splits)
         super().__init__(
-            shape=(reduce(operator.mul, gridAtLevel.shape, 1), ),
+            shape=(reduce(operator.mul, gridAtLevel.shape, 1),),
             splits=None,
-            parent_splits=None
+            parent_splits=None,
         )
 
     def _parse_index(self, index):
-        #TODO think about adding dummy axis to flat indices to match Grids
+        # TODO think about adding dummy axis to flat indices to match Grids
         index = np.asarray(index)
         if np.any(np.abs(index) >= self.size):
             nm = self.__class__.__name__
@@ -443,7 +441,7 @@ class FlatGridAtLevel(GridAtLevel):
         return index % self.size
 
     def _weights_serial(self, levelshift):
-        shape = (self.gridshape0, ) + self.grid_all_splits
+        shape = (self.gridshape0,) + self.grid_all_splits
         if levelshift == 0:
             shape = shape[:-1]
         elif levelshift == -1:
@@ -456,7 +454,7 @@ class FlatGridAtLevel(GridAtLevel):
         return np.cumprod(wgt[::-1])[::-1]
 
     def _weights_nest(self, levelshift):
-        wgts = (self.gridshape0, ) + self.grid_all_splits
+        wgts = (self.gridshape0,) + self.grid_all_splits
         if levelshift == 0:
             wgts = wgts[:-1]
         elif levelshift == -1:
@@ -466,28 +464,28 @@ class FlatGridAtLevel(GridAtLevel):
                 raise ValueError(f"Inconsistent shift in level: {levelshift}")
         return np.stack(wgts, axis=0)
 
-    def index_to_flatindex(self, index, levelshift = 0):
-        if self.ordering == 'serial':
+    def index_to_flatindex(self, index, levelshift=0):
+        if self.ordering == "serial":
             wgt = self._weights_serial(levelshift)
-            wgt = wgt[(slice(None), ) + (np.newaxis,) * (index.ndim - 1)]
-            return (wgt * index).sum(axis = 0).astype(index)
-        if self.ordering == 'nest':
-            #TODO vectorize better
+            wgt = wgt[(slice(None),) + (np.newaxis,) * (index.ndim - 1)]
+            return (wgt * index).sum(axis=0).astype(index)
+        if self.ordering == "nest":
+            # TODO vectorize better
             fid = np.zeros(index.shape[1:], dtype=index.dtype)
             wgts = self._weights_nest(levelshift)
             for n, ww in enumerate(wgts):
                 j = 0
                 for ax in range(ww.size):
                     j *= ww[ax]
-                    j += (index[ax] // wgts[(n+1):, ax].prod()) % ww[ax]
+                    j += (index[ax] // wgts[(n + 1) :, ax].prod()) % ww[ax]
                 fid *= ww.prod()
                 fid += j
             return fid
         raise RuntimeError
 
-    def flatindex_to_index(self, index, levelshift = 0):
-        #TODO vectorize better
-        if self.ordering == 'serial':
+    def flatindex_to_index(self, index, levelshift=0):
+        # TODO vectorize better
+        if self.ordering == "serial":
             wgt = self._weights_serial(levelshift)
             res = np.zeros(wgt.shape + index.shape, dtype=index.dtype)
             tm = np.copy(index)
@@ -495,7 +493,7 @@ class FlatGridAtLevel(GridAtLevel):
                 res[i] = tm // w
                 tm -= w * res[i]
             return res.astype(index.dtype)
-        if self.ordering == 'nest':
+        if self.ordering == "nest":
             wgts = self._weights_nest(levelshift)
             fid = np.copy(index)
             index = np.zeros((wgts.shape[0],) + index.shape, dtype=index.dtype)
@@ -503,7 +501,7 @@ class FlatGridAtLevel(GridAtLevel):
                 fct = ww.prod()
                 j = fid % fct
                 for ax in range(ww.size)[::-1]:
-                    index[ax] += wgts[(n+1):, ax].prod() * (j % ww[ax])
+                    index[ax] += wgts[(n + 1) :, ax].prod() * (j % ww[ax])
                     j //= ww[ax]
                 fid //= fct
             return index
@@ -519,9 +517,7 @@ class FlatGridAtLevel(GridAtLevel):
         index = self._parse_index(index)
         index = self.flatindex_to_index(index)
         window = self.gridAtLevel.neighborhood(
-            index,
-            window_size = window_size,
-            ensemble_axis = ensemble_axis
+            index, window_size=window_size, ensemble_axis=ensemble_axis
         )
         return self.index_to_flatindex(window)
 
@@ -553,17 +549,15 @@ class FlatGrid(Grid):
     grid: Grid
     ordering: str
 
-    def __init__(self, grid, ordering = 'nest'):
+    def __init__(self, grid, ordering="nest"):
         if not isinstance(grid, Grid):
             raise TypeError(f"Grid {grid.__name__} of invalid type")
         self.grid = grid
-        if ordering not in ['serial', 'nest']:
+        if ordering not in ["serial", "nest"]:
             raise ValueError(f"Unknown flat index ordering scheme {ordering}")
         self.ordering = ordering
         super().__init__(
-            shape0 = grid.shape0,
-            splits=grid.splits,
-            atLevel=FlatGridAtLevel
+            shape0=grid.shape0, splits=grid.splits, atLevel=FlatGridAtLevel
         )
 
     def amend(self, splits):
@@ -572,11 +566,12 @@ class FlatGrid(Grid):
 
     def at(self, level: int):
         level = self._parse_level(level)
-        gridAtLevel =  self.grid.at(level)
-        return self.atLevel(gridAtLevel,
-                            self.grid.shape0,
-                            self.grid.splits[:level],
-                            ordering=self.ordering
+        gridAtLevel = self.grid.at(level)
+        return self.atLevel(
+            gridAtLevel,
+            self.grid.shape0,
+            self.grid.splits[:level],
+            ordering=self.ordering,
         )
 
 
@@ -585,14 +580,16 @@ class SparseGridAtLevel(FlatGridAtLevel):
     parent_mapping: Optional[npt.NDArray[np.int_]] = None
     children_mapping: Optional[npt.NDArray[np.int_]] = None
 
-    def __init__(self,
-                 gridAtLevel,
-                 gridshape0,
-                 grid_all_splits,
-                 mapping,
-                 ordering='nest',
-                 parent_mapping=None,
-                 children_mapping=None):
+    def __init__(
+        self,
+        gridAtLevel,
+        gridshape0,
+        grid_all_splits,
+        mapping,
+        ordering="nest",
+        parent_mapping=None,
+        children_mapping=None,
+    ):
         if not isinstance(gridAtLevel, GridAtLevel):
             raise TypeError(f"Grid {gridAtLevel.__name__} of invalid type")
         self.mapping = mapping
@@ -602,9 +599,9 @@ class SparseGridAtLevel(FlatGridAtLevel):
             gridAtLevel=gridAtLevel,
             gridshape0=gridshape0,
             grid_all_splits=grid_all_splits,
-            ordering=ordering
+            ordering=ordering,
         )
-        self.shape = (self.mapping.size, )
+        self.shape = (self.mapping.size,)
 
     def _mapping(self, levelshift):
         if levelshift == -1:
@@ -622,8 +619,8 @@ class SparseGridAtLevel(FlatGridAtLevel):
         return super().flatindex_to_index(index, levelshift)
 
     def index_to_flatindex(self, index, levelshift=0):
-        #FIXME global vs local dicts?
-        mapping = {fid:i for i,fid in enumerate(self._mapping(levelshift))}
+        # FIXME global vs local dicts?
+        mapping = {fid: i for i, fid in enumerate(self._mapping(levelshift))}
         shp = index.shape
         index = np.array(mapping[ii] for ii in index.ravel()).reshape(shp)
         return super().index_to_flatindex(index, levelshift)
@@ -633,8 +630,9 @@ class SparseGridAtLevel(FlatGridAtLevel):
             self.gridAtLevel,
             self.shape0,
             self.all_parent_splits,
-            ordering=self.ordering
+            ordering=self.ordering,
         )
+
 
 # TODO
 class SparseGrid(Grid):
@@ -645,20 +643,20 @@ class SparseGrid(Grid):
     real2flat: tuple[npt.NDArray[np.int_]]
     flat2real: tuple[dict]
 
-    def __init__(self, grid, real2flat, flat2real = None, ordering='nest'):
+    def __init__(self, grid, real2flat, flat2real=None, ordering="nest"):
         if not isinstance(grid, Grid):
             raise TypeError(f"Grid {grid.__name__} of invalid type")
         self.grid = grid
         self.ordering = ordering
 
-        real2flat = (real2flat, ) if not isinstance(real2flat, tuple) else real2flat
+        real2flat = (real2flat,) if not isinstance(real2flat, tuple) else real2flat
         real2flat = tuple(np.atleast_1d(r) for r in real2flat)
         if flat2real is None:
             flat2real = flat2real = tuple(
-                {a:i for i,a in enumerate(r2f)} for r2f in real2flat
+                {a: i for i, a in enumerate(r2f)} for r2f in real2flat
             )
         else:
-            flat2real = (flat2real, ) if not isinstance(flat2real, tuple) else flat2real
+            flat2real = (flat2real,) if not isinstance(flat2real, tuple) else flat2real
             if len(flat2real) != len(real2flat):
                 msg = "real2flat and flat2real of incompatible depth"
                 raise ValueError(msg)
@@ -676,14 +674,12 @@ class SparseGrid(Grid):
         )
 
     def _process_f2r_and_r2f(real2flat, flat2real):
-        real2flat = (real2flat, ) if not isinstance(real2flat, tuple) else real2flat
+        real2flat = (real2flat,) if not isinstance(real2flat, tuple) else real2flat
         real2flat = tuple(np.atleast_1d(r) for r in real2flat)
         if flat2real is None:
-            flat2real = tuple(
-                {a:i for i,a in enumerate(r2f)} for r2f in real2flat
-            )
+            flat2real = tuple({a: i for i, a in enumerate(r2f)} for r2f in real2flat)
         else:
-            flat2real = (flat2real, ) if not isinstance(flat2real, tuple) else flat2real
+            flat2real = (flat2real,) if not isinstance(flat2real, tuple) else flat2real
             if len(flat2real) != len(real2flat):
                 msg = "real2flat and flat2real of incompatible depth"
                 raise ValueError(msg)
@@ -692,7 +688,7 @@ class SparseGrid(Grid):
                 raise ValueError(msg)
         return real2flat, flat2real
 
-    def amend(self, splits, real2flat, flat2real = None, **kwargs):
+    def amend(self, splits, real2flat, flat2real=None, **kwargs):
         grid = self.grid.amend(splits, **kwargs)
         real2flat, flat2real = self._process_f2r_and_r2f(real2flat, flat2real)
         real2flat = self.real2flat + real2flat
@@ -701,11 +697,12 @@ class SparseGrid(Grid):
 
     def at(self, level: int):
         level = self._parse_level(level)
-        gridAtLevel =  self.grid.at(level)
-        return self.atLevel(gridAtLevel,
-                            self.grid.shape0,
-                            self.grid.splits[:level],
-                            self.real2flat[level],
-                            self.flat2real[level],
-                            ordering=self.ordering
+        gridAtLevel = self.grid.at(level)
+        return self.atLevel(
+            gridAtLevel,
+            self.grid.shape0,
+            self.grid.splits[:level],
+            self.real2flat[level],
+            self.flat2real[level],
+            ordering=self.ordering,
         )
