@@ -300,32 +300,6 @@ class HEALPixGrid(Grid):
         )
 
 
-def _stack_outer(*arrays, outer_axis=-1, stack_axis=0):
-    arrays = tuple(arrays)
-    ndim = len(arrays)
-    outer_axis %= len(arrays[0].shape)
-    window_shape = tuple(a.shape[outer_axis] for a in arrays)
-    out_shp = (
-        arrays[0].shape[:outer_axis]
-        + window_shape
-        + arrays[0].shape[(outer_axis + 1) :]
-    )
-    stack_axis %= len(out_shp)
-    out_shp = out_shp[:stack_axis] + (ndim,) + out_shp[stack_axis:]
-
-    res = np.zeros(out_shp, dtype=arrays[0].dtype)
-    for i, a in enumerate(arrays):
-        a = a.reshape(
-            a.shape[:outer_axis]
-            + (1,) * i
-            + (window_shape,)
-            + (1,) * (ndim - i - 1)
-            + a.shape[(outer_axis + 1) :]
-        )
-        res[(slice(None),) * stack_axis + (i,)] += a
-    return res
-
-
 @dataclass()
 class OGridAtLevel(GridAtLevel):
     grids: tuple[GridAtLevel]
@@ -343,38 +317,85 @@ class OGridAtLevel(GridAtLevel):
 
     def children(self, index) -> np.ndarray:
         ndims_off = tuple(np.cumsum(tuple(g.ndim for g in self.grids)))
+        ndims_sum = ndims_off[-1]
         islice = tuple(slice(l, r) for l, r in zip((0,) + ndims_off[:-1], ndims_off))
-        c = tuple(g.children(index[i]) for i, g in zip(islice, self.grids))
-        # TODO
-        # window = _stack_outer(window, outer_axis=-1, stack_axis=0)
-        # assert window.dtype == np.result_type(index)
-        # return window
+        children = tuple(g.children(index[i]) for i, g in zip(islice, self.grids))
+        # Make initial entry broadcast-able to the full final shape
+        out = children[0].reshape(
+            (slice(None),) * children[0].ndim
+            + (np.newaxis,) * (ndims_sum - self.grids[0].ndim)
+        )
+        # Successively concatenate all broadcasted children
+        for c, i in zip(children[1:], islice[1:]):
+            c = c.reshape(
+                (slice(None),) * index.ndim
+                + (np.newaxis,) * i.start
+                + (slice(None),) * (i.stop - i.start)
+                + (np.newaxis,) * (ndims_sum - i.stop)
+            )
+            assert c.shape[0] == (i.stop - i.start)
+            bshp = np.broadcast_shapes(out.shape[1:], c.shape[1:])
+            c = np.broadcast_to(c, c.shape[:1] + bshp)
+            out = np.broadcast_to(out, out.shape[:1] + bshp)
+            np.concatenate((out, c), axis=0)
+        return out
 
     def neighborhood(self, index, window_size: tuple[int]):
-        # TODO
-        window = (
-            g.neighborhood(index[i], w)
-            for i, (g, w) in enumerate(zip(self.grids, window_size))
+        ndims_off = tuple(np.cumsum(tuple(g.ndim for g in self.grids)))
+        ndims_sum = ndims_off[-1]
+        islice = tuple(slice(l, r) for l, r in zip((0,) + ndims_off[:-1], ndims_off))
+        window_size = (
+            (window_size,) * self.ngrids
+            if isinstance(window_size, int)
+            else window_size
         )
-        window = _stack_outer(window, outer_axis=-1, stack_axis=0)
-        assert window.dtype == np.result_type(index)
-        return window
+        assert len(window_size) == self.ngrids
+        neighborhood = tuple(
+            g.neighborhood(index[i], wsz)
+            for i, g, wsz in zip(islice, self.grids, window_size)
+        )
+        # Make initial entry broadcast-able to the full final shape
+        out = neighborhood[0].reshape(
+            (slice(None),) * neighborhood[0].ndim
+            + (np.newaxis,) * (ndims_sum - self.grids[0].ndim)
+        )
+        # Successively concatenate all broadcasted neighbors
+        for n, i in zip(neighborhood[1:], islice[1:]):
+            n = n.reshape(
+                (slice(None),) * index.ndim
+                + (np.newaxis,) * i.start
+                + (slice(None),) * (i.stop - i.start)
+                + (np.newaxis,) * (ndims_sum - i.stop)
+            )
+            assert n.shape[0] == (i.stop - i.start)
+            bshp = np.broadcast_shapes(out.shape[1:], n.shape[1:])
+            n = np.broadcast_to(n, n.shape[:1] + bshp)
+            out = np.broadcast_to(out, out.shape[:1] + bshp)
+            np.concatenate((out, n), axis=0)
+        return out
 
     def parent(self, index):
-        # TODO
-        parid = tuple(g.parent(index[i]) for i, g in enumerate(self.grids))
-        parid = np.stack(parid, axis=0)
-        assert parid.dtype == np.result_type(index)
-        return parid
+        ndims_off = tuple(np.cumsum(tuple(g.ndim for g in self.grids)))
+        islice = tuple(slice(l, r) for l, r in zip((0,) + ndims_off[:-1], ndims_off))
+        parent = tuple(g.parent(index[i]) for i, g in zip(islice, self.grids))
+        return np.stack(parent, axis=0)
 
     def index2coord(self, index, **kwargs):
-        return NotImplementedError()
+        ndims_off = tuple(np.cumsum(tuple(g.ndim for g in self.grids)))
+        islice = tuple(slice(l, r) for l, r in zip((0,) + ndims_off[:-1], ndims_off))
+        coord = tuple(g.index2coord(index[i]) for i, g in zip(islice, self.grids))
+        return np.concatenate(coord, axis=0)
 
     def coord2index(self, coord, **kwargs):
+        # TODO[@Philipp+@Gordian]: The grids do not store the ndim of the coord
+        # array, thus we can not split the total coord easily
         return NotImplementedError()
 
     def index2volume(self, index, **kwargs):
-        return NotImplementedError()
+        ndims_off = tuple(np.cumsum(tuple(g.ndim for g in self.grids)))
+        islice = tuple(slice(l, r) for l, r in zip((0,) + ndims_off[:-1], ndims_off))
+        volume = tuple(g.index2volume(index[i]) for i, g in zip(islice, self.grids))
+        return reduce(operator.mul, volume)
 
 
 @dataclass()
