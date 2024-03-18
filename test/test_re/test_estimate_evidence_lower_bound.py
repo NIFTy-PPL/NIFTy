@@ -41,9 +41,8 @@ def _explicify(M, position):
 
 
 def get_linear_response(slope_op, intercept_op, sampling_points):
-    dom = {'slope': ShapeWithDtype((), np.float64), 'intercept': ShapeWithDtype((), np.float64)}
     response = lambda x: slope_op(x) * sampling_points + intercept_op(x)
-    return jft.Model(response, domain=dom)
+    return jft.Model(response, domain=slope_op.domain | intercept_op.domain)
 
 
 @pmp('seed', [0, 42])
@@ -96,11 +95,9 @@ def test_estimate_evidence_lower_bound(seed):
 
     evidence = -H_0 + 0.5 * np.log(det_2pi_D)
     nifty_adjusted_evidence = evidence + 0.5 * n_datapoints * np.log(2 * np.pi * noise_level ** 2)
-    likelihood_energy = (jft.Gaussian(data=data, noise_cov_inv=lambda x: (
-                                                                                    1. /
-                                                                                    noise_level
-                                                                                    ** 2) * x) @
-                         linear_response)
+    likelihood_energy = jft.Gaussian(data=data,
+                                     noise_cov_inv=lambda x: (1. / noise_level ** 2) * x).amend(
+        linear_response)
 
     # Minimization parameters
     n_iterations = 4
@@ -135,7 +132,7 @@ def test_estimate_evidence_lower_bound(seed):
         resume=False)
 
     # Estimate the ELBO
-    elbo, stats = jft.estimate_evidence_lower_bound(jft.StandardHamiltonian(likelihood_energy),
+    elbo, stats = jft.estimate_evidence_lower_bound(likelihood_energy,
                                                     samples, 2)
 
     assert (stats['elbo_lw'] <= nifty_adjusted_evidence <= stats['elbo_up'])
@@ -179,7 +176,7 @@ def test_estimate_elbo_nifty_re_vs_nifty(seed):
     noise_level = 0.2
     data = jcf(pos) + np.random.normal(0, 1, shape) * noise_level
 
-    like = jft.Gaussian(data, lambda x: 1 / noise_level ** 2 * x) @ jcf
+    like = jft.Gaussian(data, lambda x: 1 / noise_level ** 2 * x).amend(jcf)
 
     key, subkey = random.split(key)
     rp = jft.random_like(subkey, jcf.domain)
@@ -230,25 +227,23 @@ def test_estimate_elbo_nifty_re_vs_nifty(seed):
     for samp in n_samples.iterator():
         n_samples_list.append(samp.val)
 
-    ham = jft.StandardHamiltonian(like)
-
     N_inv = ift.ScalingOperator(cf.target, 1 / noise_level ** 2)
     n_like = ift.GaussianEnergy(ift.makeField(cf.target, data), N_inv) @ cf
 
     n_ham = ift.StandardHamiltonian(n_like)
 
-    elbo, stats = jft.estimate_evidence_lower_bound(ham,
+    elbo, stats = jft.estimate_evidence_lower_bound(like,
                                                     samples,
                                                     4,
-                                                    batch_number=2)
+                                                    batch_size=2)
     n_elbo, nstats = ift.estimate_evidence_lower_bound(n_ham,
                                                        n_samples,
                                                        4,
                                                        batch_number=2)
 
-    nelbo_samps = []
-    for nelbo_samp in n_elbo.iterator():
-        nelbo_samps.append(nelbo_samp.val)
-    nelbo_samps = np.array(nelbo_samps)
+    n_elbo_samples = []
+    for nelbo_sample in n_elbo.iterator():
+        n_elbo_samples.append(nelbo_sample.val)
+    n_elbo_samples = np.array(n_elbo_samples)
 
-    assert np.allclose(elbo, nelbo_samps, atol=1e-8)
+    assert np.allclose(elbo, n_elbo_samples, atol=1e-8)

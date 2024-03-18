@@ -4,9 +4,10 @@ import scipy.linalg as slg
 import scipy.sparse.linalg as ssl
 
 from .evi import Samples
-from .likelihood import StandardHamiltonian
+from .likelihood import Likelihood
+from .optimize_kl import _StandardHamiltonian as StandardHamiltonian
 from .logger import logger
-from .tree_math import tree_shape
+from .tree_math.vector_math import size
 
 
 class _Projector(ssl.LinearOperator):
@@ -24,42 +25,40 @@ class _Projector(ssl.LinearOperator):
         Operator representing the projection.
     """
     def __init__(self, eigenvectors):
-        super().__init__(np.dtype('f8'), 2 * (eigenvectors.shape[0],))
+        super().__init__(eigenvectors.dtype, 2 * (eigenvectors.shape[0],))
         self.eigenvectors = eigenvectors
 
     def _matvec(self, x):
         res = x.copy()
         for eigenvector in self.eigenvectors.T:
-            res -= eigenvector * eigenvector.dot(x)
+            res -= eigenvector * np.vdot(eigenvector, x)
         return res
 
     def _rmatvec(self, x):
         return self._matvec(x)
 
-
 def _explicify(M):
-    identity = np.identity(M.shape[0], dtype=np.float64)
+    n = M.shape[0]
     m = []
-    for v in identity:
-        m.append(M.matvec(v))
-    return np.vstack(m).T
+    for i in range(n):
+        basis_vector = np.zeros(n)
+        basis_vector[i] = 1
+        m.append(M @ basis_vector)
+    return np.stack(m, axis=1)
 
 
-def _ravel_metric(metric, position):
-    dim = 0
-    shapes = tree_shape(metric(position, position).tree)
-    for s in shapes.values():
-        dim += np.prod(s)
-    shape = 2*(int(dim),)
+def _ravel_metric(metric, position, dtype):
+    shape = 2*(size(metric(position, position)),)
 
     ravel = lambda x: jax.flatten_util.ravel_pytree(x)[0]
     unravel = lambda x: jax.linear_transpose(ravel, position)(x)[0]
     met = lambda x: ravel(metric(position, unravel(x)))
 
-    return ssl.LinearOperator(shape=shape, matvec=met)
+    return ssl.LinearOperator(shape=shape, dtype=dtype, matvec=met)
 
 
-def _eigsh(metric, n_eigenvalues, tot_dofs, min_lh_eval=1e-4, batch_number=10, tol=0., verbose=True):
+def _eigsh(metric, n_eigenvalues, tot_dofs, min_lh_eval=1e-4, batch_size=10, tol=0.,
+           verbose=True):
     metric_size = metric.shape[0]
     eigenvectors = None
     if n_eigenvalues > tot_dofs:
@@ -76,9 +75,9 @@ def _eigsh(metric, n_eigenvalues, tot_dofs, min_lh_eval=1e-4, batch_number=10, t
         eigenvalues = np.flip(eigenvalues)
     else:
         # Set up batches
-        batch_size = n_eigenvalues // batch_number
-        batches = [batch_size, ] * (batch_number - 1)
-        batches += [n_eigenvalues - batch_size * (batch_number - 1), ]
+        batch_size = n_eigenvalues // batch_size
+        batches = [batch_size, ] * (batch_size - 1)
+        batches += [n_eigenvalues - batch_size * (batch_size - 1), ]
         eigenvalues, projected_metric = None, metric
         for batch in batches:
             if verbose:
@@ -86,8 +85,8 @@ def _eigsh(metric, n_eigenvalues, tot_dofs, min_lh_eval=1e-4, batch_number=10, t
             # Get eigensystem for current batch
             eigvals, eigvecs = ssl.eigsh(projected_metric, k=batch, tol=tol,
                                          return_eigenvectors=True, which='LM')
-            i = np.argsort(eigvals)
-            eigvals, eigvecs = np.flip(eigvals[i]), np.flip(eigvecs[:, i], axis=1)
+            i = np.argsort(-eigvals)
+            eigvals, eigvecs = eigvals[i], eigvecs[:, i]
             eigenvalues = eigvals if eigenvalues is None else np.concatenate((eigenvalues, eigvals))
             eigenvectors = eigvecs if eigenvectors is None else np.hstack((eigenvectors, eigvecs))
 
@@ -99,8 +98,8 @@ def _eigsh(metric, n_eigenvalues, tot_dofs, min_lh_eval=1e-4, batch_number=10, t
     return eigenvalues, eigenvectors
 
 
-def estimate_evidence_lower_bound(hamiltonian, samples, n_eigenvalues, min_lh_eval=1e-3,
-                                  batch_number=10, tol=0., verbose=True):
+def estimate_evidence_lower_bound(likelihood, samples, n_eigenvalues, min_lh_eval=1e-3,
+                                  batch_size=10, tol=0., verbose=True):
     """Provides an estimate for the Evidence Lower Bound (ELBO).
 
     Statistical inference deals with the problem of hypothesis testing, given
@@ -140,8 +139,8 @@ def estimate_evidence_lower_bound(hamiltonian, samples, n_eigenvalues, min_lh_ev
 
     Parameters
     ----------
-    hamiltonian : :class:`nifty8.re.likelihood.StandardHamiltonian`
-        Hamiltonian of the approximated probability distribution.
+    likelihood : :class:`nifty8.re.likelihood.Likelihood`
+        Log-likelihood of the model.
     samples : :class:`nifty8.re.evi.Samples`
         Collection of samples from the posterior distribution.
     n_eigenvalues : int
@@ -152,11 +151,11 @@ def estimate_evidence_lower_bound(hamiltonian, samples, n_eigenvalues, min_lh_ev
         criteria.
     min_lh_eval : float
         Smallest eigenvalue of the likelihood to be considered. If the
-        estimated eigenvalues become smaller then 1 + `min_lh_eval`, the
+        estimated eigenvalues become smaller than 1 + `min_lh_eval`, the
         eigenvalue estimation terminates and uses the smallest eigenvalue as a
         proxy for all remaining eigenvalues in the trace-log estimation.
         Default is 1e-3.
-    batch_number : int
+    batch_size : int
         Number of batches into which the eigenvalue estimation gets subdivided
         into. Only after completing one batch the early stopping criterion
         based on `min_lh_eval` is checked for.
@@ -211,20 +210,21 @@ def estimate_evidence_lower_bound(hamiltonian, samples, n_eigenvalues, min_lh_ev
     """
     if not isinstance(samples, Samples):
         raise TypeError("samples attribute should be of type `Samples`.")
-    if not isinstance(hamiltonian, StandardHamiltonian):
-        raise TypeError("hamiltonian is not an instance of `StandardHamiltonian`.")
+    if not isinstance(likelihood, Likelihood):
+        raise TypeError("likelhood is not an instance of `Likelihood`.")
 
+    hamiltonian = StandardHamiltonian(likelihood)
     metric = hamiltonian.metric
-    metric = _ravel_metric(metric, samples.pos) #FIXME pos is correct?
+    metric = _ravel_metric(metric, samples.pos, dtype=likelihood.target.dtype)
     metric_size = metric.shape[0]
-    n_data_points = hamiltonian.likelihood.lsm_tangents_shape.size if not None else metric_size
-    n_relevant_dofs = min(n_data_points, metric_size)  # Number of metric eigenvalues that are not one
+    n_data_points = likelihood.lsm_tangents_shape.size if not None else metric_size
+    n_relevant_dofs = min(n_data_points, metric_size)  # Number of metric eigenvalues that are not 1
 
     eigenvalues, _ = _eigsh(metric,
                             n_eigenvalues,
                             tot_dofs=n_relevant_dofs,
                             min_lh_eval=min_lh_eval,
-                            batch_number=batch_number,
+                            batch_size=batch_size,
                             tol=tol,
                             verbose=verbose)
     if verbose:
