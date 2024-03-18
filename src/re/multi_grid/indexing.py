@@ -402,7 +402,7 @@ class OGridAtLevel(GridAtLevel):
 class OGrid(Grid):
     grids: tuple[Grid]
 
-    def __init__(self, *grids, atLevel=OGridAtLevel):
+    def __init__(self, *grids):
         self.grids = tuple(grids)
         self.depth = self.grids[0].depth
         for i, g in enumerate(grids):
@@ -410,7 +410,7 @@ class OGrid(Grid):
                 raise TypeError(f"Grid {g.__name__} at index {i} of invalid type")
             if g.depth != self.depth:
                 raise ValueError(f"Grid {g.__name__} at index {i} not of same depth")
-        self.atLevel = atLevel
+        self.atLevel = OGridAtLevel
 
     def amend(self, splits):
         splits = (splits,) if isinstance(splits, int) else splits
@@ -425,7 +425,7 @@ class OGrid(Grid):
 
     def at(self, level: int):
         level = self._parse_level(level)
-        return self.atLevel(tuple(g.at(level) for g in self.grids))
+        return self.atLevel(*tuple(g.at(level) for g in self.grids))
 
 
 class FlatGridAtLevel(GridAtLevel):
