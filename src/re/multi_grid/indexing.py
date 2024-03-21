@@ -667,75 +667,46 @@ class SparseGridAtLevel(FlatGridAtLevel):
         )
 
 
-# TODO
 class SparseGrid(Grid):
-    """Realized :class:`FlatGridAtLevel` keeping track of the indices that are actually
+    """Realized :class:`FlatGrid` keeping track of the indices that are actually
     being modeled at the end of the day. This class is especially convenient for
     open boundary conditions but works for arbitrarily sparsely resolved grids."""
 
-    real2flat: tuple[npt.NDArray[np.int_]]
-    flat2real: tuple[dict]
+    mapping: tuple[npt.NDArray[np.int_]]
 
-    def __init__(self, grid, real2flat, flat2real=None, ordering="nest"):
+    def __init__(self, grid, mapping, ordering="nest"):
         if not isinstance(grid, Grid):
             raise TypeError(f"Grid {grid.__name__} of invalid type")
         self.grid = grid
         self.ordering = ordering
 
-        real2flat = (real2flat,) if not isinstance(real2flat, tuple) else real2flat
-        real2flat = tuple(np.atleast_1d(r) for r in real2flat)
-        if flat2real is None:
-            flat2real = flat2real = tuple(
-                {a: i for i, a in enumerate(r2f)} for r2f in real2flat
-            )
-        else:
-            flat2real = (flat2real,) if not isinstance(flat2real, tuple) else flat2real
-            if len(flat2real) != len(real2flat):
-                msg = "real2flat and flat2real of incompatible depth"
-                raise ValueError(msg)
-            if not all((isinstance(f2r, dict) for f2r in flat2real)):
-                msg = "flat2real must be of type dict"
-                raise ValueError(msg)
+        mapping = (mapping,) if not isinstance(mapping, tuple) else mapping
+        mapping = tuple(np.atleast_1d(m) for m in mapping)
 
-        real2flat, flat2real = self._process_f2r_and_r2f(real2flat, flat2real)
-        if len(real2flat) != grid.depth:
-            msg = f"Index depth {len(real2flat)} does not match grid {grid.__name__} depth {grid.depth}"
+        if len(mapping) != grid.depth:
+            md, gd = len(mapping), grid.depth
+            msg = f"Map depth {md} does not match grid {grid.__name__} depth {gd}"
             raise ValueError(msg)
-        self.real2flat, self.flat2real = real2flat, flat2real
         super().__init__(
             shape0=grid.shape0, splits=grid.splits, atLevel=SparseGridAtLevel
         )
 
-    def _process_f2r_and_r2f(real2flat, flat2real):
-        real2flat = (real2flat,) if not isinstance(real2flat, tuple) else real2flat
-        real2flat = tuple(np.atleast_1d(r) for r in real2flat)
-        if flat2real is None:
-            flat2real = tuple({a: i for i, a in enumerate(r2f)} for r2f in real2flat)
-        else:
-            flat2real = (flat2real,) if not isinstance(flat2real, tuple) else flat2real
-            if len(flat2real) != len(real2flat):
-                msg = "real2flat and flat2real of incompatible depth"
-                raise ValueError(msg)
-            if not all((isinstance(f2r, dict) for f2r in flat2real)):
-                msg = "flat2real must be of type dict"
-                raise ValueError(msg)
-        return real2flat, flat2real
-
-    def amend(self, splits, real2flat, flat2real=None, **kwargs):
+    def amend(self, splits, mapping, **kwargs):
         grid = self.grid.amend(splits, **kwargs)
-        real2flat, flat2real = self._process_f2r_and_r2f(real2flat, flat2real)
-        real2flat = self.real2flat + real2flat
-        flat2real = self.flat2real + flat2real
-        return self.__class__(grid, real2flat, flat2real, nest=self.nest)
+        mapping = (mapping,) if not isinstance(mapping, tuple) else mapping
+        return self.__class__(grid, mapping, nest=self.nest)
 
     def at(self, level: int):
         level = self._parse_level(level)
         gridAtLevel = self.grid.at(level)
+        parent_mapping = None if level == 0 else self.mapping[level - 1]
+        children_mapping = None if level == self.depth - 1 else self.mapping[level + 1]
         return self.atLevel(
             gridAtLevel,
             self.grid.shape0,
-            self.grid.splits[:level],
-            self.real2flat[level],
-            self.flat2real[level],
+            self.grid.splits[: (level + 1)],
+            self.mapping[level],
             ordering=self.ordering,
+            parent_mapping=parent_mapping,
+            children_mapping=children_mapping,
         )
