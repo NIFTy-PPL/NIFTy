@@ -2,8 +2,8 @@
 
 import operator
 from dataclasses import dataclass
-from functools import reduce
-from typing import Callable, Optional, Iterable
+from functools import partial, reduce
+from typing import Callable, Iterable, Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -179,9 +179,17 @@ def _fill_bad_healpix_neighbors(nside, neighbors, nest: bool = True):
 class HEALPixGridAtLevel(GridAtLevel):
     nside: int
     nest: True
+    fill_strategy: str
 
     def __init__(
-        self, shape=None, splits=4, parent_splits=None, *, nside: int = None, nest=True
+        self,
+        shape=None,
+        splits=4,
+        parent_splits=None,
+        *,
+        nside: int = None,
+        nest=True,
+        fill_strategy="same",
     ):
         if shape is not None:
             assert nside is None
@@ -202,11 +210,14 @@ class HEALPixGridAtLevel(GridAtLevel):
         self.nside = int(nside)
         self.nest = nest
         size = 12 * nside**2
+        if not isinstance(fill_strategy, str):
+            raise TypeError(f"invalid fill_strategy {fill_strategy!r}")
+        if fill_strategy.lower() not in ("same", "unique"):
+            raise ValueError(f"invalid fill_strategy value {fill_strategy!r}")
+        self.fill_strategy = fill_strategy.lower()
         super().__init__(shape=size, splits=splits, parent_splits=parent_splits)
 
-    def neighborhood(
-        self, index, window_size: int, ensemble_axis=None, *, fill_strategy="same"
-    ):
+    def neighborhood(self, index, window_size: int, ensemble_axis=None):
         from healpy.pixelfunc import get_all_neighbours
 
         if ensemble_axis is not None:
@@ -229,16 +240,14 @@ class HEALPixGridAtLevel(GridAtLevel):
         nbr = nbr.reshape(window_size - 1, n_pix).T
         neighbors[:, 1:] = nbr
 
-        if not isinstance(fill_strategy, str):
-            raise TypeError(f"invalid fill_strategy {fill_strategy!r}")
-        if fill_strategy.lower() == "unique":
+        if self.fill_strategy == "unique":
             neighbors = _fill_bad_healpix_neighbors(neighbors)
-        elif fill_strategy.lower() == "same":
+        elif self.fill_strategy == "same":
             (bad_indices,) = np.nonzero(np.any(neighbors == -1, axis=1))
             for i in bad_indices:
                 neighbors[i][neighbors[i] == -1] = neighbors[i, 0]
         else:
-            raise ValueError(f"invalid fill_strategy value {fill_strategy!r}")
+            raise AssertionError()
 
         neighbors = np.squeeze(neighbors, axis=0) if index_shape == () else neighbors
         neighbors = neighbors.reshape(index_shape + (window_size,))
@@ -269,6 +278,7 @@ class HEALPixGrid(Grid):
         nest=True,
         shape0=None,
         splits=None,
+        fill_strategy: str = "same",
     ):
         self.nest = nest
         if shape0 is not None:
@@ -282,7 +292,9 @@ class HEALPixGrid(Grid):
         if splits is None:
             splits = (4,) * depth
         super().__init__(
-            shape0=12 * self.nside0**2, splits=splits, atLevel=HEALPixGridAtLevel
+            shape0=12 * self.nside0**2,
+            splits=splits,
+            atLevel=partial(HEALPixGridAtLevel, fill_strategy=fill_strategy),
         )
 
     def amend(self, splits=None, *, added_depth: Optional[int] = None):
