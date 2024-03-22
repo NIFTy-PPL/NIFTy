@@ -464,15 +464,6 @@ class FlatGridAtLevel(GridAtLevel):
             parent_splits=None,
         )
 
-    def _parse_index(self, index):
-        # TODO think about adding dummy axis to flat indices to match Grids
-        index = np.asarray(index)
-        if np.any(np.abs(index) >= self.size):
-            nm = self.__class__.__name__
-            ve = f"index {index} is out of bounds for {nm} with size {self.size}"
-            raise IndexError(ve)
-        return index % self.size
-
     def _weights_serial(self, levelshift):
         shape = (self.gridshape0,) + self.grid_all_splits
         if levelshift == 0:
@@ -501,7 +492,7 @@ class FlatGridAtLevel(GridAtLevel):
         if self.ordering == "serial":
             wgt = self._weights_serial(levelshift)
             wgt = wgt[(slice(None),) + (np.newaxis,) * (index.ndim - 1)]
-            return (wgt * index).sum(axis=0).astype(index)
+            return (wgt * index).sum(axis=0).astype(index)[np.newaxis, ...]
         if self.ordering == "nest":
             # TODO vectorize better
             fid = np.zeros(index.shape[1:], dtype=index.dtype)
@@ -513,23 +504,23 @@ class FlatGridAtLevel(GridAtLevel):
                     j += (index[ax] // wgts[(n + 1) :, ax].prod()) % ww[ax]
                 fid *= ww.prod()
                 fid += j
-            return fid
+            return fid[np.newaxis, ...]
         raise RuntimeError
 
     def flatindex_to_index(self, index, levelshift=0):
         # TODO vectorize better
         if self.ordering == "serial":
             wgt = self._weights_serial(levelshift)
-            res = np.zeros(wgt.shape + index.shape, dtype=index.dtype)
-            tm = np.copy(index)
+            tm = np.copy(index[0])
+            index = np.zeros(wgt.shape + index.shape[1:], dtype=index.dtype)
             for i, w in enumerate(wgt):
-                res[i] = tm // w
-                tm -= w * res[i]
-            return res.astype(index.dtype)
+                index[i] = tm // w
+                tm -= w * index[i]
+            return index.astype(index.dtype)
         if self.ordering == "nest":
             wgts = self._weights_nest(levelshift)
-            fid = np.copy(index)
-            index = np.zeros((wgts.shape[0],) + index.shape, dtype=index.dtype)
+            fid = np.copy(index[0])
+            index = np.zeros((wgts.shape[0],) + index.shape[1:], dtype=index.dtype)
             for n, ww in reversed(list(enumerate(ww))):
                 fct = ww.prod()
                 j = fid % fct
@@ -538,6 +529,7 @@ class FlatGridAtLevel(GridAtLevel):
                     j //= ww[ax]
                 fid //= fct
             return index
+
         raise RuntimeError
 
     def children(self, index) -> np.ndarray:
@@ -566,7 +558,6 @@ class FlatGridAtLevel(GridAtLevel):
         return self.gridAtLevel.index2coord(index, **kwargs)
 
     def coord2index(self, coord, **kwargs):
-        index = self._parse_index(index)
         index = self.gridAtLevel.coord2index(coord, **kwargs)
         return self.index_to_flatindex(index)
 
