@@ -22,6 +22,10 @@ class GridAtLevel:
 
     def _parse_index(self, index):
         index = np.asarray(index)
+        if index.shape[0] != self.shape.size:
+            l = index.shape[0]
+            ve = f"index {index} is of invalid length {l} for shape {self.shape}"
+            raise IndexError(ve)
         if np.any(np.any(np.abs(idx) >= s) for idx, s in zip(index, self.shape)):
             nm = self.__class__.__name__
             ve = f"index {index} is out of bounds for {nm} with shape {self.shape}"
@@ -508,6 +512,7 @@ class FlatGridAtLevel(GridAtLevel):
         raise RuntimeError
 
     def flatindex_to_index(self, index, levelshift=0):
+        index = self._parse_index(index)
         # TODO vectorize better
         if self.ordering == "serial":
             wgt = self._weights_serial(levelshift)
@@ -533,13 +538,11 @@ class FlatGridAtLevel(GridAtLevel):
         raise RuntimeError
 
     def children(self, index) -> np.ndarray:
-        index = self._parse_index(index)
         index = self.flatindex_to_index(index)
         children = self.gridAtLevel.children(index)
         return self.index_to_flatindex(children, +1)
 
     def neighborhood(self, index, window_size: Iterable[int], ensemble_axis=None):
-        index = self._parse_index(index)
         index = self.flatindex_to_index(index)
         window = self.gridAtLevel.neighborhood(
             index, window_size=window_size, ensemble_axis=ensemble_axis
@@ -547,13 +550,11 @@ class FlatGridAtLevel(GridAtLevel):
         return self.index_to_flatindex(window)
 
     def parent(self, index):
-        index = self._parse_index(index)
         index = self.flatindex_to_index(index)
         window = self.gridAtLevel.parent(index)
         return self.index_to_flatindex(window, -1)
 
     def index2coord(self, index, **kwargs):
-        index = self._parse_index(index)
         index = self.flatindex_to_index(index)
         return self.gridAtLevel.index2coord(index, **kwargs)
 
@@ -562,7 +563,6 @@ class FlatGridAtLevel(GridAtLevel):
         return self.index_to_flatindex(index)
 
     def index2volume(self, index, **kwargs):
-        index = self._parse_index(index)
         index = self.flatindex_to_index(index)
         return self.gridAtLevel.index2volume(index, **kwargs)
 
@@ -639,6 +639,7 @@ class SparseGridAtLevel(FlatGridAtLevel):
         return mapping
 
     def flatindex_to_index(self, index, levelshift=0):
+        index = self._parse_index(index)[0] # Extract first axis
         index = self._mapping(levelshift)[index]
         return super().flatindex_to_index(index, levelshift)
 
