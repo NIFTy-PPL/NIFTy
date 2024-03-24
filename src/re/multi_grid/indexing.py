@@ -512,7 +512,6 @@ class FlatGridAtLevel(GridAtLevel):
         raise RuntimeError
 
     def flatindex_to_index(self, index, levelshift=0):
-        index = self._parse_index(index)
         # TODO vectorize better
         if self.ordering == "serial":
             wgt = self._weights_serial(levelshift)
@@ -538,11 +537,13 @@ class FlatGridAtLevel(GridAtLevel):
         raise RuntimeError
 
     def children(self, index) -> np.ndarray:
+        index = self._parse_index(index)
         index = self.flatindex_to_index(index)
         children = self.gridAtLevel.children(index)
         return self.index_to_flatindex(children, +1)
 
     def neighborhood(self, index, window_size: Iterable[int], ensemble_axis=None):
+        index = self._parse_index(index)
         index = self.flatindex_to_index(index)
         window = self.gridAtLevel.neighborhood(
             index, window_size=window_size, ensemble_axis=ensemble_axis
@@ -550,11 +551,13 @@ class FlatGridAtLevel(GridAtLevel):
         return self.index_to_flatindex(window)
 
     def parent(self, index):
+        index = self._parse_index(index)
         index = self.flatindex_to_index(index)
         window = self.gridAtLevel.parent(index)
         return self.index_to_flatindex(window, -1)
 
     def index2coord(self, index, **kwargs):
+        index = self._parse_index(index)
         index = self.flatindex_to_index(index)
         return self.gridAtLevel.index2coord(index, **kwargs)
 
@@ -563,6 +566,7 @@ class FlatGridAtLevel(GridAtLevel):
         return self.index_to_flatindex(index)
 
     def index2volume(self, index, **kwargs):
+        index = self._parse_index(index)
         index = self.flatindex_to_index(index)
         return self.gridAtLevel.index2volume(index, **kwargs)
 
@@ -638,17 +642,77 @@ class SparseGridAtLevel(FlatGridAtLevel):
             raise ValueError(f"Inconsistent shift in level: {levelshift}")
         return mapping
 
-    def flatindex_to_index(self, index, levelshift=0):
-        index = self._parse_index(index)[0] # Extract first axis
-        index = self._mapping(levelshift)[index]
-        return super().flatindex_to_index(index, levelshift)
+    def arrayindex_to_flatindex(self, index, levelshift=0):
+        index = self._parse_index(index)
+        return self._mapping(levelshift)[index]
 
-    def index_to_flatindex(self, index, levelshift=0):
-        # FIXME global vs local dicts?
-        mapping = {fid: i for i, fid in enumerate(self._mapping(levelshift))}
-        shp = index.shape
-        index = np.array(mapping[ii] for ii in index.ravel()).reshape(shp)
-        return super().index_to_flatindex(index, levelshift)
+    def flatindex_to_arrayindex(self, index, levelshift=0):
+        mapping = self._mapping(levelshift)
+        arrayid = np.searchsorted(mapping, index)
+        #  TODO Benchmark searchsorted on stack instead of second one with `right`
+        valid = np.searchsorted(mapping, index, side="right") == arrayid + 1
+        return arrayid, valid
+
+    def children(self, index) -> np.ndarray:
+        index = self.arrayindex_to_flatindex(index)
+        index = self.flatindex_to_index(index)
+        children = self.gridAtLevel.children(index)
+        children = self.index_to_flatindex(children, +1)
+        res, valid = self.flatindex_to_arrayindex(children, +1)
+        if not np.all(valid):
+            ids = children[~valid]
+            raise IndexError(f"Flatindex {ids} not on child grid of {self.__name__}")
+        return res
+
+    def neighborhood(self, index, window_size: Iterable[int], ensemble_axis=None):
+        window = self.arrayindex_to_flatindex(index)
+        window = self.flatindex_to_index(window)
+        window = self.gridAtLevel.neighborhood(
+            index, window_size=window_size, ensemble_axis=ensemble_axis
+        )
+        window = self.index_to_flatindex(window)
+        window, valid = self.flatindex_to_arrayindex(window)
+        if not np.all(valid):
+            assert window.shape[0] == 1  # Sanity check
+            window_shp = window.shape
+            window = window.reshape((index.size, -1))
+            invalid = ~valid.reshape(window.shape)
+            window[invalid] = 0  # Set all invalid to zero to add index later
+            invalid_row = np.any(invalid, axis=1)
+            invalid = invalid[invalid_row]
+            window[invalid_row] += invalid * index.ravel()[invalid_row][..., np.newaxis]
+            window = window.reshape(window_shp)
+        return window, invalid
+
+    def parent(self, index):
+        index = self.arrayindex_to_flatindex(index)
+        index = self.flatindex_to_index(index)
+        parent = self.gridAtLevel.parent(index)
+        parent = self.index_to_flatindex(parent, -1)
+        res, valid = self.flatindex_to_arrayindex(parent, -1)
+        if not np.all(valid):
+            idx = parent[~valid]
+            raise IndexError(f"Flatindex {idx} not on parent grid of {self.__name__}")
+        return res
+
+    def index2coord(self, index, **kwargs):
+        index = self.arrayindex_to_flatindex(index)
+        index = self.flatindex_to_index(index)
+        return self.gridAtLevel.index2coord(index, **kwargs)
+
+    def coord2index(self, coord, **kwargs):
+        index = self.gridAtLevel.coord2index(coord, **kwargs)
+        index = self.index_to_flatindex(index)
+        res, valid = self.flatindex_to_arrayindex(index)
+        if not np.all(valid):
+            idx = index[~valid]
+            raise IndexError(f"Flatindex {idx} not on grid {self.__name__}")
+        return res
+
+    def index2volume(self, index, **kwargs):
+        index = self.arrayindex_to_flatindex(index)
+        index = self.flatindex_to_index(index)
+        return self.gridAtLevel.index2volume(index, **kwargs)
 
     def toFlatGridAtLevel(self):
         return FlatGridAtLevel(
@@ -659,7 +723,7 @@ class SparseGridAtLevel(FlatGridAtLevel):
         )
 
 
-class SparseGrid(Grid):
+class SparseGrid(FlatGrid):
     """Realized :class:`FlatGrid` keeping track of the indices that are actually
     being modeled at the end of the day. This class is especially convenient for
     open boundary conditions but works for arbitrarily sparsely resolved grids."""
