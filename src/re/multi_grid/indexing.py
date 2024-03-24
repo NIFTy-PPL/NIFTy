@@ -730,7 +730,7 @@ class SparseGrid(FlatGrid):
 
     mapping: tuple[npt.NDArray[np.int_]]
 
-    def __init__(self, grid, mapping, ordering="nest"):
+    def __init__(self, grid, mapping, ordering="nest", _check_mapping=True):
         if not isinstance(grid, Grid):
             raise TypeError(f"Grid {grid.__name__} of invalid type")
         self.grid = grid
@@ -739,10 +739,19 @@ class SparseGrid(FlatGrid):
         mapping = (mapping,) if not isinstance(mapping, tuple) else mapping
         mapping = tuple(np.atleast_1d(m) for m in mapping)
 
-        if len(mapping) != grid.depth:
-            md, gd = len(mapping), grid.depth
-            msg = f"Map depth {md} does not match grid {grid.__name__} depth {gd}"
-            raise ValueError(msg)
+        if _check_mapping:
+            if len(mapping) != grid.depth:
+                md, gd = len(mapping), grid.depth
+                nm = grid.__name__
+                msg = f"Map depth {md} does not match grid {nm} depth {gd}"
+                raise ValueError(msg)
+            for mm in mapping:
+                if mapping.ndim != 1:
+                    raise IndexError("Mapping must be one dimensional")
+                if np.any(mm[1:] <= mm[:-1]):
+                    raise IndexError("Mapping must be unique and sorted")
+        self.mapping = mapping
+
         super().__init__(
             shape0=grid.shape0, splits=grid.splits, atLevel=SparseGridAtLevel
         )
