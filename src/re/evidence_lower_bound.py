@@ -37,6 +37,7 @@ class _Projector(ssl.LinearOperator):
     def _rmatvec(self, x):
         return self._matvec(x)
 
+
 def _explicify(M):
     n = M.shape[0]
     m = []
@@ -189,22 +190,22 @@ def estimate_evidence_lower_bound(likelihood, samples, n_eigenvalues, min_lh_eva
     Warning
     -------
     To perform Variational Inference there is no need to take into account
-    quantities that are not explicitly dependent on the signal. Explicitly
-    calculating these terms can be expensive, therefore they are usually
-    neglected. Since in most cases they are also not required for model
+    quantities that are not explicitly dependent on the inferred parameters.
+    Explicitly calculating these terms can be expensive, therefore they are
+    neglected in NIFTy. Since in most cases they are also not required for model
     comparison, the provided estimate may not include terms which are constant
-    in the signal. Only when comparing models with different noise statistics
-    (or when the ELBO is needed to approximate the true evidence) these
-    contributions have to be considered. For example, for a Gaussian
-    distributed signal and a linear problem (Wiener Filter problem) the only
-    term missing is :math:`-\\frac1 2 \\log \\det |2 \\pi N|`, where :math:`N`
-    is the noise covariance matrix.
+    in these parameters. Only when comparing models for which the likelihood
+    includes (possibly data-dependent) constants (or when the ELBO is needed
+    to approximate the true evidence) these contributions have to be considered.
+    For example, for a Gaussian distributed signal and a linear problem
+    (Wiener Filter problem) the only term missing is :math:`-\\frac1 2 \\log \\det |2 \\pi N|`,
+    where :math:`N` is the noise covariance matrix.
 
     See also
     --------
     For further details we refer to:
 
-    * Analytic formulation: P. Frank et al., Geometric Variational Inference
+    * Analytic geoVI parametrization: P. Frank et al., Geometric Variational Inference
     <https://arxiv.org/pdf/2105.10470.pdf> (Sec. 5.1)
     * Conceptualization: A. Kostić et al. (manuscript in preparation).
     """

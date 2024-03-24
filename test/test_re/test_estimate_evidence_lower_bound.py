@@ -220,7 +220,8 @@ def test_estimate_elbo_nifty_re_vs_nifty(seed):
                                                    for k, v in sample.tree.items()}, cf.domain))
         neg.append(False)
 
-    n_pos = {k[1:]: ift.makeField(cf.domain[k[1:]], v) for k, v in samples.pos.tree.items()}
+    n_pos = {k[1:]: ift.makeField(cf.domain[k[1:]], v) if k != "cf_spectrum" else v.T
+             for k, v in samples.pos.tree.items()}
     n_pos = ift.MultiField.from_dict(n_pos, cf.domain)
     n_samples = ift.ResidualSampleList(n_pos, n_samples, neg)
 
@@ -242,8 +243,8 @@ def test_estimate_elbo_nifty_re_vs_nifty(seed):
                                                        batch_number=2)
 
     n_elbo_samples = []
-    for nelbo_sample in n_elbo.iterator():
-        n_elbo_samples.append(nelbo_sample.val)
+    for n_elbo_sample in n_elbo.iterator():
+        n_elbo_samples.append(n_elbo_sample.val)
     n_elbo_samples = np.array(n_elbo_samples)
 
     assert np.allclose(elbo, n_elbo_samples, atol=1e-8)
