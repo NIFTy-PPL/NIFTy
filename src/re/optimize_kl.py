@@ -468,8 +468,9 @@ class OptimizeVI:
             samples are drawn and/or updates, "linear" draws MGVI samples,
             "nonlinear" draws MGVI samples which are then nonlinearly updated
             with geoVI, the "_sample" versus "_resample" suffix denotes whether
-            the same stochasticity is used for the drawing, and
-            "nonlinear_update" nonlinearly updates existing samples using geoVI.
+            the same stochasticity or new stochasticity is used for the drawing
+            of the samples, and "nonlinear_update" nonlinearly updates existing
+            samples using geoVI.
         point_estimates: tree-like structure or tuple of str
             Pytree of same structure as likelihood input but with boolean
             leaves indicating whether to sample the value in the input or use
