@@ -672,6 +672,12 @@ def optimize_kl(
 
     if odir:
         makedirs(odir, exist_ok=True)
+    if not resume and sanity_fn is not None:
+        with open(sanity_fn, "w"):
+            pass
+    if not resume and last_fn is not None:
+        with open(last_fn, "wb"):
+            pass
 
     nm = "OPTIMIZE_KL"
     for i in range(opt_vi_st.nit, opt_vi.n_total_iterations):
