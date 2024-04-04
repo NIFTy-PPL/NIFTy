@@ -387,7 +387,7 @@ class OGridAtLevel(GridAtLevel):
             bshp = np.broadcast_shapes(out.shape[1:], n.shape[1:])
             n = np.broadcast_to(n, n.shape[:1] + bshp)
             out = np.broadcast_to(out, out.shape[:1] + bshp)
-            np.concatenate((out, n), axis=0)
+            out = np.concatenate((out, n), axis=0)
         return out
 
     def parent(self, index):
