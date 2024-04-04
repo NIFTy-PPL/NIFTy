@@ -4,15 +4,19 @@ import pytest
 
 pytest.importorskip("jax")
 
+from functools import partial
+
 import jax
 import jax.numpy as jnp
 from jax import random
 from jax.tree_util import tree_map
-from numpy.testing import assert_array_equal
+from numpy.testing import assert_allclose
 
 import nifty8.re as jft
 
 pmp = pytest.mark.parametrize
+
+jax.config.update("jax_enable_x64", True)
 
 
 def f(u, v):
@@ -40,7 +44,7 @@ def test_map_f(map, in_axes, out_axes, seed):
             assert i == 1
             shp = (fixed_shp, batched_shp)
         inp.append(random.normal(k, shape=shp))
-    assert_array_equal(vf(*inp), sf(*inp))
+    assert_allclose(vf(*inp), sf(*inp), atol=1e-14, rtol=1e-14)
 
 
 def g(u, v):
@@ -69,7 +73,7 @@ def test_map_g(map, in_axes, out_axes, seed):
         inp.append(random.normal(k, shape=shp))
     v = vf(*inp)
     s = sf(*inp)
-    tree_map(assert_array_equal, v, s)
+    tree_map(partial(assert_allclose, atol=1e-14, rtol=1e-14), v, s)
 
 
 def h(u, v, w):
@@ -89,4 +93,4 @@ def test_map_h(map, in_axes, out_axes, seed):
     inp = [random.normal(k, shape=(1, 2, 3)) for k in random.split(key, 3)]
     v = vf(*inp)
     s = sf(*inp)
-    tree_map(assert_array_equal, v, s)
+    tree_map(partial(assert_allclose, atol=1e-14, rtol=1e-14), v, s)

@@ -23,7 +23,9 @@ pmp = pytest.mark.parametrize
 def random_draw(key, shape, dtype, method):
     def _isleaf(x):
         if isinstance(x, tuple):
-            return reduce(lambda a, b: a * b, (isinstance(ii, int) for ii in x))
+            return bool(
+                reduce(lambda a, b: a * b, (isinstance(ii, int) for ii in x))
+            )
         return False
 
     swd = tree_map(

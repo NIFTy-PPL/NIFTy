@@ -73,7 +73,9 @@ def lst2fixt(lst):
 def random_draw(key, shape, dtype, method):
     def _isleaf(x):
         if isinstance(x, tuple):
-            return reduce(lambda a, b: a * b, (isinstance(ii, int) for ii in x))
+            return bool(
+                reduce(lambda a, b: a * b, (isinstance(ii, int) for ii in x))
+            )
         return False
 
     swd = tree_map(
@@ -163,9 +165,7 @@ def test_gaussian_vs_vcgaussian_consistency(seed, shape):
     diff_g = gauss(m2) - gauss(m1)
     diff_vcg = vcgauss((m2, inv_std)) - vcgauss((m1, inv_std))
 
-    tree_map(
-        partial(assert_allclose, rtol=rtol, atol=atol), diff_g, diff_vcg
-    )
+    tree_map(partial(assert_allclose, rtol=rtol, atol=atol), diff_g, diff_vcg)
 
     met_g = gauss.metric(m1, t)
     met_vcg = vcgauss.metric((m1, inv_std), (t, d / 2))[0]
@@ -191,9 +191,7 @@ def test_studt_vs_vcstudt_consistency(seed, shape):
 
     diff_t = studt(m2) - studt(m1)
     diff_vct = vcstudt((m2, 1. / inv_std)) - vcstudt((m1, 1. / inv_std))
-    tree_map(
-        partial(assert_allclose, rtol=rtol, atol=atol), diff_t, diff_vct
-    )
+    tree_map(partial(assert_allclose, rtol=rtol, atol=atol), diff_t, diff_vct)
 
     met_t = studt.metric(m1, t)
     met_vct = vcstudt.metric((m1, 1. / inv_std), (t, d / 2))[0]
