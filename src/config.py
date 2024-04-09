@@ -19,4 +19,6 @@ def update(key, value, /):
             value = "canonical_hartley"
         else:
             raise ValueError(f"invalid value to {key!r}; got {value!r}")
+    else:
+        raise ValueError(f"invalid key; got {key!r}")
     _config[key] = value
