@@ -8,7 +8,8 @@ from typing import Callable, Union
 
 import jax.numpy as jnp
 import numpy as np
-from jax import Array, tree_map, vmap
+from jax import Array, vmap
+from jax.tree_util import tree_map
 from jax.lax import fori_loop
 
 from .model import Initializer, LazyModel, Model

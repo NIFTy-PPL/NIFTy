@@ -128,7 +128,7 @@ lh_init_approx = (
         jft.VariableCovarianceGaussian, {
             "data": partial(random_draw, dtype=float, method=random.normal),
         }, lambda key, shape: (
-            random_draw(key, shape, float, random.normal), 3. + 1. / jax.
+            random_draw(key, shape, float, random.normal), 3. + 1. /
             tree_map(jnp.exp, random_draw(key, shape, float, random.normal))
         )
     ), (
