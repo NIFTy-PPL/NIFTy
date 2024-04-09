@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 
+import operator
 from collections import namedtuple
 from collections.abc import Mapping
 from functools import partial
@@ -8,6 +9,7 @@ from typing import Callable, Optional, Tuple, Union
 import numpy as np
 from jax import numpy as jnp
 
+from ..config import _config
 from .gauss_markov import IntegratedWienerProcess
 from .logger import logger
 from .misc import wrap
@@ -20,7 +22,9 @@ def hartley(p, axes=None):
     from jax.numpy import fft
 
     tmp = fft.fftn(p, axes=axes)
-    return tmp.real + tmp.imag
+    c = _config.get("hartley_convention")
+    add_or_sub = operator.add if c == "non_canonical_hartley" else operator.sub
+    return add_or_sub(tmp.real, tmp.imag)
 
 
 def get_fourier_mode_distributor(
