@@ -6,6 +6,22 @@ _config = dict(
 
 
 def update(key, value, /):
+    """Update the global configuration of NIFTy and NIFTy.re
+
+    Parameters
+    ----------
+    key : str
+        Identifyer for the configuration option.
+    value : Any
+        Value for the configuration option.
+
+
+    Currently, the following configuration options are available:
+
+    - "hartley_convention": one of "non_canonical_hartley" or
+      "canonical_hartley" for ducc's old non-canonical Hartley convention
+      respectively ducc's new canononical Hartley convention
+    """
     global _config
     if not isinstance(key, str):
         raise TypeError(f"key must be a string; got {key!r}")
