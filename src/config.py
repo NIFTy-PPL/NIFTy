@@ -11,7 +11,7 @@ def update(key, value, /):
     Parameters
     ----------
     key : str
-        Identifyer for the configuration option.
+        Identifier for the configuration option.
     value : Any
         Value for the configuration option.
 
