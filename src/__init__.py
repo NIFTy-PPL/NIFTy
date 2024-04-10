@@ -1,5 +1,6 @@
 from .version import __version__
 
+from . import config
 from . import random
 
 from .domains import *
