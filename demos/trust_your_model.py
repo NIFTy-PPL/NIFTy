@@ -9,15 +9,14 @@ from functools import partial
 
 import jax
 import matplotlib.pyplot as plt
+import nifty8.re as jft
 import numpy as np
 from jax import numpy as jnp
 from jax import random
-from jax.config import config
+from jax.tree_util import tree_map
 from jax.flatten_util import ravel_pytree
 
-import nifty8.re as jft
-
-config.update("jax_enable_x64", True)
+jax.config.update("jax_enable_x64", True)
 
 dims = (512, )
 cf_zm = {"offset_mean": 0., "offset_std": (1e-3, 1e-4)}
@@ -86,7 +85,7 @@ class EyePlusVdaggerV():
 
     def __matmul__(self, other):
         t = self.xmap(jft.dot, in_axes=(0, None))(self._vecs, other)
-        t = jax.tree_map(
+        t = tree_map(
             lambda x: self.xmap(jnp.multiply)(x, t).sum(axis=0), self._vecs
         )
         return other + t
@@ -122,7 +121,7 @@ class EyePlusVdaggerVInv():
     def __matmul__(self, other):
         t = self.xmap(jft.dot, in_axes=(0, None))(self._vecs, other)
         t = self.small_inv @ t  # shape: (n_eff_samples, )
-        t = jax.tree_map(
+        t = tree_map(
             lambda x: self.xmap(jnp.multiply)(x, t).sum(axis=0), self._vecs
         )
         return other - t
@@ -184,7 +183,7 @@ def riemannian_manifold_maximum_a_posterior_and_grad(
         ) if mirror_vecs else fwd_at_p + n
         lh = lh_core(d) @ forward
         vecs += [jax.grad(lh)(pos)]
-    vecs = jax.tree_map(lambda *x: jnp.stack(x), *vecs)
+    vecs = tree_map(lambda *x: jnp.stack(x), *vecs)
     vecs /= jnp.sqrt(n_eff_vecs)
     eye_plus_vdaggerv_inv = EyePlusVdaggerVInv(vecs, xmap=xmap)
 
@@ -195,20 +194,20 @@ def riemannian_manifold_maximum_a_posterior_and_grad(
         s = jnp.tile(jnp.array([1., -1.]) if mirror_samples else 1., n_samples)
         assert s.size == n_eff_samples
         smpl_apply_sgn = partial(xmap(jnp.multiply), s)
-        samples = jax.tree_map(smpl_apply_sgn, samples)
+        samples = tree_map(smpl_apply_sgn, samples)
 
         # Create a second orthonormalized stack of vectors for substracting from
         # the samples
         vecs_ortho = jft.zeros_like(vecs)
         for i in range(n_eff_vecs):
-            vi = jax.tree_map(lambda x: x[i], vecs)
+            vi = tree_map(lambda x: x[i], vecs)
             for j in range(n_eff_vecs):
-                vj = jax.tree_map(lambda x: x[j], vecs_ortho)
+                vj = tree_map(lambda x: x[j], vecs_ortho)
                 # Effectively truncate the loop by multiplying with (i < j)
                 vi -= (j < i) * jft.dot(vi, vj) * vj
             s = jnp.sqrt(jft.dot(vi, vi))
             vi *= jnp.where(s > R_EPS, 1. / s, 0.)
-            vecs_ortho = jax.tree_map(
+            vecs_ortho = tree_map(
                 lambda vecs_o, v: vecs_o.at[i].set(v), vecs_ortho, vi
             )
     else:
@@ -217,13 +216,13 @@ def riemannian_manifold_maximum_a_posterior_and_grad(
     # Project out the parts that are already covered by the vectors
     # TODO: vectorize or pull sample creation into loop and vectorize jointly
     for i in range(n_eff_samples):
-        si = jax.tree_map(lambda x: x[i], samples)
+        si = tree_map(lambda x: x[i], samples)
         f = jax.vmap(jft.dot, in_axes=(0, None))(vecs_ortho, si)
-        si -= jax.tree_map(
+        si -= tree_map(
             partial(jnp.sum, axis=0),
-            jax.tree_map(partial(jax.vmap(jnp.multiply), f), vecs_ortho)
+            tree_map(partial(jax.vmap(jnp.multiply), f), vecs_ortho)
         )
-        samples = jax.tree_map(lambda smpls, x: smpls.at[i].set(x), samples, si)
+        samples = tree_map(lambda smpls, x: smpls.at[i].set(x), samples, si)
 
     s, ln_det_metric = jnp.linalg.slogdet(eye_plus_vdaggerv_inv.small)
     # assert s == 1
@@ -237,7 +236,7 @@ def riemannian_manifold_maximum_a_posterior_and_grad(
         ) if mirror_vecs else fwd_at_p + n
         lh = lh_core(d) @ forward
 
-        nll_smpl = jnp.sqrt(n_eff_vecs) * jax.tree_map(lambda x: x[i], vecs)
+        nll_smpl = jnp.sqrt(n_eff_vecs) * tree_map(lambda x: x[i], vecs)
         grad_ln_det_metric += jft.hvp(
             lh, (pos, ), (eye_plus_vdaggerv_inv @ nll_smpl, )
         )
@@ -247,7 +246,7 @@ def riemannian_manifold_maximum_a_posterior_and_grad(
         # FIXME: account for the gradient of changing samples
         value, grad = xmap(lambda s: jax.value_and_grad(ham)(pos + s))(samples)
         m = partial(jnp.mean, axis=0)
-        value, grad = m(value), jax.tree_map(m, grad)
+        value, grad = m(value), tree_map(m, grad)
     else:
         value, grad = jax.value_and_grad(ham)(pos)
     value += 0.5 * ln_det_metric
