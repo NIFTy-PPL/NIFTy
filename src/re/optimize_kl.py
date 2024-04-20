@@ -653,23 +653,20 @@ def optimize_kl(
             logger.warning("overwriting `position_or_samples` with `resume`")
         with open(resume_fn, "rb") as f:
             samples, opt_vi_st = pickle.load(f)
-    if _optimize_vi_state is not None:
-        opt_vi_st = _optimize_vi_state
-    else:
-        opt_vi_st_init = opt_vi.init_state(
-            key,
-            n_samples=n_samples,
-            draw_linear_kwargs=draw_linear_kwargs,
-            nonlinearly_update_kwargs=nonlinearly_update_kwargs,
-            kl_kwargs=kl_kwargs,
-            sample_mode=sample_mode,
-            point_estimates=point_estimates,
-            constants=constants,
-        )
-        if opt_vi_st is not None:  # resume
-            opt_vi_st = opt_vi_st._replace(config=opt_vi_st_init.config)
-        else:
-            opt_vi_st = opt_vi_st_init
+    opt_vi_st_init = opt_vi.init_state(
+        key,
+        n_samples=n_samples,
+        draw_linear_kwargs=draw_linear_kwargs,
+        nonlinearly_update_kwargs=nonlinearly_update_kwargs,
+        kl_kwargs=kl_kwargs,
+        sample_mode=sample_mode,
+        point_estimates=point_estimates,
+        constants=constants,
+    )
+    opt_vi_st = _optimize_vi_state if _optimize_vi_state is not None else opt_vi_st
+    opt_vi_st = opt_vi_st_init if opt_vi_st is None else opt_vi_st
+    if len(opt_vi_st.config) == 0:  # resume or _optimize_vi_state has empty config
+        opt_vi_st = opt_vi_st._replace(config=opt_vi_st_init.config)
 
     if odir:
         makedirs(odir, exist_ok=True)
