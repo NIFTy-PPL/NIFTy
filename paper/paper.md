@@ -301,7 +301,7 @@ Both reach about the same performance at an image size of roughly 15,000 pixels 
 The performance increases by a factor of three to four with eight cores for \texttt{NIFTy.re} and \texttt{NIFTy}, although \texttt{NIFTy.re} is slightly better at using the additional cores.
 On the GPU, \texttt{NIFTy.re} is consistently about one to two orders of magnitude faster than \texttt{NIFTy} for images larger than 100,000 pixels.
 
-We believe the performance benefits of \texttt{NIFTy.re} on the CPU for small models stem from the reduced python overhead by just-in-time compiling computations.
+We believe the performance benefits of \texttt{NIFTy.re} on the CPU for small models stem from the reduced Python overhead by just-in-time compiling computations.
 At image sizes larger than roughly 15,000 pixels, both evaluation times are dominated by the fast Fourier transform and are hence roughly the same as both use the same underlying implementation [@ducc0].
 Models in \texttt{NIFTy.re} and \texttt{NIFTy} are often well aligned with GPU programming models and thus consistently perform well on the GPU.
 Modeling components such as the new GP models implemented in \texttt{NIFTy.re} are even better aligned with GPU programming paradigms and yield even higher performance gains [@Edenhofer2022].
