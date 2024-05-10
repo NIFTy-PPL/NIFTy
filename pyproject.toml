@@ -60,7 +60,6 @@ util = [
 test = [
     "pytest",
     "pytest-cov",
-    "scipy",
     "ducc0",
 ]
 all = ["nifty8[re,native,parallel,doc,util,test]"]
