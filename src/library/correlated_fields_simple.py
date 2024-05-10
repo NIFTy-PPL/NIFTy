@@ -261,6 +261,7 @@ def ModifiedSimpleCorrelatedField(
     a = a.scale(target.total_volume)
 
     if power_space_model_builder is not None:
+        # a += power_space_model_builder(pspace).sqrt()
         a += power_space_model_builder(pspace)
 
     ht = HarmonicTransformOperator(harmonic_partner, target)
