@@ -152,6 +152,15 @@ cd nifty
 pip install --user --editable '.[re]'
 ```
 
+## Contributing
+
+Contributions are very welcome!
+Feel free to reach out early on in the development process e.g. by opening a draft PR or filing an issue, we are happy to help in the development and provide feedback along the way.
+Please open an issue first if you think your PR changes current code substantially.
+Please format your code according to the existing style used in the file or with black for new files.
+To advertise your changes, please update the public documentation and the ChangeLog if your PR affects the public API.
+Please add appropriate tests to your PR.
+
 ### Building the Documentation
 
 NIFTy's documentation is generated via [Sphinx](https://www.sphinx-doc.org/en/stable/) and is available online at [ift.pages.mpcdf.de/nifty](https://ift.pages.mpcdf.de/nifty/).
