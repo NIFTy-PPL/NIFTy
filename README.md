@@ -152,6 +152,14 @@ cd nifty
 pip install --user --editable '.[re]'
 ```
 
+## First Steps
+
+For a quick start, you can browse through the [informal introduction](https://ift.pages.mpcdf.de/nifty/user/) or dive into NIFTy by running one of the demonstrations, e.g.:
+
+```
+python demos/0_intro.py
+```
+
 ## Contributing
 
 Contributions are very welcome!
@@ -187,14 +195,6 @@ pytest --cov=nifty8 test
 ```
 
 If you are writing your own tests, it is often sufficient to just install the optional test dependencies `'nifty8[test]'`. However, to run the full test suit including tests of optional functionality, it is assumed that all optional dependencies are installed.
-
-## First Steps
-
-For a quick start, you can browse through the [informal introduction](https://ift.pages.mpcdf.de/nifty/user/) or dive into NIFTy by running one of the demonstrations, e.g.:
-
-```
-python demos/0_intro.py
-```
 
 ## Licensing terms
 
