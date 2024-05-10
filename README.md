@@ -149,7 +149,7 @@ If you might want to adapt the NIFTy source code, we suggest installing NIFTy as
 ```
 git clone -b NIFTy_8 https://gitlab.mpcdf.mpg.de/ift/nifty.git
 cd nifty
-pip install --user --editable .
+pip install --user --editable '.[re]'
 ```
 
 ### Building the Documentation
