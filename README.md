@@ -3,7 +3,7 @@
 [![pipeline status](https://gitlab.mpcdf.mpg.de/ift/nifty/badges/NIFTy_8/pipeline.svg)](https://gitlab.mpcdf.mpg.de/ift/nifty/-/commits/NIFTy_8)
 [![coverage report](https://gitlab.mpcdf.mpg.de/ift/nifty/badges/NIFTy_8/coverage.svg)](https://gitlab.mpcdf.mpg.de/ift/nifty/-/commits/NIFTy_8)
 
-**NIFTy** project homepage: [ift.pages.mpcdf.de/nifty](https://ift.pages.mpcdf.de/nifty/index.html)
+**NIFTy** project homepage: [ift.pages.mpcdf.de/nifty](https://ift.pages.mpcdf.de/nifty/)
  | Found a bug? [github.com/nifty-ppl/nifty/issues](https://github.com/nifty-ppl/nifty/issues)
  | Need help? [github.com/nifty-ppl/nifty/discussions](https://github.com/NIFTy-PPL/NIFTy/discussions)
 
@@ -154,7 +154,7 @@ pip install --user --editable .
 
 ### Building the Documentation
 
-NIFTy's documentation is generated via [Sphinx](https://www.sphinx-doc.org/en/stable/index.html) and is available online at [ift.pages.mpcdf.de/nifty](https://ift.pages.mpcdf.de/nifty/index.html).
+NIFTy's documentation is generated via [Sphinx](https://www.sphinx-doc.org/en/stable/) and is available online at [ift.pages.mpcdf.de/nifty](https://ift.pages.mpcdf.de/nifty/).
 
 To build the documentation locally, run:
 
@@ -179,7 +179,7 @@ pytest --cov=nifty8 test
 
 ## First Steps
 
-For a quick start, you can browse through the [informal introduction](https://ift.pages.mpcdf.de/nifty/user/code.html) or dive into NIFTy by running one of the demonstrations, e.g.:
+For a quick start, you can browse through the [informal introduction](https://ift.pages.mpcdf.de/nifty/user/) or dive into NIFTy by running one of the demonstrations, e.g.:
 
 ```
 python demos/0_intro.py
