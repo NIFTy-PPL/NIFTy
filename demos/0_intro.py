@@ -228,24 +228,37 @@ samples, state = jft.optimize_kl(
 namps = cfm.get_normalized_amplitudes()
 post_sr_mean = jft.mean(tuple(signal(s) for s in samples))
 post_a_mean = jft.mean(tuple(cfm.amplitude(s)[1:] for s in samples))
+grid = correlated_field.target_grids[0]
 to_plot = [
     ("Signal", signal(pos_truth), "im"),
     ("Noise", noise_truth, "im"),
     ("Data", data, "im"),
     ("Reconstruction", post_sr_mean, "im"),
-    ("Ax1", (cfm.amplitude(pos_truth)[1:], post_a_mean), "loglog"),
+    (
+        "Amplitude spectrum",
+        (
+            grid.harmonic_grid.mode_lengths[1:],
+            cfm.amplitude(pos_truth)[1:],
+            post_a_mean,
+        ),
+        "loglog",
+    ),
 ]
 fig, axs = plt.subplots(2, 3, figsize=(16, 9))
-for ax, (title, field, tp) in zip(axs.flat, to_plot):
+for ax, v in zip(axs.flat, to_plot):
+    title, field, tp, *labels = v
     ax.set_title(title)
     if tp == "im":
-        im = ax.imshow(field, cmap="inferno")
+        end = tuple(n * d for n, d in zip(grid.shape, grid.distances))
+        im = ax.imshow(field.T, cmap="inferno", extent=(0.0, end[0], 0.0, end[1]))
         plt.colorbar(im, ax=ax, orientation="horizontal")
     else:
         ax_plot = ax.loglog if tp == "loglog" else ax.plot
-        field = field if isinstance(field, (tuple, list)) else (field,)
-        for f in field:
-            ax_plot(f, alpha=0.7)
+        x = field[0]
+        for f in field[1:]:
+            ax_plot(x, f, alpha=0.7)
+for ax in axs.flat[len(to_plot) :]:
+    ax.set_axis_off()
 fig.tight_layout()
 fig.savefig("results_intro_full_reconstruction.png", dpi=400)
 plt.show()
