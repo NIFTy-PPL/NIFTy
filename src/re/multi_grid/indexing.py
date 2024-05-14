@@ -52,11 +52,9 @@ class GridAtLevel:
         )
         return (index * f)[..., (np.newaxis,) * self.ndim] + c[c_bc]
 
-    def neighborhood(self, index, window_size: Iterable[int], ensemble_axis=None):
+    def neighborhood(self, index, window_size: Iterable[int]):
         index = self._parse_index(index)
         dtp = np.result_type(index)
-        if ensemble_axis is not None:
-            raise NotImplementedError()
         window_size = np.asarray(window_size)
         c = np.mgrid[tuple(slice(sz) for sz in window_size)].astype(dtp)
         c -= (window_size // 2)[:, (np.newaxis,) * self.ndim]
@@ -66,7 +64,8 @@ class GridAtLevel:
             + (slice(None),) * self.ndim
         )
         m_bc = (slice(None),) + (np.newaxis,) * (index.ndim - 1 + self.ndim)
-        return (index[..., (np.newaxis,) * self.ndim] + c[c_bc]) % self.shape[m_bc]
+        res = (index[..., (np.newaxis,) * self.ndim] + c[c_bc]) % self.shape[m_bc]
+        return res, np.ones(res.shape[1:], dtype=bool)
 
     def parent(self, index):
         if self.parent_splits is None:
@@ -221,11 +220,8 @@ class HEALPixGridAtLevel(GridAtLevel):
         self.fill_strategy = fill_strategy.lower()
         super().__init__(shape=size, splits=splits, parent_splits=parent_splits)
 
-    def neighborhood(self, index, window_size: int, ensemble_axis=None):
+    def neighborhood(self, index, window_size: int):
         from healpy.pixelfunc import get_all_neighbours
-
-        if ensemble_axis is not None:
-            raise NotImplementedError()
 
         dtp = np.result_type(index)
         if window_size not in (1, 9, self.size):
@@ -244,6 +240,8 @@ class HEALPixGridAtLevel(GridAtLevel):
         nbr = nbr.reshape(window_size - 1, n_pix).T
         neighbors[:, 1:] = nbr
 
+        valid = neighbors != -1
+
         if self.fill_strategy == "unique":
             neighbors = _fill_bad_healpix_neighbors(neighbors)
         elif self.fill_strategy == "same":
@@ -255,7 +253,7 @@ class HEALPixGridAtLevel(GridAtLevel):
 
         neighbors = np.squeeze(neighbors, axis=0) if index_shape == () else neighbors
         neighbors = neighbors.reshape(index_shape + (window_size,))
-        return neighbors.astype(dtp)[np.newaxis]
+        return neighbors.astype(dtp)[np.newaxis], valid.reshape(neighbors.shape)
 
     def index2coord(self, index, **kwargs):
         from healpy.pixelfunc import pix2vec
@@ -366,17 +364,24 @@ class OGridAtLevel(GridAtLevel):
             else window_size
         )
         assert len(window_size) == self.ngrids
-        neighborhood = tuple(
-            g.neighborhood(index[i], wsz)
-            for i, g, wsz in zip(islice, self.grids, window_size)
-        )
+        neighborhood = []
+        valid = []
+        for i, g, wsz in zip(islice, self.grids, window_size):
+            n, v = g.neighborhood(index[i], wsz)
+            neighborhood.append(n)
+            valid.append(v)
+
         # Make initial entry broadcast-able to the full final shape
         out = neighborhood[0].reshape(
             (slice(None),) * neighborhood[0].ndim
             + (np.newaxis,) * (ndims_sum - self.grids[0].ndim)
         )
+        vout = valid[0].reshape(
+            (slice(None),) * valid[0].ndim
+            + (np.newaxis,) * (ndims_sum - self.grids[0].ndim)
+        )
         # Successively concatenate all broadcasted neighbors
-        for n, i in zip(neighborhood[1:], islice[1:]):
+        for n, v, i in zip(neighborhood[1:], valid[1:], islice[1:]):
             n = n.reshape(
                 (slice(None),) * index.ndim
                 + (np.newaxis,) * i.start
@@ -388,7 +393,16 @@ class OGridAtLevel(GridAtLevel):
             n = np.broadcast_to(n, n.shape[:1] + bshp)
             out = np.broadcast_to(out, out.shape[:1] + bshp)
             out = np.concatenate((out, n), axis=0)
-        return out
+
+            v = v.reshape(
+                (slice(None),) * (index.ndim - 1)
+                + (np.newaxis,) * i.start
+                + (slice(None),) * (i.stop - i.start)
+                + (np.newaxis,) * (ndims_sum - i.stop)
+            )
+            # If entry is invalid along one grid then the whole voxel is invalid
+            vout &= v
+        return out, vout
 
     def parent(self, index):
         ndims_off = tuple(np.cumsum(tuple(g.ndim for g in self.grids)))
@@ -493,12 +507,12 @@ class FlatGridAtLevel(GridAtLevel):
         return np.stack(wgts, axis=0)
 
     def index_to_flatindex(self, index, levelshift=0):
+        # TODO vectorize better
         if self.ordering == "serial":
             wgt = self._weights_serial(levelshift)
             wgt = wgt[(slice(None),) + (np.newaxis,) * (index.ndim - 1)]
             return (wgt * index).sum(axis=0).astype(index)[np.newaxis, ...]
         if self.ordering == "nest":
-            # TODO vectorize better
             fid = np.zeros(index.shape[1:], dtype=index.dtype)
             wgts = self._weights_nest(levelshift)
             for n, ww in enumerate(wgts):
@@ -542,13 +556,13 @@ class FlatGridAtLevel(GridAtLevel):
         children = self.gridAtLevel.children(index)
         return self.index_to_flatindex(children, +1)
 
-    def neighborhood(self, index, window_size: Iterable[int], ensemble_axis=None):
+    def neighborhood(self, index, window_size: Iterable[int]):
         index = self._parse_index(index)
         index = self.flatindex_to_index(index)
-        window = self.gridAtLevel.neighborhood(
-            index, window_size=window_size, ensemble_axis=ensemble_axis
+        window, valid = self.gridAtLevel.neighborhood(
+            index, window_size=window_size
         )
-        return self.index_to_flatindex(window)
+        return self.index_to_flatindex(window), valid
 
     def parent(self, index):
         index = self._parse_index(index)
@@ -664,11 +678,11 @@ class SparseGridAtLevel(FlatGridAtLevel):
             raise IndexError(f"Flatindex {ids} not on child grid of {self.__name__}")
         return res
 
-    def neighborhood(self, index, window_size: Iterable[int], ensemble_axis=None):
+    def neighborhood(self, index, window_size: Iterable[int]):
         window = self.arrayindex_to_flatindex(index)
         window = self.flatindex_to_index(window)
-        window = self.gridAtLevel.neighborhood(
-            index, window_size=window_size, ensemble_axis=ensemble_axis
+        window, valid_id = self.gridAtLevel.neighborhood(
+            index, window_size=window_size
         )
         window = self.index_to_flatindex(window)
         window, valid = self.flatindex_to_arrayindex(window)
@@ -682,7 +696,7 @@ class SparseGridAtLevel(FlatGridAtLevel):
             invalid = invalid[invalid_row]
             window[invalid_row] += invalid * index.ravel()[invalid_row][..., np.newaxis]
             window = window.reshape(window_shp)
-        return window, invalid
+        return window, valid[0] & valid_id
 
     def parent(self, index):
         index = self.arrayindex_to_flatindex(index)
