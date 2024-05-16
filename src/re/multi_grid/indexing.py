@@ -559,9 +559,7 @@ class FlatGridAtLevel(GridAtLevel):
     def neighborhood(self, index, window_size: Iterable[int]):
         index = self._parse_index(index)
         index = self.flatindex_to_index(index)
-        window, valid = self.gridAtLevel.neighborhood(
-            index, window_size=window_size
-        )
+        window, valid = self.gridAtLevel.neighborhood(index, window_size=window_size)
         return self.index_to_flatindex(window), valid
 
     def parent(self, index):
@@ -681,9 +679,7 @@ class SparseGridAtLevel(FlatGridAtLevel):
     def neighborhood(self, index, window_size: Iterable[int]):
         window = self.arrayindex_to_flatindex(index)
         window = self.flatindex_to_index(window)
-        window, valid_id = self.gridAtLevel.neighborhood(
-            index, window_size=window_size
-        )
+        window, valid_id = self.gridAtLevel.neighborhood(index, window_size=window_size)
         window = self.index_to_flatindex(window)
         window, valid = self.flatindex_to_arrayindex(window)
         if not np.all(valid):
