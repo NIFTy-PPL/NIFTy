@@ -35,3 +35,5 @@ from .refine.chart import CoordinateChart, HEALPixChart
 from .refine.charted_field import RefinementField
 from .refine.healpix_field import RefinementHPField
 from .tree_math import *
+
+from .general_sky_model import MappedModel, GeneralModel, build_power_law
