@@ -23,7 +23,7 @@ def grid_at(grid, id=None, nbr=None):
         if id is None:
             id = np.array(
                 [
-                    0,
+                    np.random.randint(0, 1),
                 ]
                 * nd
             )
@@ -84,10 +84,25 @@ def test_hpgrdi_eval(nside0, depth):
     assert np.all(tree_flatten(valid)[0])
 
 
+# TODO more tests and variety
 def test_ogrid():
-    g1 = Grid(shape0=(3,), splits=(2,)*3)
+    g1 = Grid(shape0=(3,), splits=(2,) * 3)
     g2 = HEALPixGrid(nside0=4, depth=3)
-    g3 = Grid(shape0=(3,5), splits=((1,2), )* 3)
+    g3 = Grid(shape0=(3, 5), splits=((1, 2),) * 3)
     g = OGrid(g1, g2, g3)
-
     grid_at(g, nbr=(3, 9, 2, 3))
+
+
+@pmp(
+    "grid",
+    [
+        Grid(shape0=(3,), splits=(2,) * 3),
+        HEALPixGrid(nside0=8, depth=2),
+        Grid(shape0=(3, 2), splits=((2,) * 2,) + ((2, 3),) * 4),
+    ],
+)
+@pmp("ordering", ["serial", "nest"])
+def test_flatgrid(grid, ordering):
+    g = FlatGrid(grid, ordering=ordering)
+
+    grid_at(g, nbr=(9,) * grid.at(0).ndim)
