@@ -63,6 +63,7 @@ class GridAtLevel:
         index = self._parse_index(index)
         dtp = np.result_type(index)
         window_size = np.asarray(window_size)
+        assert window_size.size == self.ndim
         c = np.mgrid[tuple(slice(sz) for sz in window_size)].astype(dtp)
         c -= (window_size // 2)[(slice(None),) + (np.newaxis,) * self.ndim]
         c_bc = (
@@ -379,9 +380,7 @@ class OGridAtLevel(GridAtLevel):
         ndims_sum = ndims_off[-1]
         islice = tuple(slice(l, r) for l, r in zip((0,) + ndims_off[:-1], ndims_off))
         window_size = (
-            (window_size,) * self.ndim
-            if isinstance(window_size, int)
-            else window_size
+            (window_size,) * self.ndim if isinstance(window_size, int) else window_size
         )
         assert len(window_size) == self.ndim
         neighborhood = []
@@ -544,7 +543,7 @@ class FlatGridAtLevel(GridAtLevel):
         if self.ordering == "serial":
             wgt = self._weights_serial(levelshift)
             wgt = wgt[(slice(None),) + (np.newaxis,) * (index.ndim - 1)]
-            return (wgt * index).sum(axis=0).astype(index)[np.newaxis, ...]
+            return (wgt * index).sum(axis=0).astype(index.dtype)[np.newaxis, ...]
         if self.ordering == "nest":
             fid = np.zeros(index.shape[1:], dtype=index.dtype)
             wgts = self._weights_nest(levelshift)
@@ -571,8 +570,8 @@ class FlatGridAtLevel(GridAtLevel):
         if self.ordering == "nest":
             wgts = self._weights_nest(levelshift)
             fid = np.copy(index[0])
-            index = np.zeros((wgts.shape[0],) + index.shape[1:], dtype=index.dtype)
-            for n, ww in reversed(list(enumerate(ww))):
+            index = np.zeros((wgts.shape[1],) + index.shape[1:], dtype=index.dtype)
+            for n, ww in reversed(list(enumerate(wgts))):
                 fct = ww.prod()
                 j = fid % fct
                 for ax in range(ww.size)[::-1]:
@@ -630,9 +629,9 @@ class FlatGrid(Grid):
         if ordering not in ["serial", "nest"]:
             raise ValueError(f"Unknown flat index ordering scheme {ordering}")
         self.ordering = ordering
-        super().__init__(
-            shape0=grid.shape0, splits=grid.splits, atLevel=FlatGridAtLevel
-        )
+        shape0 = np.array([np.prod(grid.shape0)])
+        splits = tuple(np.array([np.prod(spl)]) for spl in grid.splits)
+        super().__init__(shape0=shape0, splits=splits, atLevel=FlatGridAtLevel)
 
     def amend(self, splits):
         grid = self.grid.amend(splits)
@@ -644,7 +643,7 @@ class FlatGrid(Grid):
         return self.atLevel(
             gridAtLevel,
             self.grid.shape0,
-            self.grid.splits[:level],
+            self.grid.splits[: (level + 1)] + ((None,) if level == self.depth else ()),
             ordering=self.ordering,
         )
 
@@ -815,7 +814,7 @@ class SparseGrid(FlatGrid):
         return self.atLevel(
             gridAtLevel,
             self.grid.shape0,
-            self.grid.splits[: (level + 1)],
+            self.grid.splits[: (level + 1)] + ((None,) if level == self.depth else ()),
             self.mapping[level],
             ordering=self.ordering,
             parent_mapping=parent_mapping,
