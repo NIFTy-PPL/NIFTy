@@ -2,14 +2,12 @@
 
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 
-from jax import numpy as jnp
 import numpy as np
-from numpy.testing import assert_allclose, assert_array_equal
 from jax.tree_util import tree_flatten, tree_map
 import pytest
 
 
-from nifty8.re.multi_grid.indexing import Grid, HEALPixGrid, OGrid, FlatGrid
+from nifty8.re.multi_grid.indexing import Grid, HEALPixGrid, OGrid, FlatGrid, SparseGrid
 
 pmp = pytest.mark.parametrize
 
@@ -51,7 +49,7 @@ def grid_at(grid, id=None, nbr=None):
     "shape0, splits",
     [(3, 2), ((3,), (2, 4)), ((2, 3), ((2,) * 2, (2,) * 2)), ((1, 2, 3), ())],
 )
-def test_grid_eval(shape0, splits):
+def test_Grid(shape0, splits):
     g = Grid(shape0=shape0, splits=splits)
     if isinstance(splits, int):
         splits = (splits,)
@@ -71,7 +69,7 @@ def test_grid_eval(shape0, splits):
 
 @pmp("nside0", [1, 2, 16, 128])
 @pmp("depth", [0, 1, 4, 7])
-def test_hpgrdi_eval(nside0, depth):
+def test_HEALPixGrid(nside0, depth):
     g = HEALPixGrid(nside0=nside0, depth=depth)
 
     assert g.depth == depth
@@ -84,8 +82,8 @@ def test_hpgrdi_eval(nside0, depth):
     assert np.all(tree_flatten(valid)[0])
 
 
-# TODO more tests and variety
-def test_ogrid():
+# TODO more tests and input variety
+def test_OGrid():
     g1 = Grid(shape0=(3,), splits=(2,) * 3)
     g2 = HEALPixGrid(nside0=4, depth=3)
     g3 = Grid(shape0=(3, 5), splits=((1, 2),) * 3)
@@ -102,7 +100,15 @@ def test_ogrid():
     ],
 )
 @pmp("ordering", ["serial", "nest"])
-def test_flatgrid(grid, ordering):
+def test_FlatGrid(grid, ordering):
     g = FlatGrid(grid, ordering=ordering)
 
     grid_at(g, nbr=(9,) * grid.at(0).ndim)
+
+
+# TODO more tests and input variety
+def test_SparseGrid():
+    mapping = (np.arange(10), np.arange(6))
+    g = Grid(shape0=(10,), splits=(2,))
+    g = SparseGrid(g, mapping)
+    grid_at(g, nbr=(3,))
