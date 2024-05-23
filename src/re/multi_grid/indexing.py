@@ -227,7 +227,7 @@ class HEALPixGridAtLevel(GridAtLevel):
                 raise AssertionError()
         self.nside = int(nside)
         self.nest = nest
-        size = 12 * nside**2
+        size = 12 * self.nside**2
         if not isinstance(fill_strategy, str):
             raise TypeError(f"invalid fill_strategy {fill_strategy!r}")
         if fill_strategy.lower() not in ("same", "unique"):
@@ -236,6 +236,10 @@ class HEALPixGridAtLevel(GridAtLevel):
         super().__init__(shape=size, splits=splits, parent_splits=parent_splits)
 
     def neighborhood(self, index, window_size: Iterable[int]):
+        if not isinstance(index, int):
+            # Special case integers, otherwise remove index axis and add later again
+            assert index.shape[0] == 1
+            index = index[0]
         if not isinstance(window_size, int):
             assert len(window_size) == 1
             window_size = window_size[0]
@@ -268,7 +272,6 @@ class HEALPixGridAtLevel(GridAtLevel):
                 neighbors[i][neighbors[i] == -1] = neighbors[i, 0]
         else:
             raise AssertionError()
-
         neighbors = np.squeeze(neighbors, axis=0) if index_shape == () else neighbors
         neighbors = neighbors.reshape(index_shape + (window_size,))
         return neighbors.astype(dtp)[np.newaxis], valid.reshape(neighbors.shape)
@@ -340,7 +343,7 @@ class OGridAtLevel(GridAtLevel):
 
     @property
     def shape(self):
-        return reduce(operator.add, (g.shape for g in self.grids))
+        return np.concatenate(tuple(g.shape for g in self.grids))
 
     @property
     def ngrids(self):
@@ -352,23 +355,23 @@ class OGridAtLevel(GridAtLevel):
         islice = tuple(slice(l, r) for l, r in zip((0,) + ndims_off[:-1], ndims_off))
         children = tuple(g.children(index[i]) for i, g in zip(islice, self.grids))
         # Make initial entry broadcast-able to the full final shape
-        out = children[0].reshape(
+        out = children[0][
             (slice(None),) * children[0].ndim
             + (np.newaxis,) * (ndims_sum - self.grids[0].ndim)
-        )
+        ]
         # Successively concatenate all broadcasted children
         for c, i in zip(children[1:], islice[1:]):
-            c = c.reshape(
+            c = c[
                 (slice(None),) * index.ndim
                 + (np.newaxis,) * i.start
                 + (slice(None),) * (i.stop - i.start)
                 + (np.newaxis,) * (ndims_sum - i.stop)
-            )
+            ]
             assert c.shape[0] == (i.stop - i.start)
             bshp = np.broadcast_shapes(out.shape[1:], c.shape[1:])
             c = np.broadcast_to(c, c.shape[:1] + bshp)
             out = np.broadcast_to(out, out.shape[:1] + bshp)
-            np.concatenate((out, c), axis=0)
+            out = np.concatenate((out, c), axis=0)
         return out
 
     def neighborhood(self, index, window_size: tuple[int]):
@@ -376,56 +379,56 @@ class OGridAtLevel(GridAtLevel):
         ndims_sum = ndims_off[-1]
         islice = tuple(slice(l, r) for l, r in zip((0,) + ndims_off[:-1], ndims_off))
         window_size = (
-            (window_size,) * self.ngrids
+            (window_size,) * self.ndim
             if isinstance(window_size, int)
             else window_size
         )
-        assert len(window_size) == self.ngrids
+        assert len(window_size) == self.ndim
         neighborhood = []
         valid = []
-        for i, g, wsz in zip(islice, self.grids, window_size):
-            n, v = g.neighborhood(index[i], wsz)
+        for i, g in zip(islice, self.grids):
+            n, v = g.neighborhood(index[i], window_size[i])
             neighborhood.append(n)
             valid.append(v)
 
         # Make initial entry broadcast-able to the full final shape
-        out = neighborhood[0].reshape(
+        out = neighborhood[0][
             (slice(None),) * neighborhood[0].ndim
             + (np.newaxis,) * (ndims_sum - self.grids[0].ndim)
-        )
-        vout = valid[0].reshape(
+        ]
+        vout = valid[0][
             (slice(None),) * valid[0].ndim
             + (np.newaxis,) * (ndims_sum - self.grids[0].ndim)
-        )
+        ]
         # Successively concatenate all broadcasted neighbors
         for n, v, i in zip(neighborhood[1:], valid[1:], islice[1:]):
-            n = n.reshape(
+            n = n[
                 (slice(None),) * index.ndim
                 + (np.newaxis,) * i.start
                 + (slice(None),) * (i.stop - i.start)
                 + (np.newaxis,) * (ndims_sum - i.stop)
-            )
+            ]
             assert n.shape[0] == (i.stop - i.start)
             bshp = np.broadcast_shapes(out.shape[1:], n.shape[1:])
             n = np.broadcast_to(n, n.shape[:1] + bshp)
             out = np.broadcast_to(out, out.shape[:1] + bshp)
             out = np.concatenate((out, n), axis=0)
 
-            v = v.reshape(
+            v = v[
                 (slice(None),) * (index.ndim - 1)
                 + (np.newaxis,) * i.start
                 + (slice(None),) * (i.stop - i.start)
                 + (np.newaxis,) * (ndims_sum - i.stop)
-            )
+            ]
             # If entry is invalid along one grid then the whole voxel is invalid
-            vout &= v
+            vout = vout & v
         return out, vout
 
     def parent(self, index):
         ndims_off = tuple(np.cumsum(tuple(g.ndim for g in self.grids)))
         islice = tuple(slice(l, r) for l, r in zip((0,) + ndims_off[:-1], ndims_off))
         parent = tuple(g.parent(index[i]) for i, g in zip(islice, self.grids))
-        return np.stack(parent, axis=0)
+        return np.concatenate(parent, axis=0)
 
     def index2coord(self, index, **kwargs):
         ndims_off = tuple(np.cumsum(tuple(g.ndim for g in self.grids)))
@@ -460,7 +463,12 @@ class OGrid(Grid):
                 raise ValueError(
                     f"Grid {g.__class__.__name__} at index {i} not of same depth"
                 )
-        self.atLevel = OGridAtLevel
+        shape0 = np.concatenate(tuple(g.shape0 for g in self.grids))
+        splits = tuple(
+            np.concatenate(tuple(g.splits[lvl] for g in self.grids))
+            for lvl in range(self.grids[0].depth)
+        )
+        super().__init__(shape0=shape0, splits=splits, atLevel=OGridAtLevel)
 
     @property
     def depth(self):

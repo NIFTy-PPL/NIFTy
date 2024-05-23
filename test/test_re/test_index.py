@@ -9,14 +9,13 @@ from jax.tree_util import tree_flatten, tree_map
 import pytest
 
 
-from nifty8.re.multi_grid.indexing import Grid, HEALPixGrid
+from nifty8.re.multi_grid.indexing import Grid, HEALPixGrid, OGrid, FlatGrid
 
 pmp = pytest.mark.parametrize
 
 
 def grid_at(grid, id=None, nbr=None):
     params = []
-    print(grid)
     for lvl in range(grid.depth + 1):
         ga = grid.at(lvl)
         sz = ga.size
@@ -86,3 +85,9 @@ def test_hpgrdi_eval(nside0, depth):
 
 
 def test_ogrid():
+    g1 = Grid(shape0=(3,), splits=(2,)*3)
+    g2 = HEALPixGrid(nside0=4, depth=3)
+    g3 = Grid(shape0=(3,5), splits=((1,2), )* 3)
+    g = OGrid(g1, g2, g3)
+
+    grid_at(g, nbr=(3, 9, 2, 3))
