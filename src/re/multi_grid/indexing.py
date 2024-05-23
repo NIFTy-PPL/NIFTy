@@ -622,7 +622,7 @@ class FlatGrid(Grid):
     grid: Grid
     ordering: str
 
-    def __init__(self, grid, ordering="nest"):
+    def __init__(self, grid, ordering="nest", atLevel=FlatGridAtLevel):
         if not isinstance(grid, Grid):
             raise TypeError(f"Grid {grid.__name__} of invalid type")
         self.grid = grid
@@ -631,7 +631,7 @@ class FlatGrid(Grid):
         self.ordering = ordering
         shape0 = np.array([np.prod(grid.shape0)])
         splits = tuple(np.array([np.prod(spl)]) for spl in grid.splits)
-        super().__init__(shape0=shape0, splits=splits, atLevel=FlatGridAtLevel)
+        super().__init__(shape0=shape0, splits=splits, atLevel=atLevel)
 
     def amend(self, splits):
         grid = self.grid.amend(splits)
@@ -675,7 +675,12 @@ class SparseGridAtLevel(FlatGridAtLevel):
             grid_all_splits=grid_all_splits,
             ordering=ordering,
         )
-        self.shape = (self.mapping.size,)
+        # Overrides shape to utilize base functions
+        self.shape = np.array(
+            [
+                self.mapping.size,
+            ]
+        )
 
     def _mapping(self, levelshift):
         if levelshift == -1:
@@ -777,7 +782,7 @@ class SparseGrid(FlatGrid):
 
     def __init__(self, grid, mapping, ordering="nest", _check_mapping=True):
         if not isinstance(grid, Grid):
-            raise TypeError(f"Grid {grid.__name__} of invalid type")
+            raise TypeError(f"Grid {grid.__class__.__name__} of invalid type")
         self.grid = grid
         self.ordering = ordering
 
@@ -785,21 +790,19 @@ class SparseGrid(FlatGrid):
         mapping = tuple(np.atleast_1d(m) for m in mapping)
 
         if _check_mapping:
-            if len(mapping) != grid.depth:
+            if len(mapping) != grid.depth + 1:
                 md, gd = len(mapping), grid.depth
-                nm = grid.__name__
+                nm = grid.__class__.__name__
                 msg = f"Map depth {md} does not match grid {nm} depth {gd}"
                 raise ValueError(msg)
             for mm in mapping:
-                if mapping.ndim != 1:
+                if mm.ndim != 1:
                     raise IndexError("Mapping must be one dimensional")
                 if np.any(mm[1:] <= mm[:-1]):
                     raise IndexError("Mapping must be unique and sorted")
         self.mapping = mapping
 
-        super().__init__(
-            shape0=grid.shape0, splits=grid.splits, atLevel=SparseGridAtLevel
-        )
+        super().__init__(grid=grid, ordering=ordering, atLevel=SparseGridAtLevel)
 
     def amend(self, splits, mapping, **kwargs):
         grid = self.grid.amend(splits, **kwargs)
@@ -810,7 +813,7 @@ class SparseGrid(FlatGrid):
         level = self._parse_level(level)
         gridAtLevel = self.grid.at(level)
         parent_mapping = None if level == 0 else self.mapping[level - 1]
-        children_mapping = None if level == self.depth - 1 else self.mapping[level + 1]
+        children_mapping = None if level == self.depth else self.mapping[level + 1]
         return self.atLevel(
             gridAtLevel,
             self.grid.shape0,
