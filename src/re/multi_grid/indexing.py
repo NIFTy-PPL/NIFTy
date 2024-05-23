@@ -13,12 +13,16 @@ import numpy.typing as npt
 class GridAtLevel:
     shape: npt.NDArray[np.int_]
     splits: npt.NDArray[np.int_]
-    parent_splits: Optional[npt.NDArray[np.int_]] = None
+    parent_splits: Optional[npt.NDArray[np.int_]]
 
-    def __init__(self, shape, splits, parent_splits):
+    def __init__(self, shape, splits=None, parent_splits=None):
         self.shape = np.atleast_1d(shape)
-        self.splits = np.atleast_1d(splits)
-        self.parent_splits = np.atleast_1d(parent_splits)
+        if splits is not None:
+            splits = np.atleast_1d(splits)
+        self.splits = splits
+        if parent_splits is not None:
+            parent_splits = np.atleast_1d(parent_splits)
+        self.parent_splits = parent_splits
 
     def _parse_index(self, index):
         index = np.asarray(index)
@@ -26,7 +30,7 @@ class GridAtLevel:
             l = index.shape[0]
             ve = f"index {index} is of invalid length {l} for shape {self.shape}"
             raise IndexError(ve)
-        if np.any(np.any(np.abs(idx) >= s) for idx, s in zip(index, self.shape)):
+        if np.any(tuple(np.any(np.abs(idx) >= s) for idx, s in zip(index, self.shape))):
             nm = self.__class__.__name__
             ve = f"index {index} is out of bounds for {nm} with shape {self.shape}"
             raise IndexError(ve)
@@ -41,6 +45,8 @@ class GridAtLevel:
         return len(self.shape)
 
     def children(self, index) -> np.ndarray:
+        if self.splits is None:
+            raise IndexError("This level has no children")
         index = self._parse_index(index)
         dtp = np.result_type(index)
         f = self.splits[(slice(None),) + (np.newaxis,) * (index.ndim - 1)]
@@ -50,21 +56,23 @@ class GridAtLevel:
             + (np.newaxis,) * (index.ndim - 1)
             + (slice(None),) * self.ndim
         )
-        return (index * f)[..., (np.newaxis,) * self.ndim] + c[c_bc]
+        ids = index * f
+        return ids[(slice(None),) * ids.ndim + (np.newaxis,) * self.ndim] + c[c_bc]
 
     def neighborhood(self, index, window_size: Iterable[int]):
         index = self._parse_index(index)
         dtp = np.result_type(index)
         window_size = np.asarray(window_size)
         c = np.mgrid[tuple(slice(sz) for sz in window_size)].astype(dtp)
-        c -= (window_size // 2)[:, (np.newaxis,) * self.ndim]
+        c -= (window_size // 2)[(slice(None),) + (np.newaxis,) * self.ndim]
         c_bc = (
             (slice(None),)
             + (np.newaxis,) * (index.ndim - 1)
             + (slice(None),) * self.ndim
         )
         m_bc = (slice(None),) + (np.newaxis,) * (index.ndim - 1 + self.ndim)
-        res = (index[..., (np.newaxis,) * self.ndim] + c[c_bc]) % self.shape[m_bc]
+        id_bc = (slice(None),) * index.ndim + (np.newaxis,) * self.ndim
+        res = (index[id_bc] + c[c_bc]) % self.shape[m_bc]
         return res, np.ones(res.shape[1:], dtype=bool)
 
     def parent(self, index):
@@ -95,7 +103,7 @@ class Grid:
     atLevel: Callable
 
     def __init__(self, *, shape0, splits, atLevel=GridAtLevel):
-        self.shape0 = np.asarray(shape0)
+        self.shape0 = np.atleast_1d(shape0)
         splits = (splits,) if isinstance(splits, int) else splits
         self.splits = tuple(np.atleast_1d(s) for s in splits)
         self.atLevel = atLevel
@@ -105,9 +113,9 @@ class Grid:
         return len(self.splits)
 
     def _parse_level(self, level):
-        if np.abs(level) >= self.depth:
+        if np.abs(level) > self.depth:
             raise IndexError(f"{self.__class__.__name__} does not have level {level}")
-        return level % self.depth
+        return level % (self.depth + 1)
 
     def amend(self, splits):
         splits = (splits,) if isinstance(splits, int) else splits
@@ -116,16 +124,20 @@ class Grid:
 
     def at(self, level: int):
         level = self._parse_level(level)
-        fct = np.array(
-            [reduce(operator.mul, si, 1) for si in zip(*self.splits[:level])]
-        )
+        if level > 0:
+            fct = np.array(
+                [reduce(operator.mul, si) for si in zip(*self.splits[:level])]
+            )
+        else:
+            fct = 1
         return self.atLevel(
             shape=self.shape0 * fct,
-            splits=self.splits[level],
+            splits=self.splits[level] if level < self.depth else None,
             parent_splits=self.splits[level - 1] if level >= 1 else None,
         )
 
 
+@dataclass()
 class RegularGridAxisAtLevel(GridAtLevel):
     def index2coord(self, index):
         return (index + 0.5) / self.shape[:, (np.newaxis,) * (index.ndim - 1)]
@@ -179,15 +191,16 @@ def _fill_bad_healpix_neighbors(nside, neighbors, nest: bool = True):
     return neighbors
 
 
+@dataclass()
 class HEALPixGridAtLevel(GridAtLevel):
     nside: int
-    nest: True
+    nest: bool
     fill_strategy: str
 
     def __init__(
         self,
         shape=None,
-        splits=4,
+        splits=None,
         parent_splits=None,
         *,
         nside: int = None,
@@ -196,20 +209,22 @@ class HEALPixGridAtLevel(GridAtLevel):
     ):
         if shape is not None:
             assert nside is None
-            assert isinstance(shape, int) or np.ndim(shape) == 0
-            shape = shape[0] if np.ndim(shape) > 0 else shape
-            nside = (shape / 12) ** 0.5
+            assert np.ndim(shape) == 1 and shape.size == 1
+            nside = (shape[0] / 12) ** 0.5
         if int(nside) != nside:
             raise TypeError(f"invalid nside {nside!r}; expected int")
         if nest is not True:
             raise NotImplementedError("only nested order currently supported")
-        assert isinstance(splits, int) or np.ndim(splits) == 0
-        splits = splits[0] if np.ndim(splits) > 0 else splits
-        if not (
-            (splits == 1 or splits % 4 == 0)
-            and (splits == 1 or splits % 4 == 0 or parent_splits is None)
-        ):
-            raise AssertionError()
+        if splits is not None:
+            splits = np.atleast_1d(splits)
+            assert np.ndim(splits) == 1 and splits.size == 1
+            if not (splits[0] == 1 or splits[0] % 4 == 0):
+                raise AssertionError()
+        if parent_splits is not None:
+            parent_splits = np.atleast_1d(parent_splits)
+            assert np.ndim(parent_splits) == 1 and parent_splits.size == 1
+            if not (parent_splits[0] == 1 or parent_splits[0] % 4 == 0):
+                raise AssertionError()
         self.nside = int(nside)
         self.nest = nest
         size = 12 * nside**2
@@ -220,7 +235,10 @@ class HEALPixGridAtLevel(GridAtLevel):
         self.fill_strategy = fill_strategy.lower()
         super().__init__(shape=size, splits=splits, parent_splits=parent_splits)
 
-    def neighborhood(self, index, window_size: int):
+    def neighborhood(self, index, window_size: Iterable[int]):
+        if not isinstance(window_size, int):
+            assert len(window_size) == 1
+            window_size = window_size[0]
         from healpy.pixelfunc import get_all_neighbours
 
         dtp = np.result_type(index)
@@ -271,6 +289,7 @@ class HEALPixGridAtLevel(GridAtLevel):
         return (surface / self.size)[(np.newaxis,) * index.ndim]
 
 
+@dataclass()
 class HEALPixGrid(Grid):
     def __init__(
         self,
@@ -309,9 +328,7 @@ class HEALPixGrid(Grid):
             assert splits is not None
             splits = (splits,) if isinstance(splits, int) else splits
         splits = tuple(np.atleast_1d(s) for s in splits)
-        return self.__class__(
-            nside0=self.nside0, shape0=self.shape0, splits=self.splits + splits
-        )
+        return self.__class__(nside0=self.nside0, splits=self.splits + splits)
 
 
 @dataclass()
@@ -434,13 +451,20 @@ class OGrid(Grid):
 
     def __init__(self, *grids):
         self.grids = tuple(grids)
-        self.depth = self.grids[0].depth
         for i, g in enumerate(grids):
             if not isinstance(g, Grid):
-                raise TypeError(f"Grid {g.__name__} at index {i} of invalid type")
-            if g.depth != self.depth:
-                raise ValueError(f"Grid {g.__name__} at index {i} not of same depth")
+                raise TypeError(
+                    f"Grid {g.__class__.__name__} at index {i} of invalid type"
+                )
+            if g.depth != grids[0].depth:
+                raise ValueError(
+                    f"Grid {g.__class__.__name__} at index {i} not of same depth"
+                )
         self.atLevel = OGridAtLevel
+
+    @property
+    def depth(self):
+        return self.grids[0].depth
 
     def amend(self, splits):
         splits = (splits,) if isinstance(splits, int) else splits
@@ -458,6 +482,7 @@ class OGrid(Grid):
         return self.atLevel(*tuple(g.at(level) for g in self.grids))
 
 
+@dataclass()
 class FlatGridAtLevel(GridAtLevel):
     """Same as :class:`GridAtLevel` but with a single global integer index for each voxel."""
 
@@ -583,6 +608,7 @@ class FlatGridAtLevel(GridAtLevel):
         return self.gridAtLevel.index2volume(index, **kwargs)
 
 
+@dataclass()
 class FlatGrid(Grid):
     """Same as :class:`Grid` but with a single global integer index for each voxel."""
 
@@ -615,6 +641,7 @@ class FlatGrid(Grid):
         )
 
 
+@dataclass()
 class SparseGridAtLevel(FlatGridAtLevel):
     mapping: npt.NDArray[np.int_]
     parent_mapping: Optional[npt.NDArray[np.int_]] = None
@@ -733,6 +760,7 @@ class SparseGridAtLevel(FlatGridAtLevel):
         )
 
 
+@dataclass()
 class SparseGrid(FlatGrid):
     """Realized :class:`FlatGrid` keeping track of the indices that are actually
     being modeled at the end of the day. This class is especially convenient for
