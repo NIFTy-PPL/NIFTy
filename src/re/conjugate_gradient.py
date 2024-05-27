@@ -232,7 +232,9 @@ def _static_cg(
     _raise_nonposdef=False,  # TODO
     **kwargs
 ) -> CGResults:
-    from jax.experimental.host_callback import call
+    # from jax.experimental.host_callback import call
+    # from jax.experimental import io_callback
+    from jax.debug import callback
     from jax.lax import cond, while_loop
 
     # While in general it is strongly discouraged to use `jit` inside a
@@ -324,7 +326,8 @@ def _static_cg(
                 "resnorm": resnorm,
                 "maxiter": maxiter
             }
-            call(pp, printable_state, result_shape=None)
+            # call(pp, printable_state, result_shape=None)
+            callback(pp, printable_state)
 
         ret = {
             "info": info,
@@ -377,7 +380,8 @@ def _static_cg(
             "resnorm": resnorm,
             "maxiter": maxiter
         }
-        call(pp, printable_state, result_shape=None)
+        # call(pp, printable_state, result_shape=None)
+        callback(pp, printable_state)
 
     val = while_loop(continue_condition, cg_single_step, val)
 
@@ -497,7 +501,8 @@ def _cg_steihaug_subproblem(
     The Hessian itself is not required, and the Hessian does
     not need to be positive semidefinite.
     """
-    from jax.experimental.host_callback import call
+    # from jax.experimental.host_callback import call
+    from jax.debug import callback
     from jax.lax import switch, while_loop
 
     tr_norm_ord = jnp.inf if tr_norm_ord is None else tr_norm_ord  # taken from JAX
@@ -654,7 +659,8 @@ def _cg_steihaug_subproblem(
                 "case": index,
                 "maxiter": maxiter
             }
-            call(pp, printable_state, result_shape=None)
+            # call(pp, printable_state, result_shape=None)
+            callback(pp, printable_state)
 
         return iterp
 
