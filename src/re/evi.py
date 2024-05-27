@@ -43,7 +43,6 @@ def _hcb_maybe_raise(condition_exception):
 
 
 def _cond_raise(condition, exception):
-    # from jax.experimental.host_callback import call
     from jax.debug import callback
 
     # Register as few host-callbacks as possible by implicitly hashing the
