@@ -43,16 +43,16 @@ def _hcb_maybe_raise(condition_exception):
 
 
 def _cond_raise(condition, exception):
-    from jax.experimental.host_callback import call
+    # from jax.experimental.host_callback import call
+    from jax.debug import callback
 
     # Register as few host-callbacks as possible by implicitly hashing the
     # exception type and the strings within
-    call(
+    callback(
         _hcb_maybe_raise, (
             condition,
             Partial(exception.__class__, *hide_strings(exception.args))
-        ),
-        result_shape=None
+        )
     )
 
 
@@ -223,7 +223,8 @@ def nonlinearly_update_residual(
 
     sample = pos + residual_sample
     del residual_sample
-    sample = _process_point_estimate(sample, pos, point_estimates, insert=False)
+    sample = _process_point_estimate(
+        sample, pos, point_estimates, insert=False)
     metric_sample, _ = draw_lni(
         pos, metric_sample_key, point_estimates=point_estimates
     )
@@ -329,6 +330,7 @@ class Samples():
     `Metric Gaussian Variational Inference`, Jakob Knollmüller,
     Torsten A. Enßlin, `<https://arxiv.org/abs/1901.11033>`_
     """
+
     def __init__(self, *, pos: P = None, samples: P, keys=None):
         self._pos, self._samples, self._keys = pos, samples, keys
 
