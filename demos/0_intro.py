@@ -216,10 +216,10 @@ samples, state = jft.optimize_kl(
     # Arguments for the minimizer of the KL-divergence cost potential
     kl_kwargs=dict(
         minimize_kwargs=dict(
-            name="M", xtol=delta, cg_kwargs=dict(name=None), maxiter=35
+            name="M", xtol=delta, cg_kwargs=dict(name=None), maxiter=35, ncg_experiment=True
         )
     ),
-    sample_mode="nonlinear_resample",
+    sample_mode="linear_resample",
     odir="results_intro",
     resume=False,
 )
