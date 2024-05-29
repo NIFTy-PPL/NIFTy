@@ -88,7 +88,10 @@ def _cg(
     maxiter=None,
     name=None,
     time_threshold=None,
-    _raise_nonposdef=True
+    _raise_nonposdef=True,
+    ncg_current_val=None,
+    ncg_fun_and_grad=None,
+    ncg_pos=None
 ) -> CGResults:
     norm_ord = 2 if norm_ord is None else norm_ord  # TODO: change to 1
     maxiter_fallback = 20 * size(j)  # taken from SciPy's NewtonCG minimzer
@@ -166,7 +169,17 @@ def _cg(
                 info = 0
                 break
         alpha = previous_gamma / curv
-        pos = pos - alpha * d
+        pos_new = pos - alpha * d
+        if ncg_fun_and_grad is not None:
+            logger.error("NCG EXPERIMENT: CHECK CG")
+            ncg_pos_new = ncg_pos - pos_new
+            ncg_new_val, _ = ncg_fun_and_grad(ncg_pos_new) # FIXME no grad
+            if not ncg_new_val < ncg_current_val:
+                logger.error("NCG EXPERIMENT: aborted CG")
+                break
+            logger.error("NCG EXPERIMENT: CONTINUE CG")
+        pos = pos_new
+
         if i % N_RESET == 0:
             r = mat(pos) - j
             nfev += 1

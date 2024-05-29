@@ -118,6 +118,7 @@ def _newton_cg(
     cg_kwargs=None,
     time_threshold=None,
     custom_gradnorm=None,
+    ncg_experiment=False
 ):
     norm_ord = 1 if norm_ord is None else norm_ord
     miniter = 0 if miniter is None else miniter
@@ -163,38 +164,53 @@ def _newton_cg(
             "name": cg_name,
             "time_threshold": time_threshold
         }
-        cg_res = cg(Partial(hessp, pos), g, **{**default_kwargs, **cg_kwargs})
+        if ncg_experiment:
+            print("###############NCG EXPERIMENT##############")
+            cg_experiment_kwags = {
+                "ncg_current_val": energy,
+                "ncg_fun_and_grad": fun_and_grad, #FIXME grad is not necessary
+                "ncg_pos": pos
+            }
+            cg_res = cg(Partial(hessp, pos), g, **{**default_kwargs, **cg_kwargs, **cg_experiment_kwags})
+        else:
+            cg_res = cg(Partial(hessp, pos), g, **{**default_kwargs, **cg_kwargs})
         nat_g, info = cg_res.x, cg_res.info
         nhev += cg_res.nfev
         if info is not None and info < 0:
             raise ValueError("conjugate gradient failed")
 
+
         naive_ls_it = 0
         dd = nat_g  # negative descent direction
         grad_scaling = 1.
         ls_reset = False
-        for naive_ls_it in range(9):
-            new_pos = pos - grad_scaling * dd
+        if ncg_experiment:
+            new_pos = pos - dd
             new_energy, new_g = fun_and_grad(new_pos)
             nfev, njev = nfev + 1, njev + 1
-            if new_energy <= energy:
-                break
-
-            grad_scaling /= 2
-            if naive_ls_it == 5:
-                ls_reset = True
-                gam = float(vdot(g, g))
-                curv = float(g.dot(hessp(pos, g)))
-                nhev += 1
-                grad_scaling = 1.
-                dd = gam / curv * g
         else:
-            grad_scaling = 0.
-            nm = "N" if name is None else name
-            msg = f"{nm}: WARNING: Energy would increase; aborting"
-            logger.warning(msg)
-            status = -1
-            break
+            for naive_ls_it in range(9):
+                new_pos = pos - grad_scaling * dd
+                new_energy, new_g = fun_and_grad(new_pos)
+                nfev, njev = nfev + 1, njev + 1
+                if new_energy <= energy:
+                    break
+
+                grad_scaling /= 2
+                if naive_ls_it == 5:
+                    ls_reset = True
+                    gam = float(vdot(g, g))
+                    curv = float(g.dot(hessp(pos, g)))
+                    nhev += 1
+                    grad_scaling = 1.
+                    dd = gam / curv * g
+            else:
+                grad_scaling = 0.
+                nm = "N" if name is None else name
+                msg = f"{nm}: WARNING: Energy would increase; aborting"
+                logger.warning(msg)
+                status = -1
+                break
 
         energy_diff = energy - new_energy
         old_fval = energy
