@@ -93,7 +93,7 @@ However, imaging is not only computationally demanding but also statistically ch
 The noise in the data requires a statistical treatment and needs to be accurately propagated from the data to the uncertainties in the final image.
 To do this, we require an inference machinery that not only handles extremely high-dimensional spaces, but one that does so in a statistically rigorous way.
 
-\texttt{NIFTy} is a Bayesian imaging library [@Selig2013; @Steiniger2017; @Arras2019].
+\texttt{NIFTy} is a Bayesian imaging library [@Selig2013; @Steiniger2017; @Arras2019NIFTy].
 It is designed to infer the million- to billion-dimensional posterior distribution in the image space from noisy input data.
 At the core of \texttt{NIFTy} lies a set of powerful Gaussian Process (GP) models and accurate Variational Inference (VI) algorithms.
 
