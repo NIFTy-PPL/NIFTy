@@ -115,17 +115,17 @@ With \texttt{NIFTy.re} bridging ideas from \texttt{NIFTy} to JAX, we envision ma
 \texttt{NIFTy.re} competes with other GP libraries as well as with probabilistic programming languages and frameworks.
 Compared to GPyTorch [@Hensman2015], GPflow [@Matthews2017], george [@Sivaram2015], or TinyGP [@ForemanMackey2024], \texttt{NIFTy.re} focuses on GP models for structured spaces and does not assume the posterior to be analytically accessible.
 Instead, \texttt{NIFTy.re} tries to approximate the true posterior using VI.
-Compared to classical probabilistic programming languages such as Stan [@Carpenter2017] and frameworks such Pyro [@Bingham2019], NumPyro [@Phan2019], pyMC3 [@Salvatier2016], emcee [@ForemanMackey2013], dynesty [@Speagle2020; @Koposov2023], or BlackJAX [@blackjax2020], \texttt{NIFTy.re} focuses on inference in extremely high-dimensional spaces.
+Compared to classical probabilistic programming languages such as Stan [@Carpenter2017] and frameworks such as Pyro [@Bingham2019], NumPyro [@Phan2019], pyMC3 [@Salvatier2016], emcee [@ForemanMackey2013], dynesty [@Speagle2020; @Koposov2023], or BlackJAX [@blackjax2020], \texttt{NIFTy.re} focuses on inference in extremely high-dimensional spaces.
 \texttt{NIFTy.re} exploits the structure of probabilistic models in its VI techniques [@Frank2021].
 With \texttt{NIFTy.re}, the GP models and the VI machinery are now fully accessible in the JAX ecosystem and \texttt{NIFTy.re} components interact seamlessly with other JAX packages such as BlackJAX and JAXopt/Optax [@Blondel2021; @Deepmind2020Optax].
 
 # Core Components
 
 \texttt{NIFTy.re} brings tried and tested structured GP models and VI algorithms to JAX.
-GP models are highly useful for imaging problems, and VI algorithms are essential to probing high-dimensional posteriors, which are often encountered in imaging problems.
+GP models are highly useful for imaging problems, and VI algorithms are essential to probe high-dimensional posteriors, which are often encountered in imaging problems.
 \texttt{NIFTy.re} infers the parameters of interest from noisy data via a stochastic mapping that goes in the opposite direction, from the parameters of interest to the data.
 
-\texttt{NIFTy} and \texttt{NIFTy.re} build up hierarchical models for the posterior.
+\texttt{NIFTy} and \texttt{NIFTy.re} build up hierarchical models for the posterior inference.
 The log-posterior function reads $\ln{p(\theta|d)} := \ell(d, f(\theta)) + \ln{p}(\theta) + \mathrm{const}$ with log-likelihood $\ell$, forward model $f$ mapping the parameters of interest $\theta$ to the data space, and log-prior $\ln{p(\theta)}$.
 The goal of the inference is to draw samples from the posterior $p(\theta|d)$.
 
@@ -221,9 +221,9 @@ At the core of both MGVI and geoVI lies an alternating procedure in which one sw
 MGVI and geoVI define the variational posterior via samples, specifically, via samples drawn around an expansion point.
 The samples in MGVI and geoVI exploit model-intrinsic knowledge of the posterior's approximate shape, encoded in the Fisher information metric and the prior curvature [@Frank2021].
 
-\texttt{NIFTy.re} implements both MGVI and geoVI and allows for much finer control over the way samples are drawn and updated compared to \texttt{NIFTy}.
-Furthermore, \texttt{NIFTy.re} exposes stand-alone functions for drawing MGVI and geoVI samples from any arbitrary model with a likelihood from \texttt{NIFTy.re} and a forward model that is differentiable by JAX.
-In addition to stand-alone sampling functions, \texttt{NIFTy.re} also provides tools to configure and execute the alternating Kullback–Leibler divergence optimization and sample adaption at a lower abstraction level.
+\texttt{NIFTy.re} allows for much finer control over the way samples are drawn and updated compared to \texttt{NIFTy}.
+\texttt{NIFTy.re} exposes stand-alone functions for drawing MGVI and geoVI samples from any arbitrary model with a likelihood from \texttt{NIFTy.re} and a forward model that is differentiable by JAX.
+In addition to stand-alone sampling functions, \texttt{NIFTy.re} provides tools to configure and execute the alternating Kullback–Leibler divergence optimization and sample adaption at a lower abstraction level.
 These tools are provided in a JAXopt/Optax-style optimizer class [@Blondel2021; @Deepmind2020Optax].
 
 A typical minimization with \texttt{NIFTy.re} is shown in the following.
@@ -289,9 +289,9 @@ We choose to benchmark $M_p$ as a typical VI minimization in \texttt{NIFTy.re} a
 
 ![Median evaluation time of applying the Fisher metric plus the identity metric to random input for \texttt{NIFTy.re} and \texttt{NIFTy} on the CPU (one and eight core(s) of an Intel Xeon Platinum 8358 CPU clocked at 2.60G Hz) and the GPU (A100 SXM4 80 GB HBM2). The quantile range from the 16%- to the 84%-quantile is obscured by the marker symbols.\label{fig:benchmark_nthreads=1+8_devices=cpu+gpu}](benchmark_nthreads=1+8_devices=cpu+gpu.png)
 
-\autoref{fig:benchmark_nthreads=1+8_devices=cpu+gpu} shows the median evaluation time in \texttt{NIFTy} of applying $M_p$ to a new, random tangent position and the evaluation time in \texttt{NIFTy.re} of building $M_p$ and applying it to a new, random tangent position for exponentially larger models.
+\autoref{fig:benchmark_nthreads=1+8_devices=cpu+gpu} shows the median evaluation time in \texttt{NIFTy} of applying $M_p$ to new, random tangent positions and the evaluation time in \texttt{NIFTy.re} of building $M_p$ and applying it to new, random tangent positions for exponentially larger models.
 The 16%-quantiles and the 84%-quantiles of the timings are obscured by the marker symbols.
-We choose to exclude the build time of $M_p$ in \texttt{NIFTy} from the comparison, putting \texttt{NIFTy} at an advantage, as its automatic differentiation is built around calls to $M_p$ with $p$ rarely varying.
+We chose to exclude the build time of $M_p$ in \texttt{NIFTy} from the comparison, putting \texttt{NIFTy} at an advantage, as its automatic differentiation is built around calls to $M_p$ with $p$ rarely varying.
 We ran the benchmark on one CPU core, eight CPU cores, and on a GPU on a compute-node with an Intel Xeon Platinum 8358 CPU clocked at 2.60G Hz and an NVIDIA A100 SXM4 80 GB HBM2 GPU.
 The benchmark used `jax==0.4.23` and `jaxlib==0.4.23+cuda12.cudnn89`.
 We vary the size of the model by increasing the size of the two-dimensional square image grid.
@@ -308,7 +308,7 @@ Modeling components such as the new GP models implemented in \texttt{NIFTy.re} a
 
 # Conclusion
 
-We implemented the core GP and VI machinery of the Bayesian imaging package \texttt{NIFTy} in JAX.
+\texttt{NIFTy.re} implements the core GP and VI machinery of the Bayesian imaging package \texttt{NIFTy} in JAX.
 The rewrite moves much of the heavy-lifting from home-grown solutions to JAX, and we envision significant gains in maintainability of \texttt{NIFTy.re} and a faster development cycle moving forward.
 The rewrite accelerates typical models written in \texttt{NIFTy} by one to two orders of magnitude, lays the foundation for new types of inference machineries by enabling higher order derivatives via JAX, and enables the interoperability of \texttt{NIFTy}'s VI and GP methods with the JAX machine learning ecosystem.
 
