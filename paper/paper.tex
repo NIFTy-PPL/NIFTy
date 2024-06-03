@@ -381,12 +381,12 @@ data to the uncertainties in the final image. To do this, we require an
 inference machinery that not only handles extremely high-dimensional
 spaces, but one that does so in a statistically rigorous way.
 
-\texttt{NIFTy} is a Bayesian imaging library (Arras et al., 2019; Selig
-et al., 2013; Steininger et al., 2019). It is designed to infer the
-million- to billion-dimensional posterior distribution in the image
-space from noisy input data. At the core of \texttt{NIFTy} lies a set of
-powerful Gaussian Process (GP) models and accurate Variational Inference
-(VI) algorithms.
+\texttt{NIFTy} is a Bayesian imaging library (Arras, Baltac, et al.,
+2019; Selig et al., 2013; Steininger et al., 2019). It is designed to
+infer the million- to billion-dimensional posterior distribution in the
+image space from noisy input data. At the core of \texttt{NIFTy} lies a
+set of powerful Gaussian Process (GP) models and accurate Variational
+Inference (VI) algorithms.
 
 \texttt{NIFTy.re} is a rewrite of \texttt{NIFTy} in JAX (Bradbury et
 al., 2018) with all relevant previous GP models, new, more flexible GP
@@ -404,20 +404,20 @@ significant gains in maintainability of \texttt{NIFTy.re} compared to
 
 We expect \texttt{NIFTy.re} to be highly useful for many imaging
 applications and envision many applications within and outside of
-astrophysics (Arras et al., 2022, 2019; Eberle et al., 2023, 2022; Frank
-et al., 2017; S. Hutschenreuter et al., 2022; Sebastian Hutschenreuter
-et al., 2023; Leike et al., 2020; Leike \& Enßlin, 2019; Mertsch \&
-Phan, 2023; J. Roth et al., 2023; Jakob Roth et al., 2023; Scheel-Platz
-et al., 2023; Tsouros et al., 2024; Welling et al., 2021; Westerkamp et
-al., 2023). \texttt{NIFTy.re} has already been successfully used in two
-galactic tomography publications (Edenhofer et al., 2023; Leike et al.,
-2022). A very early version of \texttt{NIFTy.re} enabled a
-100-billion-dimensional reconstruction using a maximum posterior
-inference. In a newer publication, \texttt{NIFTy.re} was used to infer a
-500-million-dimensional posterior distribution using VI (Knollmüller \&
-Enßlin, 2019). The latter publication extensively used
-\texttt{NIFTy.re}'s GPU support to reduce the runtime by two orders of
-magnitude compared to the CPU. With \texttt{NIFTy.re} bridging ideas
+astrophysics (Arras et al., 2022; Arras, Frank, et al., 2019; Eberle et
+al., 2023, 2022; Frank et al., 2017; S. Hutschenreuter et al., 2022;
+Sebastian Hutschenreuter et al., 2023; Leike et al., 2020; Leike \&
+Enßlin, 2019; Mertsch \& Phan, 2023; J. Roth et al., 2023; Jakob Roth et
+al., 2023; Scheel-Platz et al., 2023; Tsouros et al., 2024; Welling et
+al., 2021; Westerkamp et al., 2023). \texttt{NIFTy.re} has already been
+successfully used in two galactic tomography publications (Edenhofer et
+al., 2024; Leike et al., 2022). A very early version of
+\texttt{NIFTy.re} enabled a 100-billion-dimensional reconstruction using
+a maximum posterior inference. In a newer publication, \texttt{NIFTy.re}
+was used to infer a 500-million-dimensional posterior distribution using
+VI (Knollmüller \& Enßlin, 2019). The latter publication extensively
+used \texttt{NIFTy.re}'s GPU support to reduce the runtime by two orders
+of magnitude compared to the CPU. With \texttt{NIFTy.re} bridging ideas
 from \texttt{NIFTy} to JAX, we envision many new possibilities for
 inferring classical machine learning models with \texttt{NIFTy}'s
 inference methods and a plethora of opportunities to use
@@ -432,7 +432,7 @@ probabilistic programming languages and frameworks. Compared to GPyTorch
 not assume the posterior to be analytically accessible. Instead,
 \texttt{NIFTy.re} tries to approximate the true posterior using VI.
 Compared to classical probabilistic programming languages such as Stan
-(Carpenter et al., 2017) and frameworks such Pyro (Bingham et al.,
+(Carpenter et al., 2017) and frameworks such as Pyro (Bingham et al.,
 2019), NumPyro (Phan et al., 2019), pyMC3 (Salvatier et al., 2016),
 emcee (Foreman-Mackey et al., 2013), dynesty (Koposov et al., 2023;
 Speagle, 2020), or BlackJAX (Cabezas \& Louf, 2023), \texttt{NIFTy.re}
@@ -449,14 +449,14 @@ other JAX packages such as BlackJAX and JAXopt/Optax (Blondel et al.,
 
 \texttt{NIFTy.re} brings tried and tested structured GP models and VI
 algorithms to JAX. GP models are highly useful for imaging problems, and
-VI algorithms are essential to probing high-dimensional posteriors,
-which are often encountered in imaging problems. \texttt{NIFTy.re}
-infers the parameters of interest from noisy data via a stochastic
-mapping that goes in the opposite direction, from the parameters of
-interest to the data.
+VI algorithms are essential to probe high-dimensional posteriors, which
+are often encountered in imaging problems. \texttt{NIFTy.re} infers the
+parameters of interest from noisy data via a stochastic mapping that
+goes in the opposite direction, from the parameters of interest to the
+data.
 
 \texttt{NIFTy} and \texttt{NIFTy.re} build up hierarchical models for
-the posterior. The log-posterior function reads
+the posterior inference. The log-posterior function reads
 \(\ln{p(\theta|d)} := \ell(d, f(\theta)) + \ln{p}(\theta) + \mathrm{const}\)
 with log-likelihood \(\ell\), forward model \(f\) mapping the parameters
 of interest \(\theta\) to the data space, and log-prior
@@ -605,13 +605,12 @@ in MGVI and geoVI exploit model-intrinsic knowledge of the posterior's
 approximate shape, encoded in the Fisher information metric and the
 prior curvature (Frank et al., 2021).
 
-\texttt{NIFTy.re} implements both MGVI and geoVI and allows for much
-finer control over the way samples are drawn and updated compared to
-\texttt{NIFTy}. Furthermore, \texttt{NIFTy.re} exposes stand-alone
-functions for drawing MGVI and geoVI samples from any arbitrary model
-with a likelihood from \texttt{NIFTy.re} and a forward model that is
-differentiable by JAX. In addition to stand-alone sampling functions,
-\texttt{NIFTy.re} also provides tools to configure and execute the
+\texttt{NIFTy.re} allows for much finer control over the way samples are
+drawn and updated compared to \texttt{NIFTy}. \texttt{NIFTy.re} exposes
+stand-alone functions for drawing MGVI and geoVI samples from any
+arbitrary model with a likelihood from \texttt{NIFTy.re} and a forward
+model that is differentiable by JAX. In addition to stand-alone sampling
+functions, \texttt{NIFTy.re} provides tools to configure and execute the
 alternating Kullback--Leibler divergence optimization and sample
 adaption at a lower abstraction level. These tools are provided in a
 JAXopt/Optax-style optimizer class (Blondel et al., 2022; DeepMind et
@@ -714,11 +713,11 @@ symbols.\label{fig:benchmark_nthreads=1+8_devices=cpu+gpu}}
 \end{figure}
 
 \autoref{fig:benchmark_nthreads=1+8_devices=cpu+gpu} shows the median
-evaluation time in \texttt{NIFTy} of applying \(M_p\) to a new, random
-tangent position and the evaluation time in \texttt{NIFTy.re} of
-building \(M_p\) and applying it to a new, random tangent position for
+evaluation time in \texttt{NIFTy} of applying \(M_p\) to new, random
+tangent positions and the evaluation time in \texttt{NIFTy.re} of
+building \(M_p\) and applying it to new, random tangent positions for
 exponentially larger models. The 16\%-quantiles and the 84\%-quantiles
-of the timings are obscured by the marker symbols. We choose to exclude
+of the timings are obscured by the marker symbols. We chose to exclude
 the build time of \(M_p\) in \texttt{NIFTy} from the comparison, putting
 \texttt{NIFTy} at an advantage, as its automatic differentiation is
 built around calls to \(M_p\) with \(p\) rarely varying. We ran the
@@ -740,7 +739,7 @@ slightly better at using the additional cores. On the GPU,
 faster than \texttt{NIFTy} for images larger than 100,000 pixels.
 
 We believe the performance benefits of \texttt{NIFTy.re} on the CPU for
-small models stem from the reduced python overhead by just-in-time
+small models stem from the reduced Python overhead by just-in-time
 compiling computations. At image sizes larger than roughly 15,000
 pixels, both evaluation times are dominated by the fast Fourier
 transform and are hence roughly the same as both use the same underlying
@@ -754,9 +753,9 @@ gains (Edenhofer et al., 2022).
 \hypertarget{conclusion}{%
 \section{Conclusion}\label{conclusion}}
 
-We implemented the core GP and VI machinery of the Bayesian imaging
-package \texttt{NIFTy} in JAX. The rewrite moves much of the
-heavy-lifting from home-grown solutions to JAX, and we envision
+\texttt{NIFTy.re} implements the core GP and VI machinery of the
+Bayesian imaging package \texttt{NIFTy} in JAX. The rewrite moves much
+of the heavy-lifting from home-grown solutions to JAX, and we envision
 significant gains in maintainability of \texttt{NIFTy.re} and a faster
 development cycle moving forward. The rewrite accelerates typical models
 written in \texttt{NIFTy} by one to two orders of magnitude, lays the
@@ -796,17 +795,17 @@ O'Neil, M. (2015). {Fast Direct Methods for Gaussian Processes}.
 \emph{IEEE Transactions on Pattern Analysis and Machine Intelligence},
 \emph{38}, 252. \url{https://doi.org/10.1109/TPAMI.2015.2448083}
 
+\leavevmode\hypertarget{ref-Arras2019NIFTy}{}%
+Arras, P., Baltac, M., Ensslin, T. A., Frank, P., Hutschenreuter, S.,
+Knollmueller, J., Leike, R., Newrzella, M.-N., Platz, L., Reinecke, M.,
+\& Stadler, J. (2019). \emph{{NIFTy5: Numerical Information Field Theory
+v5}}. Astrophysics Source Code Library, record ascl:1903.008.
+
 \leavevmode\hypertarget{ref-Arras2022}{}%
 Arras, P., Frank, P., Haim, P., Knollmüller, J., Leike, R. H., Reinecke,
 M., \& Enßlin, T. A. (2022). {Variable structures in M87* from space,
 time and frequency resolved interferometry}. \emph{Nature Astronomy},
 \emph{6}, 259--269. \url{https://doi.org/10.1038/s41550-021-01548-0}
-
-\leavevmode\hypertarget{ref-Arras2019}{}%
-Arras, P., Frank, P., Leike, R., Westermann, R., \& Enßlin, T. A.
-(2019). {Unified radio interferometric calibration and imaging with
-joint uncertainty quantification}. \emph{Astronomy \& Astrophysics},
-\emph{627}, A134. \url{https://doi.org/10.1051/0004-6361/201935555}
 
 \leavevmode\hypertarget{ref-Arras2019}{}%
 Arras, P., Frank, P., Leike, R., Westermann, R., \& Enßlin, T. A.
@@ -881,9 +880,10 @@ refinement (ICR)}. arXiv.
 
 \leavevmode\hypertarget{ref-Edenhofer2023}{}%
 Edenhofer, G., Zucker, C., Frank, P., Saydjari, A. K., Speagle, J. S.,
-Finkbeiner, D., \& Enßlin, T. (2023). {A Parsec-Scale Galactic 3D Dust
-Map out to 1.25 kpc from the Sun}. \emph{arXiv e-Prints},
-arXiv:2308.01295. \url{https://doi.org/10.48550/arXiv.2308.01295}
+Finkbeiner, D., \& Enßlin, T. A. (2024). {A parsec-scale Galactic 3D
+dust map out to 1.25 kpc from the Sun}. \emph{Astronomy \&
+Astrophysics}, \emph{685}, A82.
+\url{https://doi.org/10.1051/0004-6361/202347628}
 
 \leavevmode\hypertarget{ref-ForemanMackey2013}{}%
 Foreman-Mackey, D., Hogg, D. W., Lang, D., \& Goodman, J. (2013).
@@ -1026,14 +1026,16 @@ Astrophysics}, \emph{680}, A2.
 
 \leavevmode\hypertarget{ref-Selig2013}{}%
 Selig, M., Bell, M. R., Junklewitz, H., Oppermann, N., Reinecke, M.,
-Greiner, M., Pachajoa, C., \& Ensslin, T. A. (2013). \emph{{NIFTY: A
-versatile Python library for signal inference}} (p. ascl:1302.013).
-Astrophysics Source Code Library, record ascl:1302.013.
+Greiner, M., Pachajoa, C., \& Enßlin, T. A. (2013). {NIFTY - Numerical
+Information Field Theory. A versatile PYTHON library for signal
+inference}. In \emph{Astronomy \& Astrophysics} (Vol. 554, p. A26).
+\url{https://doi.org/10.1051/0004-6361/201321236}
 
 \leavevmode\hypertarget{ref-Speagle2020}{}%
 Speagle, J. S. (2020). {DYNESTY: a dynamic nested sampling package for
-estimating Bayesian posteriors and evidences}. \emph{493}(3),
-3132--3158. \url{https://doi.org/10.1093/mnras/staa278}
+estimating Bayesian posteriors and evidences}. \emph{Monthly Notices of
+the RAS}, \emph{493}(3), 3132--3158.
+\url{https://doi.org/10.1093/mnras/staa278}
 
 \leavevmode\hypertarget{ref-Steiniger2017}{}%
 Steininger, T., Dixit, J., Frank, P., Greiner, M., Hutschenreuter, S.,
