@@ -648,6 +648,9 @@ def optimize_kl(
     opt_vi_st = None
     if resume:
         if not os.path.isfile(resume_fn):
+            if isinstance(resume, bool):
+                ve = f"there is nothing to resume from ({resume_fn!r} does not exist)"
+                raise ValueError(ve)
             raise ValueError(f"unable to resume from {resume_fn!r}")
         if samples.pos is not None:
             logger.warning("overwriting `position_or_samples` with `resume`")
