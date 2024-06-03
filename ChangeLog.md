@@ -8,6 +8,11 @@ Minimum Python version increased to 3.10
 
 Make the iteration number a counter instead of an index, i.e., initialize at zero instead of at negative one.
 
+Hartley convention
+------------------
+
+The Hartley convention can now be configured via `jft.config.update`.
+
 Changes since NIFTy 7
 =====================
 
