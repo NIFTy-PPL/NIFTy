@@ -13,6 +13,8 @@ from jax import vmap
 
 import nifty8.re as jft
 
+pmp = pytest.mark.parametrize
+
 
 def _v_compare(model, axis_size, in_axes=0, out_axes=0):
     vmodel = jft.VModel(model, axis_size=axis_size, in_axes=in_axes, out_axes=out_axes)
@@ -55,3 +57,34 @@ def test_multi():
     mymodel = Mymodel(tree)
 
     _v_compare(mymodel, axis_size=4, in_axes=in_axes, out_axes=out_axes)
+
+
+@pmp(
+    "key",
+    [
+        "a",
+        ("a",),
+        [
+            "a",
+        ],
+    ],
+)
+def test_key(key):
+    def f(x):
+        return x["a"] + x["b"]
+
+    model = jft.WrappedCall(
+        f,
+        shape={
+            "a": jft.ShapeWithDtype((3,), float),
+            "b": jft.ShapeWithDtype((1,), float),
+        },
+        white_init=True,
+    )
+
+    vmodel = jft.VModel(model, axis_size=10, in_axes=key)
+
+    x = jft.random_like(random.PRNGKey(10), vmodel.domain)
+    res = vmodel(x)
+    gt = vmap(model, in_axes=({"a": 0, "b": None},))(x)
+    assert_allclose(gt, res)
