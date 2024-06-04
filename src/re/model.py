@@ -1,5 +1,6 @@
 # Copyright(C) 2022 Gordian Edenhofer
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
+# Authors: Gordian Edenhofer, Philipp Frank
 
 import abc
 from dataclasses import dataclass, field
@@ -20,7 +21,7 @@ from jax.tree_util import (
 )
 
 from .misc import wrap
-from .tree_math import PyTreeString, ShapeWithDtype, random_like
+from .tree_math import PyTreeString, ShapeWithDtype, random_like, Vector
 
 
 class Initializer:
@@ -299,25 +300,26 @@ class VModel(LazyModel):
         if not isinstance(axis_size, int) and axis_size <= 0:
             raise ValueError(f"Invalid axis size: {axis_size}")
 
+        # Workaround as jax.tree_util.none_leaf_registry is not exposed
+        is_axs_leaf = lambda x: isinstance(x, int) or (x is None)
         struct = tree_structure(model.domain)
         if isinstance(in_axes, int):
             in_axes = tree_unflatten(struct, (in_axes,) * struct.num_leaves)
         else:
-            ax_struct = tree_structure(in_axes)
+            ax_struct = tree_structure(in_axes, is_leaf=is_axs_leaf)
             if ax_struct != struct:
                 msg = f"Model domain structure {struct} does not match axis structure {ax_struct}"
                 raise ValueError(msg)
+        self.in_axes = in_axes
 
         struct = tree_structure(model.target)
         if isinstance(out_axes, int):
-            struct = tree_structure(model.target)
             out_axes = tree_unflatten(struct, (out_axes,) * struct.num_leaves)
         else:
             ax_struct = tree_structure(out_axes)
             if ax_struct != struct:
                 msg = f"Model target structure {struct} does not match axis structure {ax_struct}"
                 raise ValueError(msg)
-        self.in_axes = in_axes
         self.out_axes = out_axes
 
         def _init(key, func, axes):
@@ -325,12 +327,16 @@ class VModel(LazyModel):
             return vmap(func, out_axes=axes)(ks)
 
         def _parse_init(func, axes):
-            if axes is None:
+            if axes is NoValue:
                 return func
             return partial(_init, func=func, axes=axes)
 
-        init = tree_map(_parse_init, self.model.init._call_or_struct, self.in_axes)
+        parse_axes = tree_map(
+            lambda x: NoValue if x is None else x, self.in_axes, is_leaf=is_axs_leaf
+        )
+        init = tree_map(_parse_init, self.model.init._call_or_struct, parse_axes)
         super().__init__(init=init)
 
     def __call__(self, x):
-        return vmap(self.model, self.in_axes, self.out_axes)(x)
+        axs = Vector(self.in_axes) if isinstance(x, Vector) else self.in_axes
+        return vmap(self.model, (axs,), self.out_axes)(x)
