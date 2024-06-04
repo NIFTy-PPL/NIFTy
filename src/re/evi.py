@@ -189,16 +189,19 @@ def _nonlinearly_update_residual_functions(
         fpp = lh.right_sqrt_metric(e_liquid, natgrad)
         return jnp.sqrt(vdot(natgrad, natgrad) + vdot(fpp, fpp))
 
-    def _trafo(likelihood, e):
-        return likelihood.transformation(e)
+    def _trafo(likelihood, e, *, point_estimates):
+        lh, e_liquid = likelihood.freeze(
+            point_estimates=point_estimates, primals=e
+        )
+        return lh.transformation(e_liquid)
 
     jit = _parse_jit(jit)
-    trafo = partial(jit(_trafo), likelihood)
     jit = partial(jit, static_argnames=("point_estimates", ))
     draw_linear_non_inverse = partial(jit(_draw_linear_non_inverse), likelihood)
     rag = partial(jit(_residual_vg), likelihood)
     metric = partial(jit(_metric), likelihood)
     sampnorm = partial(jit(_sampnorm), likelihood)
+    trafo = partial(jit(_trafo), likelihood)
     return draw_linear_non_inverse, rag, metric, sampnorm, trafo
 
 
@@ -239,7 +242,7 @@ def nonlinearly_update_residual(
     skip = isinstance(minimize_kwargs.get("maxiter", None),
                       int) and minimize_kwargs["maxiter"] == 0
     if not skip:
-        trafo_at_p = trafo(pos)
+        trafo_at_p = trafo(pos, point_estimates=point_estimates)
         options = {
             "fun_and_grad":
                 partial(
