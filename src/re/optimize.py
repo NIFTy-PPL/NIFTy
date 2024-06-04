@@ -274,7 +274,7 @@ def _trust_ncg(
     subproblem_kwargs: Optional[Dict[str, Any]] = None,
     name: Optional[str] = None
 ) -> OptimizeResults:
-    from jax.debug import callback
+    from jax.experimental.host_callback import call
 
     maxiter = 200 if maxiter is None else maxiter
 
@@ -421,7 +421,7 @@ def _trust_ncg(
                 "nhev": params.nhev,
                 "hit": sub_result.hits_boundary
             }
-            callback(pp, printable_state, result_shape=None)
+            call(pp, printable_state, result_shape=None)
         return params
 
     def _trust_region_cond_f(params: _TrustRegionState) -> bool:
