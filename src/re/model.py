@@ -6,7 +6,7 @@ import abc
 from dataclasses import dataclass, field
 from functools import partial
 from pprint import pformat
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Iterable, Optional
 from warnings import warn
 
 from jax import eval_shape
@@ -295,6 +295,8 @@ class VModel(LazyModel):
     def __init__(self, model, axis_size, in_axes=0, out_axes=0):
         if not isinstance(model, LazyModel):
             raise ValueError(f"Model {model} of invalid type")
+        if model.init.stupid:
+            raise ValueError("Can only vmap models that are not stupid")
         self.model = model
 
         if not isinstance(axis_size, int) and axis_size <= 0:
@@ -306,6 +308,16 @@ class VModel(LazyModel):
         if isinstance(in_axes, int):
             in_axes = tree_unflatten(struct, (in_axes,) * struct.num_leaves)
         else:
+            # Shortcut for dict only models
+            if isinstance(in_axes, str):
+                in_axes = (in_axes,)
+            if isinstance(in_axes, Iterable) and all(
+                (isinstance(ii, str) for ii in in_axes)
+            ):
+                dom = dict(model.domain)
+                assert dom == model.domain
+                in_axes = {k: (0 if k in in_axes else None) for k in dom.keys()}
+
             ax_struct = tree_structure(in_axes, is_leaf=is_axs_leaf)
             if ax_struct != struct:
                 msg = f"Model domain structure {struct} does not match axis structure {ax_struct}"
