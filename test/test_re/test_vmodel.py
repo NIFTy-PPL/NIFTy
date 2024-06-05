@@ -1,15 +1,12 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 
-from typing import Iterable
-import pytest
-
-
-import jax.random as random
 import jax.numpy as jnp
+import jax.random as random
 import pytest
-from numpy.testing import assert_allclose
 from jax import vmap
+from jax.tree_util import tree_map
+from numpy.testing import assert_allclose
 
 import nifty8.re as jft
 
@@ -23,11 +20,7 @@ def _v_compare(model, axis_size, in_axes=0, out_axes=0):
     res = vmodel(x)
     gt = vmap(model, in_axes=(in_axes,), out_axes=out_axes)(x)
 
-    if isinstance(gt, tuple):
-        for gg, rr in zip(gt, res):
-            assert_allclose(gg, rr)
-    else:
-        assert_allclose(gt, res)
+    tree_map(assert_allclose, gt, res)
 
 
 def test_base():
@@ -59,16 +52,7 @@ def test_multi():
     _v_compare(mymodel, axis_size=4, in_axes=in_axes, out_axes=out_axes)
 
 
-@pmp(
-    "key",
-    [
-        "a",
-        ("a",),
-        [
-            "a",
-        ],
-    ],
-)
+@pmp("key", ["a", ("a",), ["a"]])
 def test_key(key):
     def f(x):
         return x["a"] + x["b"]
