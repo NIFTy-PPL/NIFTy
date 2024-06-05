@@ -298,7 +298,7 @@ class OptimizeVI:
             )
             _nonlinearly_update_residual = partial(
                 nonlinearly_update_residual,
-                likelihood,
+                None, # Explicify no likelihood dependency
                 _nonlinear_update_funcs=_nonlin_funcs,
             )
         if _get_status_message is None:
