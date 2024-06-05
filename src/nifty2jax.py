@@ -50,7 +50,7 @@ def shapewithdtype_from_domain(
 
 
 def wrap_nifty_call(op, target_dtype=float) -> Callable[[Any], jft.Vector]:
-    from jax.experimental.host_callback import call
+    from jax import pure_callback
 
     if callable(op.jax_expr):
         warn("wrapping operator that has a callable `.jax_expr`")
@@ -62,7 +62,7 @@ def wrap_nifty_call(op, target_dtype=float) -> Callable[[Any], jft.Vector]:
 
     # TODO: define custom JVP and VJP rules
     pt = shapewithdtype_from_domain(op.target, target_dtype)
-    hcb_call = partial(call, nifty_call, result_shape=pt)
+    hcb_call = partial(pure_callback, nifty_call, pt)
 
     def wrapped_call(x) -> jft.Vector:
         x = x.tree if isinstance(x, jft.Vector) else x

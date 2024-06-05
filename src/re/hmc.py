@@ -6,7 +6,7 @@ from typing import Callable, NamedTuple, TypeVar, Union
 from jax import lax
 from jax import numpy as jnp
 from jax import random, tree_util
-from jax.experimental import host_callback
+from jax.experimental import io_callback
 from jax.scipy.special import expit
 
 from .lax import cond, fori_loop, while_loop
@@ -124,7 +124,7 @@ def leapfrog_step(
     global _DEBUG_FLAG
     if _DEBUG_FLAG:
         # append result to global list variable
-        host_callback.call(_DEBUG_ADD_QP, qp_fullstep)
+        io_callback(_DEBUG_ADD_QP, None, qp_fullstep)
 
     return qp_fullstep
 
@@ -357,7 +357,7 @@ def generate_nuts_tree(
 
     global _DEBUG_FLAG
     if _DEBUG_FLAG:
-        host_callback.call(_DEBUG_FINISH_TREE, None)
+        io_callback(_DEBUG_FINISH_TREE, None, None)
 
     return current_tree
 
@@ -544,7 +544,7 @@ def iterative_build_tree(
 
     global _DEBUG_FLAG
     if _DEBUG_FLAG:
-        host_callback.call(_DEBUG_FINISH_SUBTREE, None)
+        io_callback(_DEBUG_FINISH_SUBTREE, None, None)
 
     # The depth of a tree which was aborted early is possibly ill defined
     depth = jnp.where(n == max_num_proposals, depth, -1)
