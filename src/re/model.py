@@ -286,6 +286,33 @@ class WrappedCall(Model):
         super().__init__(call, domain=domain, target=target, white_init=white_init)
 
 
+def _is_none_or_int(x):
+    # Workaround as jax.tree_util.none_leaf_registry is not exposed
+    return isinstance(x, int) or (x is None)
+
+
+def _parse_axes(axes, domain, name=""):
+    struct = tree_structure(domain)
+    if isinstance(axes, int):
+        axes = tree_unflatten(struct, (axes,) * struct.num_leaves)
+    else:
+        # Shortcut for dict only models
+        if isinstance(axes, str):
+            axes = (axes,)
+        if isinstance(axes, Iterable) and all((isinstance(ii, str) for ii in axes)):
+            dom = dict(domain)
+            if dom != domain:
+                msg = f"{name} must be dict-like if axes are strings"
+                raise ValueError(msg)
+            axes = {k: (0 if k in axes else None) for k in dom.keys()}
+
+        ax_struct = tree_structure(axes, is_leaf=_is_none_or_int)
+        if ax_struct != struct:
+            msg = f"{name} structure {struct} does not match axis structure {ax_struct}"
+            raise ValueError(msg)
+    return axes
+
+
 class VModel(LazyModel):
     model: LazyModel = field(metadata=dict(static=False))
     in_axes: Any
@@ -302,37 +329,8 @@ class VModel(LazyModel):
         if not isinstance(axis_size, int) and axis_size <= 0:
             raise ValueError(f"Invalid axis size: {axis_size}")
 
-        # Workaround as jax.tree_util.none_leaf_registry is not exposed
-        is_axs_leaf = lambda x: isinstance(x, int) or (x is None)
-        struct = tree_structure(model.domain)
-        if isinstance(in_axes, int):
-            in_axes = tree_unflatten(struct, (in_axes,) * struct.num_leaves)
-        else:
-            # Shortcut for dict only models
-            if isinstance(in_axes, str):
-                in_axes = (in_axes,)
-            if isinstance(in_axes, Iterable) and all(
-                (isinstance(ii, str) for ii in in_axes)
-            ):
-                dom = dict(model.domain)
-                assert dom == model.domain
-                in_axes = {k: (0 if k in in_axes else None) for k in dom.keys()}
-
-            ax_struct = tree_structure(in_axes, is_leaf=is_axs_leaf)
-            if ax_struct != struct:
-                msg = f"Model domain structure {struct} does not match axis structure {ax_struct}"
-                raise ValueError(msg)
-        self.in_axes = in_axes
-
-        struct = tree_structure(model.target)
-        if isinstance(out_axes, int):
-            out_axes = tree_unflatten(struct, (out_axes,) * struct.num_leaves)
-        else:
-            ax_struct = tree_structure(out_axes)
-            if ax_struct != struct:
-                msg = f"Model target structure {struct} does not match axis structure {ax_struct}"
-                raise ValueError(msg)
-        self.out_axes = out_axes
+        self.in_axes = _parse_axes(in_axes, model.domain, "Model domain")
+        self.out_axes = _parse_axes(out_axes, model.target, "Model target")
 
         def _init(key, func, axes):
             ks = random.split(key, axis_size)
@@ -344,7 +342,7 @@ class VModel(LazyModel):
             return partial(_init, func=func, axes=axes)
 
         parse_axes = tree_map(
-            lambda x: NoValue if x is None else x, self.in_axes, is_leaf=is_axs_leaf
+            lambda x: NoValue if x is None else x, self.in_axes, is_leaf=_is_none_or_int
         )
         init = tree_map(_parse_init, self.model.init._call_or_struct, parse_axes)
         super().__init__(init=init)
