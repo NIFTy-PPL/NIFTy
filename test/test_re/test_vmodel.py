@@ -57,9 +57,9 @@ def test_key(key):
     def f(x):
         return x["a"] + x["b"]
 
-    model = jft.WrappedCall(
+    model = jft.Model(
         f,
-        shape={
+        domain={
             "a": jft.ShapeWithDtype((3,), float),
             "b": jft.ShapeWithDtype((1,), float),
         },
