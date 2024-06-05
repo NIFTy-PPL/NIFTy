@@ -323,11 +323,11 @@ class VModel(LazyModel):
         if not isinstance(model, LazyModel):
             raise ValueError(f"Model {model} of invalid type")
         if model.init.stupid:
-            raise ValueError("Can only vmap models that are not stupid")
+            raise ValueError("can only vmap models with a non-'stupid' init")
         self.model = model
 
         if not isinstance(axis_size, int) and axis_size <= 0:
-            raise ValueError(f"Invalid axis size: {axis_size}")
+            raise ValueError(f"invalid axis size {axis_size}")
 
         self.in_axes = _parse_axes(in_axes, model.domain, "Model domain")
         self.out_axes = _parse_axes(out_axes, model.target, "Model target")
