@@ -72,3 +72,8 @@ def test_key(key):
     res = vmodel(x)
     gt = vmap(model, in_axes=({"a": 0, "b": None},))(x)
     assert_allclose(gt, res)
+
+    # Check intended dict handling with dummy input
+    x = x | {"dummy": 5.0}
+    res = vmodel(x)
+    assert_allclose(gt, res)

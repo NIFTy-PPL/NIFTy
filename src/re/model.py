@@ -349,4 +349,11 @@ class VModel(LazyModel):
 
     def __call__(self, x):
         axs = Vector(self.in_axes) if isinstance(x, Vector) else self.in_axes
+        if tree_structure(axs) != tree_structure(x):
+            # Try extracting subset if x is dict
+            if isinstance(self.model.domain, dict):
+                isvec = isinstance(x, Vector)
+                x = x.val if isvec else x
+                x = {k: x[k] for k in self.model.domain.keys()}
+                x = Vector(x) if isvec else x
         return vmap(self.model, (axs,), self.out_axes)(x)
