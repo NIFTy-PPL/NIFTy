@@ -348,5 +348,10 @@ class VModel(LazyModel):
         super().__init__(init=init)
 
     def __call__(self, x):
-        axs = Vector(self.in_axes) if isinstance(x, Vector) else self.in_axes
+        axs = self.in_axes
+        axs_tr = axs.tree if isinstance(axs, Vector) else axs
+        x_tr = x.tree if isinstance(x, Vector) else x
+        if isinstance(axs_tr, dict) and isinstance(x_tr, dict):
+            axs_tr = axs_tr | {k: None for k in x_tr.keys() - axs_tr.keys()}
+        axs = Vector(axs_tr) if isinstance(x, Vector) else axs_tr
         return vmap(self.model, (axs,), self.out_axes)(x)
