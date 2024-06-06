@@ -29,22 +29,24 @@ def MFSkyModel(
     offset: LazyModel,
     drift: LazyModel,
     deviations: LazyModel,
-    in_axis: Any,
-    N_freqs: int,
-    lim_freqs: tuple,
-    base=np.log,
+    in_axes: Any = None,
     out_axes=0,
+    N_freqs: int = None,
+    lim_freqs: tuple = None,
+    base=np.log,
     _freqs=None,
 ):
     shp = np.broadcast_shapes(
         offset.target.shape, drift.target.shape, deviations.target.shape
     )
     freqs = get_freqs(lim_freqs, N_freqs, base=base) if _freqs is None else _freqs
-    deviations = VModel(deviations, N_freqs - 1, in_axis=in_axis, out_axes=-1)
+    N_freqs = freqs.size
+    if in_axes is not None:
+        deviations = VModel(deviations, N_freqs - 1, in_axes=in_axes, out_axes=-1)
     tot_shape = shp[:out_axes] + (N_freqs,) + shp[out_axes:]
 
     def apply(x):
-        return vmap(wp_with_drift, in_axes=(0,) * 3 + (None,), out_axes=out_axes)(
+        return vmap(wp_with_drift, in_axes=(0,) * 3 + (None,), out_axes=~out_axes)(
             jnp.broadcast_to(offset(x), shp).ravel(),
             jnp.broadcast_to(drift(x), shp).ravel(),
             jnp.broadcast_to(deviations(x), shp + (N_freqs - 1,)).reshape(
