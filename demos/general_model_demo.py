@@ -140,6 +140,17 @@ key, subkey = random.split(key)
 pos_init = jft.Vector(jft.random_like(subkey, gen_mod.domain))
 result = gen_mod(pos_init)
 
+
+from nifty8.re.special import MFSkyModel
+
+# Mimic case above of uncorrelated spatial deviations
+dev = jft.WrappedCall(lambda x: 0.1*x, name='dev', shape=s_dims,
+                      white_init=True)
+
+mfsky = MFSkyModel(correlated_field, alpha_field, dev, in_axes='dev',
+                   out_axes=0, _freqs=freqs)
+
+
 # # Plot $I(x, \nu)$ for some $\nu$ (Energy-slices)
 
 for j in range(12):
@@ -148,7 +159,7 @@ for j in range(12):
     plt.show()
     plt.close()
 
-# # Plot  Plot $I(x, \nu)$ for some $x$ (spatial-slices) 
+# # Plot  Plot $I(x, \nu)$ for some $x$ (spatial-slices)
 
 for i in range(20):
     plt.plot(freqs, result[:, i*5, i*5])
@@ -159,10 +170,46 @@ plt.close()
 
 plt.imshow(correlated_field(pos_init))
 plt.colorbar()
+plt.show()
+plt.close()
 
 # # Plot $\alpha$
 
 plt.imshow(alpha_field(pos_init))
 plt.colorbar()
+plt.show()
+plt.close()
 
 
+key, subkey = random.split(key)
+result = mfsky(mfsky.init(subkey))
+print(result.shape)
+
+# # Plot $I(x, \nu)$ for some $\nu$ (Energy-slices)
+
+for j in range(12):
+    plt.imshow(result[j,:,:])
+    plt.colorbar()
+    plt.show()
+    plt.close()
+
+# # Plot  Plot $I(x, \nu)$ for some $x$ (spatial-slices)
+
+for i in range(20):
+    plt.plot(freqs, result[:, i*5, i*5])
+plt.show()
+plt.close()
+
+# # Plot $I_0$
+
+plt.imshow(correlated_field(pos_init))
+plt.colorbar()
+plt.show()
+plt.close()
+
+# # Plot $\alpha$
+
+plt.imshow(alpha_field(pos_init))
+plt.colorbar()
+plt.show()
+plt.close()
