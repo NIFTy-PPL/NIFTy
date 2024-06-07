@@ -74,6 +74,30 @@ def reduced_residual_stats(position_or_samples, func=None, *, map="lmap"):
     return tree_map(red_chisq_stat, samples)
 
 
+def _rpprint(ps: Any, *, _indent=0, _key="") -> str:
+    if isinstance(ps, Vector):
+        msg = _rpprint(ps.tree, _indent=_indent)
+    elif isinstance(ps, dict):
+        msg = ""
+        for k, v in ps.items():
+            k = _key + "/" * bool(_key) + str(k)
+            if isinstance(v, dict):
+                msg += _rpprint(v, _indent=_indent, _key=k)
+            else:
+                msg += "  " * _indent + f"{k:24s}::"
+                m = _rpprint(v, _indent=_indent + 1, _key="")
+                msg += (" " + m.lstrip()) if len(m.splitlines()) == 1 else ("\n" + m)
+    elif isinstance(ps, (tuple, list)):
+        msg = f"{'list' if isinstance(ps, list) else 'tuple'}(\n"
+        for v in ps:
+            msg += _rpprint(v, _indent=_indent + 1, _key="")
+        msg += ")\n"
+    else:
+        # Catch all other instances with PrettyPrinter
+        msg = "  " * _indent + pprint.pformat(ps) + "\n"
+    return msg
+
+
 def minisanity(position_or_samples, func=None, *, map="lmap"):
     """Wrapper for `reduced_residual_stats` to retrieve the reduced chi-squared
     and a pretty-printable string of the statistics."""
@@ -92,19 +116,4 @@ def minisanity(position_or_samples, func=None, *, map="lmap"):
         return isinstance(l, ChiSqStats)
 
     ps = tree_map(make_pretty_string, stat_tree, is_leaf=is_leaf)
-    # HACK to make the most common primal types look pretty
-    ps = ps.tree if isinstance(ps, Vector) else ps
-    pp = pprint.PrettyPrinter()
-    if isinstance(ps, dict):
-        msg = ""
-        for k in sorted(ps.keys()):
-            v = ps[k]
-            if isinstance(v, str):
-                msg += f"{str(k):22s}:: {v}\n"
-            else:
-                msg += f"{str(k):22s}::\n{pp.pformat(v)}\n"
-    elif not isinstance(ps, str):
-        msg = pp.pformat(ps)
-    else:
-        msg = ps
-    return stat_tree, msg
+    return stat_tree, _rpprint(ps)
