@@ -14,8 +14,8 @@ from typing import Any, Callable, Literal, NamedTuple, Optional, TypeVar, Union
 import jax
 import numpy as np
 from jax import numpy as jnp
-from jax import random, tree_map
-from jax.tree_util import Partial
+from jax import random
+from jax.tree_util import Partial, tree_map
 
 from . import optimize
 from .evi import (
