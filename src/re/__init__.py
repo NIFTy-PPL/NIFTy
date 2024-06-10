@@ -26,7 +26,7 @@ from .minisanity import minisanity, reduced_residual_stats
 from .misc import hvp, interpolate, wrap, wrap_left
 from .model import Initializer, Model, VModel, WrappedCall
 from .num import *
-from .optimize import minimize, newton_cg, trust_ncg
+from .optimize import minimize, newton_cg, static_newton_cg, trust_ncg
 from .optimize_kl import OptimizeVI, OptimizeVIState, optimize_kl
 from .prior import (
     InvGammaPrior, LaplacePrior, LogNormalPrior, NormalPrior, UniformPrior
