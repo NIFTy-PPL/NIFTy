@@ -4,9 +4,10 @@ from typing import Any, Callable, Dict, Hashable, Mapping, TypeVar
 
 import jax
 from jax import numpy as jnp
+from jax.tree_util import Partial
 
-O = TypeVar('O')
-I = TypeVar('I')
+O = TypeVar("O")
+I = TypeVar("I")
 
 
 def hvp(f, primals, tangents):
@@ -75,7 +76,7 @@ def wrap_left(
     return named_call
 
 
-def interpolate(xmin=-7., xmax=7., N=14000) -> Callable:
+def interpolate(xmin=-7.0, xmax=7.0, N=14000) -> Callable:
     """Replaces a local nonlinearity such as jnp.exp with a linear interpolation
 
     Interpolating functions speeds up code and increases numerical stability in
@@ -90,6 +91,7 @@ def interpolate(xmin=-7., xmax=7., N=14000) -> Callable:
     N : int
         Number of points used for the interpolation. Default: 14000
     """
+
     def decorator(f):
         from functools import wraps
 
@@ -103,3 +105,54 @@ def interpolate(xmin=-7., xmax=7., N=14000) -> Callable:
         return wrapper
 
     return decorator
+
+
+def _maybe_raise(condition, exception):
+    if condition:
+        raise exception()
+
+
+def conditional_raise(condition: bool, exception):
+    """JAX JIT-safe raise of the given Exception if `condition` is True.
+
+    Parameters:
+    -----------
+    condition: bool
+        If True, will raise `exception` on the host.
+    exception: :class:`Exception`
+        Exception that will be raised if `condition` is True
+    """
+    from jax.debug import callback
+    from .tree_math import hide_strings
+
+    # Register as few host-callbacks as possible by implicitly hashing the
+    # exception type and the strings within
+    callback(
+        _maybe_raise,
+        condition,
+        Partial(exception.__class__, *hide_strings(exception.args)),
+    )
+
+
+def _maybe_call(condition, fn, args, kwargs):
+    if condition:
+        fn(*args, **kwargs)
+
+
+def conditional_call(condition, fn, *args, **kwargs):
+    """JAX JIT-safe call to `fn` if `condition` is True.
+
+    Parameters:
+    -----------
+    condition: boolean
+        If True, will call `fn` on the host
+    fn: Callable
+        Function that will be called on the host if `condition` is True
+    *args:
+        Positional arguments passed to `fn`
+    **kwargs:
+        Keyword arguments passed to `fn`
+    """
+    from jax.debug import callback
+
+    callback(_maybe_call, condition, Partial(fn), args, kwargs)
