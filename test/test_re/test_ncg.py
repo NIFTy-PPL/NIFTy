@@ -124,7 +124,7 @@ def test_static_ncg_jittability(seed):
     for kwargs in [{'fun': fun, 'jac': grad}, {'fun_and_grad': fun_and_grad}]:
         ncg = jit(
             partial(jft.static_newton_cg, hessp=met, **kwargs),
-            static_argnames=('name', 'absdelta')
+            static_argnames=('name', )
         )
         res = ncg(x0=x, maxiter=20, absdelta=1e-6, name='N')
         assert_allclose(res, diag * x, rtol=1e-4, atol=1e-4)
