@@ -203,3 +203,107 @@ def test_nifty_vs_niftyre_matern_cf(
     npos = {k: ift.makeField(cf.domain[k], v) for k, v in pos.items()}
     npos = ift.MultiField.from_dict(npos, cf.domain)
     assert_allclose(cf(npos).val, jcf(pos))
+
+
+CFG_OFFSET = dict(offset_mean=0, offset_std=(.1, .1))
+CFG_FLUCT = dict(
+    fluctuations=(1., .1),
+    loglogavgslope=(-1., .1),
+    flexibility=(1., .1),
+    asperity=(.2, 2.e-2)
+)
+
+@pmp('seed', [0, 42])
+@pmp('shape', [(4, ), (32,)])
+def test_nifty_vs_niftyre_spherical(seed, shape):
+
+    key = random.PRNGKey(seed)
+
+    jcfm = jft.CorrelatedFieldMaker("")
+    jcfm.set_amplitude_total_offset(**CFG_OFFSET)
+    jcfm.add_fluctuations(
+        shape,
+        distances=None,
+        **CFG_FLUCT,
+        harmonic_type='spherical',
+        non_parametric_kind="power",
+    )
+    jcf = jcfm.finalize()
+
+    cfm = ift.CorrelatedFieldMaker("")
+    cfm.set_amplitude_total_offset(**CFG_OFFSET)
+    cfm.add_fluctuations(ift.HPSpace(shape[0]), **CFG_FLUCT)
+    cf = cfm.finalize(prior_info=0)
+
+    pos = jft.random_like(key, jcf.domain)
+    npos = {
+        k: ift.makeField(cf.domain[k], v if k != "spectrum" else v.T)
+        for k, v in pos.items()
+    }
+    npos = ift.MultiField.from_dict(npos, cf.domain)
+    assert_allclose(cf(npos).val, jcf(pos))
+
+@pmp('seed', [0, 42])
+@pmp('shape1,distances1,harmonic_type1',
+     [
+         ((4, ), None, 'spherical'),
+         ((3,3), (0.1,0.1), 'fourier'),
+         ((6,), (1.,), 'fourier'),
+    ]
+)
+@pmp('shape2,distances2,harmonic_type2',
+     [
+         ((4, ), None, 'spherical'),
+         ((3,3), (0.1,0.1), 'fourier'),
+         ((6,), (1.,), 'fourier'),
+    ]
+)
+def test_nifty_vs_niftyre_product(
+    seed, shape1, distances1, harmonic_type1, shape2, distances2, harmonic_type2
+):
+    key = random.PRNGKey(seed)
+
+    jcfm = jft.CorrelatedFieldMaker("")
+    jcfm.set_amplitude_total_offset(**CFG_OFFSET)
+    jcfm.add_fluctuations(
+        shape1,
+        distances1,
+        **CFG_FLUCT,
+        harmonic_type=harmonic_type1,
+        non_parametric_kind="power",
+        prefix='space1'
+    )
+    jcfm.add_fluctuations(
+        shape2,
+        distances2,
+        **CFG_FLUCT,
+        harmonic_type=harmonic_type2,
+        non_parametric_kind="power",
+        prefix='space2'
+    )
+    jcf = jcfm.finalize()
+
+    cfm = ift.CorrelatedFieldMaker("")
+    cfm.set_amplitude_total_offset(**CFG_OFFSET)
+    sp1 = (
+        ift.HPSpace(shape1[0])
+        if distances1 is None
+        else ift.RGSpace(shape1, distances1)
+    )
+    cfm.add_fluctuations(sp1, **CFG_FLUCT, prefix='space1')
+    sp2 = (
+        ift.HPSpace(shape2[0])
+        if distances2 is None
+        else ift.RGSpace(shape2, distances2)
+    )
+    cfm.add_fluctuations(sp2, **CFG_FLUCT, prefix='space2')
+    cf = cfm.finalize(prior_info=0)
+
+    pos = jft.random_like(key, jcf.domain)
+    transposed = ["space1spectrum", "space2spectrum"]
+    npos = {
+        k: ift.makeField(cf.domain[k], v if k not in transposed else v.T)
+        for k, v in pos.items()
+    }
+    npos = ift.MultiField.from_dict(npos, cf.domain)
+    assert_allclose(cf(npos).val, jcf(pos))

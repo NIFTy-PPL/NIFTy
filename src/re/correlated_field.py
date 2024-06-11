@@ -199,7 +199,7 @@ LMGrid = namedtuple(
     (
         "lmax",
         "mmax",
-        "size",
+        "shape",
         "power_distributor",
         "mode_multiplicity",
         "mode_lengths",
