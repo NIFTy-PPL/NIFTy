@@ -8,6 +8,7 @@ from typing import Callable, Optional, Tuple, Union
 
 import numpy as np
 from jax import numpy as jnp
+from jax import vmap
 
 from ..config import _config
 from .gauss_markov import IntegratedWienerProcess
@@ -25,6 +26,23 @@ def hartley(p, axes=None):
     c = _config.get("hartley_convention")
     add_or_sub = operator.add if c == "non_canonical_hartley" else operator.sub
     return add_or_sub(tmp.real, tmp.imag)
+
+
+def get_sht(nside, axis, lmax, mmax, nthreads):
+    from jaxbind.contrib.jaxducc0 import get_healpix_sht
+    jsht = get_healpix_sht(nside, lmax, mmax, 0, nthreads)
+
+    def f(inp):
+        # Explicitly move axes around, may introduce unnecessary copies
+        inp = jnp.moveaxis(inp, axis, -1)
+        shp = inp.shape
+        inp = inp.reshape((-1, shp[-1]))
+        def trafo(x):
+            return np.sqrt(4*np.pi) * jsht(x[jnp.newaxis])[0][0]
+        res = vmap(trafo)(inp).reshape(shp[:-1] + (-1,))
+        return jnp.moveaxis(res, -1, axis)
+
+    return f
 
 
 def _unique_mode_distributor(m_length):
@@ -760,13 +778,21 @@ class CorrelatedFieldMaker():
             sub_shp = sgrid.harmonic_grid.shape
             excitation_shape += sub_shp
             n = len(excitation_shape)
-            axes = tuple(range(n - len(sub_shp), n))
-
-            # TODO: Generalize to complex
             harmonic_dvol = 1. / sgrid.total_volume
-            harmonic_transforms.append(
-                (harmonic_dvol, partial(hartley, axes=axes))
-            )
+            if isinstance(sgrid, RegularCartesianGrid):
+                axes = tuple(range(n - len(sub_shp), n))
+                # TODO: Generalize to complex
+                trafo = partial(hartley, axes=axes)
+            elif isinstance(sgrid, HEALPixGrid):
+                axis = len(excitation_shape) - 1
+                trafo = get_sht(
+                    nside=sgrid.nside,
+                    axis=axis,
+                    lmax=sgrid.harmonic_grid.lmax,
+                    mmax=sgrid.harmonic_grid.mmax,
+                    nthreads=1)
+            harmonic_transforms.append((harmonic_dvol, trafo))
+
         # Register the parameters for the excitations in harmonic space
         # TODO: actually account for the dtype here
         pfx = self._prefix + "xi"
