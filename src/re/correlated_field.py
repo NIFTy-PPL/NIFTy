@@ -27,6 +27,76 @@ def hartley(p, axes=None):
     return add_or_sub(tmp.real, tmp.imag)
 
 
+def _unique_mode_distributor(m_length):
+    # Construct an array of unique mode lengths
+    uniqueness_rtol = 1e-12
+    um = jnp.unique(m_length)
+    tol = uniqueness_rtol * um[-1]
+    um = um[jnp.diff(jnp.append(um, 2 * um[-1])) > tol]
+    # Group modes based on their length and store the result as power
+    # distributor
+    binbounds = 0.5 * (um[:-1] + um[1:])
+    m_length_idx = jnp.searchsorted(binbounds, m_length)
+    m_count = jnp.bincount(m_length_idx.ravel(), minlength=um.size)
+    if jnp.any(m_count == 0) or um.shape != m_count.shape:
+        raise RuntimeError("invalid harmonic mode(s) encountered")
+    return m_length_idx, um, m_count
+
+
+def get_spherical_mode_distributor(nside: int, lmax=None, mmax=None):
+    """Get the unique lengths of Spherical harmonic modes, a mapping from a mode
+    to its length index and the multiplicity of each unique mode length.
+
+    Parameters
+    ----------
+    nside : int
+        Nside of the HEALPix sphere for which the associated harmonic space is
+        constructed
+    lmax : int, optional
+        The maximum :math:`l` value of any spherical harmonic coefficient
+        :math:`a_{lm}` that is represented by this object.
+        Must be :math:`\\ge 0`. If not supplied, it is set to `nside * 2`
+    mmax : int, optional
+        The maximum :math:`m` value of any spherical harmonic coefficient
+        :math:`a_{lm}` that is represented by this object.
+        If not supplied, it is set to `lmax`.
+        Must be :math:`\\ge 0` and :math:`\\le` `lmax`.
+
+    Returns
+    -------
+    mode_length_idx : jnp.ndarray
+        Index in power-space for every mode in harmonic-space. Can be used to
+        distribute power from a power-space to the full harmonic grid.
+    unique_mode_length : jnp.ndarray
+        Unique length of spherical modes.
+    mode_multiplicity : jnp.ndarray
+        Multiplicity for each unique mode length.
+    """
+    if lmax is None:
+        lmax=2*nside
+    lmax = int(lmax)
+    if lmax < 0:
+        raise ValueError("lmax must be >=0.")
+    if mmax is None:
+        mmax = lmax
+    mmax = int(mmax)
+    if mmax < 0 or mmax > lmax:
+        raise ValueError("mmax must be >=0 and <=lmax.")
+    size = (lmax+1)**2 - (lmax-mmax)*(lmax-mmax+1)
+
+    ldist = np.empty((size,), dtype=np.float64)
+    ldist[0:lmax+1] = np.arange(lmax+1, dtype=np.float64)
+    tmp = np.empty((2*lmax+2), dtype=np.float64)
+    tmp[0::2] = np.arange(lmax+1)
+    tmp[1::2] = np.arange(lmax+1)
+    idx = lmax+1
+    for m in range(1, mmax+1):
+        ldist[idx:idx+2*(lmax+1-m)] = tmp[2*m:]
+        idx += 2*(lmax+1-m)
+
+    return _unique_mode_distributor(ldist), (lmax, mmax, size)
+
+
 def get_fourier_mode_distributor(
     shape: Union[tuple, int], distances: Union[tuple, float]
 ):
@@ -65,20 +135,7 @@ def get_fourier_mode_distributor(
             m_length = jnp.expand_dims(m_length, axis=-1) + tmp
         m_length = jnp.sqrt(m_length)
 
-    # Construct an array of unique mode lengths
-    uniqueness_rtol = 1e-12
-    um = jnp.unique(m_length)
-    tol = uniqueness_rtol * um[-1]
-    um = um[jnp.diff(jnp.append(um, 2 * um[-1])) > tol]
-    # Group modes based on their length and store the result as power
-    # distributor
-    binbounds = 0.5 * (um[:-1] + um[1:])
-    m_length_idx = jnp.searchsorted(binbounds, m_length)
-    m_count = jnp.bincount(m_length_idx.ravel(), minlength=um.size)
-    if jnp.any(m_count == 0) or um.shape != m_count.shape:
-        raise RuntimeError("invalid harmonic mode(s) encountered")
-
-    return m_length_idx, um, m_count
+    return _unique_mode_distributor(m_length)
 
 
 RegularCartesianGrid = namedtuple(
@@ -102,30 +159,54 @@ RegularFourierGrid = namedtuple(
     )
 )
 
+HEALPixGrid = namedtuple(
+    "HEALPixGrid", (
+        "nside",
+        "shape",
+        "total_volume",
+        "harmonic_grid",
+    ),
+    defaults=(None, )
+)
+
+LMGrid = namedtuple(
+    "LMGrid", (
+        "lmax",
+        "mmax",
+        "size",
+        "power_distributor",
+        "mode_multiplicity",
+        "mode_lengths",
+        "relative_log_mode_lengths",
+        "log_volume",
+    )
+)
+
+
+
+def _log_modes(m_length):
+    um = m_length.copy()
+    um = um.at[1:].set(jnp.log(um[1:]))
+    um = um.at[1:].add(-um[1])
+    assert um[0] == 0.
+    log_vol = um[2:] - um[1:-1]
+    assert um.shape[0] - 2 == log_vol.shape[0]
+    return um, log_vol
+
 
 def _make_grid(shape, distances, harmonic_type) -> RegularCartesianGrid:
     """Creates the grid for the amplitude model"""
     shape = (shape, ) if isinstance(shape, int) else tuple(shape)
-    distances = tuple(np.broadcast_to(distances, jnp.shape(shape)))
 
-    totvol = jnp.prod(jnp.array(shape) * jnp.array(distances))
-    # TODO: cache results such that only references are used afterwards
-    grid = RegularCartesianGrid(
-        shape=shape,
-        total_volume=totvol,
-        distances=distances,
-    )
     # Pre-compute lengths of modes and indices for distributing power
     if harmonic_type.lower() == "fourier":
+        distances = tuple(np.broadcast_to(distances, jnp.shape(shape)))
+
+        totvol = jnp.prod(jnp.array(shape) * jnp.array(distances))
         m_length_idx, m_length, m_count = get_fourier_mode_distributor(
             shape, distances
         )
-        um = m_length.copy()
-        um = um.at[1:].set(jnp.log(um[1:]))
-        um = um.at[1:].add(-um[1])
-        assert um[0] == 0.
-        log_vol = um[2:] - um[1:-1]
-        assert um.shape[0] - 2 == log_vol.shape[0]
+        um, log_vol = _log_modes(m_length)
         harmonic_grid = RegularFourierGrid(
             shape=shape,
             power_distributor=m_length_idx,
@@ -134,10 +215,41 @@ def _make_grid(shape, distances, harmonic_type) -> RegularCartesianGrid:
             relative_log_mode_lengths=um,
             log_volume=log_vol,
         )
+        # TODO: cache results such that only references are used afterwards
+        grid = RegularCartesianGrid(
+            shape=shape,
+            total_volume=totvol,
+            distances=distances,
+            harmonic_grid=harmonic_grid
+        )
+    elif harmonic_type.lower() == "spherical":
+        if len(shape) != 1:
+            msg = "`shape` must be length one. Its the nside of the spherical grid."
+            raise ValueError(msg)
+        nside = shape[0]
+        (m_length_idx, m_length, m_count), (lmax, mmax, size) = (
+            get_spherical_mode_distributor(nside)
+        )
+        um, log_vol = _log_modes(m_length)
+        harmonic_grid = LMGrid(
+            lmax=lmax,
+            mmax=mmax,
+            shape=(size,),
+            power_distributor=m_length_idx,
+            mode_multiplicity=m_count,
+            mode_lengths=m_length,
+            relative_log_mode_lengths=um,
+            log_volume=log_vol,
+        )
+        grid = HEALPixGrid(
+            nside=nside,
+            shape=(12 * nside**2,),
+            total_volume=4 * np.pi,
+            harmonic_grid=harmonic_grid,
+        )
     else:
         ve = f"invalid `harmonic_type` {harmonic_type!r}"
         raise ValueError(ve)
-    grid = grid._replace(harmonic_grid=harmonic_grid)
     return grid
 
 
@@ -166,8 +278,8 @@ def matern_amplitude(
     See also
     --------
     `Causal, Bayesian, & non-parametric modeling of the SARS-CoV-2 viral
-    load vs. patient's age`, Guardiani, Matteo and Frank, Kostić Andrija
-    and Edenhofer, Gordian and Roth, Jakob and Uhlmann, Berit and
+    load vs. patient's age`, Guardiani, Matteo and Frank, Philipp and Kostić,
+    Andrija and Edenhofer, Gordian and Roth, Jakob and Uhlmann, Berit and
     Enßlin, Torsten, `<https://arxiv.org/abs/2105.13483>`_
     `<https://doi.org/10.1371/journal.pone.0275011>`_
     """
