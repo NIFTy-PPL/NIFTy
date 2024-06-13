@@ -2,6 +2,7 @@ image: $CONTAINER_TEST_IMAGE
 
 variables:
   CONTAINER_TEST_IMAGE: gitlab-registry.mpcdf.mpg.de/$CI_PROJECT_PATH:$CI_COMMIT_REF_NAME
+  MPLBACKEND: agg
   OMP_NUM_THREADS: 1
 
 stages:
@@ -10,6 +11,9 @@ stages:
   - test
   - release
   - demo_runs
+
+before_script:
+  - python3 -m pip install --user --break-system-packages .
 
 build_docker_from_scratch:
   only:
@@ -52,22 +56,16 @@ test_mpi:
 
 pages:
   stage: release
-  before_script:
-    - ls
   script:
-    - python3 setup.py install --user -f
     - git config --global --add safe.directory /builds/ift/nifty
     - git clean -xfd docs/source
-    - bash docs/generate.sh
+    - sh docs/generate.sh
     - mv docs/build/ public/
   artifacts:
     paths:
     - public
   only:
   - NIFTy_8
-
-before_script:
-  - python3 -m pip install --user --break-system-packages .
 
 run_ipynb0:
   stage: demo_runs
@@ -133,10 +131,18 @@ run_getting_started_niftyre_intro:
     paths:
       - '*.png'
 
+run_getting_started_niftyre_tomography:
+  stage: demo_runs
+  script:
+    - python3 demos/1_tomography.py
+  artifacts:
+    paths:
+      - '*.png'
+
 run_getting_started_niftyre_nonlinear_regression:
   stage: demo_runs
   script:
-    - python3 demos/z_nonlinear_regression.py
+    - python3 demos/a_nonlinear_regression.py
   artifacts:
     paths:
       - '*.png'

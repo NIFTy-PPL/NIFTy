@@ -23,25 +23,21 @@ key = random.PRNGKey(seed)
 
 dims = (128, 128)
 
-cf_zm = dict(offset_mean=0., offset_std=(1e-3, 1e-4))
+cf_zm = dict(offset_mean=0.0, offset_std=(1e-3, 1e-4))
 cf_fl = dict(
     fluctuations=(1e-1, 5e-3),
-    loglogavgslope=(-1., 1e-2),
-    flexibility=(1e+0, 5e-1),
+    loglogavgslope=(-1.0, 1e-2),
+    flexibility=(1e0, 5e-1),
     asperity=(5e-1, 5e-2),
 )
 cfm = jft.CorrelatedFieldMaker("cf")
 cfm.set_amplitude_total_offset(**cf_zm)
 cfm.add_fluctuations(
-    dims,
-    distances=1. / dims[0],
-    **cf_fl,
-    prefix="ax1",
-    non_parametric_kind="power"
+    dims, distances=1.0 / dims[0], **cf_fl, prefix="ax1", non_parametric_kind="power"
 )
 correlated_field = cfm.finalize()
 
-scaling = jft.LogNormalPrior(3., 1., name="scaling", shape=(1, ))
+scaling = jft.LogNormalPrior(3.0, 1.0, name="scaling", shape=(1,))
 
 
 class Signal(jft.Model):
@@ -173,11 +169,12 @@ key, subkey = random.split(key)
 pos_truth = jft.random_like(subkey, signal_response.domain)
 signal_response_truth = signal_response(pos_truth)
 key, subkey = random.split(key)
-noise_truth = ((noise_cov(jft.ones_like(signal_response.target)))**
-               0.5) * jft.random_like(key, signal_response.target)
+noise_truth = (
+    (noise_cov(jft.ones_like(signal_response.target))) ** 0.5
+) * jft.random_like(key, signal_response.target)
 data = signal_response_truth + noise_truth
 
-nll = jft.Gaussian(data, noise_cov_inv).amend(signal_response)
+lh = jft.Gaussian(data, noise_cov_inv).amend(signal_response)
 
 # %% [markdown]
 # ## The inference
@@ -187,17 +184,16 @@ n_vi_iterations = 6
 delta = 1e-4
 n_samples = 4
 
-key, subkey = random.split(key)
-pos_init = jft.Vector(jft.random_like(subkey, signal_response.domain))
+key, k_i, k_o = random.split(key, 3)
 # NOTE, changing the number of samples always triggers a resampling even if
 # `resamples=False`, as more samples have to be drawn that did not exist before.
 samples, state = jft.optimize_kl(
-    nll,
-    pos_init,
+    lh,
+    jft.Vector(lh.init(k_i)),
     n_total_iterations=n_vi_iterations,
     n_samples=lambda i: n_samples // 2 if i < 2 else n_samples,
     # Source for the stochasticity for sampling
-    key=key,
+    key=k_o,
     # Names of parameters that should not be sampled but still optimized
     # can be specified as point_estimates (effectively we are doing MAP for
     # these degrees of freedom).
@@ -206,7 +202,7 @@ samples, state = jft.optimize_kl(
     # an implicit covariance matrix
     draw_linear_kwargs=dict(
         cg_name="SL",
-        cg_kwargs=dict(absdelta=delta * jft.size(pos_init) / 10., maxiter=100)
+        cg_kwargs=dict(absdelta=delta * jft.size(lh.domain) / 10.0, maxiter=100),
     ),
     # Arguements for the minimizer in the nonlinear updating of the samples
     nonlinearly_update_kwargs=dict(
@@ -224,7 +220,7 @@ samples, state = jft.optimize_kl(
         )
     ),
     sample_mode="nonlinear_resample",
-    odir="results_nifty_re",
+    odir="results_intro",
     resume=False,
 )
 
@@ -232,24 +228,37 @@ samples, state = jft.optimize_kl(
 namps = cfm.get_normalized_amplitudes()
 post_sr_mean = jft.mean(tuple(signal(s) for s in samples))
 post_a_mean = jft.mean(tuple(cfm.amplitude(s)[1:] for s in samples))
+grid = correlated_field.target_grids[0]
 to_plot = [
     ("Signal", signal(pos_truth), "im"),
     ("Noise", noise_truth, "im"),
     ("Data", data, "im"),
     ("Reconstruction", post_sr_mean, "im"),
-    ("Ax1", (cfm.amplitude(pos_truth)[1:], post_a_mean), "loglog"),
+    (
+        "Amplitude spectrum",
+        (
+            grid.harmonic_grid.mode_lengths[1:],
+            cfm.amplitude(pos_truth)[1:],
+            post_a_mean,
+        ),
+        "loglog",
+    ),
 ]
 fig, axs = plt.subplots(2, 3, figsize=(16, 9))
-for ax, (title, field, tp) in zip(axs.flat, to_plot):
+for ax, v in zip(axs.flat, to_plot):
+    title, field, tp, *labels = v
     ax.set_title(title)
     if tp == "im":
-        im = ax.imshow(field, cmap="inferno")
+        end = tuple(n * d for n, d in zip(grid.shape, grid.distances))
+        im = ax.imshow(field.T, cmap="inferno", extent=(0.0, end[0], 0.0, end[1]))
         plt.colorbar(im, ax=ax, orientation="horizontal")
     else:
         ax_plot = ax.loglog if tp == "loglog" else ax.plot
-        field = field if isinstance(field, (tuple, list)) else (field, )
-        for f in field:
-            ax_plot(f, alpha=0.7)
+        x = field[0]
+        for f in field[1:]:
+            ax_plot(x, f, alpha=0.7)
+for ax in axs.flat[len(to_plot) :]:
+    ax.set_axis_off()
 fig.tight_layout()
-fig.savefig("cf_w_unknown_spectrum.png", dpi=400)
+fig.savefig("results_intro_full_reconstruction.png", dpi=400)
 plt.show()

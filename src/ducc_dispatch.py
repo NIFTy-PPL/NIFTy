@@ -16,8 +16,12 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 
+import operator
+
 import numpy as np
 import scipy.fft
+
+from .config import _config
 
 _nthreads = 1
 
@@ -41,7 +45,9 @@ def _scipy_ifftn(a, axes=None):
 
 def _scipy_hartley(a, axes=None):
     tmp = scipy.fft.fftn(a, axes=axes, workers=_nthreads)
-    return tmp.real+tmp.imag
+    c = _config.get("hartley_convention")
+    add_or_sub = operator.add if c == "non_canonical_hartley" else operator.sub
+    return add_or_sub(tmp.real, tmp.imag)
 
 
 def _scipy_vdot(a, b):
@@ -67,7 +73,9 @@ try:
 
 
     def hartley(a, axes=None):
-        return my_fft.genuine_hartley(a, axes=axes, nthreads=max(_nthreads, 0))
+        c = _config.get("hartley_convention")
+        ht = my_fft.genuine_hartley if c == "non_canonical_hartley" else my_fft.genuine_fht
+        return ht(a, axes=axes, nthreads=max(_nthreads, 0))
 
 
     def vdot(a, b):

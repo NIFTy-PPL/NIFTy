@@ -5,12 +5,13 @@ from typing import Any, NamedTuple, TypeVar
 
 import jax
 from jax import numpy as jnp
+from jax.tree_util import tree_map
 
 from .evi import Samples
 from .tree_math import Vector, get_map
 
-O = TypeVar('O')
-I = TypeVar('I')
+O = TypeVar("O")
+I = TypeVar("I")
 
 
 def _residual_params(inp):
@@ -52,14 +53,11 @@ def reduced_residual_stats(position_or_samples, func=None, *, map="lmap"):
         If samples is None, the second entry of this array is always zero.
     """
     map = get_map(map)
-    if not isinstance(position_or_samples,
-                      Samples) or len(position_or_samples) == 0:
+    if not isinstance(position_or_samples, Samples) or len(position_or_samples) == 0:
         if isinstance(position_or_samples, Samples):
             assert len(position_or_samples) == 0
             position_or_samples = position_or_samples.pos
-        samples = jax.tree_map(
-            lambda x: x[jnp.newaxis, ...], position_or_samples
-        )
+        samples = tree_map(lambda x: x[jnp.newaxis, ...], position_or_samples)
     else:
         assert isinstance(position_or_samples, Samples)
         samples = position_or_samples.samples
@@ -73,7 +71,31 @@ def reduced_residual_stats(position_or_samples, func=None, *, map="lmap"):
         rx = jnp.array([jnp.mean(rx), jnp.std(rx)])
         return ChiSqStats(m, rx, nd[0])
 
-    return jax.tree_map(red_chisq_stat, samples)
+    return tree_map(red_chisq_stat, samples)
+
+
+def _rpprint(ps: Any, *, _indent=0, _key="") -> str:
+    if isinstance(ps, Vector):
+        msg = _rpprint(ps.tree, _indent=_indent)
+    elif isinstance(ps, dict):
+        msg = ""
+        for k, v in ps.items():
+            k = _key + "/" * bool(_key) + str(k)
+            if isinstance(v, dict):
+                msg += _rpprint(v, _indent=_indent, _key=k)
+            else:
+                msg += "  " * _indent + f"{k:24s}::"
+                m = _rpprint(v, _indent=_indent + 1, _key="")
+                msg += (" " + m.lstrip()) if len(m.splitlines()) == 1 else ("\n" + m)
+    elif isinstance(ps, (tuple, list)):
+        msg = f"{'list' if isinstance(ps, list) else 'tuple'}(\n"
+        for v in ps:
+            msg += _rpprint(v, _indent=_indent + 1, _key="")
+        msg += ")\n"
+    else:
+        # Catch all other instances with PrettyPrinter
+        msg = "  " * _indent + pprint.pformat(ps) + "\n"
+    return msg
 
 
 def minisanity(position_or_samples, func=None, *, map="lmap"):
@@ -93,20 +115,5 @@ def minisanity(position_or_samples, func=None, *, map="lmap"):
     def is_leaf(l):
         return isinstance(l, ChiSqStats)
 
-    ps = jax.tree_map(make_pretty_string, stat_tree, is_leaf=is_leaf)
-    # HACK to make the most common primal types look pretty
-    ps = ps.tree if isinstance(ps, Vector) else ps
-    pp = pprint.PrettyPrinter()
-    if isinstance(ps, dict):
-        msg = ""
-        for k in sorted(ps.keys()):
-            v = ps[k]
-            if isinstance(v, str):
-                msg += f"{str(k):22s}:: {v}\n"
-            else:
-                msg += f"{str(k):22s}::\n{pp.pformat(v)}\n"
-    elif not isinstance(ps, str):
-        msg = pp.pformat(ps)
-    else:
-        msg = ps
-    return stat_tree, msg
+    ps = tree_map(make_pretty_string, stat_tree, is_leaf=is_leaf)
+    return stat_tree, _rpprint(ps)

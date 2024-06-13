@@ -3,7 +3,7 @@
 [![pipeline status](https://gitlab.mpcdf.mpg.de/ift/nifty/badges/NIFTy_8/pipeline.svg)](https://gitlab.mpcdf.mpg.de/ift/nifty/-/commits/NIFTy_8)
 [![coverage report](https://gitlab.mpcdf.mpg.de/ift/nifty/badges/NIFTy_8/coverage.svg)](https://gitlab.mpcdf.mpg.de/ift/nifty/-/commits/NIFTy_8)
 
-**NIFTy** project homepage: [ift.pages.mpcdf.de/nifty](https://ift.pages.mpcdf.de/nifty/index.html)
+**NIFTy** project homepage: [ift.pages.mpcdf.de/nifty](https://ift.pages.mpcdf.de/nifty/)
  | Found a bug? [github.com/nifty-ppl/nifty/issues](https://github.com/nifty-ppl/nifty/issues)
  | Need help? [github.com/nifty-ppl/nifty/discussions](https://github.com/NIFTy-PPL/NIFTy/discussions)
 
@@ -149,12 +149,29 @@ If you might want to adapt the NIFTy source code, we suggest installing NIFTy as
 ```
 git clone -b NIFTy_8 https://gitlab.mpcdf.mpg.de/ift/nifty.git
 cd nifty
-pip install --user --editable .
+pip install --user --editable '.[re]'
 ```
+
+## First Steps
+
+For a quick start, you can browse through the [informal introduction](https://ift.pages.mpcdf.de/nifty/user/) or dive into NIFTy by running one of the demonstrations, e.g.:
+
+```
+python demos/0_intro.py
+```
+
+## Contributing
+
+Contributions are very welcome!
+Feel free to reach out early on in the development process e.g. by opening a draft PR or filing an issue, we are happy to help in the development and provide feedback along the way.
+Please open an issue first if you think your PR changes current code substantially.
+Please format your code according to the existing style used in the file or with black for new files.
+To advertise your changes, please update the public documentation and the ChangeLog if your PR affects the public API.
+Please add appropriate tests to your PR.
 
 ### Building the Documentation
 
-NIFTy's documentation is generated via [Sphinx](https://www.sphinx-doc.org/en/stable/index.html) and is available online at [ift.pages.mpcdf.de/nifty](https://ift.pages.mpcdf.de/nifty/index.html).
+NIFTy's documentation is generated via [Sphinx](https://www.sphinx-doc.org/en/stable/) and is available online at [ift.pages.mpcdf.de/nifty](https://ift.pages.mpcdf.de/nifty/).
 
 To build the documentation locally, run:
 
@@ -171,25 +188,13 @@ Note: Make sure that you reinstall nifty after each change since sphinx imports 
 
 ### Run the tests
 
-To run the tests, additional packages are required:
-
-```
-sudo apt-get install python3-pytest-cov
-```
-
-Afterwards the tests (including a coverage report) can be run using the following command in the repository root:
+To run the tests, install all optional requirements `'nifty8[all]'` and afterwards run pytest (and create a coverage report) via
 
 ```
 pytest --cov=nifty8 test
 ```
 
-## First Steps
-
-For a quick start, you can browse through the [informal introduction](https://ift.pages.mpcdf.de/nifty/user/code.html) or dive into NIFTy by running one of the demonstrations, e.g.:
-
-```
-python demos/0_intro.py
-```
+If you are writing your own tests, it is often sufficient to just install the optional test dependencies `'nifty8[test]'`. However, to run the full test suit including tests of optional functionality, it is assumed that all optional dependencies are installed.
 
 ## Licensing terms
 

@@ -118,6 +118,7 @@ def test_correlated_field_non_parametric_init_validation(flu, slp, flx, asp):
 
 
 @pmp('seed', [0, 42])
+@pmp('ht_convention', ["canonical_hartley", "non_canonical_hartley"])
 @pmp('shape', [(4, ), (3, 3)])
 @pmp('distances', [.1, 5.])
 @pmp('offset_mean', [0])
@@ -127,9 +128,11 @@ def test_correlated_field_non_parametric_init_validation(flu, slp, flx, asp):
 @pmp('flexibility', [(1., .1), (3., 2.)])
 @pmp('asperity', [None, (.2, 2.e-2)])
 def test_nifty_vs_niftyre_non_parametric_cf(
-    seed, shape, distances, offset_mean, offset_std, fluctuations,
+    seed, ht_convention, shape, distances, offset_mean, offset_std, fluctuations,
     loglogavgslope, asperity, flexibility
 ):
+    jft.config.update("hartley_convention", ht_convention)
+
     key = random.PRNGKey(seed)
     fluct_kwargs = dict(
         fluctuations=fluctuations,

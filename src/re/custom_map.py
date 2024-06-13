@@ -5,6 +5,7 @@ from functools import partial
 
 import jax
 from jax import lax
+from jax.tree_util import tree_map
 from jax import numpy as jnp
 
 
@@ -143,17 +144,17 @@ def _lscan(f, init, xs, length=None, unroll=1):
     like_device = like_device[0] if len(like_device) == 1 else None
     length = lvs[0].shape[0] if length is None else length
     for i in range(length):
-        carry, y = f(carry, jax.tree_map(lambda x: x[i], xs))
+        carry, y = f(carry, tree_map(lambda x: x[i], xs))
         if ys is None:
             # NOTE, `empty_like` will always allocate on the primary device even
             # if `y` is on a different device. Forcefully allocate on the same
             # device as `y`.
             with jax.default_device(like_device):
-                ys = jax.tree_map(
+                ys = tree_map(
                     lambda x: jnp.
                     empty_like(x, shape=(length, ) + jnp.shape(x)), y
                 )
-        ys = jax.tree_map(
+        ys = tree_map(
             lambda ys, y: _unsafe_index_update_inplace(ys, i, y), ys, y
         )
     return carry, ys

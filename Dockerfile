@@ -8,7 +8,7 @@ RUN apt-get update && apt-get install -y \
     # Dependency of mpi4py
     libopenmpi-dev \
     && rm -rf /var/lib/apt/lists/*
-RUN DUCC0_OPTIMIZATION=portable pip3 install --break-system-packages\
+RUN DUCC0_OPTIMIZATION=portable pip3 install --break-system-packages \
     # Packages needed for NIFTy
     scipy \
     # Optional nifty dependencies
@@ -18,10 +18,7 @@ RUN DUCC0_OPTIMIZATION=portable pip3 install --break-system-packages\
     # Documentation build dependencies
     jupyter nbconvert jupytext sphinx pydata-sphinx-theme myst-parser
 
-# Set matplotlib backend
-ENV MPLBACKEND agg
-
 # Create user (openmpi does not like to be run as root)
-RUN useradd -ms /bin/bash testinguser
-USER testinguser
-WORKDIR /home/testinguser
+RUN useradd -ms /bin/bash runner
+USER runner
+WORKDIR /home/runner

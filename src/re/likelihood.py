@@ -10,9 +10,7 @@ from jax.tree_util import (
 
 from .misc import is_iterable_of_non_iterables, isiterable
 from .model import LazyModel, NoValue
-from .tree_math import (
-    ShapeWithDtype, Vector, conj, has_arithmetics, zeros_like
-)
+from .tree_math import ShapeWithDtype, Vector, conj, has_arithmetics, zeros_like
 
 Q = TypeVar("Q")
 P = TypeVar("P")
@@ -205,6 +203,7 @@ class Likelihood(LazyModel):
     lsm_tangents_shape : tree-like structure of ShapeWithDtype
         Structure of the data space.
     """
+
     _lsm_tan_shp: Any = None
 
     def __init__(
@@ -216,8 +215,7 @@ class Likelihood(LazyModel):
         super().__init__(domain=domain, init=init)
 
     def __call__(self, primals, **primals_kw):
-        """Convenience method to access the `energy` method of this instance.
-        """
+        """Convenience method to access the `energy` method of this instance."""
         return self.energy(primals, **primals_kw)
 
     def energy(self, primals, **primals_kw):
@@ -398,6 +396,7 @@ class Likelihood(LazyModel):
 
 class LikelihoodPartial(Likelihood):
     """Likelihood with partially inserted `primals`."""
+
     likelihood: Likelihood = field(metadata=dict(static=False))
     primals_frozen: Any = field(metadata=dict(static=False))
 
@@ -416,8 +415,8 @@ class LikelihoodPartial(Likelihood):
         )
         self.unflatten = Vector if self.insert_axes else None
         super().__init__(
-            domain=jax.tree_map(ShapeWithDtype.from_leave, pl),
-            lsm_tangents_shape=self.likelihood.lsm_tangents_shape
+            domain=tree_map(ShapeWithDtype.from_leave, pl),
+            lsm_tangents_shape=self.likelihood.lsm_tangents_shape,
         )
 
     @property
@@ -426,7 +425,7 @@ class LikelihoodPartial(Likelihood):
             self.likelihood.energy,
             insert_axes=(self.insert_axes, ),
             flat_fill=(self.primals_frozen, ),
-            remove_axes=None
+            remove_axes=None,
         )
 
     @property
@@ -435,7 +434,7 @@ class LikelihoodPartial(Likelihood):
             self.likelihood.transformation,
             insert_axes=(self.insert_axes, ),
             flat_fill=(self.primals_frozen, ),
-            remove_axes=None
+            remove_axes=None,
         )
 
     @property
@@ -473,7 +472,7 @@ class LikelihoodPartial(Likelihood):
             self.likelihood.normalized_residual,
             insert_axes=(self.insert_axes, ),
             flat_fill=(self.primals_frozen, ),
-            remove_axes=None
+            remove_axes=None,
         )
 
     def splitx(self, primals):
@@ -543,7 +542,7 @@ class LikelihoodWithModel(Likelihood):
         super().__init__(
             domain=domain,
             init=init,
-            lsm_tangents_shape=self.likelihood.lsm_tangents_shape
+            lsm_tangents_shape=self.likelihood.lsm_tangents_shape,
         )
 
     def _split_kwargs(self, **kwargs):
@@ -600,7 +599,10 @@ class LikelihoodWithModel(Likelihood):
             f, LazyModel
         ) else domain
         left_argnames = () if left_argnames is None else left_argnames
-        likelihood_argnames = self.likelihood_argnames if likelihood_argnames is None else likelihood_argnames
+        likelihood_argnames = (
+            self.likelihood_argnames
+            if likelihood_argnames is None else likelihood_argnames
+        )
 
         def ff(primals, **kwargs):
             kw_l = {k: kwargs.pop(k) for k in left_argnames}
@@ -638,13 +640,16 @@ class LikelihoodSum(Likelihood):
         self._lkey, self._rkey = _left_key, _right_key
         joined_tangents_shape = {
             self._lkey: left._lsm_tan_shp,
-            self._rkey: right._lsm_tan_shp
+            self._rkey: right._lsm_tan_shp,
         }
         if isinstance(left._lsm_tan_shp,
                       Vector) or isinstance(right._lsm_tan_shp, Vector):
             joined_tangents_shape = Vector(joined_tangents_shape)
 
-        if domain is NoValue and left.domain is not NoValue and right.domain is not NoValue:
+        if (
+            domain is NoValue and left.domain is not NoValue and
+            right.domain is not NoValue
+        ):
             lvec = isinstance(left.domain, Vector)
             rvec = isinstance(right.domain, Vector)
             ldomain = left.domain.tree if lvec else left.domain
@@ -693,11 +698,10 @@ class LikelihoodSum(Likelihood):
         return res
 
     def left_sqrt_metric(self, primals, tangents, **kwargs):
-        return (
-            self.left_likelihood.
-            left_sqrt_metric(primals, tangents[self._lkey], **kwargs) +
-            self.right_likelihood.
-            left_sqrt_metric(primals, tangents[self._rkey], **kwargs)
+        return self.left_likelihood.left_sqrt_metric(
+            primals, tangents[self._lkey], **kwargs
+        ) + self.right_likelihood.left_sqrt_metric(
+            primals, tangents[self._rkey], **kwargs
         )
 
     def right_sqrt_metric(self, primals, tangents, **kwargs):

@@ -43,16 +43,15 @@ def _hcb_maybe_raise(condition_exception):
 
 
 def _cond_raise(condition, exception):
-    from jax.experimental.host_callback import call
+    from jax.debug import callback
 
     # Register as few host-callbacks as possible by implicitly hashing the
     # exception type and the strings within
-    call(
+    callback(
         _hcb_maybe_raise, (
             condition,
             Partial(exception.__class__, *hide_strings(exception.args))
-        ),
-        result_shape=None
+        )
     )
 
 
@@ -147,7 +146,7 @@ def draw_linear_residual(
 def _nonlinearly_update_residual_functions(
     likelihood, jit: Union[Callable, bool] = False
 ):
-    def _draw_linear_non_inverse(primals, key, *, point_estimates):
+    def _draw_linear_non_inverse(likelihood, primals, key, *, point_estimates):
         # `draw_linear_residual` already handles `point_estimates` no need to
         # partially insert anything here
         return draw_linear_residual(
@@ -158,7 +157,7 @@ def _nonlinearly_update_residual_functions(
             from_inverse=False
         )
 
-    def _residual_vg(e, lh_trafo_at_p, ms_at_p, x, *, point_estimates):
+    def _residual_vg(likelihood, e, lh_trafo_at_p, ms_at_p, x, *, point_estimates):
         lh, e_liquid = likelihood.freeze(
             point_estimates=point_estimates, primals=e
         )
@@ -173,7 +172,7 @@ def _nonlinearly_update_residual_functions(
         ngrad += lh.left_sqrt_metric(x, lh.right_sqrt_metric(e_liquid, ngrad))
         return (res, -ngrad)
 
-    def _metric(e, primals, tangents, *, point_estimates):
+    def _metric(likelihood, e, primals, tangents, *, point_estimates):
         lh, e_liquid = likelihood.freeze(
             point_estimates=point_estimates, primals=e
         )
@@ -182,20 +181,27 @@ def _nonlinearly_update_residual_functions(
         tm = lsm(e_liquid, rsm(primals, tangents)) + tangents
         return lsm(primals, rsm(e_liquid, tm)) + tm
 
-    def _sampnorm(e, natgrad, *, point_estimates):
+    def _sampnorm(likelihood, e, natgrad, *, point_estimates):
         lh, e_liquid = likelihood.freeze(
             point_estimates=point_estimates, primals=e
         )
         fpp = lh.right_sqrt_metric(e_liquid, natgrad)
         return jnp.sqrt(vdot(natgrad, natgrad) + vdot(fpp, fpp))
 
+    def _trafo(likelihood, e, *, point_estimates):
+        lh, e_liquid = likelihood.freeze(
+            point_estimates=point_estimates, primals=e
+        )
+        return lh.transformation(e_liquid)
+
     jit = _parse_jit(jit)
     jit = partial(jit, static_argnames=("point_estimates", ))
-    draw_linear_non_inverse = jit(_draw_linear_non_inverse)
-    rag = jit(_residual_vg)
-    metric = jit(_metric)
-    sampnorm = jit(_sampnorm)
-    return draw_linear_non_inverse, rag, metric, sampnorm
+    draw_linear_non_inverse = partial(jit(_draw_linear_non_inverse), likelihood)
+    rag = partial(jit(_residual_vg), likelihood)
+    metric = partial(jit(_metric), likelihood)
+    sampnorm = partial(jit(_sampnorm), likelihood)
+    trafo = partial(jit(_trafo), likelihood)
+    return draw_linear_non_inverse, rag, metric, sampnorm, trafo
 
 
 def nonlinearly_update_residual(
@@ -219,7 +225,7 @@ def nonlinearly_update_residual(
         _nonlinear_update_funcs = _nonlinearly_update_residual_functions(
             likelihood, jit=jit
         )
-    draw_lni, rag, metric, sampnorm = _nonlinear_update_funcs
+    draw_lni, rag, metric, sampnorm, trafo = _nonlinear_update_funcs
 
     sample = pos + residual_sample
     del residual_sample
@@ -235,7 +241,7 @@ def nonlinearly_update_residual(
     skip = isinstance(minimize_kwargs.get("maxiter", None),
                       int) and minimize_kwargs["maxiter"] == 0
     if not skip:
-        trafo_at_p = likelihood.transformation(pos)
+        trafo_at_p = trafo(pos, point_estimates=point_estimates)
         options = {
             "fun_and_grad":
                 partial(

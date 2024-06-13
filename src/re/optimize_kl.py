@@ -14,8 +14,8 @@ from typing import Any, Callable, Literal, NamedTuple, Optional, TypeVar, Union
 import jax
 import numpy as np
 from jax import numpy as jnp
-from jax import random, tree_map
-from jax.tree_util import Partial
+from jax import random
+from jax.tree_util import Partial, tree_map
 
 from . import optimize
 from .evi import (
@@ -37,20 +37,20 @@ def get_status_message(
     msg_smpl = ""
     if isinstance(state.sample_state, optimize.OptimizeResults):
         nlsi = tuple(int(el) for el in state.sample_state.nit)
-        msg_smpl = f"\n#(Nonlinear Sampling Steps) {nlsi}"
+        msg_smpl = f"\n{name}: #(Nonlinear sampling steps) {nlsi}"
     elif isinstance(state.sample_state, (np.ndarray, jax.Array)):
         nlsi = tuple(int(el) for el in state.sample_state)
-        msg_smpl = f"\nLinear Sampling Status {nlsi}"
+        msg_smpl = f"\n{name}: Linear sampling status {nlsi}"
     mini_res = ""
     if residual is not None:
         _, mini_res = minisanity(samples, residual, map=map)
     _, mini_pr = minisanity(samples, map=map)
     msg = (
-        f"Post {name}: Iteration {state.nit - 1:04d} ⛰:{energy:+2.4e}"
+        f"{name}: Iteration {state.nit:04d} ⛰:{energy:+2.4e}"
         f"{msg_smpl}"
-        f"\n#(KL minimization steps) {state.minimization_state.nit}"
-        f"\nLikelihood residual(s):\n{mini_res}"
-        f"\nPrior residual(s):\n{mini_pr}"
+        f"\n{name}: #(KL minimization steps) {state.minimization_state.nit}"
+        f"\n{name}: Likelihood residual(s):\n{mini_res}"
+        f"\n{name}: Prior residual(s):\n{mini_pr}"
         f"\n"
     )
     return msg
@@ -299,7 +299,7 @@ class OptimizeVI:
             )
             _nonlinearly_update_residual = partial(
                 nonlinearly_update_residual,
-                likelihood,
+                None, # Explicify no likelihood dependency
                 _nonlinear_update_funcs=_nonlin_funcs,
             )
         if _get_status_message is None:
@@ -431,7 +431,7 @@ class OptimizeVI:
         self,
         key,
         *,
-        nit=-1,
+        nit=0,
         n_samples: Union[int, Callable[[int], int]],
         draw_linear_kwargs: DICT_OR_CALL4DICT_TYP = dict(
             cg_name="SL", cg_kwargs=dict()
@@ -469,8 +469,9 @@ class OptimizeVI:
             samples are drawn and/or updates, "linear" draws MGVI samples,
             "nonlinear" draws MGVI samples which are then nonlinearly updated
             with geoVI, the "_sample" versus "_resample" suffix denotes whether
-            the same stochasticity is used for the drawing, and
-            "nonlinear_update" nonlinearly updates existing samples using geoVI.
+            the same stochasticity or new stochasticity is used for the drawing
+            of the samples, and "nonlinear_update" nonlinearly updates existing
+            samples using geoVI.
         point_estimates: tree-like structure or tuple of str
             Pytree of same structure as likelihood input but with boolean
             leaves indicating whether to sample the value in the input or use
@@ -516,9 +517,7 @@ class OptimizeVI:
         """
         assert isinstance(samples, Samples)
         assert isinstance(state, OptimizeVIState)
-        nit = state.nit + 1
-        key = state.key
-        config = state.config
+        nit, key, config = state.nit, state.key, state.config
 
         constants = _getitem_at_nit(config, "constants", nit)
         if not (constants == () or constants is None):
@@ -553,7 +552,7 @@ class OptimizeVI:
         )
 
         state = state._replace(
-            nit=nit,
+            nit=nit + 1,
             key=key,
             sample_state=st_smpls,
             minimization_state=kl_opt_state,
@@ -562,10 +561,13 @@ class OptimizeVI:
 
     def run(self, samples, *args, **kwargs) -> tuple[Samples, OptimizeVIState]:
         state = self.init_state(*args, **kwargs)
-        for i in range(state.nit, self.n_total_iterations - 1):
-            logger.info(f"{self.__class__.__name__} :: {i+1:04d}")
+        nm = self.__class__.__name__
+        for i in range(state.nit, self.n_total_iterations):
+            logger.info(f"{nm}: Starting {i+1:04d}")
             samples, state = self.update(samples, state)
-            msg = self.get_status_message(samples, state, map=self.residual_map)
+            msg = self.get_status_message(
+                samples, state, map=self.residual_map, name=nm
+            )
             logger.info(msg)
         return samples, state
 
@@ -652,31 +654,35 @@ def optimize_kl(
             logger.warning("overwriting `position_or_samples` with `resume`")
         with open(resume_fn, "rb") as f:
             samples, opt_vi_st = pickle.load(f)
-    if _optimize_vi_state is not None:
-        opt_vi_st = _optimize_vi_state
-    else:
-        opt_vi_st_init = opt_vi.init_state(
-            key,
-            n_samples=n_samples,
-            draw_linear_kwargs=draw_linear_kwargs,
-            nonlinearly_update_kwargs=nonlinearly_update_kwargs,
-            kl_kwargs=kl_kwargs,
-            sample_mode=sample_mode,
-            point_estimates=point_estimates,
-            constants=constants,
-        )
-        if opt_vi_st is not None:  # resume
-            opt_vi_st = opt_vi_st._replace(config=opt_vi_st_init.config)
-        else:
-            opt_vi_st = opt_vi_st_init
+    opt_vi_st_init = opt_vi.init_state(
+        key,
+        n_samples=n_samples,
+        draw_linear_kwargs=draw_linear_kwargs,
+        nonlinearly_update_kwargs=nonlinearly_update_kwargs,
+        kl_kwargs=kl_kwargs,
+        sample_mode=sample_mode,
+        point_estimates=point_estimates,
+        constants=constants,
+    )
+    opt_vi_st = _optimize_vi_state if _optimize_vi_state is not None else opt_vi_st
+    opt_vi_st = opt_vi_st_init if opt_vi_st is None else opt_vi_st
+    if len(opt_vi_st.config) == 0:  # resume or _optimize_vi_state has empty config
+        opt_vi_st = opt_vi_st._replace(config=opt_vi_st_init.config)
 
     if odir:
         makedirs(odir, exist_ok=True)
+    if not resume and sanity_fn is not None:
+        with open(sanity_fn, "w"):
+            pass
+    if not resume and last_fn is not None:
+        with open(last_fn, "wb"):
+            pass
 
-    for i in range(opt_vi_st.nit, opt_vi.n_total_iterations - 1):
-        logger.info(f"OPTIMIZE_KL Iteration {i+1:04d}")
+    nm = "OPTIMIZE_KL"
+    for i in range(opt_vi_st.nit, opt_vi.n_total_iterations):
+        logger.info(f"{nm}: Starting {i+1:04d}")
         samples, opt_vi_st = opt_vi.update(samples, opt_vi_st)
-        msg = opt_vi.get_status_message(samples, opt_vi_st)
+        msg = opt_vi.get_status_message(samples, opt_vi_st, name=nm)
         logger.info(msg)
         if sanity_fn is not None:
             with open(sanity_fn, "a") as f:
@@ -686,7 +692,7 @@ def optimize_kl(
                 # TODO: Make all arrays numpy arrays as to not instantiate on
                 # the main device when loading
                 pickle.dump((samples, opt_vi_st._replace(config={})), f)
-        if callback != None:
+        if callback is not None:
             callback(samples, opt_vi_st)
 
     return samples, opt_vi_st

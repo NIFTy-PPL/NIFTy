@@ -1,26 +1,31 @@
 # Copyright(C) 2022 Gordian Edenhofer
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
+# Authors: Gordian Edenhofer, Philipp Frank
 
 import abc
 from dataclasses import dataclass, field
 from functools import partial
 from pprint import pformat
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Iterable, Optional
 from warnings import warn
 
 from jax import eval_shape
 from jax import numpy as jnp
-from jax import random
+from jax import random, vmap
 from jax.tree_util import (
-    register_pytree_node, tree_leaves, tree_map, tree_structure, tree_unflatten
+    register_pytree_node,
+    tree_leaves,
+    tree_map,
+    tree_structure,
+    tree_unflatten,
 )
 
 from .misc import wrap
-from .tree_math import PyTreeString, ShapeWithDtype, random_like
+from .tree_math import PyTreeString, ShapeWithDtype, random_like, Vector
 
 
-class Initializer():
-    domain = ShapeWithDtype((2, ), jnp.uint32)
+class Initializer:
+    domain = ShapeWithDtype((2,), jnp.uint32)
 
     def __new__(cls, call_or_struct):
         if isinstance(call_or_struct, Initializer):
@@ -34,9 +39,7 @@ class Initializer():
         if not self.stupid:
             struct = tree_structure(self._call_or_struct)
             # Cast the subkeys to the structure of `primals`
-            subkeys = tree_unflatten(
-                struct, random.split(key, struct.num_leaves)
-            )
+            subkeys = tree_unflatten(struct, random.split(key, struct.num_leaves))
 
             def draw(init, key):
                 return init(key, *args, **kwargs)
@@ -90,6 +93,7 @@ class ModelMeta(abc.ABCMeta):
     For any dataclasses.Field property with a metadata-entry named "static",
     we will either hide or expose the property to JAX depending on the value.
     """
+
     def __new__(mcs, name, bases, dict_, /, **kwargs):
         cls = super().__new__(mcs, name, bases, dict_, **kwargs)
         cls = dataclass(init=False, repr=False, eq=False)(cls)
@@ -121,7 +125,7 @@ class ModelMeta(abc.ABCMeta):
         return cls
 
 
-class NoValue():
+class NoValue:
     pass
 
 
@@ -159,9 +163,7 @@ class LazyModel(metaclass=ModelMeta):
             )
             warn(msg)
             return Initializer(
-                tree_map(
-                    lambda p: partial(random_like, primals=p), self.domain
-                )
+                tree_map(lambda p: partial(random_like, primals=p), self.domain)
             )
         return self._init
 
@@ -175,6 +177,7 @@ class Model(LazyModel):
     metaprogramming. By default all properties are hidden from JAX except those
     marked via `dataclasses.field(metadata=dict(static=False))` as non-static.
     """
+
     def __init__(
         self,
         call: Optional[Callable] = None,
@@ -280,6 +283,75 @@ class WrappedCall(Model):
         if name is not None:
             call = wrap(call, name=name)
             domain = {name: domain}
-        super().__init__(
-            call, domain=domain, target=target, white_init=white_init
+        super().__init__(call, domain=domain, target=target, white_init=white_init)
+
+
+def _is_none_or_int(x):
+    # Workaround as jax.tree_util.none_leaf_registry is not exposed
+    return isinstance(x, int) or (x is None)
+
+
+def _parse_axes(axes, domain, name=""):
+    struct = tree_structure(domain)
+    if isinstance(axes, int):
+        axes = tree_unflatten(struct, (axes,) * struct.num_leaves)
+    else:
+        # Shortcut for dict only models
+        if isinstance(axes, str):
+            axes = (axes,)
+        if isinstance(axes, Iterable) and all((isinstance(ii, str) for ii in axes)):
+            dom = dict(domain)
+            if dom != domain:
+                msg = f"{name} must be dict-like if axes are strings"
+                raise ValueError(msg)
+            axes = {k: (0 if k in axes else None) for k in dom.keys()}
+
+        ax_struct = tree_structure(axes, is_leaf=_is_none_or_int)
+        if ax_struct != struct:
+            msg = f"{name} structure {struct} does not match axis structure {ax_struct}"
+            raise ValueError(msg)
+    return axes
+
+
+class VModel(LazyModel):
+    model: LazyModel = field(metadata=dict(static=False))
+    in_axes: Any
+    out_axes: Any
+    axis_size: int
+
+    def __init__(self, model, axis_size, in_axes=0, out_axes=0):
+        if not isinstance(model, LazyModel):
+            raise ValueError(f"Model {model} of invalid type")
+        if model.init.stupid:
+            raise ValueError("can only vmap models with a non-'stupid' init")
+        self.model = model
+
+        if not isinstance(axis_size, int) and axis_size <= 0:
+            raise ValueError(f"invalid axis size {axis_size}")
+
+        self.in_axes = _parse_axes(in_axes, model.domain, "Model domain")
+        self.out_axes = _parse_axes(out_axes, model.target, "Model target")
+
+        def _init(key, func, axes):
+            ks = random.split(key, axis_size)
+            return vmap(func, out_axes=axes)(ks)
+
+        def _parse_init(func, axes):
+            if axes is NoValue:
+                return func
+            return partial(_init, func=func, axes=axes)
+
+        parse_axes = tree_map(
+            lambda x: NoValue if x is None else x, self.in_axes, is_leaf=_is_none_or_int
         )
+        init = tree_map(_parse_init, self.model.init._call_or_struct, parse_axes)
+        super().__init__(init=init)
+
+    def __call__(self, x):
+        axs = self.in_axes
+        axs_tr = axs.tree if isinstance(axs, Vector) else axs
+        x_tr = x.tree if isinstance(x, Vector) else x
+        if isinstance(axs_tr, dict) and isinstance(x_tr, dict):
+            axs_tr = axs_tr | {k: None for k in x_tr.keys() - axs_tr.keys()}
+        axs = Vector(axs_tr) if isinstance(x, Vector) else axs_tr
+        return vmap(self.model, (axs,), self.out_axes)(x)
