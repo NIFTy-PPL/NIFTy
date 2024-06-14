@@ -15,6 +15,31 @@ import nifty8.re as jft
 pmp = pytest.mark.parametrize
 
 
+def matern_kernel(distance, scale, cutoff, dof):
+    from jax.scipy.special import gammaln
+    from scipy.special import kv
+
+    reg_dist = jnp.sqrt(2 * dof) * distance / cutoff
+    return (
+        scale**2
+        * 2 ** (1 - dof)
+        / jnp.exp(gammaln(dof))
+        * (reg_dist) ** dof
+        * kv(dof, reg_dist)
+    )
+
+
+scale, cutoff, dof = 5e-1, 0.1, 1 / 2
+x = jnp.logspace(-6, 11, base=jnp.e, num=int(1e5))
+y = matern_kernel(x, scale, cutoff, dof)
+y = jnp.nan_to_num(y, nan=0.0)
+jmater_kernel = jax.tree_util.Partial(jnp.interp, xp=x, fp=y)
+
+
+def kernel(x, y, axis=0):
+    return jmater_kernel(jnp.linalg.norm(x - y, axis=axis))
+
+
 # %%
 if __name__ == "__main__":
     from nifty8.re.multi_grid import indexing as mgi
@@ -22,9 +47,8 @@ if __name__ == "__main__":
     from functools import partial
     from nifty8.re.refine.util import refinement_matrices
 
-    grid = mgi.HEALPixGrid(nside0=2, depth=2)
+    grid = mgi.HEALPixGrid(nside0=2, depth=3)
 
-    kernel = lambda x, y, axis=0: jnp.exp(-(jnp.linalg.norm(x - y, axis=axis) ** 2))
     coerce_fine_kernel = False
     window_size = np.array((9,))
 
@@ -83,6 +107,7 @@ if __name__ == "__main__":
 
     # %%
     rfm = RefinementMatrices(opt_lin_filter, kernel_sqrt, cov_sqrt0, None)
+    jax.tree_util.tree_map(lambda x: np.any(np.isnan(x)), rfm)
 
     # %%
     key = random.PRNGKey(42)
@@ -139,3 +164,8 @@ if __name__ == "__main__":
         values = jnp.transpose(values, ax_group)
         print(f"{values.shape}")
         values = values.reshape(grid.at(lvl + 1).shape)
+
+# %%
+import healpy as hp
+
+hp.mollview(values, nest=grid.nest)
