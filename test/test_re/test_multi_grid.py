@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 # %%
-import sys
-
 import pytest
 
 pytest.importorskip("jax")
@@ -46,21 +44,23 @@ if __name__ == "__main__":
         assert pixel_indices.shape[0] == grid_at_lvl.ndim
         pixel_indices = pixel_indices.reshape(grid_at_lvl.ndim, -1)
 
+        ws = window_size if lvl != 0 else g_shape
+
         # Compute neighbors and map to coordinates outside of vmap to support
         # non-batchable (non-JAX) coordinate transformations
-        gc, _ = grid_at_lvl.neighborhood(pixel_indices, window_size)
+        gc, _ = grid_at_lvl.neighborhood(pixel_indices, ws)
         gc = grid_at_lvl.index2coord(gc)
         gf = grid_at_lvl.children(pixel_indices)
         gf = grid.at(lvl + 1).index2coord(gf)
         assert gc.shape[0] == gf.shape[0]
         odim = gc.shape[0]
-        gc = gc.reshape(odim, np.prod(g_shape), np.prod(window_size))
+        gc = gc.reshape(odim, np.prod(g_shape), np.prod(ws))
         gf = gf.reshape(odim, np.prod(g_shape), np.prod(grid_at_lvl.splits))
         coord = jnp.concatenate((gc, gf), axis=-1)
         del gc, gf
         cov = mapped_kernel(coord, coord)
         del coord
-        _cs = np.prod(window_size) + np.prod(grid_at_lvl.splits)
+        _cs = np.prod(ws) + np.prod(grid_at_lvl.splits)
         assert cov.shape == (np.prod(g_shape),) + (_cs,) * 2
 
         olf, ks = jax.vmap(refinement_matrices, in_axes=(0, None, None))(
