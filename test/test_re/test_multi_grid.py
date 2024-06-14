@@ -22,83 +22,56 @@ if __name__ == "__main__":
     from nifty8.re.multi_grid import indexing as mgi
     from nifty8.re.refine.util import RefinementMatrices
     from functools import partial
+    from nifty8.re.refine.util import refinement_matrices
 
-    grid = mgi.HEALPixGrid(nside0=16, depth=2)
-    gridA = grid.at(1)
+    grid = mgi.HEALPixGrid(nside0=2, depth=2)
 
-    kernel = lambda x, y: np.exp(-(jnp.linalg.norm(x - y) ** 2))
-    coerce_fine_kernel: bool = False
+    kernel = lambda x, y, axis=0: jnp.exp(-(jnp.linalg.norm(x - y, axis=axis) ** 2))
+    coerce_fine_kernel = False
+    window_size = np.array((9,))
 
-    def ref_mat(
-        kernel: callable,
-        grid: mgi.Grid,
-        level: int,
-        idx: np.ndarray,
-        window_size: int = 5,
-        *,
-        coerce_fine_kernel: bool = False,
-    ):
-        from nifty8.re.refine.util import refinement_matrices
-
-        grid_at_level = grid.at(level)
-        grid_at_next_level = grid.at(level + 1)
-
-        ws = (
-            (window_size,) * grid_at_level.ndim
-            if isinstance(window_size, int)
-            else window_size
-        )
-        gc = grid_at_level.neighborhood(idx, ws)
-        gf = grid_at_level.neighborhood(
-            grid_at_level.children(idx), grid_at_level.splits
-        )
-        print(f"{gc.shape=} {gf.shape=}")
-        gc = grid_at_level.index2coord(gc)
-        gf = grid_at_next_level.index2coord(gf)
-        print(f"{gc.shape=} {gf.shape=}")
-        coord = jnp.concatenate((gc, gf), axis=0)
-        cov = kernel(coord, coord)
-        print(f"{cov.shape=}")
-
-        olf, ks = refinement_matrices(
-            cov, np.prod(grid_at_level.splits), coerce_fine_kernel=coerce_fine_kernel
-        )
-        olf = olf  # TODO: reshape
-        ks = ks  # TODO: reshape
-        return olf, ks
-
-
-    window_size = 5
-
+    # %%
     opt_lin_filter, kernel_sqrt = [], []
-    rfm_at = jax.vmap(
-        partial(ref_mat, kernel, grid, coerce_fine_kernel=coerce_fine_kernel),
-        in_axes=(None, 0),
-        out_axes=(0, 0),
-    )
+    mapped_kernel = partial(kernel, axis=0)
+    mapped_kernel = jax.vmap(mapped_kernel, in_axes=(None, -1), out_axes=-1)
+    mapped_kernel = jax.vmap(mapped_kernel, in_axes=(-1, None), out_axes=-1)
+
     for lvl in range(grid.depth):
         grid_at_lvl = grid.at(lvl)
-        shape_lvl = grid_at_lvl.shape
-        pixel_indices = []
-        for ax in range(grid_at_lvl.ndim):
-            stride = grid_at_lvl.splits / 2
-            # TODO: continue here
-            if int(stride) != stride:
-                raise ValueError("`fine_size` must be even")
-            stride = int(stride)
-            pixel_indices.append(jnp.arange(pad, shape_lvl[ax] - pad, stride))
-        pixel_indices = jnp.stack(jnp.meshgrid(*pixel_indices, indexing="ij"), axis=-1)
-        shape_filtered_lvl = pixel_indices.shape[:-1]
-        pixel_indices = pixel_indices.reshape(-1, grid_at_lvl.ndim)
+        assert np.all(grid_at_lvl.splits % 2 == 0)
+        # TODO: Children of multiple pixels could be refined jointly requiring a
+        # non-unit stride
+        pixel_indices = np.mgrid[tuple(slice(0, sz) for sz in grid_at_lvl.shape)]
+        g_shape = pixel_indices.shape[1:]
+        assert pixel_indices.shape[0] == grid_at_lvl.ndim
+        pixel_indices = pixel_indices.reshape(grid_at_lvl.ndim, -1)
 
-        olf, ks = rfm_at(lvl, pixel_indices)
-        shape_bc_lvl = tuple(
-            shape_filtered_lvl[i] if i in chart.irregular_axes else 1
-            for i in range(grid_at_lvl.ndim)
+        # Compute neighbors and map to coordinates outside of vmap to support
+        # non-batchable (non-JAX) coordinate transformations
+        gc, _ = grid_at_lvl.neighborhood(pixel_indices, window_size)
+        gc = grid_at_lvl.index2coord(gc)
+        gf = grid_at_lvl.children(pixel_indices)
+        gf = grid.at(lvl + 1).index2coord(gf)
+        assert gc.shape[0] == gf.shape[0]
+        odim = gc.shape[0]
+        gc = gc.reshape(odim, np.prod(g_shape), np.prod(window_size))
+        gf = gf.reshape(odim, np.prod(g_shape), np.prod(grid_at_lvl.splits))
+        coord = jnp.concatenate((gc, gf), axis=-1)
+        del gc, gf
+        cov = mapped_kernel(coord, coord)
+        del coord
+        _cs = np.prod(window_size) + np.prod(grid_at_lvl.splits)
+        assert cov.shape == (np.prod(g_shape),) + (_cs,) * 2
+
+        olf, ks = jax.vmap(refinement_matrices, in_axes=(0, None, None))(
+            cov, np.prod(grid_at_lvl.splits), coerce_fine_kernel
         )
-        opt_lin_filter.append(olf.reshape(shape_bc_lvl + olf.shape[-2:]))
-        kernel_sqrt.append(ks.reshape(shape_bc_lvl + ks.shape[-2:]))
+        olf = olf.reshape(g_shape + olf.shape[-2:])
+        ks = ks.reshape(g_shape + ks.shape[-2:])
+        opt_lin_filter.append(olf)
+        kernel_sqrt.append(ks)
 
-    return RefinementMatrices(
+    # %%
+    rfm = RefinementMatrices(
         opt_lin_filter, kernel_sqrt, None, (None,) * len(opt_lin_filter)
     )
