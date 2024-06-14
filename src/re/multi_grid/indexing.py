@@ -251,7 +251,8 @@ class HEALPixGridAtLevel(GridAtLevel):
             raise NotImplementedError(nie)
         if window_size == self.size:
             assert ~np.any(index < 0)
-            return np.add.outer(index, np.arange(self.size, dtype=dtp)) % self.size
+            neighbors = np.add.outer(index, np.arange(self.size, dtype=dtp)) % self.size
+            return neighbors[np.newaxis], neighbors[np.newaxis] != -1
 
         index_shape = np.shape(index)
         index = np.ravel(index)
