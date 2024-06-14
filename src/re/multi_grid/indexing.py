@@ -237,14 +237,13 @@ class HEALPixGridAtLevel(GridAtLevel):
         super().__init__(shape=size, splits=splits, parent_splits=parent_splits)
 
     def neighborhood(self, index, window_size: Iterable[int]):
+        from healpy.pixelfunc import get_all_neighbours
+
         if not isinstance(index, int):
             # Special case integers, otherwise remove index axis and add later again
-            assert index.shape[0] == 1
-            index = index[0]
+            (index,) = index
         if not isinstance(window_size, int):
-            assert len(window_size) == 1
-            window_size = window_size[0]
-        from healpy.pixelfunc import get_all_neighbours
+            (window_size,) = window_size
 
         dtp = np.result_type(index)
         if window_size not in (1, 9, self.size):
@@ -275,7 +274,8 @@ class HEALPixGridAtLevel(GridAtLevel):
             raise AssertionError()
         neighbors = np.squeeze(neighbors, axis=0) if index_shape == () else neighbors
         neighbors = neighbors.reshape(index_shape + (window_size,))
-        return neighbors.astype(dtp)[np.newaxis], valid.reshape(neighbors.shape)
+        neighbors = neighbors.astype(dtp)[np.newaxis]
+        return neighbors, valid.reshape(neighbors.shape)
 
     def index2coord(self, index, **kwargs):
         from healpy.pixelfunc import pix2vec
