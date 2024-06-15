@@ -1,0 +1,85 @@
+cff-version: "1.2.0"
+authors:
+- family-names: Edenhofer
+  given-names: Gordian
+  orcid: "https://orcid.org/0000-0003-3122-4894"
+- family-names: Frank
+  given-names: Philipp
+  orcid: "https://orcid.org/0000-0001-5610-3779"
+- family-names: Roth
+  given-names: Jakob
+  orcid: "https://orcid.org/0000-0002-8873-8215"
+- family-names: Leike
+  given-names: Reimar H.
+  orcid: "https://orcid.org/0000-0002-1640-6772"
+- family-names: Guerdi
+  given-names: Massin
+- family-names: Scheel-Platz
+  given-names: Lukas I.
+  orcid: "https://orcid.org/0000-0003-0809-9634"
+- family-names: Guardiani
+  given-names: Matteo
+  orcid: "https://orcid.org/0000-0002-4905-6692"
+- family-names: Eberle
+  given-names: Vincent
+  orcid: "https://orcid.org/0000-0002-5713-3475"
+- family-names: Westerkamp
+  given-names: Margret
+  orcid: "https://orcid.org/0000-0001-7218-8282"
+- family-names: Enßlin
+  given-names: Torsten A.
+  orcid: "https://orcid.org/0000-0001-5246-1624"
+contact:
+- family-names: Edenhofer
+  given-names: Gordian
+  orcid: "https://orcid.org/0000-0003-3122-4894"
+doi: 10.5281/zenodo.11441976
+message: If you use this software, please cite our article in the
+  Journal of Open Source Software.
+preferred-citation:
+  authors:
+  - family-names: Edenhofer
+    given-names: Gordian
+    orcid: "https://orcid.org/0000-0003-3122-4894"
+  - family-names: Frank
+    given-names: Philipp
+    orcid: "https://orcid.org/0000-0001-5610-3779"
+  - family-names: Roth
+    given-names: Jakob
+    orcid: "https://orcid.org/0000-0002-8873-8215"
+  - family-names: Leike
+    given-names: Reimar H.
+    orcid: "https://orcid.org/0000-0002-1640-6772"
+  - family-names: Guerdi
+    given-names: Massin
+  - family-names: Scheel-Platz
+    given-names: Lukas I.
+    orcid: "https://orcid.org/0000-0003-0809-9634"
+  - family-names: Guardiani
+    given-names: Matteo
+    orcid: "https://orcid.org/0000-0002-4905-6692"
+  - family-names: Eberle
+    given-names: Vincent
+    orcid: "https://orcid.org/0000-0002-5713-3475"
+  - family-names: Westerkamp
+    given-names: Margret
+    orcid: "https://orcid.org/0000-0001-7218-8282"
+  - family-names: Enßlin
+    given-names: Torsten A.
+    orcid: "https://orcid.org/0000-0001-5246-1624"
+  date-published: 2024-06-15
+  doi: 10.21105/joss.06593
+  issn: 2475-9066
+  issue: 98
+  journal: Journal of Open Source Software
+  publisher:
+    name: Open Journals
+  start: 6593
+  title: "Re-Envisioning Numerical Information Field Theory (NIFTy.re):
+    A Library for Gaussian Processes and Variational Inference"
+  type: article
+  url: "https://joss.theoj.org/papers/10.21105/joss.06593"
+  volume: 9
+title: "Re-Envisioning Numerical Information Field Theory (NIFTy.re): A
+  Library for Gaussian Processes and Variational Inference"
+
