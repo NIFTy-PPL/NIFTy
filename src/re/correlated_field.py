@@ -65,7 +65,7 @@ def _unique_mode_distributor(m_length, uniqueness_rtol=1e-12):
 
 
 def get_spherical_mode_distributor(
-    nside: int, lmax=None, mmax=None, uniqueness_rtol=1e-12
+    nside: int, lmax=None, mmax=None, uniqueness_rtol=1e-12, distance_dtype=np.float64
 ):
     """Get the unique lengths of Spherical harmonic modes, a mapping from a mode
     to its length index and the multiplicity of each unique mode length.
@@ -84,6 +84,12 @@ def get_spherical_mode_distributor(
         :math:`a_{lm}` that is represented by this object.
         If not supplied, it is set to `lmax`.
         Must be :math:`\\ge 0` and :math:`\\le` `lmax`.
+    uniqueness_rtol : float
+        Relative tolerance to define unique lengths of harmonic mode vectors
+        (k-vectors). Vectors with lengths that have a smaller relative distance
+        to each other are treated identically
+    distance_dtype : Any
+        Dtype of the array of harmonic mode lengths canstructed internally
 
     Returns
     -------
@@ -107,11 +113,9 @@ def get_spherical_mode_distributor(
         raise ValueError("mmax must be >=0 and <=lmax.")
     size = (lmax + 1) ** 2 - (lmax - mmax) * (lmax - mmax + 1)
 
-    ldist = np.empty((size,), dtype=np.float64)
-    ldist[0 : lmax + 1] = np.arange(lmax + 1, dtype=np.float64)
-    tmp = np.empty((2 * lmax + 2), dtype=np.float64)
-    tmp[0::2] = np.arange(lmax + 1)
-    tmp[1::2] = np.arange(lmax + 1)
+    ldist = np.empty((size,), dtype=distance_dtype)
+    ldist[0 : lmax + 1] = np.arange(lmax + 1, dtype=distance_dtype)
+    tmp = np.repeat(np.arange(lmax + 1, dtype=distance_dtype), 2)
     idx = lmax + 1
     for m in range(1, mmax + 1):
         ldist[idx : idx + 2 * (lmax + 1 - m)] = tmp[2 * m :]
@@ -146,6 +150,10 @@ def get_fourier_mode_distributor(
         Unique length of Fourier modes.
     mode_multiplicity : jnp.ndarray
         Multiplicity for each unique Fourier mode length.
+    uniqueness_rtol : float
+        Relative tolerance to define unique lengths of harmonic mode vectors
+        (k-vectors). Vectors with lengths that have a smaller relative distance
+        to each other are treated identically
     """
     shape = (shape,) if isinstance(shape, int) else tuple(shape)
 
