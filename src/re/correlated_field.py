@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
+# Authors: Gordian Edenhofer, Philipp Frank
 
 import operator
 from collections import namedtuple
@@ -8,6 +9,7 @@ from typing import Callable, Optional, Tuple, Union
 
 import numpy as np
 from jax import numpy as jnp
+from jax import vmap
 
 from ..config import _config
 from .gauss_markov import IntegratedWienerProcess
@@ -27,8 +29,109 @@ def hartley(p, axes=None):
     return add_or_sub(tmp.real, tmp.imag)
 
 
+def get_sht(nside, axis, lmax, mmax, nthreads):
+    from jaxbind.contrib.jaxducc0 import get_healpix_sht
+
+    jsht = get_healpix_sht(nside, lmax, mmax, 0, nthreads)
+    axis = int(axis)
+
+    def f(inp):
+        # Explicitly move axes around, may introduce unnecessary copies
+        def trafo(x):
+            return np.sqrt(4 * np.pi) * jsht(x[jnp.newaxis])[0][0]
+
+        axs = axis % inp.ndim
+        for i in reversed(range(inp.ndim)):
+            if i < axs:
+                trafo = vmap(trafo, in_axes=0, out_axes=0)
+            elif i > axs:
+                trafo = vmap(trafo, in_axes=1, out_axes=1)
+        return trafo(inp)
+
+    return f
+
+
+def _unique_mode_distributor(m_length, uniqueness_rtol=1e-12):
+    # Construct an array of unique mode lengths
+    um = jnp.unique(m_length)
+    tol = uniqueness_rtol * um[-1]
+    um = um[jnp.diff(jnp.append(um, 2 * um[-1])) > tol]
+    # Group modes based on their length and store the result as power
+    # distributor
+    binbounds = 0.5 * (um[:-1] + um[1:])
+    m_length_idx = jnp.searchsorted(binbounds, m_length)
+    m_count = jnp.bincount(m_length_idx.ravel(), minlength=um.size)
+    if jnp.any(m_count == 0) or um.shape != m_count.shape:
+        raise RuntimeError("invalid harmonic mode(s) encountered")
+    return m_length_idx, um, m_count
+
+
+def get_spherical_mode_distributor(
+    nside: int, lmax=None, mmax=None, uniqueness_rtol=1e-12, distance_dtype=np.float64
+):
+    """Get the unique lengths of Spherical harmonic modes, a mapping from a mode
+    to its length index and the multiplicity of each unique mode length.
+
+    Parameters
+    ----------
+    nside : int
+        Nside of the HEALPix sphere for which the associated harmonic space is
+        constructed
+    lmax : int, optional
+        The maximum :math:`l` value of any spherical harmonic coefficient
+        :math:`a_{lm}` that is represented by this object.
+        Must be :math:`\\ge 0`. If not supplied, it is set to `nside * 2`
+    mmax : int, optional
+        The maximum :math:`m` value of any spherical harmonic coefficient
+        :math:`a_{lm}` that is represented by this object.
+        If not supplied, it is set to `lmax`.
+        Must be :math:`\\ge 0` and :math:`\\le` `lmax`.
+    uniqueness_rtol : float
+        Relative tolerance to define unique lengths of harmonic mode vectors
+        (k-vectors). Vectors with lengths that have a smaller relative distance
+        to each other are treated identically
+    distance_dtype : Any
+        Dtype of the array of harmonic mode lengths canstructed internally
+
+    Returns
+    -------
+    mode_length_idx : jnp.ndarray
+        Index in power-space for every mode in harmonic-space. Can be used to
+        distribute power from a power-space to the full harmonic grid.
+    unique_mode_length : jnp.ndarray
+        Unique length of spherical modes.
+    mode_multiplicity : jnp.ndarray
+        Multiplicity for each unique mode length.
+    """
+    if lmax is None:
+        lmax = 2 * nside
+    lmax = int(lmax)
+    if lmax < 0:
+        raise ValueError("lmax must be >=0.")
+    if mmax is None:
+        mmax = lmax
+    mmax = int(mmax)
+    if mmax < 0 or mmax > lmax:
+        raise ValueError("mmax must be >=0 and <=lmax.")
+    size = (lmax + 1) ** 2 - (lmax - mmax) * (lmax - mmax + 1)
+
+    ldist = np.empty((size,), dtype=distance_dtype)
+    ldist[0 : lmax + 1] = np.arange(lmax + 1, dtype=distance_dtype)
+    tmp = np.repeat(np.arange(lmax + 1, dtype=distance_dtype), 2)
+    idx = lmax + 1
+    for m in range(1, mmax + 1):
+        ldist[idx : idx + 2 * (lmax + 1 - m)] = tmp[2 * m :]
+        idx += 2 * (lmax + 1 - m)
+
+    return _unique_mode_distributor(ldist, uniqueness_rtol=uniqueness_rtol), (
+        lmax,
+        mmax,
+        size,
+    )
+
+
 def get_fourier_mode_distributor(
-    shape: Union[tuple, int], distances: Union[tuple, float]
+    shape: Union[tuple, int], distances: Union[tuple, float], uniqueness_rtol=1e-12
 ):
     """Get the unique lengths of the Fourier modes, a mapping from a mode to
     its length index and the multiplicity of each unique Fourier mode length.
@@ -49,11 +152,15 @@ def get_fourier_mode_distributor(
         Unique length of Fourier modes.
     mode_multiplicity : jnp.ndarray
         Multiplicity for each unique Fourier mode length.
+    uniqueness_rtol : float
+        Relative tolerance to define unique lengths of harmonic mode vectors
+        (k-vectors). Vectors with lengths that have a smaller relative distance
+        to each other are treated identically
     """
-    shape = (shape, ) if isinstance(shape, int) else tuple(shape)
+    shape = (shape,) if isinstance(shape, int) else tuple(shape)
 
     # Compute length of modes
-    mspc_distances = 1. / (jnp.array(shape) * jnp.array(distances))
+    mspc_distances = 1.0 / (jnp.array(shape) * jnp.array(distances))
     m_length = jnp.arange(shape[0], dtype=jnp.float64)
     m_length = jnp.minimum(m_length, shape[0] - m_length) * mspc_distances[0]
     if len(shape) != 1:
@@ -65,67 +172,79 @@ def get_fourier_mode_distributor(
             m_length = jnp.expand_dims(m_length, axis=-1) + tmp
         m_length = jnp.sqrt(m_length)
 
-    # Construct an array of unique mode lengths
-    uniqueness_rtol = 1e-12
-    um = jnp.unique(m_length)
-    tol = uniqueness_rtol * um[-1]
-    um = um[jnp.diff(jnp.append(um, 2 * um[-1])) > tol]
-    # Group modes based on their length and store the result as power
-    # distributor
-    binbounds = 0.5 * (um[:-1] + um[1:])
-    m_length_idx = jnp.searchsorted(binbounds, m_length)
-    m_count = jnp.bincount(m_length_idx.ravel(), minlength=um.size)
-    if jnp.any(m_count == 0) or um.shape != m_count.shape:
-        raise RuntimeError("invalid harmonic mode(s) encountered")
-
-    return m_length_idx, um, m_count
+    return _unique_mode_distributor(m_length, uniqueness_rtol=uniqueness_rtol)
 
 
 RegularCartesianGrid = namedtuple(
-    "RegularCartesianGrid", (
+    "RegularCartesianGrid",
+    (
         "shape",
         "total_volume",
         "distances",
         "harmonic_grid",
     ),
-    defaults=(None, )
+    defaults=(None,),
 )
 
 RegularFourierGrid = namedtuple(
-    "RegularFourierGrid", (
+    "RegularFourierGrid",
+    (
         "shape",
         "power_distributor",
         "mode_multiplicity",
         "mode_lengths",
         "relative_log_mode_lengths",
         "log_volume",
-    )
+    ),
 )
+
+HEALPixGrid = namedtuple(
+    "HEALPixGrid",
+    (
+        "nside",
+        "shape",
+        "total_volume",
+        "harmonic_grid",
+    ),
+    defaults=(None,),
+)
+
+LMGrid = namedtuple(
+    "LMGrid",
+    (
+        "lmax",
+        "mmax",
+        "shape",
+        "power_distributor",
+        "mode_multiplicity",
+        "mode_lengths",
+        "relative_log_mode_lengths",
+        "log_volume",
+    ),
+)
+
+
+def _log_modes(m_length):
+    um = m_length.copy()
+    um = um.at[1:].set(jnp.log(um[1:]))
+    um = um.at[1:].add(-um[1])
+    assert um[0] == 0.0
+    log_vol = um[2:] - um[1:-1]
+    assert um.shape[0] - 2 == log_vol.shape[0]
+    return um, log_vol
 
 
 def _make_grid(shape, distances, harmonic_type) -> RegularCartesianGrid:
     """Creates the grid for the amplitude model"""
-    shape = (shape, ) if isinstance(shape, int) else tuple(shape)
-    distances = tuple(np.broadcast_to(distances, jnp.shape(shape)))
+    shape = (shape,) if isinstance(shape, int) else tuple(shape)
 
-    totvol = jnp.prod(jnp.array(shape) * jnp.array(distances))
-    # TODO: cache results such that only references are used afterwards
-    grid = RegularCartesianGrid(
-        shape=shape,
-        total_volume=totvol,
-        distances=distances,
-    )
     # Pre-compute lengths of modes and indices for distributing power
     if harmonic_type.lower() == "fourier":
-        m_length_idx, m_length, m_count = get_fourier_mode_distributor(
-            shape, distances
-        )
-        um = m_length.copy()
-        um = um.at[1:].set(jnp.log(um[1:]))
-        um = um.at[1:].add(-um[1])
-        assert um[0] == 0.
-        log_vol = um[2:] - um[1:-1]
-        assert um.shape[0] - 2 == log_vol.shape[0]
+        distances = tuple(np.broadcast_to(distances, jnp.shape(shape)))
+
+        totvol = jnp.prod(jnp.array(shape) * jnp.array(distances))
+        m_length_idx, m_length, m_count = get_fourier_mode_distributor(shape, distances)
+        um, log_vol = _log_modes(m_length)
         harmonic_grid = RegularFourierGrid(
             shape=shape,
             power_distributor=m_length_idx,
@@ -134,10 +253,41 @@ def _make_grid(shape, distances, harmonic_type) -> RegularCartesianGrid:
             relative_log_mode_lengths=um,
             log_volume=log_vol,
         )
+        # TODO: cache results such that only references are used afterwards
+        grid = RegularCartesianGrid(
+            shape=shape,
+            total_volume=totvol,
+            distances=distances,
+            harmonic_grid=harmonic_grid,
+        )
+    elif harmonic_type.lower() == "spherical":
+        if len(shape) != 1:
+            msg = "`shape` must be length one. Its the nside of the spherical grid."
+            raise ValueError(msg)
+        nside = shape[0]
+        (m_length_idx, m_length, m_count), (lmax, mmax, size) = (
+            get_spherical_mode_distributor(nside)
+        )
+        um, log_vol = _log_modes(m_length)
+        harmonic_grid = LMGrid(
+            lmax=lmax,
+            mmax=mmax,
+            shape=(size,),
+            power_distributor=m_length_idx,
+            mode_multiplicity=m_count,
+            mode_lengths=m_length,
+            relative_log_mode_lengths=um,
+            log_volume=log_vol,
+        )
+        grid = HEALPixGrid(
+            nside=nside,
+            shape=(12 * nside**2,),
+            total_volume=4 * np.pi,
+            harmonic_grid=harmonic_grid,
+        )
     else:
         ve = f"invalid `harmonic_type` {harmonic_type!r}"
         raise ValueError(ve)
-    grid = grid._replace(harmonic_grid=harmonic_grid)
     return grid
 
 
@@ -166,8 +316,8 @@ def matern_amplitude(
     See also
     --------
     `Causal, Bayesian, & non-parametric modeling of the SARS-CoV-2 viral
-    load vs. patient's age`, Guardiani, Matteo and Frank, Kostić Andrija
-    and Edenhofer, Gordian and Roth, Jakob and Uhlmann, Berit and
+    load vs. patient's age`, Guardiani, Matteo and Frank, Philipp and Kostić,
+    Andrija and Edenhofer, Gordian and Roth, Jakob and Uhlmann, Berit and
     Enßlin, Torsten, `<https://arxiv.org/abs/2105.13483>`_
     `<https://doi.org/10.1371/journal.pone.0275011>`_
     """
@@ -187,21 +337,17 @@ def matern_amplitude(
         ctf = cutoff(primals)
         slp = loglogslope(primals)
 
-        ln_spectrum = 0.25 * slp * jnp.log1p((mode_lengths / ctf)**2)
+        ln_spectrum = 0.25 * slp * jnp.log1p((mode_lengths / ctf) ** 2)
 
         spectrum = jnp.exp(ln_spectrum)
 
-        norm = 1.
+        norm = 1.0
         if renormalize_amplitude:
             logger.warning("Renormalize amplidude is not yet tested!")
             if kind.lower() == "amplitude":
-                norm = jnp.sqrt(
-                    jnp.sum(mode_multiplicity[1:] * spectrum[1:]**4)
-                )
+                norm = jnp.sqrt(jnp.sum(mode_multiplicity[1:] * spectrum[1:] ** 4))
             elif kind.lower() == "power":
-                norm = jnp.sqrt(
-                    jnp.sum(mode_multiplicity[1:] * spectrum[1:]**2)
-                )
+                norm = jnp.sqrt(jnp.sum(mode_multiplicity[1:] * spectrum[1:] ** 2))
             norm /= jnp.sqrt(totvol)  # Due to integral in harmonic space
         spectrum = scl * (jnp.sqrt(totvol) / norm) * spectrum
         spectrum = spectrum.at[0].set(totvol)
@@ -211,9 +357,7 @@ def matern_amplitude(
             raise ValueError(f"invalid kind specified {kind!r}")
         return spectrum
 
-    return Model(
-        correlate, domain=ptree, init=partial(random_like, primals=ptree)
-    )
+    return Model(correlate, domain=ptree, init=partial(random_like, primals=ptree))
 
 
 def non_parametric_amplitude(
@@ -260,15 +404,13 @@ def non_parametric_amplitude(
         assert log_vol is not None
         assert rel_log_mode_len.ndim == log_vol.ndim == 1
         if asperity is not None:
-            asperity = WrappedCall(
-                asperity, name=prefix + "asperity", white_init=True
-            )
+            asperity = WrappedCall(asperity, name=prefix + "asperity", white_init=True)
         deviations = IntegratedWienerProcess(
-            jnp.zeros((2, )),
+            jnp.zeros((2,)),
             flexibility,
             log_vol,
             name=prefix + "spectrum",
-            asperity=asperity
+            asperity=asperity,
         )
         ptree.update(deviations.domain)
     else:
@@ -283,7 +425,7 @@ def non_parametric_amplitude(
         if deviations is not None:
             twolog = deviations(primals)
             # Prepend zeromode
-            twolog = jnp.concatenate((jnp.zeros((1, )), twolog[:, 0]))
+            twolog = jnp.concatenate((jnp.zeros((1,)), twolog[:, 0]))
             ln_spectrum += _remove_slope(rel_log_mode_len, twolog)
 
         # Exponentiate and norm the power spectrum
@@ -291,7 +433,7 @@ def non_parametric_amplitude(
         # Take the sqrt of the integral of the slope w/o fluctuations and
         # zero-mode while taking into account the multiplicity of each mode
         if kind.lower() == "amplitude":
-            norm = jnp.sqrt(jnp.sum(mode_multiplicity[1:] * spectrum[1:]**2))
+            norm = jnp.sqrt(jnp.sum(mode_multiplicity[1:] * spectrum[1:] ** 2))
             norm /= jnp.sqrt(totvol)  # Due to integral in harmonic space
             amplitude = flu * (jnp.sqrt(totvol) / norm) * spectrum
         elif kind.lower() == "power":
@@ -303,12 +445,10 @@ def non_parametric_amplitude(
         amplitude = amplitude.at[0].set(totvol)
         return amplitude
 
-    return Model(
-        correlate, domain=ptree, init=partial(random_like, primals=ptree)
-    )
+    return Model(correlate, domain=ptree, init=partial(random_like, primals=ptree))
 
 
-class CorrelatedFieldMaker():
+class CorrelatedFieldMaker:
     """Construction helper for hierarchical correlated field models.
 
     The correlated field models are parametrized by creating square roots of
@@ -324,6 +464,7 @@ class CorrelatedFieldMaker():
     See the method's initialization, :func:`add_fluctuations`,
     :func:`add_fluctuations_matern` and :func:`finalize` for further
     usage information."""
+
     def __init__(self, prefix: str):
         """Instantiate a CorrelatedFieldMaker object.
 
@@ -602,9 +743,10 @@ class CorrelatedFieldMaker():
         zero-mode. Their scales are only meaningful relative to one another.
         Their absolute scale bares no information.
         """
+
         def _mk_normed_amp(amp):  # Avoid late binding
             def normed_amplitude(p):
-                return amp(p).at[1:].mul(1. / self.azm(p))
+                return amp(p).at[1:].mul(1.0 / self.azm(p))
 
             return normed_amplitude
 
@@ -615,9 +757,9 @@ class CorrelatedFieldMaker():
         """Returns the added fluctuation, i.e. un-normalized amplitude"""
         if len(self._fluctuations) > 1:
             s = (
-                'If more than one spectrum is present in the model,'
-                ' no unique set of amplitudes exist because only the'
-                ' relative scale is determined.'
+                "If more than one spectrum is present in the model,"
+                " no unique set of amplitudes exist because only the"
+                " relative scale is determined."
             )
             raise NotImplementedError(s)
         amp = self._fluctuations[0]
@@ -633,7 +775,7 @@ class CorrelatedFieldMaker():
         amp = self.amplitude
 
         def power(p):
-            return amp(p)**2
+            return amp(p) ** 2
 
         return power
 
@@ -648,13 +790,22 @@ class CorrelatedFieldMaker():
             sub_shp = sgrid.harmonic_grid.shape
             excitation_shape += sub_shp
             n = len(excitation_shape)
-            axes = tuple(range(n - len(sub_shp), n))
+            harmonic_dvol = 1.0 / sgrid.total_volume
+            if isinstance(sgrid, RegularCartesianGrid):
+                axes = tuple(range(n - len(sub_shp), n))
+                # TODO: Generalize to complex
+                trafo = partial(hartley, axes=axes)
+            elif isinstance(sgrid, HEALPixGrid):
+                axis = len(excitation_shape) - 1
+                trafo = get_sht(
+                    nside=sgrid.nside,
+                    axis=axis,
+                    lmax=sgrid.harmonic_grid.lmax,
+                    mmax=sgrid.harmonic_grid.mmax,
+                    nthreads=1,
+                )
+            harmonic_transforms.append((harmonic_dvol, trafo))
 
-            # TODO: Generalize to complex
-            harmonic_dvol = 1. / sgrid.total_volume
-            harmonic_transforms.append(
-                (harmonic_dvol, partial(hartley, axes=axes))
-            )
         # Register the parameters for the excitations in harmonic space
         # TODO: actually account for the dtype here
         pfx = self._prefix + "xi"
@@ -693,12 +844,9 @@ class CorrelatedFieldMaker():
             return self._offset_mean + outer_harmonic_transform(cf_h)
 
         init = {
-            k: partial(random_like, primals=v)
-            for k, v in self._parameter_tree.items()
+            k: partial(random_like, primals=v) for k, v in self._parameter_tree.items()
         }
-        cf = Model(
-            correlated_field, domain=self._parameter_tree.copy(), init=init
-        )
+        cf = Model(correlated_field, domain=self._parameter_tree.copy(), init=init)
         cf.normalized_amplitudes = namps
         cf.target_grids = tuple(self._target_grids)
         return cf
