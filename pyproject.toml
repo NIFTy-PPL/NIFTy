@@ -36,6 +36,7 @@ Homepage = "https://github.com/nifty-ppl/nifty"
 re = [
     "jax",
     "jaxlib",
+    "jaxbind",
 ]
 native = [
     "ducc0>=0.27.0",
