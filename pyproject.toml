@@ -36,7 +36,10 @@ Homepage = "https://github.com/nifty-ppl/nifty"
 re = [
     "jax",
     "jaxlib",
+]
+re_sht = [
     "jaxbind",
+    "ducc0>=0.27.0",
 ]
 native = [
     "ducc0>=0.27.0",
@@ -63,7 +66,7 @@ test = [
     "pytest-cov",
     "ducc0",
 ]
-all = ["nifty8[re,native,parallel,doc,util,test]"]
+all = ["nifty8[re,re_sht,native,parallel,doc,util,test]"]
 
 [build-system]
 requires = [
