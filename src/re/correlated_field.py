@@ -49,9 +49,8 @@ def get_sht(nside, axis, lmax, mmax, nthreads):
     return f
 
 
-def _unique_mode_distributor(m_length):
+def _unique_mode_distributor(m_length, uniqueness_rtol=1e-12):
     # Construct an array of unique mode lengths
-    uniqueness_rtol = 1e-12
     um = jnp.unique(m_length)
     tol = uniqueness_rtol * um[-1]
     um = um[jnp.diff(jnp.append(um, 2 * um[-1])) > tol]
@@ -65,7 +64,9 @@ def _unique_mode_distributor(m_length):
     return m_length_idx, um, m_count
 
 
-def get_spherical_mode_distributor(nside: int, lmax=None, mmax=None):
+def get_spherical_mode_distributor(
+    nside: int, lmax=None, mmax=None, uniqueness_rtol=1e-12
+):
     """Get the unique lengths of Spherical harmonic modes, a mapping from a mode
     to its length index and the multiplicity of each unique mode length.
 
@@ -116,11 +117,15 @@ def get_spherical_mode_distributor(nside: int, lmax=None, mmax=None):
         ldist[idx : idx + 2 * (lmax + 1 - m)] = tmp[2 * m :]
         idx += 2 * (lmax + 1 - m)
 
-    return _unique_mode_distributor(ldist), (lmax, mmax, size)
+    return _unique_mode_distributor(ldist, uniqueness_rtol=uniqueness_rtol), (
+        lmax,
+        mmax,
+        size,
+    )
 
 
 def get_fourier_mode_distributor(
-    shape: Union[tuple, int], distances: Union[tuple, float]
+    shape: Union[tuple, int], distances: Union[tuple, float], uniqueness_rtol=1e-12
 ):
     """Get the unique lengths of the Fourier modes, a mapping from a mode to
     its length index and the multiplicity of each unique Fourier mode length.
@@ -157,7 +162,7 @@ def get_fourier_mode_distributor(
             m_length = jnp.expand_dims(m_length, axis=-1) + tmp
         m_length = jnp.sqrt(m_length)
 
-    return _unique_mode_distributor(m_length)
+    return _unique_mode_distributor(m_length, uniqueness_rtol=uniqueness_rtol)
 
 
 RegularCartesianGrid = namedtuple(
