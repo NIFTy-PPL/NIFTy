@@ -117,8 +117,17 @@ def test_correlated_field_non_parametric_init_validation(flu, slp, flx, asp):
 
 @pmp("seed", [0, 42])
 @pmp("ht_convention", ["canonical_hartley", "non_canonical_hartley"])
-@pmp("shape", [(4,), (3, 3)])
-@pmp("distances", [0.1, 5.0])
+@pmp(
+    "shape,distances,harmonic_type",
+    [
+        ((4,), 0.1, "fourier"),
+        ((4,), 5.0, "fourier"),
+        ((3, 3), 0.1, "fourier"),
+        ((3, 3), 5.0, "fourier"),
+        ((4,), None, "spherical"),
+        ((32,), None, "spherical"),
+    ],
+)
 @pmp("offset_mean", [0])
 @pmp("offset_std", [(0.1, 0.1)])
 @pmp("fluctuations", [(1.0, 0.1), (3.0, 2.0)])
@@ -130,6 +139,7 @@ def test_nifty_vs_niftyre_non_parametric_cf(
     ht_convention,
     shape,
     distances,
+    harmonic_type,
     offset_mean,
     offset_std,
     fluctuations,
@@ -154,12 +164,18 @@ def test_nifty_vs_niftyre_non_parametric_cf(
         distances=distances,
         **fluct_kwargs,
         non_parametric_kind="power",
+        harmonic_type=harmonic_type,
     )
     jcf = jcfm.finalize()
 
     cfm = ift.CorrelatedFieldMaker("")
     cfm.set_amplitude_total_offset(offset_mean, offset_std)
-    cfm.add_fluctuations(ift.RGSpace(shape, distances), **fluct_kwargs)
+    sp = (
+        ift.RGSpace(shape, distances)
+        if distances is not None
+        else ift.HPSpace(shape[0])
+    )
+    cfm.add_fluctuations(sp, **fluct_kwargs)
     cf = cfm.finalize(prior_info=0)
 
     pos = jft.random_like(key, jcf.domain)
@@ -214,38 +230,6 @@ CFG_FLUCT = dict(
     flexibility=(1.0, 0.1),
     asperity=(0.2, 2.0e-2),
 )
-
-
-@pmp("seed", [0, 42])
-@pmp("shape", [(4,), (32,)])
-def test_nifty_vs_niftyre_spherical(seed, shape):
-    key = random.PRNGKey(seed)
-
-    jcfm = jft.CorrelatedFieldMaker("")
-    jcfm.set_amplitude_total_offset(**CFG_OFFSET)
-    jcfm.add_fluctuations(
-        shape,
-        distances=None,
-        **CFG_FLUCT,
-        harmonic_type="spherical",
-        non_parametric_kind="power",
-    )
-    jcf = jcfm.finalize()
-
-    cfm = ift.CorrelatedFieldMaker("")
-    cfm.set_amplitude_total_offset(**CFG_OFFSET)
-    cfm.add_fluctuations(ift.HPSpace(shape[0]), **CFG_FLUCT)
-    cf = cfm.finalize(prior_info=0)
-
-    pos = jft.random_like(key, jcf.domain)
-    npos = {
-        k: ift.makeField(cf.domain[k], v if k != "spectrum" else v.T)
-        for k, v in pos.items()
-    }
-    npos = ift.MultiField.from_dict(npos, cf.domain)
-    assert_allclose(cf(npos).val, jcf(pos))
-
-
 FLUCTUATIONS_CHOICES = (
     dict(shape=(4,), distances=None, harmonic_type="spherical"),
     dict(shape=(3, 3), distances=(0.1, 0.1), harmonic_type="fourier"),
