@@ -16,14 +16,14 @@ import nifty8.re as jft
 pmp = pytest.mark.parametrize
 
 
-@pmp('shape', [(2, ), (3, 3)])
-@pmp('distances', [.1])
-@pmp('offset_mean', [0])
-@pmp('offset_std', [(.1, .1)])
-@pmp('asperity', [None, (1., 1.)])
-@pmp('flexibility', [None, (1., 1.)])
-@pmp('fluctuations', [(1., 1.)])
-@pmp('loglogavgslope', [(1., 1.)])
+@pmp("shape", [(2,), (3, 3)])
+@pmp("distances", [0.1])
+@pmp("offset_mean", [0])
+@pmp("offset_std", [(0.1, 0.1)])
+@pmp("asperity", [None, (1.0, 1.0)])
+@pmp("flexibility", [None, (1.0, 1.0)])
+@pmp("fluctuations", [(1.0, 1.0)])
+@pmp("loglogavgslope", [(1.0, 1.0)])
 def test_correlated_field_non_parametric_init(
     shape,
     distances,
@@ -35,9 +35,7 @@ def test_correlated_field_non_parametric_init(
     flexibility,
 ):
     cf = jft.CorrelatedFieldMaker("cf")
-    cf.set_amplitude_total_offset(
-        offset_mean=offset_mean, offset_std=offset_std
-    )
+    cf.set_amplitude_total_offset(offset_mean=offset_mean, offset_std=offset_std)
     cf.add_fluctuations(
         shape,
         distances=distances,
@@ -51,13 +49,13 @@ def test_correlated_field_non_parametric_init(
     assert correlated_field.domain
 
 
-@pmp('shape', [(2, ), (3, 3)])
-@pmp('distances', [.1])
-@pmp('offset_mean', [0])
-@pmp('offset_std', [(.1, .1)])
-@pmp('scale', [(1., 1.)])
-@pmp('loglogslope', [(1., 1.)])
-@pmp('cutoff', [(1., 1.)])
+@pmp("shape", [(2,), (3, 3)])
+@pmp("distances", [0.1])
+@pmp("offset_mean", [0])
+@pmp("offset_std", [(0.1, 0.1)])
+@pmp("scale", [(1.0, 1.0)])
+@pmp("loglogslope", [(1.0, 1.0)])
+@pmp("cutoff", [(1.0, 1.0)])
 def test_correlated_field_matern_init(
     shape,
     distances,
@@ -68,9 +66,7 @@ def test_correlated_field_matern_init(
     cutoff,
 ):
     cf = jft.CorrelatedFieldMaker("cf")
-    cf.set_amplitude_total_offset(
-        offset_mean=offset_mean, offset_std=offset_std
-    )
+    cf.set_amplitude_total_offset(offset_mean=offset_mean, offset_std=offset_std)
     cf.add_fluctuations_matern(
         shape,
         distances=distances,
@@ -89,16 +85,18 @@ def test_correlated_field_matern_init(
 @pmp("flx", ([1e-1], [1e-1, 5e-3], [1e-1, 5e-3, 5e-3], 1e-1))
 @pmp("asp", ([1e-1], [1e-1, 5e-3], [1e-1, 5e-3, 5e-3], 1e-1))
 def test_correlated_field_non_parametric_init_validation(flu, slp, flx, asp):
-    dims = (16, )
+    dims = (16,)
     if all(
         (
-            isinstance(el, (tuple, list)) and len(el) == 2 and
-            all(isinstance(f, float) for f in el)
-        ) for el in (flu, slp, flx, asp)
+            isinstance(el, (tuple, list))
+            and len(el) == 2
+            and all(isinstance(f, float) for f in el)
+        )
+        for el in (flu, slp, flx, asp)
     ):
         return
     with pytest.raises(TypeError):
-        cf_zm = dict(offset_mean=0., offset_std=(1e-3, 1e-4))
+        cf_zm = dict(offset_mean=0.0, offset_std=(1e-3, 1e-4))
         cf_fl = dict(
             fluctuations=flu,
             loglogavgslope=slp,
@@ -109,27 +107,35 @@ def test_correlated_field_non_parametric_init_validation(flu, slp, flx, asp):
         cfm.set_amplitude_total_offset(**cf_zm)
         cfm.add_fluctuations(
             shape=dims,
-            distances=tuple(1. / d for d in dims),
+            distances=tuple(1.0 / d for d in dims),
             **cf_fl,
             prefix="ax1",
-            non_parametric_kind="power"
+            non_parametric_kind="power",
         )
         cfm.finalize()
 
 
-@pmp('seed', [0, 42])
-@pmp('ht_convention', ["canonical_hartley", "non_canonical_hartley"])
-@pmp('shape', [(4, ), (3, 3)])
-@pmp('distances', [.1, 5.])
-@pmp('offset_mean', [0])
-@pmp('offset_std', [(.1, .1)])
-@pmp('fluctuations', [(1., .1), (3., 2.)])
-@pmp('loglogavgslope', [(-1., .1), (4., 1.)])
-@pmp('flexibility', [(1., .1), (3., 2.)])
-@pmp('asperity', [None, (.2, 2.e-2)])
+@pmp("seed", [0, 42])
+@pmp("ht_convention", ["canonical_hartley", "non_canonical_hartley"])
+@pmp("shape", [(4,), (3, 3)])
+@pmp("distances", [0.1, 5.0])
+@pmp("offset_mean", [0])
+@pmp("offset_std", [(0.1, 0.1)])
+@pmp("fluctuations", [(1.0, 0.1), (3.0, 2.0)])
+@pmp("loglogavgslope", [(-1.0, 0.1), (4.0, 1.0)])
+@pmp("flexibility", [(1.0, 0.1), (3.0, 2.0)])
+@pmp("asperity", [None, (0.2, 2.0e-2)])
 def test_nifty_vs_niftyre_non_parametric_cf(
-    seed, ht_convention, shape, distances, offset_mean, offset_std, fluctuations,
-    loglogavgslope, asperity, flexibility
+    seed,
+    ht_convention,
+    shape,
+    distances,
+    offset_mean,
+    offset_std,
+    fluctuations,
+    loglogavgslope,
+    asperity,
+    flexibility,
 ):
     jft.config.update("hartley_convention", ht_convention)
 
@@ -138,13 +144,11 @@ def test_nifty_vs_niftyre_non_parametric_cf(
         fluctuations=fluctuations,
         loglogavgslope=loglogavgslope,
         asperity=asperity,
-        flexibility=flexibility
+        flexibility=flexibility,
     )
 
     jcfm = jft.CorrelatedFieldMaker("")
-    jcfm.set_amplitude_total_offset(
-        offset_mean=offset_mean, offset_std=offset_std
-    )
+    jcfm.set_amplitude_total_offset(offset_mean=offset_mean, offset_std=offset_std)
     jcfm.add_fluctuations(
         shape,
         distances=distances,
@@ -167,14 +171,14 @@ def test_nifty_vs_niftyre_non_parametric_cf(
     assert_allclose(cf(npos).val, jcf(pos))
 
 
-@pmp('seed', [0, 42])
-@pmp('shape', [(2, ), (3, 3)])
-@pmp('distances', [.1, 5.])
-@pmp('offset_mean', [0])
-@pmp('offset_std', [(.1, .1)])
-@pmp('scale', [(1., 1.), (3., 2.)])
-@pmp('loglogslope', [(1., 1.), (5., 0.5)])
-@pmp('cutoff', [(1., 1.), (0.1, 0.01)])
+@pmp("seed", [0, 42])
+@pmp("shape", [(2,), (3, 3)])
+@pmp("distances", [0.1, 5.0])
+@pmp("offset_mean", [0])
+@pmp("offset_std", [(0.1, 0.1)])
+@pmp("scale", [(1.0, 1.0), (3.0, 2.0)])
+@pmp("loglogslope", [(1.0, 1.0), (5.0, 0.5)])
+@pmp("cutoff", [(1.0, 1.0), (0.1, 0.01)])
 def test_nifty_vs_niftyre_matern_cf(
     seed, shape, distances, offset_mean, offset_std, scale, cutoff, loglogslope
 ):
@@ -182,9 +186,7 @@ def test_nifty_vs_niftyre_matern_cf(
     fluct_kwargs = dict(scale=scale, cutoff=cutoff, loglogslope=loglogslope)
 
     jcfm = jft.CorrelatedFieldMaker("")
-    jcfm.set_amplitude_total_offset(
-        offset_mean=offset_mean, offset_std=offset_std
-    )
+    jcfm.set_amplitude_total_offset(offset_mean=offset_mean, offset_std=offset_std)
     jcfm.add_fluctuations_matern(
         shape,
         distances=distances,
@@ -205,18 +207,18 @@ def test_nifty_vs_niftyre_matern_cf(
     assert_allclose(cf(npos).val, jcf(pos))
 
 
-CFG_OFFSET = dict(offset_mean=0, offset_std=(.1, .1))
+CFG_OFFSET = dict(offset_mean=0, offset_std=(0.1, 0.1))
 CFG_FLUCT = dict(
-    fluctuations=(1., .1),
-    loglogavgslope=(-1., .1),
-    flexibility=(1., .1),
-    asperity=(.2, 2.e-2)
+    fluctuations=(1.0, 0.1),
+    loglogavgslope=(-1.0, 0.1),
+    flexibility=(1.0, 0.1),
+    asperity=(0.2, 2.0e-2),
 )
 
-@pmp('seed', [0, 42])
-@pmp('shape', [(4, ), (32,)])
-def test_nifty_vs_niftyre_spherical(seed, shape):
 
+@pmp("seed", [0, 42])
+@pmp("shape", [(4,), (32,)])
+def test_nifty_vs_niftyre_spherical(seed, shape):
     key = random.PRNGKey(seed)
 
     jcfm = jft.CorrelatedFieldMaker("")
@@ -225,7 +227,7 @@ def test_nifty_vs_niftyre_spherical(seed, shape):
         shape,
         distances=None,
         **CFG_FLUCT,
-        harmonic_type='spherical',
+        harmonic_type="spherical",
         non_parametric_kind="power",
     )
     jcf = jcfm.finalize()
@@ -243,20 +245,23 @@ def test_nifty_vs_niftyre_spherical(seed, shape):
     npos = ift.MultiField.from_dict(npos, cf.domain)
     assert_allclose(cf(npos).val, jcf(pos))
 
-@pmp('seed', [0, 42])
-@pmp('shape1,distances1,harmonic_type1',
-     [
-         ((4, ), None, 'spherical'),
-         ((3,3), (0.1,0.1), 'fourier'),
-         ((6,), (1.,), 'fourier'),
-    ]
+
+@pmp("seed", [0, 42])
+@pmp(
+    "shape1,distances1,harmonic_type1",
+    [
+        ((4,), None, "spherical"),
+        ((3, 3), (0.1, 0.1), "fourier"),
+        ((6,), (1.0,), "fourier"),
+    ],
 )
-@pmp('shape2,distances2,harmonic_type2',
-     [
-         ((4, ), None, 'spherical'),
-         ((3,3), (0.1,0.1), 'fourier'),
-         ((6,), (1.,), 'fourier'),
-    ]
+@pmp(
+    "shape2,distances2,harmonic_type2",
+    [
+        ((4,), None, "spherical"),
+        ((3, 3), (0.1, 0.1), "fourier"),
+        ((6,), (1.0,), "fourier"),
+    ],
 )
 def test_nifty_vs_niftyre_product(
     seed, shape1, distances1, harmonic_type1, shape2, distances2, harmonic_type2
@@ -271,7 +276,7 @@ def test_nifty_vs_niftyre_product(
         **CFG_FLUCT,
         harmonic_type=harmonic_type1,
         non_parametric_kind="power",
-        prefix='space1'
+        prefix="space1",
     )
     jcfm.add_fluctuations(
         shape2,
@@ -279,7 +284,7 @@ def test_nifty_vs_niftyre_product(
         **CFG_FLUCT,
         harmonic_type=harmonic_type2,
         non_parametric_kind="power",
-        prefix='space2'
+        prefix="space2",
     )
     jcf = jcfm.finalize()
 
@@ -290,13 +295,13 @@ def test_nifty_vs_niftyre_product(
         if distances1 is None
         else ift.RGSpace(shape1, distances1)
     )
-    cfm.add_fluctuations(sp1, **CFG_FLUCT, prefix='space1')
+    cfm.add_fluctuations(sp1, **CFG_FLUCT, prefix="space1")
     sp2 = (
         ift.HPSpace(shape2[0])
         if distances2 is None
         else ift.RGSpace(shape2, distances2)
     )
-    cfm.add_fluctuations(sp2, **CFG_FLUCT, prefix='space2')
+    cfm.add_fluctuations(sp2, **CFG_FLUCT, prefix="space2")
     cf = cfm.finalize(prior_info=0)
 
     pos = jft.random_like(key, jcf.domain)
