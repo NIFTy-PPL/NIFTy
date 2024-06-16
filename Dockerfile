@@ -12,7 +12,7 @@ RUN DUCC0_OPTIMIZATION=portable pip3 install --break-system-packages \
     # Packages needed for NIFTy
     scipy \
     # Optional nifty dependencies
-    matplotlib h5py astropy ducc0 jax jaxlib mpi4py \
+    matplotlib h5py astropy ducc0 jax jaxlib jaxbind mpi4py \
     # Testing dependencies
     pytest pytest-cov \
     # Documentation build dependencies
