@@ -65,6 +65,7 @@ test = [
     "pytest",
     "pytest-cov",
     "ducc0",
+    "jaxbind",
 ]
 all = ["nifty8[re,re_sht,native,parallel,doc,util,test]"]
 
