@@ -246,68 +246,41 @@ def test_nifty_vs_niftyre_spherical(seed, shape):
     assert_allclose(cf(npos).val, jcf(pos))
 
 
+FLUCTUATIONS_CHOICES = (
+    dict(shape=(4,), distances=None, harmonic_type="spherical"),
+    dict(shape=(3, 3), distances=(0.1, 0.1), harmonic_type="fourier"),
+    dict(shape=(6,), distances=(1.0,), harmonic_type="fourier"),
+)
+
+
 @pmp("seed", [0, 42])
-@pmp(
-    "shape1,distances1,harmonic_type1",
-    [
-        ((4,), None, "spherical"),
-        ((3, 3), (0.1, 0.1), "fourier"),
-        ((6,), (1.0,), "fourier"),
-    ],
-)
-@pmp(
-    "shape2,distances2,harmonic_type2",
-    [
-        ((4,), None, "spherical"),
-        ((3, 3), (0.1, 0.1), "fourier"),
-        ((6,), (1.0,), "fourier"),
-    ],
-)
-def test_nifty_vs_niftyre_product(
-    seed, shape1, distances1, harmonic_type1, shape2, distances2, harmonic_type2
-):
+@pmp("fluct1", FLUCTUATIONS_CHOICES)
+@pmp("fluct2", FLUCTUATIONS_CHOICES)
+def test_nifty_vs_niftyre_product(seed, fluct1, fluct2):
     key = random.PRNGKey(seed)
 
     jcfm = jft.CorrelatedFieldMaker("")
     jcfm.set_amplitude_total_offset(**CFG_OFFSET)
-    jcfm.add_fluctuations(
-        shape1,
-        distances1,
-        **CFG_FLUCT,
-        harmonic_type=harmonic_type1,
-        non_parametric_kind="power",
-        prefix="space1",
-    )
-    jcfm.add_fluctuations(
-        shape2,
-        distances2,
-        **CFG_FLUCT,
-        harmonic_type=harmonic_type2,
-        non_parametric_kind="power",
-        prefix="space2",
-    )
+    for i, f in enumerate((fluct1, fluct2)):
+        jcfm.add_fluctuations(
+            **f, **CFG_FLUCT, non_parametric_kind="power", prefix=f"space{i}"
+        )
     jcf = jcfm.finalize()
 
     cfm = ift.CorrelatedFieldMaker("")
     cfm.set_amplitude_total_offset(**CFG_OFFSET)
-    sp1 = (
-        ift.HPSpace(shape1[0])
-        if distances1 is None
-        else ift.RGSpace(shape1, distances1)
-    )
-    cfm.add_fluctuations(sp1, **CFG_FLUCT, prefix="space1")
-    sp2 = (
-        ift.HPSpace(shape2[0])
-        if distances2 is None
-        else ift.RGSpace(shape2, distances2)
-    )
-    cfm.add_fluctuations(sp2, **CFG_FLUCT, prefix="space2")
+    for i, f in enumerate((fluct1, fluct2)):
+        sp = (
+            ift.HPSpace(f["shape"][0])
+            if f["distances"] is None
+            else ift.RGSpace(f["shape"], f["distances"])
+        )
+        cfm.add_fluctuations(sp, **CFG_FLUCT, prefix=f"space{i}")
     cf = cfm.finalize(prior_info=0)
 
     pos = jft.random_like(key, jcf.domain)
-    transposed = ["space1spectrum", "space2spectrum"]
     npos = {
-        k: ift.makeField(cf.domain[k], v if k not in transposed else v.T)
+        k: ift.makeField(cf.domain[k], v if not k.endswith("spectrum") else v.T)
         for k, v in pos.items()
     }
     npos = ift.MultiField.from_dict(npos, cf.domain)
