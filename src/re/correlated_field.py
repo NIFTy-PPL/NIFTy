@@ -33,18 +33,20 @@ def get_sht(nside, axis, lmax, mmax, nthreads):
     from jaxbind.contrib.jaxducc0 import get_healpix_sht
 
     jsht = get_healpix_sht(nside, lmax, mmax, 0, nthreads)
+    axis = int(axis)
 
     def f(inp):
         # Explicitly move axes around, may introduce unnecessary copies
-        inp = jnp.moveaxis(inp, axis, -1)
-        shp = inp.shape
-        inp = inp.reshape((-1, shp[-1]))
-
         def trafo(x):
             return np.sqrt(4 * np.pi) * jsht(x[jnp.newaxis])[0][0]
 
-        res = vmap(trafo)(inp).reshape(shp[:-1] + (-1,))
-        return jnp.moveaxis(res, -1, axis)
+        axs = axis % inp.ndim
+        for i in reversed(range(inp.ndim)):
+            if i < axs:
+                trafo = vmap(trafo, in_axes=0, out_axes=0)
+            elif i > axs:
+                trafo = vmap(trafo, in_axes=1, out_axes=1)
+        return trafo(inp)
 
     return f
 
