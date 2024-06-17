@@ -134,6 +134,7 @@ def test_load_mean(comm):
 def test_save_to_hdf5(comm, cls, mean, std, samples):
     pytest.importorskip("h5py")
     import h5py
+    import numpy as np
     from nifty8 import DomainTuple, MultiDomain, RGSpace, UnstructuredDomain
 
     if comm is None and ift.utilities.get_MPI_params()[1] > 1:
