@@ -146,6 +146,11 @@ def test_nifty_vs_niftyre_non_parametric_cf(
     asperity,
     flexibility,
 ):
+    if harmonic_type == "spherical":
+        try:
+            from jaxbind.contrib import jaxducc0
+        except (ImportError, ModuleNotFoundError):
+            pytest.skip("skipping since `jaxducc0` from `jaxbind` is not available")
     jft.config.update("hartley_convention", ht_convention)
 
     key = random.PRNGKey(seed)
@@ -240,6 +245,11 @@ FLUCTUATIONS_CHOICES = (
 @pmp("fluct1", FLUCTUATIONS_CHOICES)
 @pmp("fluct2", FLUCTUATIONS_CHOICES)
 def test_nifty_vs_niftyre_product(seed, fluct1, fluct2):
+    if any(f["harmonic_type"] == "spherical" for f in (fluct1, fluct2)):
+        try:
+            from jaxbind.contrib import jaxducc0
+        except (ImportError, ModuleNotFoundError):
+            pytest.skip("skipping since `jaxducc0` from `jaxbind` is not available")
     key = random.PRNGKey(seed)
 
     jcfm = jft.CorrelatedFieldMaker("")
