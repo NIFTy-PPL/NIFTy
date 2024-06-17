@@ -394,7 +394,7 @@ def value_reshaper(x, N):
     """Produce arrays of shape `(N,)`.
     If `x` is a scalar or array of length one, fill the target array with it.
     If `x` is an array, check if it has the right shape."""
-    x = np.asfarray(x)
+    x = np.asarray(x, dtype=float)
     if x.shape in [(), (1, )]:
         return np.full(N, x) if N != 0 else x.reshape(())
     elif x.shape == (N, ):
