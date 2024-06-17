@@ -542,7 +542,7 @@ class CoordinateChart():
 
 
 def _is_integer(maybe_int):
-    return np.asfarray(maybe_int).item().is_integer()
+    return np.asarray(maybe_int, dtype=float).item().is_integer()
 
 
 class HEALPixChart():
