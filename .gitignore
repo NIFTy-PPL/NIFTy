@@ -24,6 +24,7 @@ setup.cfg
 *.csv
 .pytest_cache/
 *.png
+!docs/source/user/*.png
 
 # from https://github.com/github/gitignore/blob/master/Python.gitignore
 

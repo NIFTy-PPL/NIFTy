@@ -210,13 +210,16 @@ In addition to citing NIFTy itself, please consider crediting the Gaussian proce
 See [the corresponding entry on citing NIFTy in the documentation](https://ift.pages.mpcdf.de/nifty/user/citations.html) for further details.
 
 ```
-@misc{niftyre,
-  author        = {{Edenhofer}, Gordian and {Frank}, Philipp and {Roth}, Jakob and {Leike}, Reimar H. and {Guerdi}, Massin and {Scheel-Platz}, Lukas I. and {Guardiani}, Matteo and {Eberle}, Vincent and {Westerkamp}, Margret and {Enßlin}, Torsten A.},
-  title         = {{Re-Envisioning Numerical Information Field Theory (NIFTy.re): A Library for Gaussian Processes and Variational Inference}},
-  keywords      = {Software},
-  year          = 2024,
-  eprint        = {2402.16683},
-  archivePrefix = {arXiv},
-  primaryClass  = {astro-ph.IM}
+@article{niftyre,
+  title     = {Re-Envisioning Numerical Information Field Theory (NIFTy.re): A Library for Gaussian Processes and Variational Inference},
+  author    = {Gordian Edenhofer and Philipp Frank and Jakob Roth and Reimar H. Leike and Massin Guerdi and Lukas I. Scheel-Platz and Matteo Guardiani and Vincent Eberle and Margret Westerkamp and Torsten A. Enßlin},
+  year      = {2024},
+  journal   = {Journal of Open Source Software},
+  publisher = {The Open Journal},
+  volume    = {9},
+  number    = {98},
+  pages     = {6593},
+  doi       = {10.21105/joss.06593},
+  url       = {https://doi.org/10.21105/joss.06593},
 }
 ```
