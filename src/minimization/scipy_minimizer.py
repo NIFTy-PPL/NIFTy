@@ -178,8 +178,8 @@ class _ScipyCG(Minimizer):
         if preconditioner is not None:
             prec_op = scipy_linop(shape=(op.domain.size, op.target.size),
                                   matvec=mymatvec(preconditioner))
-        res, stat = cg(sci_op, b, x0=sx, tol=self._tol, M=prec_op,
-                       maxiter=self._maxiter, atol='legacy')
+        res, stat = cg(sci_op, b, x0=sx, rtol=self._tol, M=prec_op,
+                       maxiter=self._maxiter, atol=0.)
         stat = (IterationController.CONVERGED if stat >= 0 else
                 IterationController.ERROR)
         return energy.at(_toField(res, energy.position)), stat
