@@ -68,6 +68,14 @@ class SampleListBase:
             # resolved according to the rank in the original communicator
             key = 0
             self._active_comm = comm.Split(color, key)
+            # plk5.Comm does not overwrite the Split method
+            # The implementation in `mpi4py.MPI.Comm` returns a normal `Comm` object,
+            # downgrading potential pkl5.Comm objects in the process
+            from mpi4py.util import pkl5
+            if isinstance(comm, pkl5.Intracomm):
+                self._active_comm = pkl5.Intracomm(self._active_comm)
+            elif isinstance(comm, pkl5.Intercomm):
+                self._active_comm = pkl5.Intercomm(self._active_comm)
 
         self._n_samples = utilities.allreduce_sum([self.n_local_samples], self.comm)
 
