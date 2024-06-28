@@ -303,18 +303,15 @@ def optimize_kl(likelihood_energy,
             fname = reduce(join, [output_directory, "pickle", fname])
             if isfile(fname + ".mean.pickle"):
                 mean = ResidualSampleList.load_mean(fname)
-                sl = ResidualSampleList.load(fname)
+                sl = ResidualSampleList.load(fname, comm=comm(last_finished_index))
             else:
-                sl = SampleList.load(fname)
+                sl = SampleList.load(fname, comm=comm(last_finished_index))
                 myassert(sl.n_samples == 1)
                 mean = sl.local_item(0)
+            if initial_index == total_iterations:
+                return (sl, mean) if return_final_position else sl
             _load_random_state(last_finished_index)
             energy_history = _pickle_load_values(last_finished_index, 'energy_history')
-
-            if initial_index == total_iterations:
-                if isfile(fname + ".mean.pickle"):
-                    sl = ResidualSampleList.load(fname)
-                return (sl, mean) if return_final_position else sl
 
     for iglobal in range(initial_index, total_iterations):
         lh = likelihood_energy(iglobal)
