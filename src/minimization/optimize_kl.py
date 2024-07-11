@@ -305,7 +305,9 @@ def optimize_kl(likelihood_energy,
                 mean = ResidualSampleList.load_mean(fname)
                 sl = ResidualSampleList.load(fname, comm=comm(last_finished_index))
             else:
-                sl = SampleList.load(fname, comm=comm(last_finished_index))
+                sl = SampleList.load(fname)
+                # no `comm` object passed to `load` since we expect to find only one sample
+                # (a point estimate), which has to be available in all threads.
                 myassert(sl.n_samples == 1)
                 mean = sl.local_item(0)
             if initial_index == total_iterations:
