@@ -194,6 +194,20 @@ class MfModel(Model):
 
         super().__init__(self.apply, domain=domain)
 
+    def alpha(self, p):
+        '''Convinience function'''
+        amplitude = self.spatial_amplitude(p)
+        amplitude = amplitude.at[0].set(0.0)
+        slope = self.spectral_index_mean(p)
+        return self.ht(amplitude[self.pd]*slope)
+
+    def spatial(self, p):
+        '''Convinience function'''
+        amplitude = self.spatial_amplitude(p)
+        amplitude = amplitude.at[0].set(0.0)
+        spatial_xi = self.spatial_xi(p)
+        return self.ht(amplitude[self.pd]*spatial_xi)
+
     def _build_apply(self):
         if self.spectral_index_deviations is not None:
 
