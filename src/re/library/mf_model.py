@@ -5,13 +5,12 @@ import jax.numpy as jnp
 
 from ..num.stats_distributions import lognormal_prior, normal_prior
 from ..model import Model
-from ..gauss_markov import WienerProcess
+from ..gauss_markov import NdWienerProcess
 from ..correlated_field import (
     matern_amplitude, _make_grid, hartley, RegularCartesianGrid,
     WrappedCall)
 
-from .frequency_deviations import (
-    FrequencyDeviations, build_frequency_devations_from_1d_process)
+from .frequency_deviations import FrequencyDeviations
 
 
 def _check_demands(model_name, kwargs, demands):
@@ -145,20 +144,20 @@ def build_deviations_model(
     # FIXME: Need more processes
     if process_name in {'wiener', 'wiener_process'}:
         _check_demands(dev_name, deviations_settings, demands={'sigma'})
-        flexibility = _build_distribution(
-            dev_name, 'sigma', deviations_settings, default=lognormal_prior
-        )
-        process = WienerProcess(
-            x0=0,
-            sigma=flexibility,
+        sigma = _build_distribution(
+            dev_name, 'sigma', deviations_settings, default=lognormal_prior)
+
+        mapped_key = f'{dev_name}_wp'
+        process = NdWienerProcess(
+            x0=jnp.zeros(shape_2d),  # 0,
+            sigma=sigma,
             dt=log_frequencies[1:]-log_frequencies[0],
-            name=f'{dev_name}_wp',
+            name=mapped_key,
         )
     else:
         raise NotImplementedError(f'{process_name} not implemented.')
 
-    return build_frequency_devations_from_1d_process(
-        process, shape_2d, log_frequencies, reference_frequency)
+    return FrequencyDeviations(process, log_frequencies, reference_frequency)
 
 
 class MfModel(Model):

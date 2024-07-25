@@ -39,7 +39,8 @@ class Initializer:
         if not self.stupid:
             struct = tree_structure(self._call_or_struct)
             # Cast the subkeys to the structure of `primals`
-            subkeys = tree_unflatten(struct, random.split(key, struct.num_leaves))
+            subkeys = tree_unflatten(
+                struct, random.split(key, struct.num_leaves))
 
             def draw(init, key):
                 return init(key, *args, **kwargs)
@@ -163,7 +164,8 @@ class LazyModel(metaclass=ModelMeta):
             )
             warn(msg)
             return Initializer(
-                tree_map(lambda p: partial(random_like, primals=p), self.domain)
+                tree_map(lambda p: partial(
+                    random_like, primals=p), self.domain)
             )
         return self._init
 
@@ -276,7 +278,8 @@ class WrappedCall(Model):
         See :class:`Model` for details on the remaining arguments.
         """
         leaves = tree_leaves(shape)
-        isswd = all(hasattr(e, "shape") and hasattr(e, "dtype") for e in leaves)
+        isswd = all(hasattr(e, "shape") and hasattr(e, "dtype")
+                    for e in leaves)
         isswd &= len(leaves) > 0
         domain = ShapeWithDtype(shape, dtype) if not isswd else shape
 
@@ -320,8 +323,8 @@ class VModel(LazyModel):
     axis_size: int
 
     def __init__(self, model, axis_size, in_axes=0, out_axes=0):
-        # if not isinstance(model, LazyModel):
-        #     raise ValueError(f"Model {model} of invalid type")
+        if not isinstance(model, LazyModel):
+            raise ValueError(f"Model {model} of invalid type")
         if model.init.stupid:
             raise ValueError("can only vmap models with a non-'stupid' init")
         self.model = model
@@ -344,7 +347,8 @@ class VModel(LazyModel):
         parse_axes = tree_map(
             lambda x: NoValue if x is None else x, self.in_axes, is_leaf=_is_none_or_int
         )
-        init = tree_map(_parse_init, self.model.init._call_or_struct, parse_axes)
+        init = tree_map(
+            _parse_init, self.model.init._call_or_struct, parse_axes)
         super().__init__(init=init)
 
     def __call__(self, x):
