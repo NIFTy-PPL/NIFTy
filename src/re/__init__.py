@@ -60,3 +60,4 @@ from .refine.chart import CoordinateChart, HEALPixChart
 from .refine.charted_field import ChartedField
 from .refine.healpix_field import ChartedHPField
 from .tree_math import *
+from .library import *

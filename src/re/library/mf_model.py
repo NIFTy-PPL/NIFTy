@@ -3,9 +3,12 @@ from typing import Optional
 
 import jax.numpy as jnp
 
-import nifty8.re as jft
-from nifty8.re.correlated_field import (
-    matern_amplitude, _make_grid, hartley, RegularCartesianGrid)
+from ..num.stats_distributions import lognormal_prior, normal_prior
+from ..model import Model
+from ..gauss_markov import WienerProcess
+from ..correlated_field import (
+    matern_amplitude, _make_grid, hartley, RegularCartesianGrid,
+    WrappedCall)
 
 from .frequency_deviations import (
     FrequencyDeviations, build_frequency_devations_from_1d_process)
@@ -43,7 +46,7 @@ def _set_default_or_callable(key: str, kwargs: dict, default: callable):
 
 def _build_distribution(
         prefix: str, key: str, kwargs: dict, default: callable, shape=()):
-    return jft.WrappedCall(
+    return WrappedCall(
         _set_default_or_callable(key, kwargs, default),
         name=f'{prefix}_{key}',
         white_init=True)
@@ -52,16 +55,16 @@ def _build_distribution(
 def build_zero_mode_model(
     prefix: str,
     zero_mode_settings: dict,
-) -> jft.Model:
+) -> Model:
 
     zm_name = f'{prefix}_zero_mode'
     _check_demands(zm_name, zero_mode_settings, demands={'mean', 'deviations'})
 
     zero_mode_mean = zero_mode_settings['mean']
     zero_mode_deviations = _build_distribution(
-        zm_name, 'deviations', zero_mode_settings, default=jft.normal_prior)
+        zm_name, 'deviations', zero_mode_settings, default=normal_prior)
 
-    return jft.Model(
+    return Model(
         lambda x: zero_mode_mean + zero_mode_deviations(x),
         init=zero_mode_deviations.init)
 
@@ -70,7 +73,7 @@ def build_amplitude_model(
     prefix: str,
     grid_2d: RegularCartesianGrid,
     amplitude_settings: dict,
-) -> jft.Model:
+) -> Model:
 
     # FIXME: Need support for correlated_field
 
@@ -84,11 +87,11 @@ def build_amplitude_model(
     return matern_amplitude(
         grid_2d,
         scale=_set_default_or_callable(
-            'scale', amplitude_settings, default=jft.lognormal_prior),
+            'scale', amplitude_settings, default=lognormal_prior),
         cutoff=_set_default_or_callable(
-            'cutoff', amplitude_settings, default=jft.lognormal_prior),
+            'cutoff', amplitude_settings, default=lognormal_prior),
         loglogslope=_set_default_or_callable(
-            'loglogslope', amplitude_settings, default=jft.normal_prior),
+            'loglogslope', amplitude_settings, default=normal_prior),
         renormalize_amplitude=amplitude_settings['renormalize_amplitude'],
         prefix=amplitude_name)
 
@@ -96,10 +99,10 @@ def build_amplitude_model(
 def build_spatial_xi_at_reference_frequency(
     prefix: str,
     shape_2d: tuple[int],
-) -> jft.Model:
+) -> Model:
 
-    return jft.WrappedCall(
-        jft.normal_prior(0.0, 1.0),
+    return WrappedCall(
+        normal_prior(0.0, 1.0),
         shape=shape_2d,
         name=f'{prefix}_spatial_xi',
         white_init=True
@@ -115,11 +118,11 @@ def build_frequency_slope_model(
     _check_demands(slope_name, slope_settings, demands={'mean'})
 
     slope_mean = _build_distribution(
-        slope_name, 'mean', slope_settings, default=jft.normal_prior)
+        slope_name, 'mean', slope_settings, default=normal_prior)
     slope_xi = _build_distribution(
-        slope_name, 'xi', dict(xi=(0.0, 1.0)), jft.normal_prior, shape=shape_2d)
+        slope_name, 'xi', dict(xi=(0.0, 1.0)), normal_prior, shape=shape_2d)
 
-    return jft.Model(
+    return Model(
         lambda x: slope_mean(x)*slope_xi(x),
         domain=slope_mean.domain | slope_xi.domain)
 
@@ -142,9 +145,9 @@ def build_deviations_model(
     if process_name in {'wiener', 'wiener_process'}:
         _check_demands(dev_name, deviations_settings, demands={'sigma'})
         flexibility = _build_distribution(
-            dev_name, 'sigma', deviations_settings, default=jft.lognormal_prior
+            dev_name, 'sigma', deviations_settings, default=lognormal_prior
         )
-        process = jft.WienerProcess(
+        process = WienerProcess(
             x0=0,
             sigma=flexibility,
             dt=log_frequencies[1:]-log_frequencies[0],
@@ -157,16 +160,16 @@ def build_deviations_model(
         process, shape_2d, log_frequencies, reference_frequency)
 
 
-class MfModel(jft.Model):
+class MfModel(Model):
     def __init__(
         self,
         grid_2d: RegularCartesianGrid,
         log_relative_frequencies: tuple[float],
 
-        zero_mode: jft.Model,
-        spatial_amplitude: jft.Model,
-        spatial_xi_at_reference_frequency: jft.Model,
-        spectral_index_mean: jft.Model,
+        zero_mode: Model,
+        spatial_amplitude: Model,
+        spatial_xi_at_reference_frequency: Model,
+        spectral_index_mean: Model,
         spectral_index_deviations: Optional[FrequencyDeviations] = None,
     ):
         # FIXME: Matteo, you know what to do with hdvol and the power_distributor?

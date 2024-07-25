@@ -320,8 +320,8 @@ class VModel(LazyModel):
     axis_size: int
 
     def __init__(self, model, axis_size, in_axes=0, out_axes=0):
-        if not isinstance(model, LazyModel):
-            raise ValueError(f"Model {model} of invalid type")
+        # if not isinstance(model, LazyModel):
+        #     raise ValueError(f"Model {model} of invalid type")
         if model.init.stupid:
             raise ValueError("can only vmap models with a non-'stupid' init")
         self.model = model

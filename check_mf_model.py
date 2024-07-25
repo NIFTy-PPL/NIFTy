@@ -10,7 +10,8 @@ import jax.numpy as jnp
 from jax import random
 import matplotlib.pyplot as plt
 
-from src.re.library.mf_model import build_mf_model
+# from src.re.library.mf_model import build_mf_model
+from src.re import build_mf_model
 
 
 shape, distances = (128,)*2, (0.1,)*2

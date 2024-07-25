@@ -1,11 +1,10 @@
-import nifty8.re as jft
-from nifty8.re import GaussMarkovProcess
-from nifty8.re import VModel
+from ..gauss_markov import GaussMarkovProcess
+from ..model import VModel, Model
 
 import jax.numpy as jnp
 
 
-class FrequencyDeviations(jft.Model):
+class FrequencyDeviations(Model):
     def __init__(
         self,
         three_d_frequency_deviations: VModel,  # TODO: Add 3d correlated field
@@ -40,7 +39,7 @@ def build_frequency_devations_from_1d_process(
 ):
 
     tmp = VModel(process, shape_2d[0]*shape_2d[1], out_axes=1)
-    mapped_process = jft.Model(
+    mapped_process = Model(
         lambda x: tmp(x).reshape((len(frequencies), shape_2d[0], shape_2d[1])),
         init=tmp.init)
 
