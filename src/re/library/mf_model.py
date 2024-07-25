@@ -49,6 +49,7 @@ def _build_distribution(
     return WrappedCall(
         _set_default_or_callable(key, kwargs, default),
         name=f'{prefix}_{key}',
+        shape=shape,
         white_init=True)
 
 
