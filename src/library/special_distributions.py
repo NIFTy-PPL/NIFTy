@@ -259,7 +259,7 @@ class GammaOperator(Operator):
 
         self._delta = float(delta)
         op = _InterpolationOperator(self._domain, lambda x: gamma.ppf(norm._cdf(x), self._alpha),
-                                    -8.2, 8.2, self._delta)
+                                    -8.2, 8.2, self._delta, lambda x: x.ptw("log"), lambda x: x.ptw("exp"))
         if np.isscalar(self._theta):
             op = op.scale(self._theta)
         else:
