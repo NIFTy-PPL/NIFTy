@@ -115,15 +115,18 @@ def build_frequency_slope_model(
     slope_settings: dict,
 ):
     slope_name = f'{prefix}_slope'
-    _check_demands(slope_name, slope_settings, demands={'mean'})
+    _check_demands(slope_name, slope_settings,
+                   demands={'mean', 'fluctuations'})
 
     slope_mean = _build_distribution(
         slope_name, 'mean', slope_settings, default=normal_prior)
+    slope_fluctuations = _build_distribution(
+        slope_name, 'fluctuations', slope_settings, default=lognormal_prior)
     slope_xi = _build_distribution(
         slope_name, 'xi', dict(xi=(0.0, 1.0)), normal_prior, shape=shape_2d)
 
     return Model(
-        lambda x: slope_mean(x)*slope_xi(x),
+        lambda x: (slope_mean(x), slope_fluctuations(x)*slope_xi(x)),
         domain=slope_mean.domain | slope_xi.domain)
 
 
@@ -198,8 +201,8 @@ class MfModel(Model):
         '''Convinience function'''
         amplitude = self.spatial_amplitude(p)
         amplitude = amplitude.at[0].set(0.0)
-        slope = self.spectral_index_mean(p)
-        return self.ht(amplitude[self.pd]*slope)
+        slope_mean, slope = self.spectral_index_mean(p)
+        return self.ht(amplitude[self.pd]*slope) + slope_mean
 
     def spatial(self, p):
         '''Convinience function'''
@@ -218,17 +221,23 @@ class MfModel(Model):
                 amplitude = amplitude.at[0].set(0.0)
                 spatial_xi = self.spatial_xi(p)
 
-                slope = self.spectral_index_mean(p)
+                slope_mean, slope = self.spectral_index_mean(p)
 
                 deviations = self.spectral_index_deviations(p)
 
                 # FIXME, TODO: One can probably vmap over the log_frequencies
                 # FIXME: jax.scan jax.for_i, probably
                 # Something better with fourier trafo
-                return jnp.exp(jnp.array(
-                    [self.hdvol * self.ht(x)+zm for x in
+
+                # # to test, does
+                # self.hdvol*self.ht(amplitude[self.pd]*(spatial_xi + slope + deviations)) + slope_mean*self.freqs + zm
+
+                full_return = jnp.array(
+                    [self.hdvol*self.ht(x) for x in
                      amplitude[self.pd]*(spatial_xi + slope*self.freqs + deviations)]
-                ))
+                ) + zm + slope_mean*self.freqs
+
+                return jnp.exp(full_return)
 
             return apply_with_deviations
 
@@ -240,10 +249,10 @@ class MfModel(Model):
 
             spatial_xi = self.spatial_xi(p)
 
-            slope = self.spectral_index_mean(p)
+            slope_mean, slope = self.spectral_index_mean(p)
 
             cfio = self.hdvol*self.ht(amplitude[self.pd]*spatial_xi)
-            cfsl = self.hdvol*self.ht(amplitude[self.pd]*slope)
+            cfsl = self.hdvol*self.ht(amplitude[self.pd]*slope) + slope_mean
             return jnp.exp(cfio+zm + cfsl*self.freqs)
 
         return apply_without_deviations
@@ -262,6 +271,8 @@ def build_mf_model(
     deviations_settings: Optional[dict] = None,
 
     harmonic_type: str = 'fourier',
+
+
 ):
     '''Build multi frequency model.
         f = exp( F * A * (
