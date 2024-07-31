@@ -28,11 +28,13 @@ amplitude_settings = dict(
 )
 slope_settings = dict(
     mean=(-4.3, .05),
+    fluctuations=(0.1, 0.5),
 )
 deviations_settings = dict(
     process='wiener',
     sigma=(0.1, 0.01),
 )
+# deviations_settings = None
 
 mf_model = build_mf_model(
     prefix='test',

@@ -127,7 +127,7 @@ def build_frequency_slope_model(
 
     return Model(
         lambda x: (slope_mean(x), slope_fluctuations(x)*slope_xi(x)),
-        domain=slope_mean.domain | slope_xi.domain)
+        domain=slope_mean.domain | slope_fluctuations.domain | slope_xi.domain)
 
 
 def build_deviations_model(
