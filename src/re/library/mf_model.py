@@ -4,6 +4,7 @@ from typing import Optional
 import jax.numpy as jnp
 from jax import vmap
 
+from .. import ShapeWithDtype
 from ..num.stats_distributions import lognormal_prior, normal_prior
 from ..model import Model
 from ..gauss_markov import NdWienerProcess
@@ -151,12 +152,12 @@ def build_deviations_model(
         sigma = _build_distribution(
             dev_name, 'sigma', deviations_settings, default=lognormal_prior)
 
-        mapped_key = f'{dev_name}_wp'
+        domain_key = f'{dev_name}_wp'
         process = NdWienerProcess(
             x0=jnp.zeros(shape_2d),  # 0,
             sigma=sigma,
             dt=log_frequencies[1:]-log_frequencies[0],
-            name=mapped_key,
+            name=domain_key,
         )
     else:
         raise NotImplementedError(f'{process_name} not implemented.')
@@ -167,48 +168,45 @@ def build_deviations_model(
 class MfModel(Model):
     def __init__(
         self,
+        prefix: str,
         grid_2d: RegularCartesianGrid, #FIXME: spatial grid (doesn't have to be 2D)
         log_relative_frequencies: tuple[float],
-
         zero_mode: Model,
         spatial_amplitude: Model,
-        spatial_xi_at_reference_frequency: Model,
         spectral_index_mean: Model,
         spectral_index_deviations: Optional[FrequencyDeviations] = None,
     ):
+        self.prefix = prefix
         self.hdvol = 1.0 / grid_2d.total_volume
         self.pd = grid_2d.harmonic_grid.power_distributor
         self.ht = partial(hartley, axes=(0, 1))
         self.freqs = jnp.array(log_relative_frequencies)[:, None, None]
-
         self.zero_mode = zero_mode
         self.spatial_amplitude = spatial_amplitude
-        self.spatial_xi = spatial_xi_at_reference_frequency
         self.spectral_index_mean = spectral_index_mean
         self.spectral_index_deviations = spectral_index_deviations
 
-        self.apply = self._build_apply()
-
-        models = [zero_mode, spatial_amplitude, spatial_xi_at_reference_frequency,
+        models = [zero_mode, spatial_amplitude,
                   spectral_index_mean, spectral_index_deviations]
         domain = reduce(
             lambda a, b: a | b, [m.domain for m in models if m is not None]
         )
+        domain[f"{self.prefix}_spatial_xi"] = ShapeWithDtype(grid_2d.shape, jnp.float64)
 
-        super().__init__(self.apply, domain=domain)
+        super().__init__(self._build_apply(), domain=domain)
 
     def spectral_index(self, p):
-        '''Convinience function'''
+        """Convenience function to retrieve the spectral index."""
         amplitude = self.spatial_amplitude(p)
         amplitude = amplitude.at[0].set(0.0)
         slope_mean, slope = self.spectral_index_mean(p)
         return self.ht(amplitude[self.pd]*slope)*self.hdvol + slope_mean
 
     def spatial(self, p):
-        '''Convinience function'''
+        """Convenience function to retrieve the spatial intensity of the model."""
         amplitude = self.spatial_amplitude(p)
         amplitude = amplitude.at[0].set(0.0)
-        spatial_xi = self.spatial_xi(p)
+        spatial_xi = p[f"{self.prefix}_spatial_xi"]
         return self.ht(amplitude[self.pd]*spatial_xi)
 
     def _build_apply(self):
@@ -219,14 +217,11 @@ class MfModel(Model):
 
                 amplitude = self.spatial_amplitude(p)
                 amplitude = amplitude.at[0].set(0.0)
-                spatial_xi = self.spatial_xi(p)
+                spatial_xi = p[f"{self.prefix}_spatial_xi"]
 
                 slope_mean, slope = self.spectral_index_mean(p)
                 deviations = self.spectral_index_deviations(p)
                 distributed_amplitude = amplitude[self.pd]
-
-                # FIXME, TODO: One can probably vmap over the log_frequencies
-                # FIXME: jax.scan jax.for_i, probably
 
                 terms = spatial_xi + slope * self.freqs + deviations
                 ht_values = vmap(self.ht)(distributed_amplitude * terms)
@@ -236,13 +231,12 @@ class MfModel(Model):
             return apply_with_deviations
 
         def apply_without_deviations(p):
+            #TODO: write a test that checks this vs. apply_with_deviations
             zm = self.zero_mode(p)
 
             amplitude = self.spatial_amplitude(p)
             amplitude = amplitude.at[0].set(0.0)
-
-            spatial_xi = self.spatial_xi(p)
-
+            spatial_xi = p[f"{self.prefix}_spatial_xi"]
             slope_mean, slope = self.spectral_index_mean(p)
 
             cfio = self.hdvol*self.ht(amplitude[self.pd]*spatial_xi)
@@ -303,20 +297,18 @@ def build_defaulf_mf_model(
 
     zero_mode_model = build_zero_mode_model(prefix, zero_mode_settings)
     spatial_model = build_amplitude_model(prefix, grid_2d, amplitude_settings)
-    spatial_xi_at_reference_frequency = build_spatial_xi_at_reference_frequency(
-        prefix, shape_2d)
     frequency_slope_model = build_frequency_slope_model(
         prefix, shape_2d, slope_settings)
     deviations_model = build_deviations_model(
         prefix, shape_2d, log_frequencies, reference_frequency, deviations_settings)
 
     return MfModel(
+        prefix=prefix,
         grid_2d=grid_2d,
         log_relative_frequencies=jnp.array(
             log_frequencies) - log_frequencies[reference_frequency],
         zero_mode=zero_mode_model,
         spatial_amplitude=spatial_model,
-        spatial_xi_at_reference_frequency=spatial_xi_at_reference_frequency,
         spectral_index_mean=frequency_slope_model,
         spectral_index_deviations=deviations_model
     )
