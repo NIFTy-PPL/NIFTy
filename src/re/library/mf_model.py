@@ -2,6 +2,7 @@ from functools import reduce, partial
 from typing import Optional
 
 import jax.numpy as jnp
+from jax import vmap
 
 from ..num.stats_distributions import lognormal_prior, normal_prior
 from ..model import Model
@@ -166,7 +167,7 @@ def build_deviations_model(
 class MfModel(Model):
     def __init__(
         self,
-        grid_2d: RegularCartesianGrid,
+        grid_2d: RegularCartesianGrid, #FIXME: spatial grid (doesn't have to be 2D)
         log_relative_frequencies: tuple[float],
 
         zero_mode: Model,
@@ -175,7 +176,6 @@ class MfModel(Model):
         spectral_index_mean: Model,
         spectral_index_deviations: Optional[FrequencyDeviations] = None,
     ):
-        # FIXME: Matteo, you know what to do with hdvol and the power_distributor?
         self.hdvol = 1.0 / grid_2d.total_volume
         self.pd = grid_2d.harmonic_grid.power_distributor
         self.ht = partial(hartley, axes=(0, 1))
@@ -197,12 +197,12 @@ class MfModel(Model):
 
         super().__init__(self.apply, domain=domain)
 
-    def alpha(self, p):
+    def spectral_index(self, p):
         '''Convinience function'''
         amplitude = self.spatial_amplitude(p)
         amplitude = amplitude.at[0].set(0.0)
         slope_mean, slope = self.spectral_index_mean(p)
-        return self.ht(amplitude[self.pd]*slope) + slope_mean
+        return self.ht(amplitude[self.pd]*slope)*self.hdvol + slope_mean
 
     def spatial(self, p):
         '''Convinience function'''
@@ -222,21 +222,15 @@ class MfModel(Model):
                 spatial_xi = self.spatial_xi(p)
 
                 slope_mean, slope = self.spectral_index_mean(p)
-
                 deviations = self.spectral_index_deviations(p)
+                distributed_amplitude = amplitude[self.pd]
 
                 # FIXME, TODO: One can probably vmap over the log_frequencies
                 # FIXME: jax.scan jax.for_i, probably
-                # Something better with fourier trafo
 
-                # # to test, does
-                # self.hdvol*self.ht(amplitude[self.pd]*(spatial_xi + slope + deviations)) + slope_mean*self.freqs + zm
-
-                full_return = jnp.array(
-                    [self.hdvol*self.ht(x) for x in
-                     amplitude[self.pd]*(spatial_xi + slope*self.freqs + deviations)]
-                ) + zm + slope_mean*self.freqs
-
+                terms = spatial_xi + slope * self.freqs + deviations
+                ht_values = vmap(self.ht)(distributed_amplitude * terms)
+                full_return = self.hdvol * ht_values + slope_mean * self.freqs + zm
                 return jnp.exp(full_return)
 
             return apply_with_deviations
@@ -258,7 +252,7 @@ class MfModel(Model):
         return apply_without_deviations
 
 
-def build_mf_model(
+def build_defaulf_mf_model(
     prefix: str,
     shape_2d: tuple[int],
     distances_2d: tuple[float],
@@ -318,7 +312,6 @@ def build_mf_model(
 
     return MfModel(
         grid_2d=grid_2d,
-
         log_relative_frequencies=jnp.array(
             log_frequencies) - log_frequencies[reference_frequency],
         zero_mode=zero_mode_model,
