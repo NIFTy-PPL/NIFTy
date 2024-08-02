@@ -78,13 +78,19 @@ def _check_demands(model_name, kwargs, demands):
                                f'Provide settings for {key}')
 
 
-def _set_default_or_callable(arg: Union[callable, tuple, list],
-                             default: callable):
+def _set_default_or_call(arg: Union[callable, tuple, list],
+                         default: callable):
     """Either sets the default distribution or the callable"""
     if callable(arg):
         # TODO: do a check here that it is a valid distribution.
         return arg
     return default(*arg)
+
+
+def _safe_set_default_or_call(arg: Union[callable, tuple, list, None],
+                              default: callable):
+    """Either sets the default distribution or the callable"""
+    return _set_default_or_call(arg, default) if arg is not None else None
 
 
 def _build_distribution_or_default(arg: Union[callable, tuple, list],
@@ -103,25 +109,42 @@ def _build_distribution_or_default(arg: Union[callable, tuple, list],
 def build_amplitude_model(
     grid_2d: RegularCartesianGrid,
     settings: dict,
+    amplitude_model: str = "non_parametric",
+    renormalize_amplitude: bool = False,
     prefix: str = None,
+    kind: str = "amplitude",
 ) -> Model:
-    # TODO: Need support for correlated_field
     key = f'{prefix}_amplitude_' if prefix is not None else 'amplitude_'
-    settings = {**settings,
-                **dict(renormalize_amplitude=False)}
-    _check_demands(key, settings,
-                   demands={'scale', 'cutoff', 'loglogslope'})
-
-    return matern_amplitude(
-        grid_2d,
-        scale=_set_default_or_callable(settings['scale'],
+    if amplitude_model == "non_parametric":
+        _check_demands(key, settings, demands={'fluctuations', 'loglogavgslope',
+                                               'flexibility', 'asperity'})
+        return non_parametric_amplitude(
+            grid_2d,
+            fluctuations=_set_default_or_call(settings['fluctuations'],
+                                              lognormal_prior),
+            loglogavgslope=_set_default_or_call(settings['loglogavgslope'],
+                                                normal_prior),
+            flexibility=_safe_set_default_or_call(settings['flexibility'],
+                                             lognormal_prior),
+            asperity=_safe_set_default_or_call(settings['asperity'],
+                                          lognormal_prior),
+            prefix=key,
+        )
+    elif amplitude_model == "matern":
+        _check_demands(key, settings, demands={'scale', 'cutoff', 'loglogslope'})
+        return matern_amplitude(
+            grid_2d,
+            scale=_set_default_or_call(settings['scale'],
                                        lognormal_prior),
-        cutoff=_set_default_or_callable(settings['cutoff'],
+            cutoff=_set_default_or_call(settings['cutoff'],
                                         lognormal_prior),
-        loglogslope=_set_default_or_callable(settings['loglogslope'],
+            loglogslope=_set_default_or_call(settings['loglogslope'],
                                              normal_prior),
-        renormalize_amplitude=settings['renormalize_amplitude'],
-        prefix=key)
+            renormalize_amplitude=renormalize_amplitude,
+            kind=kind,
+            prefix=key)
+    else:
+        raise ValueError("Type must be 'non_parametric' or 'matern'.")
 
 
 def build_deviations_model(
@@ -273,6 +296,7 @@ def build_default_mf_model(
     amplitude_settings: dict,
     slope_settings: dict,
     deviations_settings: Optional[dict] = None,
+    amplitude_model: str = "non_parametric",
     harmonic_type: str = 'fourier',
 ):
     """
@@ -309,12 +333,17 @@ def build_default_mf_model(
     deviations_settings: If none deviations are not build.
         - process: wiener (default)
             - sigma: callable or parameters for default (lognormal_prior)
+
+    amplitude_model: str, optional
+        Amplitude model to be used. By default,
+        the correlated field model (`'non_parametric'`).
     harmonic_type: the type of the harmonic domain
     """
 
     grid_2d = _make_grid(shape_2d, distances_2d, harmonic_type)
 
-    spatial_model = build_amplitude_model(grid_2d, amplitude_settings)
+    spatial_model = build_amplitude_model(grid_2d, amplitude_settings,
+                                          amplitude_model=amplitude_model)
     deviations_model = build_deviations_model(shape_2d,
                                               log_frequencies,
                                               reference_frequency,

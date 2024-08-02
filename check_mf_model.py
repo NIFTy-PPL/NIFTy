@@ -26,6 +26,16 @@ amplitude_settings = dict(
     cutoff=(0.1, 0.01),
     loglogslope=(-4, 0.1),
 )
+amplitude_model = "matern"
+
+# amplitude_settings = dict(
+#     fluctuations=(1.0, 0.02),
+#     loglogavgslope=(-4, 0.1),
+#     flexibility=None,
+#     asperity=None,
+# )
+# amplitude_model = "non_parametric"
+
 slope_settings = dict(
     mean=(-4.3, .05),
     fluctuations=(0.1, 0.5),
@@ -47,6 +57,7 @@ mf_model = build_default_mf_model(
     amplitude_settings=amplitude_settings,
     slope_settings=slope_settings,
     deviations_settings=deviations_settings,
+    amplitude_model=amplitude_model,
 )
 
 key = random.PRNGKey(42)
