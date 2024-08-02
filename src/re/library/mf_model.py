@@ -265,9 +265,11 @@ def build_default_mf_model(
 
     slope_settings:
         - mean: callable or parameters for default (normal_prior)
+        - fluctuations: callable or parameters for default (lognormal_prior)
 
     deviations_settings: If none deviations are not build.
-        - process: wiener (default)
+        - process: wiener (default),
+            - sigma: callable or parameters for default (lognormal_prior)
     '''
 
     grid_2d = _make_grid(shape_2d, distances_2d, harmonic_type)
