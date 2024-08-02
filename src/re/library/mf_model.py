@@ -21,20 +21,6 @@ def _check_demands(model_name, kwargs, demands):
                                f'Provide settings for {key}')
 
 
-def _set_default_kwargs(kwargs, defaults):
-    """
-    Update kwargs with default values if not already present.
-
-    Args:
-    kwargs (dict): The keyword arguments dictionary.
-    defaults (dict): A dictionary of default key-value pairs.
-
-    Returns:
-    dict: Updated kwargs dictionary with default values.
-    """
-    return {**defaults, **kwargs}
-
-
 def _set_default_or_callable(key: str, kwargs: dict, default: callable):
     '''Set either default distribution or the callable'''
 
@@ -80,8 +66,8 @@ def build_amplitude_model(
     # FIXME: Need support for correlated_field
 
     amplitude_name = f'{prefix}_amplitude'
-    amplitude_settings = _set_default_kwargs(
-        amplitude_settings, defaults=dict(renormalize_amplitude=False))
+    amplitude_settings = {**amplitude_settings,
+                          **dict(renormalize_amplitude=False)}
     _check_demands(amplitude_name,
                    amplitude_settings,
                    demands={'scale', 'cutoff', 'loglogslope'})
@@ -96,19 +82,6 @@ def build_amplitude_model(
             'loglogslope', amplitude_settings, default=normal_prior),
         renormalize_amplitude=amplitude_settings['renormalize_amplitude'],
         prefix=amplitude_name)
-
-
-def build_spatial_xi_at_reference_frequency(
-    prefix: str,
-    shape_2d: tuple[int],
-) -> Model:
-
-    return WrappedCall(
-        normal_prior(0.0, 1.0),
-        shape=shape_2d,
-        name=f'{prefix}_spatial_xi',
-        white_init=True
-    )
 
 
 def build_frequency_slope_model(
@@ -169,7 +142,8 @@ class MfModel(Model):
     def __init__(
         self,
         prefix: str,
-        grid_2d: RegularCartesianGrid, #FIXME: spatial grid (doesn't have to be 2D)
+        # FIXME: spatial grid (doesn't have to be 2D)
+        grid_2d: RegularCartesianGrid,
         log_relative_frequencies: tuple[float],
         zero_mode: Model,
         spatial_amplitude: Model,
@@ -191,7 +165,8 @@ class MfModel(Model):
         domain = reduce(
             lambda a, b: a | b, [m.domain for m in models if m is not None]
         )
-        domain[f"{self.prefix}_spatial_xi"] = ShapeWithDtype(grid_2d.shape, jnp.float64)
+        domain[f"{self.prefix}_spatial_xi"] = ShapeWithDtype(
+            grid_2d.shape, jnp.float64)
 
         super().__init__(self._build_apply(), domain=domain)
 
@@ -200,14 +175,14 @@ class MfModel(Model):
         amplitude = self.spatial_amplitude(p)
         amplitude = amplitude.at[0].set(0.0)
         slope_mean, slope = self.spectral_index_mean(p)
-        return self.ht(amplitude[self.pd]*slope)*self.hdvol + slope_mean
+        return self.hdvol*self.ht(amplitude[self.pd]*slope) + slope_mean
 
     def spatial(self, p):
         """Convenience function to retrieve the spatial intensity of the model."""
         amplitude = self.spatial_amplitude(p)
         amplitude = amplitude.at[0].set(0.0)
         spatial_xi = p[f"{self.prefix}_spatial_xi"]
-        return self.ht(amplitude[self.pd]*spatial_xi)
+        return self.hdvol*self.ht(amplitude[self.pd]*spatial_xi)
 
     def _build_apply(self):
         if self.spectral_index_deviations is not None:
@@ -224,14 +199,16 @@ class MfModel(Model):
                 distributed_amplitude = amplitude[self.pd]
 
                 terms = spatial_xi + slope * self.freqs + deviations
+                # TODO: Check that vmap is not recomputed all the time?
                 ht_values = vmap(self.ht)(distributed_amplitude * terms)
-                full_return = self.hdvol * ht_values + slope_mean * self.freqs + zm
+                full_return = self.hdvol * ht_values + (
+                    slope_mean * self.freqs + zm)
                 return jnp.exp(full_return)
 
             return apply_with_deviations
 
         def apply_without_deviations(p):
-            #TODO: write a test that checks this vs. apply_with_deviations
+            # TODO: write a test that checks this vs. apply_with_deviations
             zm = self.zero_mode(p)
 
             amplitude = self.spatial_amplitude(p)
@@ -246,7 +223,7 @@ class MfModel(Model):
         return apply_without_deviations
 
 
-def build_defaulf_mf_model(
+def build_default_mf_model(
     prefix: str,
     shape_2d: tuple[int],
     distances_2d: tuple[float],

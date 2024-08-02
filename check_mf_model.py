@@ -10,8 +10,8 @@ import jax.numpy as jnp
 from jax import random
 import matplotlib.pyplot as plt
 
-# from src.re.library.mf_model import build_mf_model
-from src.re import build_mf_model
+# from src.re.library.mf_model import build_default_mf_model
+from src.re import build_default_mf_model
 
 
 shape, distances = (128,)*2, (0.1,)*2
@@ -36,7 +36,7 @@ deviations_settings = dict(
 )
 # deviations_settings = None
 
-mf_model = build_mf_model(
+mf_model = build_default_mf_model(
     prefix='test',
     shape_2d=shape,
     distances_2d=distances,
