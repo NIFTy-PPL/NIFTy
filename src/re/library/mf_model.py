@@ -10,7 +10,11 @@ from ..num.stats_distributions import lognormal_prior, normal_prior
 from ..model import Model, LazyModel
 from ..gauss_markov import build_wiener_process
 from ..correlated_field import (
-    matern_amplitude, _make_grid, hartley, RegularCartesianGrid,
+    _make_grid,
+    hartley,
+    RegularCartesianGrid,
+    matern_amplitude,
+    non_parametric_amplitude,
     WrappedCall)
 
 from .frequency_deviations import FrequencyDeviations
@@ -279,7 +283,6 @@ def build_default_mf_model(
 
     grid_2d = _make_grid(shape_2d, distances_2d, harmonic_type)
 
-    zero_mode_model = build_zero_mode_model(prefix, zero_mode_settings)
     spatial_model = build_amplitude_model(prefix, grid_2d, amplitude_settings)
     deviations_model = build_deviations_model(
         prefix, shape_2d, log_frequencies, reference_frequency, deviations_settings)

@@ -232,12 +232,12 @@ def WienerProcess(
 # FIXME: This should be handled by a different implementation of the wiener_process function
 
 
-def NdWienerProcess(
-    x0: Union[tuple, float, LazyModel],
+def build_wiener_process(
+    x0: Union[tuple, float, Array, LazyModel],
     sigma: Union[tuple, float, Array, LazyModel],
     dt: Union[float, Array],
     name: str = 'wp',
-    N_steps: int = None
+    n_steps: int = None
 ):
     """Implements the Wiener process (WP).
 
@@ -260,7 +260,7 @@ def NdWienerProcess(
         as a model. May also be passed as a sequence of length equal to `dt` in
         which case a different sigma is used for each time interval.
     dt: float or Array of float
-        Stepsizes of the process. In case it is a single float, `N_steps` must
+        Step sizes of the process. In case it is a single float, `N_steps` must
         be provided to indicate the number of steps taken.
     name: str
         Name of the key corresponding to the parameters of the WP. Default `wp`.
@@ -269,8 +269,8 @@ def NdWienerProcess(
 
     Notes:
     ------
-    In case `sigma` is time dependent, i.E. passed on as a sequence
-    of length equal to `xi`, it is assumed to be constant within each timebin,
+    In case `sigma` is time-dependent, i.E. passed on as a sequence
+    of length equal to `xi`, it is assumed to be constant within each time bin,
     i.E. `sigma_t = sigma_i for t_i <= t < t_{i+1}`.
     """
     if isinstance(x0, tuple):
@@ -278,7 +278,7 @@ def NdWienerProcess(
     if isinstance(sigma, tuple):
         sigma = LogNormalPrior(sigma[0], sigma[1], name=name + '_sigma')
     return GaussMarkovProcess(
-        nd_wiener_process, x0, dt, name=name, N_steps=N_steps, sigma=sigma
+        nd_wiener_process, x0, dt, name=name, N_steps=n_steps, sigma=sigma
     )
 
 
