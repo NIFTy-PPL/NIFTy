@@ -107,7 +107,7 @@ def _build_distribution_or_default(arg: Union[callable, tuple, list],
 
 
 def build_amplitude_model(
-    grid_2d: RegularCartesianGrid,
+    grid: RegularCartesianGrid,
     settings: dict,
     amplitude_model: str = "non_parametric",
     renormalize_amplitude: bool = False,
@@ -119,7 +119,7 @@ def build_amplitude_model(
         _check_demands(key, settings, demands={'fluctuations', 'loglogavgslope',
                                                'flexibility', 'asperity'})
         return non_parametric_amplitude(
-            grid_2d,
+            grid,
             fluctuations=_set_default_or_call(settings['fluctuations'],
                                               lognormal_prior),
             loglogavgslope=_set_default_or_call(settings['loglogavgslope'],
@@ -133,7 +133,7 @@ def build_amplitude_model(
     elif amplitude_model == "matern":
         _check_demands(key, settings, demands={'scale', 'cutoff', 'loglogslope'})
         return matern_amplitude(
-            grid_2d,
+            grid,
             scale=_set_default_or_call(settings['scale'],
                                        lognormal_prior),
             cutoff=_set_default_or_call(settings['cutoff'],
@@ -185,8 +185,8 @@ class CorrelatedMultiFrequencySky(Model):
     def __init__(
             self,
             prefix: str,
-            grid: RegularCartesianGrid,  # FIXME: spatial grid (doesn't have to be 2D)
-            log_relative_frequencies: tuple[float],
+            grid: RegularCartesianGrid,
+            log_relative_frequencies: Union[tuple[float], ArrayLike],
             zero_mode: Model,
             zero_mode_offset: float,
             spatial_amplitude: Model,
@@ -200,10 +200,10 @@ class CorrelatedMultiFrequencySky(Model):
         self._freqs = jnp.array(log_relative_frequencies)[:, *(None,)*len(grid.shape)]
         self.hdvol = 1.0 / grid.total_volume
         self.pd = grid.harmonic_grid.power_distributor
-        self.ht = partial(hartley, axes=(0, 1))
-        self.spatial_amplitude = _acquire_submodel(spatial_amplitude, prefix)
+        self.ht = partial(hartley, axes=tuple(range(len(grid.shape))))
         self.zero_mode_offset = zero_mode_offset
         self._zm = _acquire_submodel(zero_mode, prefix)
+        self.spatial_amplitude = _acquire_submodel(spatial_amplitude, prefix)
         self.spectral_index_mean = _acquire_submodel(spectral_index_mean, prefix)
         self.spectral_index_fluctuations = _acquire_submodel(spectral_index_fluctuations, prefix)
         self.spectral_index_deviations = _acquire_submodel(spectral_index_deviations, prefix)
@@ -288,13 +288,13 @@ class CorrelatedMultiFrequencySky(Model):
 
 def build_default_mf_model(
     prefix: str,
-    shape_2d: tuple[int],
-    distances_2d: tuple[float],
-    log_frequencies: tuple[float],
-    reference_frequency: int,
+    shape: tuple[int],
+    distances: tuple[float],
+    log_frequencies: Union[tuple[float], ArrayLike],
+    reference_frequency_index: int,
     zero_mode_settings: dict,
     amplitude_settings: dict,
-    slope_settings: dict,
+    spectral_index_settings: dict,
     deviations_settings: Optional[dict] = None,
     amplitude_model: str = "non_parametric",
     harmonic_type: str = 'fourier',
@@ -304,49 +304,87 @@ def build_default_mf_model(
         f = exp( F * A * (
               io(k, l0) +
               slope(k) * (l-l0) +
-              GaussMarkovProcess(k, l-l0) (3d) - MeanSlope(GMP) (2d)
+              GaussMarkovProcess(k, l-l0) (Nd)
+              - MeanSlope(GMP) (N-1d)
         ) * (offset_mean + deviations) )
 
     Parameters
     ----------
     prefix: str
         The prefix of the multi-frequency model.
-    shape_2d: tuple
-        The shape of the spatial_amplitude domain (2d)
-    distances_2d: the distances of the spatial_amplitude domain (2d)
-    log_frequencies: the log log_frequencies
-    reference_frequency: the identification number of the referency frequency
 
-    zero_mode_settings:
-        - mean: zero mode mean
-        - deviations: callable or parameters for default (normal_prior)
+    shape: tuple
+        The shape of the spatial_amplitude domain.
 
-    amplitude_settings:
-        - scale: callable or parameters for default (lognormal_prior)
-        - cutoff: callable or parameters for default (lognormal_prior)
-        - loglogslope: callable or parameters for default (normal_prior)
+    distances: tuple
+        The distances of the spatial_amplitude domain.
 
-    slope_settings:
-        - mean: callable or parameters for default (normal_prior)
-        - fluctuations: callable or parameters for default (lognormal_prior)
+    log_frequencies: tuple, list, ArrayLike
+        Array of logarithmically spaced frequencies.
 
-    deviations_settings: If none deviations are not build.
+    reference_frequency_index: int
+        Index of the reference frequency in `log_frequencies`.
+
+    zero_mode_settings: dict
+        Settings for the zero mode priors.
+        Should contain the following keys:
+            - mean: zero mode mean
+            - deviations: callable or parameters
+            for default (normal prior)
+
+    amplitude_settings: dict
+        Settings for the amplitude model priors.
+        Should contain the following keys:
+            For correlated field amplitude:
+            - fluctuations: callable or parameters
+                     for default (lognormal prior)
+            - loglogavgslope: callable or parameters
+                     for default (lognormal prior)
+            - flexibility: callable or parameters or None
+                     for default (lognormal prior)
+            - asperity: callable or parameters or None
+                     for default (lognormal prior)
+
+            For Matérn amplitude:
+            - scale: callable or parameters
+                     for default (lognormal prior)
+            - cutoff: callable or parameters
+                     for default (lognormal prior)
+            - loglogslope: callable or parameters
+                     for default (lognormal prior)
+
+    spectral_index_settings: dict
+        Settings for the spectral index priors.
+        Should contain the following keys:
+            - mean: callable or parameters
+                 for default (normal prior)
+            - fluctuations: callable or parameters
+                for default (lognormal prior)
+
+    deviations_settings: dict, opt
+        Settings for the spectral index priors.
+        If none deviations are not build.
+        Should contain the following keys:
         - process: wiener (default)
-            - sigma: callable or parameters for default (lognormal_prior)
+        - sigma: callable or parameters
+             for default (lognormal prior)
 
     amplitude_model: str, optional
-        Amplitude model to be used. By default,
-        the correlated field model (`'non_parametric'`).
-    harmonic_type: the type of the harmonic domain
+        Amplitude model to be used.
+        By default, the correlated field model
+        (`'non_parametric'`).
+
+    harmonic_type: str, optional
+        The type of the harmonic domain for the amplitude model.
     """
 
-    grid_2d = _make_grid(shape_2d, distances_2d, harmonic_type)
+    grid = _make_grid(shape, distances, harmonic_type)
 
-    spatial_model = build_amplitude_model(grid_2d, amplitude_settings,
+    spatial_model = build_amplitude_model(grid, amplitude_settings,
                                           amplitude_model=amplitude_model)
-    deviations_model = build_deviations_model(shape_2d,
+    deviations_model = build_deviations_model(shape,
                                               log_frequencies,
-                                              reference_frequency,
+                                              reference_frequency_index,
                                               deviations_settings)
 
     zero_mode = _build_distribution_or_default(
@@ -355,21 +393,21 @@ def build_default_mf_model(
         normal_prior
     )
     spectral_index_mean = _build_distribution_or_default(
-        slope_settings['mean'],
+        spectral_index_settings['mean'],
         f'spectral_index_mean',
         normal_prior
     )
     spectral_index_fluctuations = _build_distribution_or_default(
-        slope_settings['fluctuations'],
+        spectral_index_settings['fluctuations'],
         f'spectral_index_fluctuations',
         lognormal_prior
     )
 
     return CorrelatedMultiFrequencySky(
         prefix=prefix,
-        grid=grid_2d,
+        grid=grid,
         log_relative_frequencies=jnp.array(
-            log_frequencies) - log_frequencies[reference_frequency],
+            log_frequencies) - log_frequencies[reference_frequency_index],
         zero_mode=zero_mode,
         zero_mode_offset=zero_mode_settings['mean'],
         spatial_amplitude=spatial_model,

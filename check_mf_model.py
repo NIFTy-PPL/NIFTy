@@ -36,9 +36,9 @@ amplitude_model = "matern"
 # )
 # amplitude_model = "non_parametric"
 
-slope_settings = dict(
-    mean=(-4.3, .05),
-    fluctuations=(0.1, 0.5),
+spectral_idx_settings = dict(
+    mean=(-1., .05),
+    fluctuations=(1., 1.e-2),
 )
 deviations_settings = dict(
     process='wiener',
@@ -46,16 +46,15 @@ deviations_settings = dict(
 )
 # deviations_settings = None
 
-mf_model = build_default_mf_model(
+mf_model = jft.build_default_mf_model(
     prefix='test',
-    shape_2d=shape,
-    distances_2d=distances,
+    shape=shape,
+    distances=distances,
     log_frequencies=freqs,
-    reference_frequency=reference_frequency,
-
+    reference_frequency_index=reference_frequency,
     zero_mode_settings=zero_mode_settings,
     amplitude_settings=amplitude_settings,
-    slope_settings=slope_settings,
+    spectral_index_settings=spectral_idx_settings,
     deviations_settings=deviations_settings,
     amplitude_model=amplitude_model,
 )
