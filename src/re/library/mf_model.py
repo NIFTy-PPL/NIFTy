@@ -99,11 +99,11 @@ def _build_distribution_or_default(arg: Union[callable, tuple, list],
                                    shape: tuple = (),
                                    dtype=None):
     return WrappedCall(
-            arg if callable(arg) else default(*arg),
-            name=key,
-            shape=shape,
-            dtype=dtype,
-            white_init=True)
+        arg if callable(arg) else default(*arg),
+        name=key,
+        shape=shape,
+        dtype=dtype,
+        white_init=True)
 
 
 def build_amplitude_model(
@@ -125,13 +125,14 @@ def build_amplitude_model(
             loglogavgslope=_set_default_or_call(settings['loglogavgslope'],
                                                 normal_prior),
             flexibility=_safe_set_default_or_call(settings['flexibility'],
-                                             lognormal_prior),
+                                                  lognormal_prior),
             asperity=_safe_set_default_or_call(settings['asperity'],
-                                          lognormal_prior),
+                                               lognormal_prior),
             prefix=key,
         )
     elif amplitude_model == "matern":
-        _check_demands(key, settings, demands={'scale', 'cutoff', 'loglogslope'})
+        _check_demands(
+            key, settings, demands={'scale', 'cutoff', 'loglogslope'})
         return matern_amplitude(
             grid,
             scale=_set_default_or_call(settings['scale'],
@@ -183,18 +184,18 @@ def build_deviations_model(
 
 class CorrelatedMultiFrequencySky(Model):
     def __init__(
-            self,
-            prefix: str,
-            grid: RegularCartesianGrid,
-            log_relative_frequencies: Union[tuple[float], ArrayLike],
-            zero_mode: Model,
-            zero_mode_offset: float,
-            spatial_amplitude: Model,
-            spectral_index_mean: Model,
-            spectral_index_fluctuations: Model,
-            spectral_amplitude: Model = None,  # TODO: add option
-            spectral_index_deviations: Optional[Model] = None,
-            dtype: type = jnp.float64,
+        self,
+        prefix: str,
+        grid: RegularCartesianGrid,
+        log_relative_frequencies: Union[tuple[float], ArrayLike],
+        zero_mode: Model,
+        zero_mode_offset: float,
+        spatial_amplitude: Model,
+        spectral_index_mean: Model,
+        spectral_index_fluctuations: Model,
+        spectral_amplitude: Model = None,  # TODO: add option
+        spectral_index_deviations: Optional[Model] = None,
+        dtype: type = jnp.float64,
     ):
         self.prefix = prefix
         slicing_tuple = (slice(None),) + (None,) * len(grid.shape)
@@ -203,11 +204,16 @@ class CorrelatedMultiFrequencySky(Model):
         self.pd = grid.harmonic_grid.power_distributor
         self.ht = partial(hartley, axes=tuple(range(len(grid.shape))))
         self.zero_mode_offset = zero_mode_offset
-        self._zm = _acquire_submodel(zero_mode, prefix)
-        self.spatial_amplitude = _acquire_submodel(spatial_amplitude, prefix)
-        self.spectral_index_mean = _acquire_submodel(spectral_index_mean, prefix)
-        self.spectral_index_fluctuations = _acquire_submodel(spectral_index_fluctuations, prefix)
-        self.spectral_index_deviations = _acquire_submodel(spectral_index_deviations, prefix)
+        self._zm = _acquire_submodel(
+            zero_mode, prefix)
+        self.spatial_amplitude = _acquire_submodel(
+            spatial_amplitude, prefix)
+        self.spectral_index_mean = _acquire_submodel(
+            spectral_index_mean, prefix)
+        self.spectral_index_fluctuations = _acquire_submodel(
+            spectral_index_fluctuations, prefix)
+        self.spectral_index_deviations = _acquire_submodel(
+            spectral_index_deviations, prefix)
 
         models = [self._zm,
                   self.spatial_amplitude,
@@ -237,12 +243,13 @@ class CorrelatedMultiFrequencySky(Model):
                 spatial_xi = p[f"{self.prefix}_spatial_xi"]
                 spec_idx_xis = p[f"{self.prefix}_spectral_index_xi"]
 
-                spectral_index = self.spectral_index_fluctuations(p) * spec_idx_xis
+                spectral_index = self.spectral_index_fluctuations(
+                    p) * spec_idx_xis
                 spec_idx_mean = self.spectral_index_mean(p)
                 deviations = self.spectral_index_deviations(p)
                 distributed_amplitude = amplitude[self.pd]
 
-                terms = (spectral_index * self._freqs + spatial_xi + deviations)
+                terms = (spectral_index*self._freqs + spatial_xi + deviations)
                 ht_values = vmap(self.ht)(distributed_amplitude * terms)
                 return jnp.exp(self.hdvol * ht_values + spec_idx_mean * self._freqs + zm)
 
