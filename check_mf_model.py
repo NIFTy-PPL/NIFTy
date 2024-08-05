@@ -46,7 +46,7 @@ deviations_settings = dict(
 )
 # deviations_settings = None
 
-mf_model = jft.build_default_mf_model(
+mf_model = build_default_mf_model(
     prefix='test',
     shape=shape,
     distances=distances,

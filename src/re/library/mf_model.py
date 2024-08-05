@@ -197,7 +197,8 @@ class CorrelatedMultiFrequencySky(Model):
             dtype: type = jnp.float64,
     ):
         self.prefix = prefix
-        self._freqs = jnp.array(log_relative_frequencies)[:, *(None,)*len(grid.shape)]
+        slicing_tuple = (slice(None),) + (None,) * len(grid.shape)
+        self._freqs = jnp.array(log_relative_frequencies)[slicing_tuple]
         self.hdvol = 1.0 / grid.total_volume
         self.pd = grid.harmonic_grid.power_distributor
         self.ht = partial(hartley, axes=tuple(range(len(grid.shape))))
