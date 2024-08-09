@@ -173,7 +173,7 @@ def build_deviations_model(
         process = build_wiener_process(
             x0=jnp.zeros(shape),  # sets x0 to 0 to avoid degeneracies
             sigma=sigma,
-            dt=log_frequencies[1:]-log_frequencies[0],
+            dt=log_frequencies[1:]-log_frequencies[:-1],
             name=domain_key,
         )
     else:

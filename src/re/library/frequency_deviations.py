@@ -14,14 +14,18 @@ class FrequencyDeviations(Model):
         frequencies: Union[tuple[float], ArrayLike],
         reference_frequency_index: int
     ):
-        self.three_d_frequency_deviations = frequency_deviations_model
+        self.frequency_deviations = frequency_deviations_model
 
+        slicing_tuple = (
+            (slice(None),) +
+            (None,) * len(self.frequency_deviations.target.shape[1:])
+        )
         relative_freqs = jnp.array(
-            frequencies - frequencies[reference_frequency_index])[:, None, None]
+            frequencies - frequencies[reference_frequency_index])[slicing_tuple]
         frequencies_denominator = 1 / jnp.sum(relative_freqs**2)
 
         def deviations_call(p):
-            dev = frequency_deviations_model(p)
+            dev = self.frequency_deviations(p)
             dev = dev - dev[reference_frequency_index]
 
             # m = sum_l(gmp(l) * (l-l0)) / sum_l((l-l0)**2)
