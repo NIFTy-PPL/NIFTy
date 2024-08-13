@@ -5,6 +5,7 @@ import jax.numpy as jnp
 from jax import vmap
 from numpy.typing import ArrayLike
 
+from ..tree_math import Vector
 from .. import ShapeWithDtype
 from ..num.stats_distributions import lognormal_prior, normal_prior
 from ..model import Model
@@ -22,6 +23,8 @@ from .frequency_deviations import FrequencyDeviations
 
 def _add_prefix_to_keys(tree, prefix):
     """Recursively add a prefix to all keys in a nested dictionary."""
+    if isinstance(tree, Vector):
+        tree = tree.tree
     if isinstance(tree, dict):
         return {f"{prefix}_{key}": _add_prefix_to_keys(value, prefix) for key, value in
                 tree.items()}
@@ -31,6 +34,8 @@ def _add_prefix_to_keys(tree, prefix):
 
 def _remove_prefix_from_keys(tree, prefix):
     """Recursively remove a prefix from all keys in a nested dictionary."""
+    if isinstance(tree, Vector):
+        tree = tree.tree
     if isinstance(tree, dict):
         prefix_length = len(prefix) + 1  # includes the underscore
         return {key[prefix_length:]: _remove_prefix_from_keys(value, prefix) for key, value in
