@@ -13,8 +13,6 @@ import matplotlib.pyplot as plt
 # from src.re.library.mf_model import build_default_mf_model
 from src.re import build_default_mf_model
 
-
-shape, distances = (128,)*2, (0.1,)*2
 freqs, reference_frequency = jnp.array((0.1, 1.5, 2, 10)), 1
 
 zero_mode_settings = dict(
@@ -36,6 +34,14 @@ amplitude_model = "matern"
 # )
 # amplitude_model = "non_parametric"
 
+spectral_amplitude_settings = dict(
+    fluctuations=(1.0, 0.02),
+    loglogavgslope=(-2., 0.1),
+    flexibility=None,
+    asperity=None,
+)
+spectral_amplitude_model = "non_parametric"
+
 spectral_idx_settings = dict(
     mean=(-1., .05),
     fluctuations=(1., 1.e-2),
@@ -46,17 +52,19 @@ deviations_settings = dict(
 )
 # deviations_settings = None
 
-mf_model = build_default_mf_model(
+mf_model = jft.build_default_mf_model(
     prefix='test',
     shape=shape,
     distances=distances,
     log_frequencies=freqs,
     reference_frequency_index=reference_frequency,
     zero_mode_settings=zero_mode_settings,
-    amplitude_settings=amplitude_settings,
+    spatial_amplitude_settings=amplitude_settings,
     spectral_index_settings=spectral_idx_settings,
     deviations_settings=deviations_settings,
-    amplitude_model=amplitude_model,
+    spatial_amplitude_model=amplitude_model,
+    spectral_amplitude_settings=spectral_amplitude_settings,
+    spectral_amplitude_model=spectral_amplitude_model
 )
 
 key = random.PRNGKey(42)

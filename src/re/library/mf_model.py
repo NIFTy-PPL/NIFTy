@@ -113,13 +113,18 @@ def _build_distribution_or_default(arg: Union[callable, tuple, list],
 
 def build_amplitude_model(
     grid: RegularCartesianGrid,
-    settings: dict,
+    settings: Optional[dict],
     amplitude_model: str = "non_parametric",
     renormalize_amplitude: bool = False,
     prefix: str = None,
     kind: str = "amplitude",
-) -> Model:
+) -> Optional[Model]:
+
+    if settings is None:
+        return None
+
     key = f'{prefix}_amplitude_' if prefix is not None else 'amplitude_'
+
     if amplitude_model == "non_parametric":
         _check_demands(key, settings, demands={'fluctuations', 'loglogavgslope',
                                                'flexibility', 'asperity'})
@@ -198,7 +203,7 @@ class CorrelatedMultiFrequencySky(Model):
         spatial_amplitude: Model,
         spectral_index_mean: Model,
         spectral_index_fluctuations: Model,
-        spectral_amplitude: Model = None,  # TODO: add option
+        spectral_amplitude: Optional[Model] = None,
         spectral_index_deviations: Optional[Model] = None,
         dtype: type = jnp.float64,
     ):
@@ -219,12 +224,15 @@ class CorrelatedMultiFrequencySky(Model):
             spectral_index_fluctuations, prefix)
         self.spectral_index_deviations = _acquire_submodel(
             spectral_index_deviations, prefix)
+        self.spectral_amplitude = _acquire_submodel(spectral_amplitude,
+                                                    prefix)
 
         models = [self._zm,
                   self.spatial_amplitude,
                   self.spectral_index_mean,
                   self.spectral_index_fluctuations,
-                  self.spectral_index_deviations]
+                  self.spectral_index_deviations,
+                  self.spectral_amplitude]
 
         domain = reduce(
             lambda a, b: a | b, [m.domain for m in models if m is not None]
@@ -238,6 +246,7 @@ class CorrelatedMultiFrequencySky(Model):
         super().__init__(self._build_apply(), domain=domain)
 
     def _build_apply(self):
+        spectral_amplitude_flag = self.spectral_amplitude is not None
         if self.spectral_index_deviations is not None:
 
             def apply_with_deviations(p):
@@ -254,8 +263,17 @@ class CorrelatedMultiFrequencySky(Model):
                 deviations = self.spectral_index_deviations(p)
                 distributed_amplitude = amplitude[self.pd]
 
-                terms = (spectral_index*self._freqs + spatial_xi + deviations)
-                ht_values = vmap(self.ht)(distributed_amplitude * terms)
+                if spectral_amplitude_flag:
+                    spectral_amplitude = self.spectral_amplitude(p)
+                    spectral_amplitude = spectral_amplitude.at[0].set(0.0)
+                    distributed_spectral_amplitude = spectral_amplitude[self.pd]
+                    spectral_terms = spectral_index * self._freqs + deviations
+                    ht_values = vmap(self.ht)(
+                        distributed_amplitude * spatial_xi +
+                        distributed_spectral_amplitude * spectral_terms)
+                else:
+                    terms = spectral_index*self._freqs + spatial_xi + deviations
+                    ht_values = vmap(self.ht)(distributed_amplitude * terms)
                 return jnp.exp(self.hdvol * ht_values + spec_idx_mean * self._freqs + zm)
 
             return apply_with_deviations
@@ -263,15 +281,18 @@ class CorrelatedMultiFrequencySky(Model):
         def apply_without_deviations(p):
             # TODO: write a test that checks this vs. apply_with_deviations
             zm = self.zero_mode(p)
-
             amplitude = self.spatial_amplitude(p)
             amplitude = amplitude.at[0].set(0.0)
+
             spatial_xi = p[f"{self.prefix}_spatial_xi"]
             spec_idx_xis = p[f"{self.prefix}_spectral_index_xi"]
             spectral_index = self.spectral_index_fluctuations(p) * spec_idx_xis
             spec_idx_mean = self.spectral_index_mean(p)
-
             spatial_offset = self.hdvol*self.ht(amplitude[self.pd]*spatial_xi)
+
+            if spectral_amplitude_flag:
+                amplitude = self.spectral_amplitude(p)
+                amplitude = amplitude.at[0].set(0.0)
             spectral_index_spatial = (self.hdvol*self.ht(amplitude[self.pd]*spectral_index)
                                       + spec_idx_mean)
             return jnp.exp(spatial_offset + zm + spectral_index_spatial * self._freqs)
@@ -306,10 +327,12 @@ def build_default_mf_model(
     log_frequencies: Union[tuple[float], ArrayLike],
     reference_frequency_index: int,
     zero_mode_settings: dict,
-    amplitude_settings: dict,
+    spatial_amplitude_settings: dict,
     spectral_index_settings: dict,
+    spectral_amplitude_settings: Optional[dict] = None,
     deviations_settings: Optional[dict] = None,
-    amplitude_model: str = "non_parametric",
+    spatial_amplitude_model: str = "non_parametric",
+    spectral_amplitude_model: str = "non_parametric",
     harmonic_type: str = 'fourier',
 ):
     """
@@ -345,7 +368,7 @@ def build_default_mf_model(
             - deviations: callable or parameters
             for default (normal prior)
 
-    amplitude_settings: dict
+    spatial_amplitude_settings: dict
         Settings for the amplitude model priors.
         Should contain the following keys:
             For correlated field amplitude:
@@ -374,6 +397,10 @@ def build_default_mf_model(
             - fluctuations: callable or parameters
                 for default (lognormal prior)
 
+    spectral_amplitude_settings: dict, opt
+        If not `None` sets the spectral amplitude settings.
+        Should be formatted as `spatial_amplitude_settings`.
+
     deviations_settings: dict, opt
         Settings for the spectral index priors.
         If none deviations are not build.
@@ -382,19 +409,33 @@ def build_default_mf_model(
         - sigma: callable or parameters
              for default (lognormal prior)
 
-    amplitude_model: str, optional
-        Amplitude model to be used.
+    spatial_amplitude_model: str
+        Type of the spatial amplitude model to be used.
         By default, the correlated field model
         (`'non_parametric'`).
 
-    harmonic_type: str, optional
+    spectral_amplitude_model: str
+        Type of the spectral amplitude model to be used.
+        By default, the correlated field model
+        (`'non_parametric'`).
+
+    harmonic_type: str
         The type of the harmonic domain for the amplitude model.
     """
 
     grid = _make_grid(shape, distances, harmonic_type)
 
-    spatial_model = build_amplitude_model(grid, amplitude_settings,
-                                          amplitude_model=amplitude_model)
+    spatial_model = build_amplitude_model(
+        grid,
+        spatial_amplitude_settings,
+        amplitude_model=spatial_amplitude_model)
+
+    spectral_model = build_amplitude_model(
+        grid,
+        spectral_amplitude_settings,
+        amplitude_model=spectral_amplitude_model
+        )
+
     deviations_model = build_deviations_model(shape,
                                               log_frequencies,
                                               reference_frequency_index,
@@ -425,6 +466,7 @@ def build_default_mf_model(
         zero_mode_offset=zero_mode_settings['mean'],
         spatial_amplitude=spatial_model,
         spectral_index_mean=spectral_index_mean,
+        spectral_amplitude=spectral_model,
         spectral_index_fluctuations=spectral_index_fluctuations,
         spectral_index_deviations=deviations_model
     )
