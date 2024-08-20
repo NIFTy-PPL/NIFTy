@@ -1,5 +1,5 @@
 from functools import reduce, partial
-from typing import Optional, Union
+from typing import Optional, Union, Callable
 
 import jax.numpy as jnp
 from jax import vmap
@@ -205,6 +205,7 @@ class CorrelatedMultiFrequencySky(Model):
         spectral_index_fluctuations: Model,
         spectral_amplitude: Optional[Model] = None,
         spectral_index_deviations: Optional[Model] = None,
+        nonlinearity: Optional[Callable] = jnp.exp,
         dtype: type = jnp.float64,
     ):
         self.prefix = prefix
@@ -213,6 +214,7 @@ class CorrelatedMultiFrequencySky(Model):
         self.hdvol = 1.0 / grid.total_volume
         self.pd = grid.harmonic_grid.power_distributor
         self.ht = partial(hartley, axes=tuple(range(len(grid.shape))))
+        self._nonlinearity = nonlinearity
         self.zero_mode_offset = zero_mode_offset
         self._zm = _acquire_submodel(
             zero_mode, prefix)
@@ -274,7 +276,8 @@ class CorrelatedMultiFrequencySky(Model):
                 else:
                     terms = spectral_index*self._freqs + spatial_xi + deviations
                     ht_values = vmap(self.ht)(distributed_amplitude * terms)
-                return jnp.exp(self.hdvol * ht_values + spec_idx_mean * self._freqs + zm)
+                return self._nonlinearity(self.hdvol * ht_values +
+                                          spec_idx_mean * self._freqs + zm)
 
             return apply_with_deviations
 
@@ -295,7 +298,8 @@ class CorrelatedMultiFrequencySky(Model):
                 amplitude = amplitude.at[0].set(0.0)
             spectral_index_spatial = (self.hdvol*self.ht(amplitude[self.pd]*spectral_index)
                                       + spec_idx_mean)
-            return jnp.exp(spatial_offset + zm + spectral_index_spatial * self._freqs)
+            return self._nonlinearity(spatial_offset + zm
+                                      + spectral_index_spatial * self._freqs)
 
         return apply_without_deviations
 
