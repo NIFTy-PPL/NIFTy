@@ -4,7 +4,7 @@
 # Authors: Philipp Frank,
 
 from functools import partial
-from typing import Callable, Union
+from typing import Callable, Union, Optional
 
 import jax.numpy as jnp
 import numpy as np
@@ -187,7 +187,7 @@ class NdGaussMarkovProcess(Model):
         x0: Union[float, Array, LazyModel],
         dt: Union[float, Array],
         name='xi',
-        N_steps: int = None,
+        N_steps: Optional[int] = None,
         **kwargs
     ):
         if _isscalar(dt):
@@ -328,6 +328,75 @@ def build_wiener_process(
     return NdGaussMarkovProcess(
         nd_wiener_process, x0, dt, name=name, N_steps=n_steps, sigma=sigma
     )
+
+
+def build_fixed_point_wiener_process(
+    x0: Union[tuple, float, Array, LazyModel],
+    sigma: Union[tuple, float, Array, LazyModel],
+    t: Array,
+    reference_t_index: int,
+    name: str = 'wp',
+):
+    """Implements the Wiener process (WP).
+
+    The WP in continuous time takes the form:
+
+    .. math::
+        d/dt x_t = sigma xi_t ,
+
+    where `xi_t` is continuous time white noise.
+
+    Parameters:
+    -----------
+    x0: tuple, float, or LazyModel
+        Initial position of the WP. Can be passed as a fixed value, or a
+        generative Model. Passing a tuple is a shortcut to set a normal prior
+        with mean and std equal to the first and second entry of the tuple
+        respectively on `x0`.
+    sigma: tuple, float, Array, LazyModel
+        Standard deviation of the WP. Analogously to `x0` may also be passed on
+        as a model. May also be passed as a sequence of length equal to `dt` in
+        which case a different sigma is used for each time interval.
+    dt: float or Array of float
+        Step sizes of the process. In case it is a single float, `N_steps` must
+        be provided to indicate the number of steps taken.
+    name: str
+        Name of the key corresponding to the parameters of the WP. Default `wp`.
+
+    Notes:
+    ------
+    In case `sigma` is time-dependent, i.E. passed on as a sequence
+    of length equal to `xi`, it is assumed to be constant within each time bin,
+    i.E. `sigma_t = sigma_i for t_i <= t < t_{i+1}`.
+    """
+    if isinstance(x0, tuple):
+        x0 = NormalPrior(x0[0], x0[1], name=name + '_x0')
+    if isinstance(sigma, tuple):
+        sigma = LogNormalPrior(sigma[0], sigma[1], name=name + '_sigma')
+
+    if reference_t_index == 0:
+        dt = t[1:] - t[:-1]
+        return build_wiener_process(x0, sigma, dt, name=name)
+
+    if reference_t_index == -1:
+        dt = t[1:] - t[:-1]
+        dt = dt[::-1]
+        res = build_wiener_process(x0, sigma, dt, name=name)
+        apply = lambda x: jnp.flip(res(x), axis=0)
+        return Model(apply, domain=res.domain)
+
+    dt_right = t[reference_t_index:] - t[reference_t_index-1:-1]
+    dt_left = [t[1:reference_t_index+1] - t[:reference_t_index]][::-1]
+    w_right = build_wiener_process(x0, sigma, dt_right, name=name + '_right')
+    w_left = build_wiener_process(x0, sigma, dt_left, name=name + '_left')
+
+    def apply(x):
+        right = w_right(x)
+        left = jnp.flip(w_left(x)[1:], axis=0)
+        return jnp.vstack(left, right)
+
+    return Model(apply, domain=w_right.domain | w_left.domain)
+
 
 
 def IntegratedWienerProcess(
