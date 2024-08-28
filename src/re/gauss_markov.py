@@ -386,14 +386,14 @@ def build_fixed_point_wiener_process(
         return Model(apply, domain=res.domain)
 
     dt_right = t[reference_t_index:] - t[reference_t_index-1:-1]
-    dt_left = [t[1:reference_t_index+1] - t[:reference_t_index]][::-1]
+    dt_left = (t[1:reference_t_index] - t[:reference_t_index-1])[::-1]
     w_right = build_wiener_process(x0, sigma, dt_right, name=name + '_right')
     w_left = build_wiener_process(x0, sigma, dt_left, name=name + '_left')
 
     def apply(x):
         right = w_right(x)
         left = jnp.flip(w_left(x)[1:], axis=0)
-        return jnp.vstack(left, right)
+        return jnp.vstack((left, right))
 
     return Model(apply, domain=w_right.domain | w_left.domain)
 
