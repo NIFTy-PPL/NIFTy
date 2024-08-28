@@ -100,13 +100,13 @@ def wiener_process(
 
 # FIXME: This should be merged with the above wiener_process
 def nd_wiener_process(
-    xi: Array,
-    x0: Union[float, Array],
-    sigma: Union[float, Array],
-    dt: Union[float, Array],
+        xi: Array,
+        x0: Array,
+        sigma: Union[float, Array],
+        dt: Array,
 ):
     """Implements the Wiener process (WP)."""
-    amp = (jnp.sqrt(dt) * sigma * xi.T).T
+    amp = jnp.sqrt(dt) * sigma * xi
     return jnp.cumsum(jnp.vstack((x0[None, ...], amp)), axis=0)
 
 
@@ -176,6 +176,54 @@ class GaussMarkovProcess(Model):
         xx = self.x0(x) if isinstance(self.x0, LazyModel) else self.x0
         tmp = {
             k: a(x) if isinstance(a, LazyModel) else a for k, a in self.kwargs.items()
+        }
+        return self.process(xi=xi, x0=xx, dt=self.dt, **tmp)
+
+
+class NdGaussMarkovProcess(Model):
+    def __init__(
+        self,
+        process: Callable,
+        x0: Union[float, Array, LazyModel],
+        dt: Union[float, Array],
+        name='xi',
+        N_steps: int = None,
+        **kwargs
+    ):
+        if _isscalar(dt):
+            if N_steps is None:
+                msg = "`N_steps` is None and `dt` is not a sequence"
+                raise NotImplementedError(msg)
+            dt = np.ones(N_steps) * dt
+        shp = dt.shape + jnp.shape(
+            x0.target if isinstance(x0, LazyModel) else x0
+        )
+        domain = {name: ShapeWithDtype(shp)}
+        init = Initializer(
+            tree_map(lambda x: partial(random_like, primals=x), domain)
+        )
+        if isinstance(x0, LazyModel):
+            domain = domain | x0.domain
+            init = init | x0.init
+        self.x0 = x0
+        for _, a in kwargs.items():
+            if isinstance(a, LazyModel):
+                domain = domain | a.domain
+                init = init | a.init
+        self.kwargs = kwargs
+        self.name = name
+        self.process = process
+        slicing_tuple = (slice(None),) + (None,) * len(x0.shape)
+        self.dt = jnp.array(dt)[slicing_tuple]
+
+        super().__init__(domain=domain, init=init)
+
+    def __call__(self, x):
+        xi = x[self.name]
+        xx = self.x0(x) if isinstance(self.x0, LazyModel) else self.x0
+        tmp = {
+            k: a(x) if isinstance(a, LazyModel) else a
+            for k, a in self.kwargs.items()
         }
         return self.process(xi=xi, x0=xx, dt=self.dt, **tmp)
 
@@ -277,7 +325,7 @@ def build_wiener_process(
         x0 = NormalPrior(x0[0], x0[1], name=name + '_x0')
     if isinstance(sigma, tuple):
         sigma = LogNormalPrior(sigma[0], sigma[1], name=name + '_sigma')
-    return GaussMarkovProcess(
+    return NdGaussMarkovProcess(
         nd_wiener_process, x0, dt, name=name, N_steps=n_steps, sigma=sigma
     )
 
