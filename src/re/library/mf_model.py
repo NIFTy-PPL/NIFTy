@@ -5,7 +5,10 @@ import jax.numpy as jnp
 from jax import vmap
 from numpy.typing import ArrayLike
 
-from ..tree_math import Vector
+from .frequency_deviations import build_frequency_deviations_model
+from .mf_model_utils import (_acquire_submodel,
+                             _build_distribution_or_default,
+                             build_amplitude_model)
 from .. import ShapeWithDtype
 from ..num.stats_distributions import lognormal_prior, normal_prior
 from ..model import Model
@@ -13,204 +16,30 @@ from ..gauss_markov import build_wiener_process
 from ..correlated_field import (
     _make_grid,
     hartley,
-    RegularCartesianGrid,
-    matern_amplitude,
-    non_parametric_amplitude,
-    WrappedCall)
-
-from .frequency_deviations import FrequencyDeviations
-
-
-def _add_prefix_to_keys(tree, prefix):
-    """Recursively add a prefix to all keys in a nested dictionary."""
-    if isinstance(tree, Vector):
-        tree = tree.tree
-    if isinstance(tree, dict):
-        return {f"{prefix}_{key}": _add_prefix_to_keys(value, prefix) for key, value in
-                tree.items()}
-    else:
-        return tree
-
-
-def _remove_prefix_from_keys(tree, prefix):
-    """Recursively remove a prefix from all keys in a nested dictionary."""
-    if isinstance(tree, Vector):
-        tree = tree.tree
-    if isinstance(tree, dict):
-        prefix_length = len(prefix) + 1  # includes the underscore
-        return {key[prefix_length:]: _remove_prefix_from_keys(value, prefix) for key, value in
-                tree.items() if key.startswith(prefix)}
-    else:
-        return tree
-
-
-def _acquire_submodel(model: Optional[Union[Model, None]], prefix: str):
-    """
-    Acquire a submodel with prefixed domain keys.
-
-    Parameters
-    ----------
-        model: Model, optional
-            The original model.
-        prefix: str
-            The prefix to add to the domain keys.
-
-    Returns:
-    -------
-        model: Model
-            A new Model instance with the prefixed domain
-            keys and modified call method.
-    """
-    if model is None:
-        return None
-
-    if isinstance(model.domain, dict):
-        new_domain = model.domain
-    else:
-        new_domain = model.domain.tree
-
-    new_domain = _add_prefix_to_keys(new_domain, prefix)
-
-    def call(x):
-        return model(_remove_prefix_from_keys(x, prefix))
-
-    return Model(call, domain=new_domain)
-
-
-def _check_demands(model_name, kwargs, demands):
-    for key in demands:
-        assert key in kwargs, (f'{key} not in {model_name}.\n'
-                               f'Provide settings for {key}')
-
-
-def _set_default_or_call(arg: Union[callable, tuple, list],
-                         default: callable):
-    """Either sets the default distribution or the callable"""
-    if callable(arg):
-        # TODO: do a check here that it is a valid distribution.
-        return arg
-    return default(*arg)
-
-
-def _safe_set_default_or_call(arg: Union[callable, tuple, list, None],
-                              default: callable):
-    """Either sets the default distribution or the callable"""
-    return _set_default_or_call(arg, default) if arg is not None else None
-
-
-def _build_distribution_or_default(arg: Union[callable, tuple, list],
-                                   key: str,
-                                   default: callable,
-                                   shape: tuple = (),
-                                   dtype=None):
-    return WrappedCall(
-        arg if callable(arg) else default(*arg),
-        name=key,
-        shape=shape,
-        dtype=dtype,
-        white_init=True)
-
-
-def build_amplitude_model(
-    grid: RegularCartesianGrid,
-    settings: Optional[dict],
-    amplitude_model: str = "non_parametric",
-    renormalize_amplitude: bool = False,
-    prefix: str = None,
-    kind: str = "amplitude",
-) -> Optional[Model]:
-
-    if settings is None:
-        return None
-
-    key = f'{prefix}_amplitude_' if prefix is not None else 'amplitude_'
-
-    if amplitude_model == "non_parametric":
-        _check_demands(key, settings, demands={'fluctuations', 'loglogavgslope',
-                                               'flexibility', 'asperity'})
-        return non_parametric_amplitude(
-            grid,
-            fluctuations=_set_default_or_call(settings['fluctuations'],
-                                              lognormal_prior),
-            loglogavgslope=_set_default_or_call(settings['loglogavgslope'],
-                                                normal_prior),
-            flexibility=_safe_set_default_or_call(settings['flexibility'],
-                                                  lognormal_prior),
-            asperity=_safe_set_default_or_call(settings['asperity'],
-                                               lognormal_prior),
-            prefix=key,
-        )
-    elif amplitude_model == "matern":
-        _check_demands(
-            key, settings, demands={'scale', 'cutoff', 'loglogslope'})
-        return matern_amplitude(
-            grid,
-            scale=_set_default_or_call(settings['scale'],
-                                       lognormal_prior),
-            cutoff=_set_default_or_call(settings['cutoff'],
-                                        lognormal_prior),
-            loglogslope=_set_default_or_call(settings['loglogslope'],
-                                             normal_prior),
-            renormalize_amplitude=renormalize_amplitude,
-            kind=kind,
-            prefix=key)
-    else:
-        raise ValueError("Type must be 'non_parametric' or 'matern'.")
-
-
-def build_deviations_model(
-    shape: tuple[int],
-    log_frequencies: Union[tuple[float], ArrayLike],
-    reference_frequency_index: int,
-    deviations_settings: Optional[dict],
-    prefix: str = None,
-) -> FrequencyDeviations | None:
-
-    if deviations_settings is None:
-        return None
-
-    dev_name = f'{prefix}_deviations' if prefix is not None else 'deviations'
-    process_name = deviations_settings.get('process', 'wiener').lower()
-
-    # FIXME: Need more processes
-    if process_name in {'wiener', 'wiener_process'}:
-        _check_demands(dev_name, deviations_settings, demands={'sigma'})
-        sigma = _build_distribution_or_default(deviations_settings.get('sigma'),
-                                               f"{dev_name}_sigma",
-                                               lognormal_prior)
-
-        domain_key = f'{dev_name}_wp'
-        process = build_wiener_process(
-            x0=jnp.zeros(shape),  # sets x0 to 0 to avoid degeneracies
-            sigma=sigma,
-            dt=log_frequencies[1:]-log_frequencies[:-1],
-            name=domain_key,
-        )
-    else:
-        raise NotImplementedError(f'{process_name} not implemented.')
-
-    return FrequencyDeviations(process, log_frequencies, reference_frequency_index)
+    RegularCartesianGrid)
+from ..model import Model
+from ..num.stats_distributions import lognormal_prior, normal_prior
 
 
 class CorrelatedMultiFrequencySky(Model):
     def __init__(
-        self,
-        prefix: str,
-        grid: RegularCartesianGrid,
-        log_relative_frequencies: Union[tuple[float], ArrayLike],
-        zero_mode: Model,
-        zero_mode_offset: float,
-        spatial_amplitude: Model,
-        spectral_index_mean: Model,
-        spectral_index_fluctuations: Model,
-        spectral_amplitude: Optional[Model] = None,
-        spectral_index_deviations: Optional[Model] = None,
-        nonlinearity: Optional[Callable] = jnp.exp,
-        dtype: type = jnp.float64,
+            self,
+            prefix: str,
+            grid: RegularCartesianGrid,
+            relative_log_frequencies: Union[tuple[float], ArrayLike],
+            zero_mode: Model,
+            zero_mode_offset: float,
+            spatial_amplitude: Model,
+            spectral_index_mean: Model,
+            spectral_index_fluctuations: Model,
+            spectral_amplitude: Optional[Model] = None,
+            spectral_index_deviations: Optional[Model] = None,
+            nonlinearity: Optional[Callable] = jnp.exp,
+            dtype: type = jnp.float64,
     ):
         self.prefix = prefix
         slicing_tuple = (slice(None),) + (None,) * len(grid.shape)
-        self._freqs = jnp.array(log_relative_frequencies)[slicing_tuple]
+        self._freqs = jnp.array(relative_log_frequencies)[slicing_tuple]
         self.hdvol = 1.0 / grid.total_volume
         self.pd = grid.harmonic_grid.power_distributor
         self.ht = partial(hartley, axes=tuple(range(len(grid.shape))))
@@ -224,7 +53,7 @@ class CorrelatedMultiFrequencySky(Model):
             spectral_index_mean, prefix)
         self.spectral_index_fluctuations = _acquire_submodel(
             spectral_index_fluctuations, prefix)
-        self.spectral_index_deviations = _acquire_submodel(
+        self.spectral_index_deviations_model = _acquire_submodel(
             spectral_index_deviations, prefix)
         self.spectral_amplitude = _acquire_submodel(spectral_amplitude,
                                                     prefix)
@@ -233,7 +62,7 @@ class CorrelatedMultiFrequencySky(Model):
                   self.spatial_amplitude,
                   self.spectral_index_mean,
                   self.spectral_index_fluctuations,
-                  self.spectral_index_deviations,
+                  self.spectral_index_deviations_model,
                   self.spectral_amplitude]
 
         domain = reduce(
@@ -249,7 +78,7 @@ class CorrelatedMultiFrequencySky(Model):
 
     def _build_apply(self):
         spectral_amplitude_flag = self.spectral_amplitude is not None
-        if self.spectral_index_deviations is not None:
+        if self.spectral_index_deviations_model is not None:
 
             def apply_with_deviations(p):
                 zm = self.zero_mode(p)
@@ -262,7 +91,7 @@ class CorrelatedMultiFrequencySky(Model):
                 spectral_index = self.spectral_index_fluctuations(
                     p) * spec_idx_xis
                 spec_idx_mean = self.spectral_index_mean(p)
-                deviations = self.spectral_index_deviations(p)
+                deviations = self.spectral_index_deviations_model(p)
                 distributed_amplitude = amplitude[self.pd]
 
                 if spectral_amplitude_flag:
@@ -305,7 +134,7 @@ class CorrelatedMultiFrequencySky(Model):
 
     def spectral_index(self, p):
         """Convenience function to retrieve the model's spectral index."""
-        amplitude = self.spatial_amplitude(p)
+        amplitude = self.spectral_amplitude(p)
         amplitude = amplitude.at[0].set(0.0)
         spec_idx_fluctuations = self.spectral_index_fluctuations(p)
         spec_idx_xis = p[f"{self.prefix}_spectral_index_xi"]
@@ -338,7 +167,7 @@ def build_default_mf_model(
     spatial_amplitude_model: str = "non_parametric",
     spectral_amplitude_model: str = "non_parametric",
     harmonic_type: str = 'fourier',
-):
+) -> CorrelatedMultiFrequencySky:
     """
     Build multi-frequency sky model.
         f = exp( F * A * (
@@ -425,6 +254,11 @@ def build_default_mf_model(
 
     harmonic_type: str
         The type of the harmonic domain for the amplitude model.
+
+    Returns
+    -------
+    model: CorrelatedMultiFrequencySky
+        The multi-frequency sky model
     """
 
     grid = _make_grid(shape, distances, harmonic_type)
@@ -440,10 +274,10 @@ def build_default_mf_model(
         amplitude_model=spectral_amplitude_model
         )
 
-    deviations_model = build_deviations_model(shape,
-                                              log_frequencies,
-                                              reference_frequency_index,
-                                              deviations_settings)
+    deviations_model = build_frequency_deviations_model(shape,
+                                                        log_frequencies,
+                                                        reference_frequency_index,
+                                                        deviations_settings)
 
     zero_mode = _build_distribution_or_default(
         zero_mode_settings['deviations'],
@@ -464,7 +298,7 @@ def build_default_mf_model(
     return CorrelatedMultiFrequencySky(
         prefix=prefix,
         grid=grid,
-        log_relative_frequencies=jnp.array(
+        relative_log_frequencies=jnp.array(
             log_frequencies) - log_frequencies[reference_frequency_index],
         zero_mode=zero_mode,
         zero_mode_offset=zero_mode_settings['mean'],
