@@ -1,3 +1,9 @@
+# Copyright(C) 2024
+# SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
+# Authors: Matteo Guardiani & Julian Rüstig,
+# Vincent Eberle, Philipp Frank, Vishal Johnson,
+# Jakob Roth, Margret Westerkamp
+
 from functools import reduce, partial
 from typing import Optional, Union, Callable
 
@@ -10,9 +16,6 @@ from .mf_model_utils import (_acquire_submodel,
                              _build_distribution_or_default,
                              build_amplitude_model)
 from .. import ShapeWithDtype
-from ..num.stats_distributions import lognormal_prior, normal_prior
-from ..model import Model
-from ..gauss_markov import build_wiener_process
 from ..correlated_field import (
     _make_grid,
     hartley,
@@ -22,6 +25,10 @@ from ..num.stats_distributions import lognormal_prior, normal_prior
 
 
 class CorrelatedMultiFrequencySky(Model):
+    """
+    A model for generating a correlated multi-frequency sky map based on
+    spatial and spectral correlation models.
+    """
     def __init__(
             self,
             prefix: str,
@@ -81,6 +88,22 @@ class CorrelatedMultiFrequencySky(Model):
         if self.spectral_index_deviations_model is not None:
 
             def apply_with_deviations(p):
+                """
+                Apply method of the model with spectral
+                index deviations.
+                Implements:
+                .. math::
+                        sky = \\nonlinearity(F[A_spatial *
+                        io(k, \\nu_0) + A_spectral *
+                        (slope(k) * (\\nu-\\nu_0) +
+                        GaussMarkovProcess(k, \\nu-\\nu_0)
+                        - AvgSlope[GaussMarkovProcess]
+                        )] + zero_mode)
+                where :math:`F` is the Fourier transform,
+                :math:`k` is the spatial frequency index,
+                :math:`\\nu` is the spectral frequency index,
+                and `slope` represents the spectral index.
+                """
                 zm = self.zero_mode(p)
 
                 amplitude = self.spatial_amplitude(p)
@@ -111,7 +134,20 @@ class CorrelatedMultiFrequencySky(Model):
             return apply_with_deviations
 
         def apply_without_deviations(p):
-            # TODO: write a test that checks this vs. apply_with_deviations
+            """
+            Apply method of the model without spectral
+            index deviations.
+            Implements:
+            .. math::
+                    sky = \\nonlinearity(F[A_spatial *
+                    io(k, \\nu_0) + A_spectral *
+                    (slope(k) * (\\nu-\\nu_0))]
+                    + zero_mode)
+            where :math:`F` is the Fourier transform,
+            :math:`k` is the spatial frequency index,
+            :math:`\\nu` is the spectral frequency index,
+            and `slope` represents the spectral index.
+            """
             zm = self.zero_mode(p)
             amplitude = self.spatial_amplitude(p)
             amplitude = amplitude.at[0].set(0.0)
@@ -132,6 +168,13 @@ class CorrelatedMultiFrequencySky(Model):
 
         return apply_without_deviations
 
+    def spatial_distribution(self, p):
+        """Convenience function to retrieve the model's spatial distribution."""
+        amplitude = self.spatial_amplitude(p)
+        amplitude = amplitude.at[0].set(0.0)
+        spatial_xi = p[f"{self.prefix}_spatial_xi"]
+        return self.hdvol*self.ht(amplitude[self.pd]*spatial_xi)
+
     def spectral_index(self, p):
         """Convenience function to retrieve the model's spectral index."""
         amplitude = self.spectral_amplitude(p)
@@ -141,12 +184,15 @@ class CorrelatedMultiFrequencySky(Model):
         return (self.hdvol*self.ht(amplitude[self.pd]*spec_idx_fluctuations*spec_idx_xis)
                 + self.spectral_index_mean(p))
 
-    def spatial_distribution(self, p):
-        """Convenience function to retrieve the model's spatial distribution."""
-        amplitude = self.spatial_amplitude(p)
-        amplitude = amplitude.at[0].set(0.0)
-        spatial_xi = p[f"{self.prefix}_spatial_xi"]
-        return self.hdvol*self.ht(amplitude[self.pd]*spatial_xi)
+    def spectral_deviations(self, p):
+        """Convenience function to retrieve the model's spectral deviations."""
+        if self.spectral_index_deviations_model is None:
+            return None
+        else:
+            amplitude = self.spectral_amplitude(p)
+            amplitude = amplitude.at[0].set(0.0)
+            return self.hdvol * vmap(self.ht)(amplitude[self.pd] *
+                                      self.spectral_index_deviations_model(p))
 
     def zero_mode(self, p):
         """Convenience function to retrieve the model's zero mode."""
@@ -169,13 +215,16 @@ def build_default_mf_model(
     harmonic_type: str = 'fourier',
 ) -> CorrelatedMultiFrequencySky:
     """
-    Build multi-frequency sky model.
-        f = exp( F * A * (
-              io(k, l0) +
-              slope(k) * (l-l0) +
-              GaussMarkovProcess(k, l-l0) (Nd)
-              - MeanSlope(GMP) (N-1d)
-        ) * (offset_mean + deviations) )
+    Builds a multi-frequency sky model parametrized as
+
+    .. math ::
+        sky = \\exp(F[A_spatial *
+              io(k, \\nu_0) + A_spectral *
+              (slope(k) * (\\nu-\\nu_0) +
+              GaussMarkovProcess(k, \\nu-\\nu_0)
+              - AvgSlope[GaussMarkovProcess]
+              )] + zero_mode)
+
 
     Parameters
     ----------
@@ -231,6 +280,7 @@ def build_default_mf_model(
                 for default (lognormal prior)
 
     spectral_amplitude_settings: dict, opt
+        If `None` the spectral amplitude is the same as the spatial amplitude.
         If not `None` sets the spectral amplitude settings.
         Should be formatted as `spatial_amplitude_settings`.
 
