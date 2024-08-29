@@ -12,7 +12,7 @@ from numpy.typing import ArrayLike
 
 from .mf_model_utils import _check_demands, _build_distribution_or_default
 from .. import lognormal_prior
-from ..gauss_markov import GaussMarkovProcess, build_wiener_process
+from ..gauss_markov import GaussMarkovProcess, build_fixed_point_wiener_process
 from ..model import Model
 
 
@@ -42,13 +42,14 @@ class FrequencyDeviations(Model):
             (slice(None),) +
             (None,) * len(self.deviations_process.target.shape[1:])
         )
-        relative_freqs = jnp.array(
-            frequencies - frequencies[reference_frequency_index])[slicing_tuple]
+        relative_freqs = jnp.array(frequencies -
+                                   frequencies[reference_frequency_index])
+        relative_freqs = relative_freqs[slicing_tuple]
         frequencies_denominator = 1 / jnp.sum(relative_freqs**2)
 
         def deviations_call(p):
             dev = self.deviations_process(p)
-            dev = dev - dev[reference_frequency_index]
+            dev = dev - dev[reference_frequency_index] # FIXME: should this be removed?
 
             # m = sum_l(\delta gmp(l) * (l-l0)) / sum_l((l-l0)**2)
             dev_slope = (jnp.sum(dev*relative_freqs, axis=0)
@@ -119,10 +120,11 @@ def build_frequency_deviations_model(
                                                lognormal_prior)
 
         domain_key = f'{dev_name}_wp'
-        process = build_wiener_process(
+        process = build_fixed_point_wiener_process(
             x0=jnp.zeros(shape),  # sets x0 to 0 to avoid degeneracies
             sigma=sigma,
-            dt=log_frequencies[1:]-log_frequencies[:-1],
+            t=log_frequencies,
+            reference_t_index=reference_frequency_index,
             name=domain_key,
         )
     else:
