@@ -59,6 +59,13 @@ def _check_demands(model_name, kwargs, demands):
                                f'Provide settings for {key}')
 
 
+class AcquiredModel(Model):
+    def __init__(self, model, new_domain, call):
+        for attr in model.__dict__:
+            setattr(self, attr, getattr(model, attr))
+        super().__init__(call, domain=new_domain)
+
+
 def _acquire_submodel(model: Optional[Union[Model, None]], prefix: str):
     """
     Acquire a submodel with prefixed domain keys.
@@ -89,7 +96,7 @@ def _acquire_submodel(model: Optional[Union[Model, None]], prefix: str):
     def call(x):
         return model(_remove_prefix_from_keys(x, prefix))
 
-    return Model(call, domain=new_domain)
+    return AcquiredModel(model, new_domain, call)
 
 
 def _build_distribution_or_default(arg: Union[callable, tuple, list],
@@ -133,7 +140,7 @@ def build_amplitude_model(
     grid: RegularCartesianGrid,
     settings: Optional[dict],
     amplitude_model: str = "non_parametric",
-    renormalize_amplitude: bool = False,
+    renormalize_amplitude: bool = True,
     prefix: str = None,
     kind: str = "amplitude",
 ) -> Optional[Model]:
@@ -155,7 +162,7 @@ def build_amplitude_model(
         Defaults to "non_parametric".
     renormalize_amplitude: bool, optional
         Whether to renormalize the amplitude in the "matern" model.
-        Defaults to False.
+        Defaults to True.
     prefix: str, optional
         A prefix to add to the domain keys.
         Defaults to None.

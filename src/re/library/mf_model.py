@@ -15,10 +15,11 @@ from .frequency_deviations import build_frequency_deviations_model
 from .mf_model_utils import (_acquire_submodel,
                              _build_distribution_or_default,
                              build_amplitude_model)
-from .. import ShapeWithDtype
+from .. import ShapeWithDtype, logger
 from ..correlated_field import (
     _make_grid,
     hartley,
+    Amplitude,
     RegularCartesianGrid)
 from ..model import Model
 from ..num.stats_distributions import lognormal_prior, normal_prior
@@ -36,14 +37,27 @@ class CorrelatedMultiFrequencySky(Model):
             relative_log_frequencies: Union[tuple[float], ArrayLike],
             zero_mode: Model,
             zero_mode_offset: float,
-            spatial_amplitude: Model,
+            spatial_amplitude: Amplitude,
             spectral_index_mean: Model,
-            spectral_index_fluctuations: Model,
-            spectral_amplitude: Optional[Model] = None,
+            spectral_index_fluctuations: Optional[Model],
+            spectral_amplitude: Optional[Amplitude] = None,
             spectral_index_deviations: Optional[Model] = None,
             nonlinearity: Optional[Callable] = jnp.exp,
             dtype: type = jnp.float64,
     ):
+        if spectral_index_fluctuations is None and spectral_amplitude is None:
+            raise ValueError("Either `spectral_amplitude` or "
+                             "`spectral_index_deviations` must be provided.")
+
+        if spectral_index_fluctuations is not None and spectral_amplitude is not None:
+            # breakpoint()
+            spectral_index_fluctuations = Model(lambda _: 1., domain={})
+            logger.info("Both `spectral_amplitude` and "
+                        "`spectral_index_fluctuations` provided.\n"
+                        "The spectral index fluctuations will be ignored, "
+                         "and the fluctuations from `spectral_amplitude` "
+                         "will be used.")
+
         self.prefix = prefix
         slicing_tuple = (slice(None),) + (None,) * len(grid.shape)
         self._freqs = jnp.array(relative_log_frequencies)[slicing_tuple]
@@ -88,6 +102,7 @@ class CorrelatedMultiFrequencySky(Model):
         if self.spectral_index_deviations_model is not None:
 
             def apply_with_deviations(p):
+                #FIXME: nu -> log nu
                 """
                 Apply method of the model with spectral
                 index deviations.
@@ -115,7 +130,7 @@ class CorrelatedMultiFrequencySky(Model):
                     p) * spec_idx_xis
                 spec_idx_mean = self.spectral_index_mean(p)
                 deviations = self.spectral_index_deviations_model(p)
-                distributed_amplitude = amplitude[self.pd]
+                distributed_spatial_amplitude = amplitude[self.pd]
 
                 if spectral_amplitude_flag:
                     spectral_amplitude = self.spectral_amplitude(p)
@@ -123,11 +138,13 @@ class CorrelatedMultiFrequencySky(Model):
                     distributed_spectral_amplitude = spectral_amplitude[self.pd]
                     spectral_terms = spectral_index * self._freqs + deviations
                     ht_values = vmap(self.ht)(
-                        distributed_amplitude * spatial_xi +
+                        distributed_spatial_amplitude * spatial_xi +
                         distributed_spectral_amplitude * spectral_terms)
                 else:
-                    terms = spectral_index*self._freqs + spatial_xi + deviations
-                    ht_values = vmap(self.ht)(distributed_amplitude * terms)
+                    spectral_terms = spectral_index*self._freqs + deviations
+                    spectral_terms /= self.spatial_amplitude.fluctuations(p)
+                    ht_values = vmap(self.ht)(distributed_spatial_amplitude *
+                                              (spatial_xi + spectral_terms))
                 return self._nonlinearity(self.hdvol * ht_values +
                                           spec_idx_mean * self._freqs + zm)
 
@@ -161,6 +178,8 @@ class CorrelatedMultiFrequencySky(Model):
             if spectral_amplitude_flag:
                 amplitude = self.spectral_amplitude(p)
                 amplitude = amplitude.at[0].set(0.0)
+            else:
+                amplitude /= self.spatial_amplitude.fluctuations(p)
             spectral_index_spatial = (self.hdvol*self.ht(amplitude[self.pd]*spectral_index)
                                       + spec_idx_mean)
             return self._nonlinearity(spatial_offset + zm
@@ -177,7 +196,10 @@ class CorrelatedMultiFrequencySky(Model):
 
     def spectral_index(self, p):
         """Convenience function to retrieve the model's spectral index."""
-        amplitude = self.spectral_amplitude(p)
+        if self.spectral_amplitude is None:
+            amplitude = self.spatial_amplitude(p) / self.spatial_amplitude.fluctuations(p)
+        else:
+            amplitude = self.spectral_amplitude(p)
         amplitude = amplitude.at[0].set(0.0)
         spec_idx_fluctuations = self.spectral_index_fluctuations(p)
         spec_idx_xis = p[f"{self.prefix}_spectral_index_xi"]
@@ -189,10 +211,20 @@ class CorrelatedMultiFrequencySky(Model):
         if self.spectral_index_deviations_model is None:
             return None
         else:
+            if self.spectral_amplitude is None:
+                amplitude = self.spatial_amplitude(p) / self.spatial_amplitude.fluctuations(p)
+            else:
+                amplitude = self.spectral_amplitude(p)
             amplitude = self.spectral_amplitude(p)
             amplitude = amplitude.at[0].set(0.0)
             return self.hdvol * vmap(self.ht)(amplitude[self.pd] *
                                       self.spectral_index_deviations_model(p))
+
+    def spectral_distribution(self, p):
+        """Convenience function to retrieve the model's spectral distribution."""
+        # TODO: implement
+        #power_law = self.spectral_index(p) * self._freqs
+        pass
 
     def zero_mode(self, p):
         """Convenience function to retrieve the model's zero mode."""

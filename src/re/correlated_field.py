@@ -1,23 +1,24 @@
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
-# Authors: Gordian Edenhofer, Philipp Frank
+# Authors: Gordian Edenhofer, Philipp Frank,
+# Matteo Guardiani, Julian Rüstig
 
 import operator
+from abc import ABC, abstractmethod
 from collections import namedtuple
 from collections.abc import Mapping
 from functools import partial
 from typing import Callable, Optional, Tuple, Union
 
 import numpy as np
-from jax import numpy as jnp
-from jax import vmap
+from jax import numpy as jnp, vmap
 
-from ..config import _config
 from .gauss_markov import IntegratedWienerProcess
 from .logger import logger
 from .misc import wrap
 from .model import Model, WrappedCall
 from .num import lognormal_prior, normal_prior
 from .tree_math import ShapeWithDtype, random_like
+from ..config import _config
 
 
 def hartley(p, axes=None):
@@ -298,6 +299,80 @@ def _remove_slope(rel_log_mode_dist, x):
     return x - x[-1] * sc
 
 
+class Amplitude(Model, ABC):
+    # TODO: docstring and add grid property
+    @property
+    @abstractmethod
+    def fluctuations(self):
+        pass
+
+    @fluctuations.setter
+    @abstractmethod
+    def fluctuations(self, value):
+        pass
+
+
+class MaternAmplitude(Amplitude):
+    def __init__(
+        self,
+        scale,
+        cutoff,
+        loglogslope,
+        renormalize_amplitude,
+        correlate,
+        ptree
+    ):
+        self.scale = scale
+        self.cutoff = cutoff
+        self.loglogslope = loglogslope
+        self.renormalize_amplitude = renormalize_amplitude
+        self._correlate = correlate
+
+        super().__init__(
+            domain=ptree, init=partial(random_like, primals=ptree))
+
+    def __call__(self, primals: Mapping) -> jnp.ndarray:
+        return self._correlate(primals)
+
+    @property
+    def fluctuations(self):
+        return self.scale
+
+    @fluctuations.setter
+    def fluctuations(self, value):
+        self.fluctuations = value
+
+
+class NonParametricAmplitude(Amplitude):
+    def __init__(
+        self,
+        fluctuations,
+        loglogavgslope,
+        flexibility,
+        asperity,
+        correlate,
+        ptree
+    ):
+        self._fluctuations = fluctuations
+        self.loglogavgslope = loglogavgslope
+        self.flexibility = flexibility
+        self.asperity = asperity
+        self._correlate = correlate
+        super().__init__(
+            domain=ptree, init=partial(random_like, primals=ptree))
+
+    def __call__(self, primals: Mapping) -> jnp.ndarray:
+        return self._correlate(primals)
+
+    @property
+    def fluctuations(self):
+        return self._fluctuations
+
+    @fluctuations.setter
+    def fluctuations(self, value):
+        self.fluctuations = value
+
+
 def matern_amplitude(
     grid,
     scale: Callable,
@@ -359,7 +434,14 @@ def matern_amplitude(
             raise ValueError(f"invalid kind specified {kind!r}")
         return spectrum
 
-    return Model(correlate, domain=ptree, init=partial(random_like, primals=ptree))
+    return MaternAmplitude(
+        scale=scale,
+        cutoff=cutoff,
+        loglogslope=loglogslope,
+        renormalize_amplitude=renormalize_amplitude,
+        correlate=correlate,
+        ptree=ptree
+    )
 
 
 def non_parametric_amplitude(
@@ -447,7 +529,14 @@ def non_parametric_amplitude(
         amplitude = amplitude.at[0].set(totvol)
         return amplitude
 
-    return Model(correlate, domain=ptree, init=partial(random_like, primals=ptree))
+    return NonParametricAmplitude(
+        fluctuations=fluctuations,
+        loglogavgslope=loglogavgslope,
+        flexibility=flexibility,
+        asperity=asperity,
+        correlate=correlate,
+        ptree=ptree
+    )
 
 
 class CorrelatedFieldMaker:
