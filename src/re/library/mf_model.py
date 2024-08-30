@@ -56,7 +56,8 @@ def _build_spectral_amplitude(spatial_amplitude: Amplitude,
     else:
         amplitude = _acquire_amplitude(spectral_amplitude, prefix)
 
-    spectral_amplitude_func = lambda x: amplitude(x) / amplitude.fluctuations(x)
+    def spectral_amplitude_func(x): return amplitude(
+        x) / amplitude.fluctuations(x)
 
     return Amplitude(
         spectral_amplitude_func,
@@ -71,6 +72,7 @@ class CorrelatedMultiFrequencySky(Model):
     A model for generating a correlated multi-frequency sky map based on
     spatial and spectral correlation models.
     """
+
     def __init__(
             self,
             prefix: str,
@@ -96,8 +98,8 @@ class CorrelatedMultiFrequencySky(Model):
             logger.info("Both `spectral_amplitude` and "
                         "`spectral_index_fluctuations` provided."
                         "\nThe spectral index fluctuations will be ignored. "
-                         "The fluctuations from `spectral_amplitude` model "
-                         "will be used instead.")
+                        "The fluctuations from `spectral_amplitude` model "
+                        "will be used instead.")
 
         grid = spatial_amplitude.grid
         slicing_tuple = (slice(None),) + (None,) * len(grid.shape)
@@ -148,7 +150,7 @@ class CorrelatedMultiFrequencySky(Model):
     def _build_apply(self):
         if self.spectral_index_deviations_model is not None:
             def apply_with_deviations(p):
-                #FIXME: nu -> log nu
+                # FIXME: nu -> log nu
                 """
                 Apply method of the model with spectral
                 index deviations.
@@ -219,7 +221,8 @@ class CorrelatedMultiFrequencySky(Model):
             amplitude = self.spectral_amplitude(p)
             amplitude = amplitude.at[0].set(0.0)
             spectral_index_spatial = (self.hdvol *
-                                      self.ht(amplitude[self.pd]*spectral_index)
+                                      self.ht(
+                                          amplitude[self.pd]*spectral_index)
                                       + spec_idx_mean)
             return self._nonlinearity(spatial_offset + zm
                                       + spectral_index_spatial * self._freqs)
@@ -250,14 +253,15 @@ class CorrelatedMultiFrequencySky(Model):
         amplitude = self.spectral_amplitude(p)
         amplitude = amplitude.at[0].set(0.0)
         return self.hdvol * vmap(self.ht)(amplitude[self.pd] *
-                                  self.spectral_index_deviations_model(p))
+                                          self.spectral_index_deviations_model(p))
 
     def spectral_distribution(self, p):
         """Convenience function to retrieve the model's spectral distribution."""
         amplitude = self.spectral_amplitude(p)
         amplitude = amplitude.at[0].set(0.0)
         spec_idx_fluctuations = self.spectral_index_fluctuations(p)
-        spec_index = spec_idx_fluctuations * p[f"{self.prefix}_spectral_index_xi"]
+        spec_index = spec_idx_fluctuations * \
+            p[f"{self.prefix}_spectral_index_xi"]
         deviations = 0.
         if self.spectral_index_deviations_model is not None:
             deviations = self.spectral_index_deviations_model(p)
@@ -394,7 +398,7 @@ def build_default_mf_model(
         grid,
         spectral_amplitude_settings,
         amplitude_model=spectral_amplitude_model
-        )
+    )
 
     deviations_model = build_frequency_deviations_model(shape,
                                                         log_frequencies,
