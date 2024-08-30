@@ -300,21 +300,17 @@ def _remove_slope(rel_log_mode_dist, x):
 
 
 class Amplitude(Model, ABC):
-    # TODO: docstring and add grid property
-    @property
-    @abstractmethod
-    def fluctuations(self):
-        pass
-
-    @fluctuations.setter
-    @abstractmethod
-    def fluctuations(self, value):
-        pass
+    # Amplitude base class with fluctuations attribute
+    def __init__(self, call, domain, grid, fluctuations):
+        super().__init__(call, domain=domain)
+        self.grid = grid
+        self.fluctuations = fluctuations
 
 
 class MaternAmplitude(Amplitude):
     def __init__(
         self,
+        grid,
         scale,
         cutoff,
         loglogslope,
@@ -326,26 +322,14 @@ class MaternAmplitude(Amplitude):
         self.cutoff = cutoff
         self.loglogslope = loglogslope
         self.renormalize_amplitude = renormalize_amplitude
-        self._correlate = correlate
 
-        super().__init__(
-            domain=ptree, init=partial(random_like, primals=ptree))
-
-    def __call__(self, primals: Mapping) -> jnp.ndarray:
-        return self._correlate(primals)
-
-    @property
-    def fluctuations(self):
-        return self.scale
-
-    @fluctuations.setter
-    def fluctuations(self, value):
-        self.fluctuations = value
+        super().__init__(correlate, ptree, grid, scale)
 
 
 class NonParametricAmplitude(Amplitude):
     def __init__(
         self,
+        grid,
         fluctuations,
         loglogavgslope,
         flexibility,
@@ -358,19 +342,11 @@ class NonParametricAmplitude(Amplitude):
         self.flexibility = flexibility
         self.asperity = asperity
         self._correlate = correlate
-        super().__init__(
-            domain=ptree, init=partial(random_like, primals=ptree))
+
+        super().__init__(correlate, ptree, grid, fluctuations)
 
     def __call__(self, primals: Mapping) -> jnp.ndarray:
         return self._correlate(primals)
-
-    @property
-    def fluctuations(self):
-        return self._fluctuations
-
-    @fluctuations.setter
-    def fluctuations(self, value):
-        self.fluctuations = value
 
 
 def matern_amplitude(
@@ -381,7 +357,7 @@ def matern_amplitude(
     renormalize_amplitude: bool,
     prefix: str = "",
     kind: str = "amplitude",
-) -> Model:
+) -> Amplitude:
     """Constructs a function computing the amplitude of a Matérn-kernel
     power spectrum.
 
@@ -435,6 +411,7 @@ def matern_amplitude(
         return spectrum
 
     return MaternAmplitude(
+        grid=grid,
         scale=scale,
         cutoff=cutoff,
         loglogslope=loglogslope,
@@ -452,7 +429,7 @@ def non_parametric_amplitude(
     asperity: Optional[Callable] = None,
     prefix: str = "",
     kind: str = "amplitude",
-) -> Model:
+) -> Amplitude:
     """Constructs a function computing the amplitude of a non-parametric power
     spectrum
 
@@ -519,17 +496,18 @@ def non_parametric_amplitude(
         if kind.lower() == "amplitude":
             norm = jnp.sqrt(jnp.sum(mode_multiplicity[1:] * spectrum[1:] ** 2))
             norm /= jnp.sqrt(totvol)  # Due to integral in harmonic space
-            amplitude = flu * (jnp.sqrt(totvol) / norm) * spectrum
+            amplitude = flu * (jnp.sqrt(totvol) / norm) * spectrum  # FIXME: unify the two sqrts
         elif kind.lower() == "power":
             norm = jnp.sqrt(jnp.sum(mode_multiplicity[1:] * spectrum[1:]))
             norm /= jnp.sqrt(totvol)  # Due to integral in harmonic space
-            amplitude = flu * (jnp.sqrt(totvol) / norm) * jnp.sqrt(spectrum)
+            amplitude = flu * (jnp.sqrt(totvol) / norm) * jnp.sqrt(spectrum)  # FIXME: unify the two sqrts
         else:
             raise ValueError(f"invalid kind specified {kind!r}")
         amplitude = amplitude.at[0].set(totvol)
         return amplitude
 
     return NonParametricAmplitude(
+        grid=grid,
         fluctuations=fluctuations,
         loglogavgslope=loglogavgslope,
         flexibility=flexibility,

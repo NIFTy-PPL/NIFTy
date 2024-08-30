@@ -8,7 +8,7 @@ from ..correlated_field import (
     RegularCartesianGrid,
     matern_amplitude,
     non_parametric_amplitude,
-    WrappedCall)
+    WrappedCall, Amplitude)
 from ..model import Model
 from ..num.stats_distributions import lognormal_prior, normal_prior
 from ..tree_math import Vector
@@ -61,12 +61,24 @@ def _check_demands(model_name, kwargs, demands):
 
 class AcquiredModel(Model):
     def __init__(self, model, new_domain, call):
-        for attr in model.__dict__:
-            setattr(self, attr, getattr(model, attr))
+        self.__dict__.update(model.__dict__)
         super().__init__(call, domain=new_domain)
 
 
-def _acquire_submodel(model: Optional[Union[Model, None]], prefix: str):
+class AcquiredAmplitude(Amplitude, Model):
+
+    def __init__(self, amplitude, fluctuations,
+                 new_domain, call):
+        self.__dict__.update(amplitude.__dict__)
+        super().__init__(call,
+                         domain=new_domain,
+                         grid=amplitude.grid,
+                         fluctuations=fluctuations,)
+
+
+def _acquire_submodel(
+        model: Optional[Union[Model, None]],
+        prefix: str) -> Optional[AcquiredModel]:
     """
     Acquire a submodel with prefixed domain keys.
 
@@ -97,6 +109,37 @@ def _acquire_submodel(model: Optional[Union[Model, None]], prefix: str):
         return model(_remove_prefix_from_keys(x, prefix))
 
     return AcquiredModel(model, new_domain, call)
+
+
+def _acquire_amplitude(amplitude: Optional[Amplitude],
+                       prefix: str) -> Optional[AcquiredAmplitude]:
+    """
+    Acquire an amplitude with prefixed domain keys.
+
+    Parameters
+    ----------
+        amplitude: Amplitude, optional
+            The original amplitude.
+        prefix: str
+            The prefix to add to the domain keys.
+
+    Returns
+    -------
+        amplitude: Amplitude
+            A new Amplitude instance with the prefixed domain
+            keys and modified call method.
+    """
+    if amplitude is None:
+        return None
+    acquired_amplitude = _acquire_submodel(amplitude, prefix)
+
+    def fluct(x):
+        return amplitude.fluctuations(_remove_prefix_from_keys(x, prefix))
+
+    return AcquiredAmplitude(amplitude,
+                             fluct,
+                             acquired_amplitude.domain,
+                             acquired_amplitude)
 
 
 def _build_distribution_or_default(arg: Union[callable, tuple, list],
@@ -143,7 +186,7 @@ def build_amplitude_model(
     renormalize_amplitude: bool = True,
     prefix: str = None,
     kind: str = "amplitude",
-) -> Optional[Model]:
+) -> Optional[Amplitude]:
     """
     Build an amplitude model based on
     the specified settings and model type.
@@ -172,7 +215,7 @@ def build_amplitude_model(
 
     Returns
     -------
-    model: Model or None
+    amplitude: Amplitude or None
         A Model instance representing the amplitude model
         configured with the provided settings.
         Returns None if `settings` is None.
