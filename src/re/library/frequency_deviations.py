@@ -30,6 +30,7 @@ class FrequencyDeviations(Model):
     reference_frequency_index: int
         The index of the reference frequency within the `frequencies` array.
     """
+
     def __init__(
         self,
         deviations_process: GaussMarkovProcess,  # TODO: Allow for correlated field
@@ -42,14 +43,13 @@ class FrequencyDeviations(Model):
             (slice(None),) +
             (None,) * len(self.deviations_process.target.shape[1:])
         )
-        relative_freqs = jnp.array(frequencies -
-                                   frequencies[reference_frequency_index])
+        relative_freqs = jnp.array(
+            frequencies - frequencies[reference_frequency_index])
         relative_freqs = relative_freqs[slicing_tuple]
         frequencies_denominator = 1 / jnp.sum(relative_freqs**2)
 
         def deviations_call(p):
             dev = self.deviations_process(p)
-            dev = dev - dev[reference_frequency_index] # FIXME: should this be removed?
 
             # m = sum_l(\delta gmp(l) * (l-l0)) / sum_l((l-l0)**2)
             dev_slope = (jnp.sum(dev*relative_freqs, axis=0)

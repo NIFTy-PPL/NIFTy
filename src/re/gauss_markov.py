@@ -286,7 +286,7 @@ def build_wiener_process(
     dt: Union[float, Array],
     name: str = 'wp',
     n_steps: int = None
-):
+) -> NdGaussMarkovProcess:
     """Implements the Wiener process (WP).
 
     The WP in continuous time takes the form:
@@ -337,7 +337,8 @@ def build_fixed_point_wiener_process(
     reference_t_index: int,
     name: str = 'wp',
 ):
-    """Implements the Wiener process (WP).
+    """Implements the Wiener process (WP) with respect to a fixed point at the
+    `reference_t_index`.
 
     The WP in continuous time takes the form:
 
@@ -380,25 +381,23 @@ def build_fixed_point_wiener_process(
         dt = t[1:] - t[:-1]
         return build_wiener_process(x0, sigma, dt, name=name)
 
-    if reference_t_index == -1:
+    elif reference_t_index == -1:
+        # NOTE: this could also be covered by the next case.
+        # However, this way has a faster execution time.
         dt = t[1:] - t[:-1]
         dt = dt[::-1]
-        res = build_wiener_process(x0, sigma, dt, name=name)
-        apply = lambda x: jnp.flip(res(x), axis=0)
-        return Model(apply, domain=res.domain)
+        wp = build_wiener_process(x0, sigma, dt, name=name)
+        def apply(x): return jnp.flip(wp(x), axis=0)
+        return Model(apply, domain=wp.domain)
 
-    dt_right = t[reference_t_index+1:] - t[reference_t_index:-1]
-    dt_left = (t[1:reference_t_index+1] - t[:reference_t_index])[::-1]
-    w_right = build_wiener_process(x0, sigma, dt_right, name=name + '_right')
-    w_left = build_wiener_process(x0, sigma, dt_left, name=name + '_left')
+    else:
+        dt = t[1:] - t[:-1]
+        wp = build_wiener_process(x0, sigma, dt, name=name)
 
-    def apply(x):
-        right = w_right(x)
-        left = jnp.flip(w_left(x)[1:], axis=0)
-        return jnp.vstack((left, right))
-
-    return Model(apply, domain=w_right.domain | w_left.domain)
-
+        def apply(x):
+            xt = wp(x)
+            return xt - xt[reference_t_index] + x0
+        return Model(apply, domain=wp.domain)
 
 
 def IntegratedWienerProcess(
