@@ -231,7 +231,7 @@ class CorrelatedMultiFrequencySky(Model):
         amplitude = self.spatial_amplitude(p)
         amplitude = amplitude.at[0].set(0.0)
         spatial_xi = p[f"{self.prefix}_spatial_xi"]
-        return self.hdvol*self.ht(amplitude[self.pd]*spatial_xi)
+        return self._nonlinearity(self.hdvol*self.ht(amplitude[self.pd]*spatial_xi))
 
     def spectral_index(self, p):
         """Convenience function to retrieve the model's spectral index."""
@@ -380,7 +380,7 @@ def build_default_mf_model(
     Returns
     -------
     model: CorrelatedMultiFrequencySky
-        The multi-frequency sky model
+        The multi-frequency sky model.
     """
 
     grid = _make_grid(shape, distances, harmonic_type)

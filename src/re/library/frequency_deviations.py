@@ -19,11 +19,15 @@ from ..model import Model
 class FrequencyDeviations(Model):
     """
     Model for calculating frequency deviations relative to a reference frequency.
+    Implements an average slope remover which removes the average slope
+    introduced by the `deviations_process`.
 
     Parameters
     ----------
     deviations_process: GaussMarkovProcess
         A Gauss-Markov process used to model frequency deviations.
+        The process is assumed to be identically zero at the
+        reference frequency.
         TODO: Extend to allow for correlated field.
     frequencies: Union[tuple[float], ArrayLike]
         A list or array of frequencies at which deviations are calculated.
@@ -51,7 +55,6 @@ class FrequencyDeviations(Model):
         def deviations_call(p):
             dev = self.deviations_process(p)
 
-            # m = sum_l(\delta gmp(l) * (l-l0)) / sum_l((l-l0)**2)
             dev_slope = (jnp.sum(dev*relative_freqs, axis=0)
                          * frequencies_denominator)
 

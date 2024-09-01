@@ -300,11 +300,15 @@ def _remove_slope(rel_log_mode_dist, x):
 
 
 class Amplitude(Model, ABC):
-    # Amplitude base class with fluctuations attribute
+    # TODO: write docstring
+    # TODO: add `kind` attribute
     def __init__(self, call, domain, grid, fluctuations):
         super().__init__(call, domain=domain)
         self.grid = grid
         self.fluctuations = fluctuations
+
+    def power_spectrum(self):
+        raise NotImplementedError
 
 
 class MaternAmplitude(Amplitude):
