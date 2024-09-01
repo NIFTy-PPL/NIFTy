@@ -42,7 +42,7 @@ class SpectralIndex(Model):
     def __init__(
         self,
         prefix: str,
-        grid: RegularCartesianGrid,
+        shape: tuple,
         spectral_index_mean: Model,
         spectral_index_fluctuations: Model,
         dtype: type = jnp.float64,
@@ -56,7 +56,7 @@ class SpectralIndex(Model):
             lambda a, b: a | b, [m.domain for m in models if m is not None]
         )
         domain[f"{self.prefix}_spectral_index_xi"] = ShapeWithDtype(
-            grid.shape, dtype)
+            shape, dtype)
 
         super().__init__(domain=domain)
 
@@ -73,10 +73,35 @@ class SpectralIndex(Model):
 
 def build_spectral_index(
     prefix: str,
-    grid: RegularCartesianGrid,
+    shape: tuple,
     spectral_index_settings: dict,
     dtype: type = jnp.float64,
 ):
+    '''Build a `SpectralIndex` model used in `CorrelatedMultiFrequencySky`.
+    The `CorrelatedMultiFrequencySky` depends on the `SpectralIndex` to have
+        - mean (float, the mean spectral index, i.e. slope in log(freqs))
+        - fluctuations (normally distributed field with variance=fluctuations)
+
+    .. math ::
+        slope(k) = mean + slope_fluctuations(k)
+        slope_fluctuations(k) = fluctuations * \\xi(k)
+
+    Parameters
+    ----------
+    prefix:
+        Prefix of the model
+
+    shape:
+        The shape of the output, i.e. the shape of the fluctuations(k).
+
+    spectral_index_settings:
+        The settings for the `SpectralIndex` model:
+            - mean: callable or parameters for the default (normal)
+            - fluctuations: callable or parameters for the default (lognormal)
+
+    dtype:
+        The dtype of the output.
+    '''
     spectral_index_mean = _build_distribution_or_default(
         spectral_index_settings['mean'],
         f'{prefix}_spectral_index_mean',
@@ -89,14 +114,14 @@ def build_spectral_index(
     )
 
     return SpectralIndex(
-        prefix, grid, spectral_index_mean, spectral_index_fluctuations, dtype)
+        prefix, shape, spectral_index_mean, spectral_index_fluctuations, dtype)
 
 
 class SpatialReference(Model):
     def __init__(
         self,
         prefix: str,
-        grid: RegularCartesianGrid,
+        shape: tuple,
         spatial_fluctuations: Model,
         dtype: type = jnp.float64,
     ):
@@ -105,7 +130,7 @@ class SpatialReference(Model):
 
         domain = spatial_fluctuations.domain
         domain[f"{self.prefix}_spatial_xi"] = ShapeWithDtype(
-            grid.shape, dtype)
+            shape, dtype)
 
         super().__init__(domain=domain)
 
@@ -113,13 +138,45 @@ class SpatialReference(Model):
         return self.spatial_fluctuations(p) * p[f"{self.prefix}_spatial_xi"]
 
 
-def build_reference_model(
+def build_spatial_reference(
     prefix: str,
-    grid: RegularCartesianGrid,
+    shape: tuple,
     settings: dict,
     amplitude_model: str,
     dtype: type = jnp.float64,
 ):
+    '''Build `SpatialReference` model used in `CorrelatedMultiFrequencySky`.
+    The `SpatialReference` is the spatial distribution (field) at the reference
+    frequency of the `CorrelatedMultiFrequencySky`.
+    The fluctuations of the field are set according to the `amplitude_model`:
+        - scale, if `matern`.
+        - fluctuations, if `non_parametric`.
+
+    .. math ::
+        s(k) = fluctuations * \\xi(k)
+
+    Parameters
+    ----------
+    prefix:
+        Prefix of the model
+
+    shape:
+        The shape of the output, i.e. the shape of the s(k).
+
+    settings:
+        The settings for the `SpatialReference` model:
+            - mean: callable or parameters for the default (normal)
+            - fluctuations: callable or parameters for the default (lognormal)
+
+    amplitude_model:
+        The amplitude model of the `CorrelatedMultiFrequencySky`.
+        Through this keyword the refrence frequency fluctuations are either
+        the scale of the `matern` or the fluctuations `non_parametric`
+        amplitude model.
+
+    dtype:
+        The dtype of the output.
+    '''
     key = f'{prefix}_reference' if prefix is not None else 'reference'
 
     if amplitude_model == "non_parametric":
@@ -132,7 +189,7 @@ def build_reference_model(
         fluctuations = _build_distribution_or_default(
             settings['scale'], f"{key}_fluctuation",  lognormal_prior)
 
-    return SpatialReference(key, grid, fluctuations, dtype=dtype)
+    return SpatialReference(key, shape, fluctuations, dtype=dtype)
 
 
 class CorrelatedMultiFrequencySky(Model):
@@ -475,7 +532,7 @@ def build_default_mf_model(
                     "be ignored. The `spectral_index` fluctuations will be "
                     "used instead.")
 
-    spatial_reference_model = build_reference_model(
+    spatial_reference_model = build_spatial_reference(
         prefix,
         grid,
         spatial_amplitude_settings,
@@ -484,7 +541,7 @@ def build_default_mf_model(
 
     spectral_index_model = build_spectral_index(
         prefix,
-        grid,
+        grid.shape,
         spectral_index_settings,
         dtype=dtype
     )
