@@ -534,15 +534,15 @@ def build_default_mf_model(
 
     spatial_reference_model = build_spatial_reference(
         prefix,
-        grid,
-        spatial_amplitude_settings,
+        shape=grid.shape,
+        settings=spatial_amplitude_settings,
         amplitude_model=spatial_amplitude_model,
         dtype=dtype)
 
     spectral_index_model = build_spectral_index(
         prefix,
-        grid.shape,
-        spectral_index_settings,
+        shape=grid.shape,
+        spectral_index_settings=spectral_index_settings,
         dtype=dtype
     )
 
