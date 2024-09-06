@@ -74,7 +74,7 @@ key = random.PRNGKey(42)
 key = key + 1
 figy, figx = 2, mf_model.target.shape[0] + 1
 position = mf_model.init(key)
-spatial_reference = mf_model.spatial_distribution(position)
+spatial_reference = mf_model.reference_frequency_distribution(position)
 spatial_mf_field = mf_model(position)
 
 spectral_index = mf_model.spectral_index_distribution(position)

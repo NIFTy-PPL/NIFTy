@@ -60,7 +60,6 @@ def test_build_amplitude_model(
 @pmp("distances", [0.1])
 @pmp("log_relative_frequencies", [(0.1,)])
 @pmp("zero_mode", [jft.Model(lambda p: 0., domain={"zero_mode": None})])
-@pmp("zero_mode_offset", [0.])
 @pmp("spectral_index_mean", [jft.NormalPrior(0., 1.,
                                             name="spectral_index_mean")]
      )
@@ -75,7 +74,6 @@ def test_correlated_multi_frequency_sky_init(shape,
                                              distances,
                                              log_relative_frequencies,
                                              zero_mode,
-                                             zero_mode_offset,
                                              spectral_index_mean,
                                              spectral_index_fluctuations,
                                              deviations_settings,
@@ -86,6 +84,9 @@ def test_correlated_multi_frequency_sky_init(shape,
                                    jft.normal_prior(-4., .1),
                                    )
 
+    spatial_fluctuations = jft.LogNormalPrior(0.1, 10.,
+                                              name="spatial_fluctuations")
+
     deviations_model = build_frequency_deviations_model(shape,
                                                         log_relative_frequencies,
                                                         0,
@@ -94,7 +95,7 @@ def test_correlated_multi_frequency_sky_init(shape,
     mf_sky = jft.CorrelatedMultiFrequencySky("test",
                                              log_relative_frequencies,
                                              zero_mode,
-                                             zero_mode_offset,
+                                             spatial_fluctuations,
                                              amp,
                                              spectral_index_mean,
                                              spectral_index_fluctuations,
@@ -125,6 +126,7 @@ def test_spatial_convolution(
     spectral_index_mean,
     spectral_index_fluctuations,
 ):
+    # FIXME
     grid = _make_grid(shape, distances, "fourier")
     fluct = (0.1, 0.01)
     avgsl = (-4., .1)
@@ -133,10 +135,13 @@ def test_spatial_convolution(
                                    jft.normal_prior(*avgsl),
                                    )
 
+    spatial_fluctuations = jft.LogNormalPrior(*fluct,
+                                              name="spatial_fluctuations")
+
     mf_sky = jft.CorrelatedMultiFrequencySky("test",
                                              (0.,),
                                              zero_mode,
-                                             zero_mode_offset,
+                                             spatial_fluctuations,
                                              amp,
                                              spectral_index_mean,
                                              spectral_index_fluctuations,
@@ -152,7 +157,7 @@ def test_spatial_convolution(
     cfm = cfm.finalize()
     rp = mf_sky.init(random.PRNGKey(seed))
     cfm_rp = {"zeromode": rp["test_zero_mode"],
-              "fluctuations": rp["test_fluctuations"],
+              "fluctuations": rp["test_spatial_fluctuations"],
               "loglogavgslope": rp["test_loglogavgslope"],
               "xi": rp["test_spatial_xi"],
               }

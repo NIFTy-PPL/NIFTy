@@ -14,29 +14,6 @@ from ..num.stats_distributions import lognormal_prior, normal_prior
 from ..tree_math import Vector
 
 
-def _add_prefix_to_keys(tree, prefix):
-    """Recursively add a prefix to all keys in a nested dictionary."""
-    if isinstance(tree, Vector):
-        tree = tree.tree
-    if isinstance(tree, dict):
-        return {f"{prefix}_{key}": _add_prefix_to_keys(value, prefix) for key, value in
-                tree.items()}
-    else:
-        return tree
-
-
-def _remove_prefix_from_keys(tree, prefix):
-    """Recursively remove a prefix from all keys in a nested dictionary."""
-    if isinstance(tree, Vector):
-        tree = tree.tree
-    if isinstance(tree, dict):
-        prefix_length = len(prefix) + 1  # includes the underscore
-        return {key[prefix_length:]: _remove_prefix_from_keys(value, prefix) for key, value in
-                tree.items() if key.startswith(prefix)}
-    else:
-        return tree
-
-
 def _safe_set_default_or_call(arg: Union[callable, tuple, list, None],
                               default: callable):
     """Either sets the default distribution or the callable"""
