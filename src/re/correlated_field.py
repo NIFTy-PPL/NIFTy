@@ -6,7 +6,7 @@ import operator
 from abc import ABC, abstractmethod
 from collections import namedtuple
 from collections.abc import Mapping
-from functools import partial
+from functools import partial, reduce
 from typing import Callable, Optional, Tuple, Union
 
 import numpy as np
@@ -328,6 +328,89 @@ class MaternAmplitude(Amplitude):
         self.renormalize_amplitude = renormalize_amplitude
 
         super().__init__(correlate, ptree, grid, scale)
+
+
+class MaternAmplitudeNew(Model):
+    def __init__(
+        self,
+        grid: Union[RegularCartesianGrid, RegularFourierGrid, HEALPixGrid, LMGrid],
+        cutoff: Callable,
+        loglogslope: Callable,
+        renormalize_amplitude: bool,
+        scale: Optional[Model] = None,
+        prefix: str = '',
+        kind: str = "amplitude",
+    ):
+        '''Some docstring.
+        '''
+
+        self.grid = grid
+        self._totvol = grid.total_volume
+        self._mode_lengths = grid.harmonic_grid.mode_lengths
+        self._mode_multiplicity = grid.harmonic_grid.mode_multiplicity
+
+        self.scale = WrappedCall(
+            scale, name=prefix + "scale") if scale is not None else None
+        self.cutoff = WrappedCall(cutoff, name=prefix + "cutoff")
+        self.loglogslope = WrappedCall(
+            loglogslope, name=prefix + "loglogslope")
+
+        self.fluctuations = scale
+        self._kind = kind
+
+        supported_kinds = {'amplitude', 'power'}
+        if self._kind.lower() not in supported_kinds:
+            raise ValueError(
+                f"Invalid kind specified {self._kind!r}"
+                f"Supported kinds: {supported_kinds}"
+            )
+
+        self.renormalize_amplitude = renormalize_amplitude
+        if self.renormalize_amplitude:
+            logger.warning("Renormalize amplidude is not yet tested!")
+
+        models = [
+            self.zero_mode,
+            self.scale,
+            self.cutoff,
+            self.loglogslope,
+
+        ]
+
+        domain = reduce(
+            lambda a, b: a | b, [m.domain for m in models if m is not None]
+        )
+
+        super().__init__(domain=domain)
+
+    def __call__(self, primals: Mapping) -> jnp.ndarray:
+        if self.scale is None:
+            scl = 1.
+        else:
+            scl = self.scale(primals)
+
+        ctf = self.cutoff(primals)
+        slp = self.loglogslope(primals)
+
+        ln_spectrum = 0.25 * slp * jnp.log1p((self._mode_lengths / ctf) ** 2)
+        spectrum = jnp.exp(ln_spectrum)
+
+        norm = 1.0
+        if self.renormalize_amplitude:
+            if self._kind.lower() == "amplitude":
+                norm = jnp.sqrt(
+                    jnp.sum(self._mode_multiplicity[1:] * spectrum[1:] ** 4))
+            elif self._kind.lower() == "power":
+                norm = jnp.sqrt(
+                    jnp.sum(self._mode_multiplicity[1:] * spectrum[1:] ** 2))
+
+            norm /= jnp.sqrt(self._totvol)  # Due to integral in harmonic space
+        spectrum = scl * (jnp.sqrt(self._totvol) / norm) * spectrum
+        spectrum = spectrum.at[0].set(self._totvol)
+        if self._kind.lower() == "power":
+            spectrum = jnp.sqrt(spectrum)
+
+        return spectrum
 
 
 class NonParametricAmplitude(Amplitude):
