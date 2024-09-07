@@ -403,123 +403,114 @@ class MaternAmplitude(Model):
         return spectrum
 
 
-class NonParametricAmplitude(Amplitude):
+class NonParametricAmplitude(Model):
     def __init__(
         self,
         grid,
-        fluctuations,
-        loglogavgslope,
-        flexibility,
-        asperity,
-        correlate,
-        ptree
+        loglogavgslope: Callable,
+        fluctuations: Optional[Callable] = None,
+        flexibility: Optional[Callable] = None,
+        asperity: Optional[Callable] = None,
+        prefix: str = "",
+        kind: str = "amplitude",
     ):
-        self._fluctuations = fluctuations
-        self.loglogavgslope = loglogavgslope
-        self.flexibility = flexibility
-        self.asperity = asperity
-        self._correlate = correlate
+        """Constructs a function computing the amplitude of a non-parametric power
+        spectrum
 
-        super().__init__(correlate, ptree, grid, fluctuations)
+        See
+        :class:`nifty8.re.correlated_field.CorrelatedFieldMaker.add_fluctuations`
+        for more details on the parameters.
+
+        See also
+        --------
+        `Variable structures in M87* from space, time and frequency resolved
+        interferometry`, Arras, Philipp and Frank, Philipp and Haim, Philipp
+        and Knollmüller, Jakob and Leike, Reimar and Reinecke, Martin and
+        Enßlin, Torsten, `<https://arxiv.org/abs/2002.05218>`_
+        `<http://dx.doi.org/10.1038/s41550-021-01548-0>`_
+        """
+        self.grid = grid
+        self._totvol = grid.total_volume
+        self._rel_log_mode_len = grid.harmonic_grid.relative_log_mode_lengths
+        self._mode_multiplicity = grid.harmonic_grid.mode_multiplicity
+        log_vol = grid.harmonic_grid.log_volume
+        self._kind = kind
+
+        self.fluctuations = WrappedCall(
+            fluctuations, name=prefix + "fluctuations", white_init=True
+        ) if fluctuations is not None else None
+        self._loglogavgslope = WrappedCall(
+            loglogavgslope, name=prefix + "loglogavgslope", white_init=True
+        )
+        if flexibility is not None and (log_vol.size > 0):
+            flexibility = WrappedCall(
+                flexibility, name=prefix + "flexibility", white_init=True
+            )
+            assert log_vol is not None
+            assert self._rel_log_mode_len.ndim == log_vol.ndim == 1
+            if asperity is not None:
+                asperity = WrappedCall(
+                    asperity, name=prefix + "asperity", white_init=True)
+            else:
+                asperity = None
+            self._deviations = IntegratedWienerProcess(
+                jnp.zeros((2,)),
+                flexibility,
+                log_vol,
+                name=prefix + "spectrum",
+                asperity=asperity,
+            )
+        else:
+            self._deviations = None
+
+        models = [
+            self.fluctuations,
+            self._loglogavgslope,
+            self._deviations,
+        ]
+        domain = reduce(
+            lambda a, b: a | b, [m.domain for m in models if m is not None]
+        )
+
+        super().__init__(domain=domain)
 
     def __call__(self, primals: Mapping) -> jnp.ndarray:
-        return self._correlate(primals)
+        if self.fluctuations is None:
+            flu = 1.
+        else:
+            flu = self.fluctuations(primals)
 
-
-def non_parametric_amplitude(
-    grid,
-    fluctuations: Callable,
-    loglogavgslope: Callable,
-    flexibility: Optional[Callable] = None,
-    asperity: Optional[Callable] = None,
-    prefix: str = "",
-    kind: str = "amplitude",
-) -> Amplitude:
-    """Constructs a function computing the amplitude of a non-parametric power
-    spectrum
-
-    See
-    :class:`nifty8.re.correlated_field.CorrelatedFieldMaker.add_fluctuations`
-    for more details on the parameters.
-
-    See also
-    --------
-    `Variable structures in M87* from space, time and frequency resolved
-    interferometry`, Arras, Philipp and Frank, Philipp and Haim, Philipp
-    and Knollmüller, Jakob and Leike, Reimar and Reinecke, Martin and
-    Enßlin, Torsten, `<https://arxiv.org/abs/2002.05218>`_
-    `<http://dx.doi.org/10.1038/s41550-021-01548-0>`_
-    """
-    totvol = grid.total_volume
-    rel_log_mode_len = grid.harmonic_grid.relative_log_mode_lengths
-    mode_multiplicity = grid.harmonic_grid.mode_multiplicity
-    log_vol = grid.harmonic_grid.log_volume
-
-    fluctuations = WrappedCall(
-        fluctuations, name=prefix + "fluctuations", white_init=True
-    )
-    ptree = fluctuations.domain.copy()
-    loglogavgslope = WrappedCall(
-        loglogavgslope, name=prefix + "loglogavgslope", white_init=True
-    )
-    ptree.update(loglogavgslope.domain)
-    if flexibility is not None and (log_vol.size > 0):
-        flexibility = WrappedCall(
-            flexibility, name=prefix + "flexibility", white_init=True
-        )
-        assert log_vol is not None
-        assert rel_log_mode_len.ndim == log_vol.ndim == 1
-        if asperity is not None:
-            asperity = WrappedCall(asperity, name=prefix + "asperity", white_init=True)
-        deviations = IntegratedWienerProcess(
-            jnp.zeros((2,)),
-            flexibility,
-            log_vol,
-            name=prefix + "spectrum",
-            asperity=asperity,
-        )
-        ptree.update(deviations.domain)
-    else:
-        deviations = None
-
-    def correlate(primals: Mapping) -> jnp.ndarray:
-        flu = fluctuations(primals)
-        slope = loglogavgslope(primals)
-        slope *= rel_log_mode_len
+        slope = self._loglogavgslope(primals)
+        slope *= self._rel_log_mode_len
         ln_spectrum = slope
 
-        if deviations is not None:
-            twolog = deviations(primals)
+        if self._deviations is not None:
+            twolog = self._deviations(primals)
             # Prepend zeromode
             twolog = jnp.concatenate((jnp.zeros((1,)), twolog[:, 0]))
-            ln_spectrum += _remove_slope(rel_log_mode_len, twolog)
+            ln_spectrum += _remove_slope(self._rel_log_mode_len, twolog)
 
         # Exponentiate and norm the power spectrum
         spectrum = jnp.exp(ln_spectrum)
+
         # Take the sqrt of the integral of the slope w/o fluctuations and
         # zero-mode while taking into account the multiplicity of each mode
-        if kind.lower() == "amplitude":
-            norm = jnp.sqrt(jnp.sum(mode_multiplicity[1:] * spectrum[1:] ** 2))
-            norm /= jnp.sqrt(totvol)  # Due to integral in harmonic space
-            amplitude = flu * (jnp.sqrt(totvol) / norm) * spectrum  # FIXME: unify the two sqrts
-        elif kind.lower() == "power":
-            norm = jnp.sqrt(jnp.sum(mode_multiplicity[1:] * spectrum[1:]))
-            norm /= jnp.sqrt(totvol)  # Due to integral in harmonic space
-            amplitude = flu * (jnp.sqrt(totvol) / norm) * jnp.sqrt(spectrum)  # FIXME: unify the two sqrts
+        if self._kind.lower() == "amplitude":
+            norm = jnp.sqrt(
+                jnp.sum(self._mode_multiplicity[1:] * spectrum[1:] ** 2))
+            norm /= jnp.sqrt(self._totvol)  # Due to integral in harmonic space
+            amplitude = (flu * (jnp.sqrt(self._totvol) / norm) *
+                         spectrum)
+        elif self._kind.lower() == "power":
+            norm = jnp.sqrt(
+                jnp.sum(self._mode_multiplicity[1:] * spectrum[1:]))
+            norm /= jnp.sqrt(self._totvol)  # Due to integral in harmonic space
+            amplitude = (flu * (jnp.sqrt(self._totvol) / norm) *
+                         jnp.sqrt(spectrum))
         else:
-            raise ValueError(f"invalid kind specified {kind!r}")
-        amplitude = amplitude.at[0].set(totvol)
+            raise ValueError(f"invalid kind specified {self._kind!r}")
+        amplitude = amplitude.at[0].set(self._totvol)
         return amplitude
-
-    return NonParametricAmplitude(
-        grid=grid,
-        fluctuations=fluctuations,
-        loglogavgslope=loglogavgslope,
-        flexibility=flexibility,
-        asperity=asperity,
-        correlate=correlate,
-        ptree=ptree
-    )
 
 
 class CorrelatedFieldMaker:
@@ -651,7 +642,7 @@ class CorrelatedFieldMaker:
             te = f"invalid `asperity` specified; got '{type(asperity)}'"
             raise TypeError(te)
 
-        npa = non_parametric_amplitude(
+        npa = NonParametricAmplitude(
             grid=grid,
             fluctuations=flu,
             loglogavgslope=slp,

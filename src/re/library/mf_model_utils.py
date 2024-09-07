@@ -7,7 +7,7 @@ from typing import Union, Optional
 from ..correlated_field import (
     RegularCartesianGrid,
     MaternAmplitude,
-    non_parametric_amplitude,
+    NonParametricAmplitude,
     WrappedCall, Amplitude)
 from ..model import Model
 from ..num.stats_distributions import lognormal_prior, normal_prior
@@ -128,7 +128,7 @@ def build_amplitude_model(
     if amplitude_model == "non_parametric":
         _check_demands(key, settings, demands={'fluctuations', 'loglogavgslope',
                                                'flexibility', 'asperity'})
-        return non_parametric_amplitude(
+        return NonParametricAmplitude(
             grid,
             fluctuations=_set_default_or_call(settings['fluctuations'],
                                               lognormal_prior),
