@@ -311,26 +311,7 @@ class Amplitude(Model, ABC):
         raise NotImplementedError
 
 
-class MaternAmplitude(Amplitude):
-    def __init__(
-        self,
-        grid,
-        scale,
-        cutoff,
-        loglogslope,
-        renormalize_amplitude,
-        correlate,
-        ptree
-    ):
-        self.scale = scale
-        self.cutoff = cutoff
-        self.loglogslope = loglogslope
-        self.renormalize_amplitude = renormalize_amplitude
-
-        super().__init__(correlate, ptree, grid, scale)
-
-
-class MaternAmplitudeNew(Model):
+class MaternAmplitude(Model):
     def __init__(
         self,
         grid: Union[RegularCartesianGrid, RegularFourierGrid, HEALPixGrid, LMGrid],
@@ -343,6 +324,22 @@ class MaternAmplitudeNew(Model):
     ):
         '''Some docstring.
         '''
+
+        """Constructs the amplitude of a Matérn-kernel power spectrum.
+
+        See
+        :class:`nifty8.re.correlated_field.CorrelatedFieldMaker.add_fluctuations
+        _matern`
+        for more details on the parameters.
+
+        See also
+        --------
+        `Causal, Bayesian, & non-parametric modeling of the SARS-CoV-2 viral
+        load vs. patient's age`, Guardiani, Matteo and Frank, Philipp and Kostić,
+        Andrija and Edenhofer, Gordian and Roth, Jakob and Uhlmann, Berit and
+        Enßlin, Torsten, `<https://arxiv.org/abs/2105.13483>`_
+        `<https://doi.org/10.1371/journal.pone.0275011>`_
+        """
 
         self.grid = grid
         self._totvol = grid.total_volume
@@ -434,78 +431,6 @@ class NonParametricAmplitude(Amplitude):
 
     def __call__(self, primals: Mapping) -> jnp.ndarray:
         return self._correlate(primals)
-
-
-def matern_amplitude(
-    grid,
-    scale: Callable,
-    cutoff: Callable,
-    loglogslope: Callable,
-    renormalize_amplitude: bool,
-    prefix: str = "",
-    kind: str = "amplitude",
-) -> Amplitude:
-    """Constructs a function computing the amplitude of a Matérn-kernel
-    power spectrum.
-
-    See
-    :class:`nifty8.re.correlated_field.CorrelatedFieldMaker.add_fluctuations
-    _matern`
-    for more details on the parameters.
-
-    See also
-    --------
-    `Causal, Bayesian, & non-parametric modeling of the SARS-CoV-2 viral
-    load vs. patient's age`, Guardiani, Matteo and Frank, Philipp and Kostić,
-    Andrija and Edenhofer, Gordian and Roth, Jakob and Uhlmann, Berit and
-    Enßlin, Torsten, `<https://arxiv.org/abs/2105.13483>`_
-    `<https://doi.org/10.1371/journal.pone.0275011>`_
-    """
-    totvol = grid.total_volume
-    mode_lengths = grid.harmonic_grid.mode_lengths
-    mode_multiplicity = grid.harmonic_grid.mode_multiplicity
-
-    scale = WrappedCall(scale, name=prefix + "scale")
-    ptree = scale.domain.copy()
-    cutoff = WrappedCall(cutoff, name=prefix + "cutoff")
-    ptree.update(cutoff.domain)
-    loglogslope = WrappedCall(loglogslope, name=prefix + "loglogslope")
-    ptree.update(loglogslope.domain)
-
-    def correlate(primals: Mapping) -> jnp.ndarray:
-        scl = scale(primals)
-        ctf = cutoff(primals)
-        slp = loglogslope(primals)
-
-        ln_spectrum = 0.25 * slp * jnp.log1p((mode_lengths / ctf) ** 2)
-
-        spectrum = jnp.exp(ln_spectrum)
-
-        norm = 1.0
-        if renormalize_amplitude:
-            logger.warning("Renormalize amplidude is not yet tested!")
-            if kind.lower() == "amplitude":
-                norm = jnp.sqrt(jnp.sum(mode_multiplicity[1:] * spectrum[1:] ** 4))
-            elif kind.lower() == "power":
-                norm = jnp.sqrt(jnp.sum(mode_multiplicity[1:] * spectrum[1:] ** 2))
-            norm /= jnp.sqrt(totvol)  # Due to integral in harmonic space
-        spectrum = scl * (jnp.sqrt(totvol) / norm) * spectrum
-        spectrum = spectrum.at[0].set(totvol)
-        if kind.lower() == "power":
-            spectrum = jnp.sqrt(spectrum)
-        elif kind.lower() != "amplitude":
-            raise ValueError(f"invalid kind specified {kind!r}")
-        return spectrum
-
-    return MaternAmplitude(
-        grid=grid,
-        scale=scale,
-        cutoff=cutoff,
-        loglogslope=loglogslope,
-        renormalize_amplitude=renormalize_amplitude,
-        correlate=correlate,
-        ptree=ptree
-    )
 
 
 def non_parametric_amplitude(

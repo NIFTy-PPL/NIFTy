@@ -6,7 +6,7 @@ from typing import Union, Optional
 
 from ..correlated_field import (
     RegularCartesianGrid,
-    matern_amplitude,
+    MaternAmplitude,
     non_parametric_amplitude,
     WrappedCall, Amplitude)
 from ..model import Model
@@ -143,7 +143,7 @@ def build_amplitude_model(
     elif amplitude_model == "matern":
         _check_demands(
             key, settings, demands={'scale', 'cutoff', 'loglogslope'})
-        return matern_amplitude(
+        return MaternAmplitude(
             grid,
             scale=_set_default_or_call(settings['scale'],
                                        lognormal_prior),
