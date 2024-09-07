@@ -50,10 +50,11 @@ class CorrelatedMultiFrequencySky(Model):
         relative_log_frequencies: Union[tuple[float], ArrayLike],
         zero_mode: Model,
         spatial_fluctuations: Model,
-        spatial_amplitude: Amplitude, # TODO: make this a normalized amplitude model
+        spatial_amplitude: Amplitude,  # TODO: make this a normalized amplitude model
         spectral_index_mean: Model,
         spectral_index_fluctuations: Model,
-        spectral_amplitude: Optional[Amplitude] = None, # TODO: make this a normalized amplitude model
+        # TODO: make this a normalized amplitude model
+        spectral_amplitude: Optional[Amplitude] = None,
         spectral_index_deviations: Optional[Model] = None,
         nonlinearity: Optional[Callable] = jnp.exp,
         dtype: type = jnp.float64,
@@ -73,12 +74,12 @@ class CorrelatedMultiFrequencySky(Model):
         self.zero_mode = zero_mode
         self.spatial_fluctuations = spatial_fluctuations
         self.spatial_amplitude = _amplitude_without_fluctuations(
-            spatial_amplitude) # TODO: make this a normalized amplitude model
+            spatial_amplitude)  # TODO: make this a normalized amplitude model
         self.spectral_index_mean = spectral_index_mean
         self.spectral_index_fluctuations = spectral_index_fluctuations
         self.spectral_index_deviations = spectral_index_deviations
 
-        if spectral_amplitude is None: # TODO: make this a normalized amplitude model
+        if spectral_amplitude is None:  # TODO: make this a normalized amplitude model
             self.spectral_amplitude = None
         else:
             self.spectral_amplitude = _amplitude_without_fluctuations(
@@ -113,7 +114,7 @@ class CorrelatedMultiFrequencySky(Model):
             Implements:
             .. math::
                     sky = \\nonlinearity(
-                    F[A_spatial*io(k, \\mu_0) + 
+                    F[A_spatial*io(k, \\mu_0) +
                       A_spectral*(
                         slope_fluctuations(k)*(\\mu-\\mu_0)
                         + GaussMarkovProcess(k, \\mu-\\mu_0)
@@ -163,7 +164,8 @@ class CorrelatedMultiFrequencySky(Model):
             .. math::
                     sky = \\nonlinearity(
                     F[A_spatial * io(k, \\mu_0)] +
-                    (F[A_spectral * slope_fluctuations(k)] + slope_mean)*(\\mu-\\mu_0)
+                    (F[A_spectral * slope_fluctuations(k)] + slope_mean) *
+                      (\\mu-\\mu_0)
                     + zero_mode)
             where :math:`F` is the Fourier transform,
             :math:`k` is the spatial frequency index,
@@ -370,7 +372,8 @@ def build_default_mf_model(
 
     grid = _make_grid(shape, distances, harmonic_type)
 
-    fluct = 'fluctuations' if 'fluctuations' in spatial_amplitude_settings else 'scale' # FIXME: FIX WITH NORMAMP
+    # FIXME: FIX WITH NORMAMP
+    fluct = 'fluctuations' if 'fluctuations' in spatial_amplitude_settings else 'scale'
     spatial_fluctuations = _build_distribution_or_default(
         spatial_amplitude_settings[fluct],
         f'{prefix}_spatial_fluctuations',
