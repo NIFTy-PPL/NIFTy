@@ -366,14 +366,7 @@ class MaternAmplitude(Model):
         if self.renormalize_amplitude:
             logger.warning("Renormalize amplidude is not yet tested!")
 
-        models = [
-            self.zero_mode,
-            self.scale,
-            self.cutoff,
-            self.loglogslope,
-
-        ]
-
+        models = [self.scale, self.cutoff, self.loglogslope]
         domain = reduce(
             lambda a, b: a | b, [m.domain for m in models if m is not None]
         )
@@ -754,7 +747,7 @@ class CorrelatedFieldMaker:
             te = f"invalid `loglogslope` specified; got '{type(loglogslope)}'"
             raise TypeError(te)
 
-        ma = matern_amplitude(
+        ma = MaternAmplitude(
             grid=grid,
             scale=scale,
             cutoff=cutoff,
