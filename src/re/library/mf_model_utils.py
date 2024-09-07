@@ -8,10 +8,8 @@ from ..correlated_field import (
     RegularCartesianGrid,
     MaternAmplitude,
     NonParametricAmplitude,
-    WrappedCall, Amplitude)
-from ..model import Model
+    WrappedCall)
 from ..num.stats_distributions import lognormal_prior, normal_prior
-from ..tree_math import Vector
 
 
 def _safe_set_default_or_call(arg: Union[callable, tuple, list, None],
@@ -73,14 +71,14 @@ def _build_distribution_or_default(arg: Union[callable, tuple, list],
         white_init=True)
 
 
-def build_amplitude_model(
+def build_normalized_amplitude_model(
     grid: RegularCartesianGrid,
     settings: Optional[dict],
     amplitude_model: str = "non_parametric",
     renormalize_amplitude: bool = True,
     prefix: str = None,
     kind: str = "amplitude",
-) -> Optional[Amplitude]:
+) -> Union[None, MaternAmplitude, NonParametricAmplitude]:
     """
     Build an amplitude model based on
     the specified settings and model type.
@@ -126,31 +124,32 @@ def build_amplitude_model(
     key = f'{prefix}_amplitude_' if prefix is not None else 'amplitude_'
 
     if amplitude_model == "non_parametric":
-        _check_demands(key, settings, demands={'fluctuations', 'loglogavgslope',
-                                               'flexibility', 'asperity'})
+        _check_demands(
+            key,
+            settings,
+            demands={'loglogavgslope', 'flexibility', 'asperity'}
+        )
         return NonParametricAmplitude(
             grid,
-            fluctuations=_set_default_or_call(settings['fluctuations'],
-                                              lognormal_prior),
-            loglogavgslope=_set_default_or_call(settings['loglogavgslope'],
-                                                normal_prior),
-            flexibility=_safe_set_default_or_call(settings['flexibility'],
-                                                  lognormal_prior),
-            asperity=_safe_set_default_or_call(settings['asperity'],
-                                               lognormal_prior),
+            fluctuations=None,
+            loglogavgslope=_set_default_or_call(
+                settings['loglogavgslope'], normal_prior),
+            flexibility=_safe_set_default_or_call(
+                settings['flexibility'], lognormal_prior),
+            asperity=_safe_set_default_or_call(
+                settings['asperity'], lognormal_prior),
             prefix=key,
         )
     elif amplitude_model == "matern":
         _check_demands(
-            key, settings, demands={'scale', 'cutoff', 'loglogslope'})
+            key, settings, demands={'cutoff', 'loglogslope'})
         return MaternAmplitude(
             grid,
-            scale=_set_default_or_call(settings['scale'],
-                                       lognormal_prior),
-            cutoff=_set_default_or_call(settings['cutoff'],
-                                        lognormal_prior),
-            loglogslope=_set_default_or_call(settings['loglogslope'],
-                                             normal_prior),
+            scale=None,
+            cutoff=_set_default_or_call(
+                settings['cutoff'], lognormal_prior),
+            loglogslope=_set_default_or_call(
+                settings['loglogslope'], normal_prior),
             renormalize_amplitude=renormalize_amplitude,
             kind=kind,
             prefix=key)

@@ -12,30 +12,13 @@ from jax import vmap
 from numpy.typing import ArrayLike
 
 from .frequency_deviations import build_frequency_deviations_model
-from .mf_model_utils import (_build_distribution_or_default,
-                             _check_demands,
-                             build_amplitude_model)
+from .mf_model_utils import (
+    _build_distribution_or_default, build_normalized_amplitude_model)
 from .. import ShapeWithDtype, logger
 from ..correlated_field import (
-    RegularCartesianGrid,
-    _make_grid,
-    hartley,
-    Amplitude)
+    _make_grid, hartley, MaternAmplitude, NonParametricAmplitude)
 from ..model import Model
 from ..num.stats_distributions import lognormal_prior, normal_prior
-
-
-def _amplitude_without_fluctuations(amplitude: Amplitude) -> Amplitude:
-    """Return an amplitude model without fluctuations."""
-    def spectral_amplitude_func(x): return amplitude(
-        x) / amplitude.fluctuations(x)
-
-    return Amplitude(
-        spectral_amplitude_func,
-        amplitude.domain,
-        amplitude.grid,
-        lambda _: 1.,
-    )
 
 
 class CorrelatedMultiFrequencySky(Model):
@@ -50,17 +33,22 @@ class CorrelatedMultiFrequencySky(Model):
         relative_log_frequencies: Union[tuple[float], ArrayLike],
         zero_mode: Model,
         spatial_fluctuations: Model,
-        spatial_amplitude: Amplitude,  # TODO: make this a normalized amplitude model
+        spatial_amplitude: Union[MaternAmplitude, NonParametricAmplitude],
         spectral_index_mean: Model,
         spectral_index_fluctuations: Model,
-        # TODO: make this a normalized amplitude model
-        spectral_amplitude: Optional[Amplitude] = None,
+        spectral_amplitude: Optional[
+            Union[MaternAmplitude, NonParametricAmplitude]] = None,
         spectral_index_deviations: Optional[Model] = None,
         nonlinearity: Optional[Callable] = jnp.exp,
         dtype: type = jnp.float64,
     ):
-        if not isinstance(spatial_amplitude, Amplitude):
-            raise ValueError("`spatial_amplitude` must be an amplitude model.")
+
+        # The amplitudes supplied need to be normalized, as both the spatial
+        # and the spectral fluctuations are applied directly in the call to
+        # avoid degeneracies.
+        assert spatial_amplitude.fluctuations is None
+        if spectral_amplitude.fluctuations is not None:
+            assert spectral_amplitude.fluctuations is None
 
         grid = spatial_amplitude.grid
         slicing_tuple = (slice(None),) + (None,) * len(grid.shape)
@@ -73,17 +61,11 @@ class CorrelatedMultiFrequencySky(Model):
 
         self.zero_mode = zero_mode
         self._spatial_fluctuations = spatial_fluctuations
-        self.spatial_amplitude = _amplitude_without_fluctuations(
-            spatial_amplitude)  # TODO: make this a normalized amplitude model
+        self.spatial_amplitude = spatial_amplitude
         self._spectral_index_mean = spectral_index_mean
         self._spectral_index_fluctuations = spectral_index_fluctuations
         self._spectral_index_deviations = spectral_index_deviations
-
-        if spectral_amplitude is None:  # TODO: make this a normalized amplitude model
-            self.spectral_amplitude = None
-        else:
-            self.spectral_amplitude = _amplitude_without_fluctuations(
-                spectral_amplitude)
+        self.spectral_amplitude = spectral_amplitude
 
         models = [
             self.zero_mode,
@@ -382,7 +364,7 @@ def build_default_mf_model(
         lognormal_prior
     )
 
-    spatial_amplitude = build_amplitude_model(
+    spatial_amplitude = build_normalized_amplitude_model(
         grid,
         spatial_amplitude_settings,
         prefix=f'{prefix}_spatial',
@@ -399,7 +381,7 @@ def build_default_mf_model(
         lognormal_prior
     )
 
-    spectral_amplitude = build_amplitude_model(
+    spectral_amplitude = build_normalized_amplitude_model(
         grid,
         spectral_amplitude_settings,
         prefix=f'{prefix}_spectral',

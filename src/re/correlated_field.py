@@ -299,22 +299,14 @@ def _remove_slope(rel_log_mode_dist, x):
     return x - x[-1] * sc
 
 
-class Amplitude(Model, ABC):
-    # TODO: write docstring
-    # TODO: add `kind` attribute
-    def __init__(self, call, domain, grid, fluctuations):
-        super().__init__(call, domain=domain)
-        self.grid = grid
-        self.fluctuations = fluctuations
-
-    def power_spectrum(self):
-        raise NotImplementedError
-
+# TODO: Write abstract class for MaternAmplitude, NonParametricAmplitude
+# TODO: power_spectrum as part of both models
 
 class MaternAmplitude(Model):
     def __init__(
         self,
-        grid: Union[RegularCartesianGrid, RegularFourierGrid, HEALPixGrid, LMGrid],
+        grid: Union[
+            RegularCartesianGrid, RegularFourierGrid, HEALPixGrid, LMGrid],
         cutoff: Callable,
         loglogslope: Callable,
         renormalize_amplitude: bool,
@@ -406,7 +398,8 @@ class MaternAmplitude(Model):
 class NonParametricAmplitude(Model):
     def __init__(
         self,
-        grid,
+        grid: Union[
+            RegularCartesianGrid, RegularFourierGrid, HEALPixGrid, LMGrid],
         loglogavgslope: Callable,
         fluctuations: Optional[Callable] = None,
         flexibility: Optional[Callable] = None,
