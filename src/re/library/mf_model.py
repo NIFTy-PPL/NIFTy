@@ -103,62 +103,59 @@ class CorrelatedMultiFrequencySky(Model):
         domain[f"{self.prefix}_spectral_index_xi"] = ShapeWithDtype(
             grid.shape, dtype)
 
-        super().__init__(self._build_apply(), domain=domain)
+        super().__init__(domain=domain)
 
-    def _build_apply(self):
+    def __call__(self, p):
         if self.spectral_index_deviations is not None:
-            def apply_with_deviations(p):
-                """
-                Apply method of the model with spectral
-                index deviations.
-                Implements:
-                .. math::
-                        sky = \\nonlinearity(
-                        F[A_spatial*io(k, \\mu_0) + 
-                          A_spectral*(
-                            slope_fluctuations(k)*(\\mu-\\mu_0)
-                            + GaussMarkovProcess(k, \\mu-\\mu_0)
-                            - AvgSlope[GaussMarkovProcess]*(\\mu-\\mu_0)
-                          )] + slope_mean*(\\mu-\\mu_0) + zero_mode)
-                where :math:`F` is the Fourier transform,
-                :math:`k` is the spatial frequency index,
-                :math:`\\mu` is the log spectral frequency index,
-                and `slope` represents the spectral index.
-                """
-                zm = self.zero_mode(p)
+            """
+            Apply method of the model with spectral
+            index deviations.
+            Implements:
+            .. math::
+                    sky = \\nonlinearity(
+                    F[A_spatial*io(k, \\mu_0) + 
+                      A_spectral*(
+                        slope_fluctuations(k)*(\\mu-\\mu_0)
+                        + GaussMarkovProcess(k, \\mu-\\mu_0)
+                        - AvgSlope[GaussMarkovProcess]*(\\mu-\\mu_0)
+                      )] + slope_mean*(\\mu-\\mu_0) + zero_mode)
+            where :math:`F` is the Fourier transform,
+            :math:`k` is the spatial frequency index,
+            :math:`\\mu` is the log spectral frequency index,
+            and `slope` represents the spectral index.
+            """
+            zm = self.zero_mode(p)
 
-                spat_amplitude = self.spatial_amplitude(p)
-                spat_amplitude = spat_amplitude.at[0].set(0.0)
-                distributed_spatial_amplitude = spat_amplitude[self.pd]
+            spat_amplitude = self.spatial_amplitude(p)
+            spat_amplitude = spat_amplitude.at[0].set(0.0)
+            distributed_spatial_amplitude = spat_amplitude[self.pd]
 
-                spatial_xis = p[f"{self.prefix}_spatial_xi"]
-                spectral_xis = p[f"{self.prefix}_spectral_index_xi"]
-                spatial_reference = self.spatial_fluctuations(p) * spatial_xis
-                spectral_index_mean = self.spectral_index_mean(p)
-                spectral_terms = (self.spectral_index_fluctuations(p) *
-                                  spectral_xis * self._freqs +
-                                  self.spectral_index_deviations(p))
+            spatial_xis = p[f"{self.prefix}_spatial_xi"]
+            spectral_xis = p[f"{self.prefix}_spectral_index_xi"]
+            spatial_reference = self.spatial_fluctuations(p) * spatial_xis
+            spectral_index_mean = self.spectral_index_mean(p)
+            spectral_terms = (self.spectral_index_fluctuations(p) *
+                              spectral_xis * self._freqs +
+                              self.spectral_index_deviations(p))
 
-                if self.spectral_amplitude is None:
-                    cf_values = self.hdvol*vmap(self.ht)(
-                        distributed_spatial_amplitude *
-                        (spatial_reference + spectral_terms)
-                    )
-                else:
-                    spec_amplitude = self.spectral_amplitude(p)
-                    spec_amplitude = spec_amplitude.at[0].set(0.0)
-                    distributed_spectral_amplitude = spec_amplitude[self.pd]
+            if self.spectral_amplitude is None:
+                cf_values = self.hdvol*vmap(self.ht)(
+                    distributed_spatial_amplitude *
+                    (spatial_reference + spectral_terms)
+                )
+            else:
+                spec_amplitude = self.spectral_amplitude(p)
+                spec_amplitude = spec_amplitude.at[0].set(0.0)
+                distributed_spectral_amplitude = spec_amplitude[self.pd]
 
-                    cf_values = self.hdvol*vmap(self.ht)(
-                        distributed_spatial_amplitude * spatial_reference +
-                        distributed_spectral_amplitude * spectral_terms)
+                cf_values = self.hdvol*vmap(self.ht)(
+                    distributed_spatial_amplitude * spatial_reference +
+                    distributed_spectral_amplitude * spectral_terms)
 
-                return self._nonlinearity(
-                    cf_values + spectral_index_mean*self._freqs + zm)
+            return self._nonlinearity(
+                cf_values + spectral_index_mean*self._freqs + zm)
 
-            return apply_with_deviations
-
-        def apply_without_deviations(p):
+        else:
             """
             Apply method of the model without spectral
             index deviations.
@@ -199,8 +196,6 @@ class CorrelatedMultiFrequencySky(Model):
                 correlated_spatial_reference +
                 (correlated_spectral_index + spectral_index_mean)*self._freqs +
                 zm)
-
-        return apply_without_deviations
 
     def reference_frequency_distribution(self, p):
         """Convenience function to retrieve the model's spatial distribution at
