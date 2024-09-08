@@ -310,14 +310,12 @@ class MaternAmplitude(Model):
         cutoff: Callable,
         loglogslope: Callable,
         renormalize_amplitude: bool,
-        scale: Optional[Model] = None,
+        scale: Optional[Callable] = None,
         prefix: str = '',
         kind: str = "amplitude",
     ):
-        '''Some docstring.
-        '''
-
-        """Constructs the amplitude of a Matérn-kernel power spectrum.
+        """Initializes a model that computes the amplitude of a Matérn-kernel
+        power spectrum.
 
         See
         :class:`nifty8.re.correlated_field.CorrelatedFieldMaker.add_fluctuations
@@ -407,8 +405,8 @@ class NonParametricAmplitude(Model):
         prefix: str = "",
         kind: str = "amplitude",
     ):
-        """Constructs a function computing the amplitude of a non-parametric power
-        spectrum
+        """Initializes a model which computes the amplitude of a non-parametric
+        power spectrum.
 
         See
         :class:`nifty8.re.correlated_field.CorrelatedFieldMaker.add_fluctuations`

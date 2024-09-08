@@ -46,9 +46,18 @@ class CorrelatedMultiFrequencySky(Model):
         # The amplitudes supplied need to be normalized, as both the spatial
         # and the spectral fluctuations are applied directly in the call to
         # avoid degeneracies.
-        assert spatial_amplitude.fluctuations is None
-        if spectral_amplitude.fluctuations is not None:
-            assert spectral_amplitude.fluctuations is None
+        if spatial_amplitude.fluctuations is not None:
+            raise ValueError(
+                "Spatial amplitude must be normalized."
+                "It is not allowed to have `fluctuations`."
+            )
+
+        if spectral_amplitude is not None:
+            if spectral_amplitude.fluctuations is not None:
+                raise ValueError(
+                    "Spectral amplitude must be normalized."
+                    "It is not allowed to have `fluctuations`."
+                )
 
         grid = spatial_amplitude.grid
         slicing_tuple = (slice(None),) + (None,) * len(grid.shape)
