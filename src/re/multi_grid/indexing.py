@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
+# Authors: Gordian Edenhofer, Philipp Frank
 #!/usr/bin/env python3
 
 import operator
