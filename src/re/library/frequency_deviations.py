@@ -16,52 +16,65 @@ from ..gauss_markov import GaussMarkovProcess, build_fixed_point_wiener_process
 from ..model import Model
 
 
-class FrequencyDeviations(Model):
+class SlopelessGaussMarkovProcess(Model):
     """
-    Model for calculating frequency deviations relative to a reference frequency.
-    Implements an average slope remover which removes the average slope
-    introduced by the `deviations_process`.
+    Model that removes the average slope of a Gauss-Markov process relative to
+    a specific reference time. This ensures that the process has zero mean slope
+    when evaluated at various time stamps, effectively 'detrending' the process.
+
+    Let `g(t)` represent the Gauss-Markov process at time `t`. The class removes
+    the average slope of the process relative to the reference time, `t_ref`, by
+    computing the slope `m` using the following formula:
+
+    .. math::
+
+        m = \\frac{\\sum_{i} (g(t_i) - g(t_{ref}))(t_i - t_{ref})}{\\sum_{i} (t_i - t_{ref})^2}
+
+    Here:
+    - `t_i` are the time stamps from the `time_stamps` array.
+    - `g(t_i)` are the values of the Gauss-Markov process at these time stamps.
+    - `t_{ref}` is the reference time, corresponding to
+    `time_stamps[reference_time_index]`.
 
     Parameters
     ----------
-    deviations_process: GaussMarkovProcess
-        A Gauss-Markov process used to model frequency deviations.
-        The process is assumed to be identically zero at the
-        reference frequency.
-        TODO: Extend to allow for correlated field.
-    frequencies: Union[tuple[float], ArrayLike]
-        A list or array of frequencies at which deviations are calculated.
-    reference_frequency_index: int
-        The index of the reference frequency within the `frequencies` array.
+    process: GaussMarkovProcess
+        The input Gauss-Markov process that is assumed to be zero at the
+        reference time.
+        TODO: Extend to allow for a correlated field.
+    time_stamps: Union[tuple[float], ArrayLike]
+        A list or array of time stamps at which the deviations from the
+        reference slope are computed.
+    reference_time_index: int
+        The index of the reference time within the `time_stamps` array.
     """
 
     def __init__(
         self,
-        deviations_process: GaussMarkovProcess,  # TODO: Allow for correlated field
-        frequencies: Union[tuple[float], ArrayLike],
-        reference_frequency_index: int
+        process: GaussMarkovProcess,  # TODO: Allow for correlated field
+        time_stamps: Union[tuple[float], ArrayLike],
+        reference_time_index: int
     ):
-        self.deviations_process = deviations_process
+        self.process = process
 
         slicing_tuple = (
             (slice(None),) +
-            (None,) * len(self.deviations_process.target.shape[1:])
+            (None,) * len(self.process.target.shape[1:])
         )
-        relative_freqs = jnp.array(
-            frequencies - frequencies[reference_frequency_index])
-        relative_freqs = relative_freqs[slicing_tuple]
-        frequencies_denominator = 1 / jnp.sum(relative_freqs**2)
+        relative_times = jnp.array(
+            time_stamps - time_stamps[reference_time_index])
+        self._relative_times = relative_times[slicing_tuple]
+        self._denominator = 1 / jnp.sum(relative_times**2)
 
-        def deviations_call(p):
-            dev = self.deviations_process(p)
+        super().__init__(init=process.init)
 
-            dev_slope = (jnp.sum(dev*relative_freqs, axis=0)
-                         * frequencies_denominator)
+    def __call__(self, primals):
+        dev = self.process(primals)
 
-            return dev - dev_slope * relative_freqs
+        dev_slope = (jnp.sum(dev * self._relative_times, axis=0)
+                     * self._denominator)
 
-        super().__init__(
-            deviations_call, init=deviations_process.init)
+        return dev - dev_slope * self._relative_times
 
 
 def build_frequency_deviations_model(
@@ -70,7 +83,7 @@ def build_frequency_deviations_model(
     reference_frequency_index: int,
     deviations_settings: Optional[dict],
     prefix: str = None,
-) -> FrequencyDeviations | None:
+) -> SlopelessGaussMarkovProcess | None:
     """
     Builds a frequency deviations model based on
     the specified settings.
@@ -95,8 +108,8 @@ def build_frequency_deviations_model(
 
     Returns
     -------
-    FrequencyDeviations or None
-        A FrequencyDeviations instance configured with
+    SlopelessGaussMarkovProcess or None
+        A SlopelessGaussMarkovProcess instance configured with
         the specified settings.
         Returns None if `deviations_settings` is None.
 
@@ -133,4 +146,6 @@ def build_frequency_deviations_model(
     else:
         raise NotImplementedError(f'{process_name} not implemented.')
 
-    return FrequencyDeviations(process, log_frequencies, reference_frequency_index)
+    return SlopelessGaussMarkovProcess(process,
+                                       log_frequencies,
+                                       reference_frequency_index)

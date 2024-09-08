@@ -7,7 +7,7 @@ import jax.random as random
 import numpy as np
 import pytest
 
-from nifty8.re.library.mf_model import build_frequency_deviations_model, build_amplitude_model
+from nifty8.re.library.mf_model import build_frequency_deviations_model
 from nifty8.re.gauss_markov import build_wiener_process
 
 pmp = pytest.mark.parametrize
