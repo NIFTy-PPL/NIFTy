@@ -38,10 +38,6 @@ class Response(jft.Model):
         super().__init__(domain=jft.ShapeWithDtype(dims))
 
     def __call__(self, x):
-        # NOTE, think of `Model` as being just a plain function that takes some
-        # input and performs all the necessary computation for your model.
-        # Note, `scaling` here is completely degenarate with `offset_std` in the
-        # likelihood but the priors for them are very different.
         return x * self.constant
 
 
