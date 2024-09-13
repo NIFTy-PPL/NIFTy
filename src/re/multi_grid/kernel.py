@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 # Authors: Philipp Frank
-from functools import reduce
+from functools import partial, reduce
 import operator
 from typing import Callable, Iterable
 from jax.tree_util import register_pytree_node_class
@@ -19,18 +19,23 @@ def _mydist(x, y, periodicity=None):
         return jnp.where(jnp.abs(d) > L / 2.0, d - jnp.sign(d) * L, d)
     return x - y
 
+
 """
 Ideas for kernel:
 - A structure on a multigrid that can apply linear operators with inputs accross
   the grid
-- A Kernel as simple as coarse graining children to a parent; or could be a full
-  ICRefine MSCrefine
-- Should be fully jax transformable (TODO) to allow seamplessly being used in
-  larger models (e.g. models for variable kernels should be able to output an instance of 'kernel')
-- unified way of common functions such as `apply_at`, `apply`, `freeze` (see below)
-- Current internal logic: `index` always refers to a parent and operations (such as refine/convolve)
-  are constructed for all children of this parent.
+- A Kernel could be as simple as coarse graining children to a parent; or could
+  be a full ICRefine or MSCrefine
+- Should be fully jax transformable (TODO) to allow seamlessly being used in
+  larger models (e.g. models for variable kernels should be able to output an
+  instance of 'kernel')
+- Unified way of common functions such as `apply_at`, `apply`, `freeze` (see
+  below)
+- Current internal logic: `index` always refers to a parent and operations (such
+  as refine/convolve) are constructed for all children of this parent.
 """
+
+
 @register_pytree_node_class
 class KernelBase:
     def __getitem__(self, key):
@@ -50,7 +55,7 @@ class KernelBase:
         """Evaluate the kernel and store it in a `FrozenKernel`. Kernels may be
         grouped by similarity and accessed via lookup"""
         if (indices is None) and (indexmaps is None):
-            raise NotImplementedError # TODO
+            raise NotImplementedError  # TODO
             indices = []
             indexmaps = []
             for lvl in range(self.grid.depth):
@@ -85,8 +90,7 @@ class KernelBase:
         )
 
     def apply(self, x, copy=True):
-        """Applies the kernel to values on an entire multigrid
-        """
+        """Applies the kernel to values on an entire multigrid"""
         xd, gd = len(x), self.grid.depth
         if xd != gd:
             raise ValueError(f"Input of length {xd} does not match grid depth {gd}")
@@ -96,9 +100,7 @@ class KernelBase:
                 msg = f"Input at level {lvl} of size {xs} does not match grid of size {gs}"
                 raise ValueError(msg)
 
-        if copy:
-            # Option for in-place update
-            x = list(jnp.copy(xx) for xx in x)
+        x = list(jnp.copy(xx) for xx in x) if copy else x
         for lvl in range(self.grid.depth + 1):
             # TODO: Children of multiple pixels could be refined jointly requiring a
             # non-unit stride
@@ -108,7 +110,7 @@ class KernelBase:
                 index, lvl, x
             )
             assert index.flatten() == np.arange(self.grid.at(level).size)
-            x[level] = res.flatten()
+            x[level] = res.flatten()  # TODO see above
         return x
 
     def tree_flatten(self):
@@ -246,14 +248,14 @@ class CombineKernel(KernelBase):
     def get_indices(self, index, level):
         if level == self._grid.depth:
             raise ValueError("Finest level has no children to combine")
-        return (index, level), (
+        return (index, level), ((
             self._grid.at(level).children(index).reshape(index.shape + (-1,)),
             level + 1,
-        )
+        ),)
 
     def get_kernel(self, index, level):
         _, children = self.get_indices(index, level)
-        return jnp.ones(children.shape[1:-1] + (1, children.shape[-1]))
+        return (jnp.ones(children.shape[1:-1] + (1, children.shape[-1])),)
 
 
 class MSCRefine(KernelBase):
@@ -272,17 +274,17 @@ class MSCRefine(KernelBase):
     def get_indices(self, index, level):
         target, cindex = self._convolution.get_indices(index, level)
         if level == 0:
-            iindex = None
+            ids = ()
         else:
             itarget, iindex = self._interpolation.get_indices(index, level - 1)
             assert itarget == target
-            iindex = (iindex, level - 1)
-        return (target, level), (iindex, (cindex, level))
+            ids = ((iindex, level - 1),)
+        return (target, level), ids + ((cindex, level),)
 
     def get_kernel(self, index, level):
         ker = self._convolution.get_kernel(index, level)
         if level == 0:
-            return None, ker
+            return (ker,)
         iwgts = self._interpolation.get_kernel(index, level)
 
         _, iindex, cindex = self.get_indices(index, level)
@@ -321,7 +323,63 @@ class MSCRefine(KernelBase):
         parent_kernel = iwgts @ parent_kernel @ combine
         return (iwgts, ker - parent_kernel)
 
+
 class ICRefine(KernelBase):
-    def __init__(self, grid, kernel):
+    def __init__(self, grid, covariance, window_size):
         self._grid = grid
         # TODO
+        mapped_kernel = partial(covariance, axis=0)
+        mapped_kernel = vmap(mapped_kernel, in_axes=(None, -1), out_axes=-1)
+        mapped_kernel = vmap(mapped_kernel, in_axes=(-1, None), out_axes=-1)
+        self._covariance = mapped_kernel
+        self._window_size = tuple(window_size)
+        self._coerce_fine_kernel = False
+
+    def get_indices(self, index, level):
+        grid_at_lvl = self._grid.at(level)
+        if level == 0:
+            pixel_indices = np.mgrid[tuple(slice(0, sz) for sz in grid_at_lvl.shape)]
+            assert pixel_indices.shape[0] == grid_at_lvl.ndim
+            pixel_indices = pixel_indices.reshape(grid_at_lvl.ndim, -1)
+            return (index, level), ((pixel_indices, level), )
+        # Compute neighbors and map to coordinates outside of vmap to support
+        # non-batchable (non-JAX) coordinate transformations
+        gc = (
+            self._grid.at(level - 1)
+            .neighborhood(pixel_indices, self._window_size)
+            .reshape(index.shape, -1)
+        )
+        gf = grid_at_lvl.children(pixel_indices).reshape(index.shape + (-1))
+        return (gf, level), ((gc, level - 1), (gf, level))
+
+    def get_kernel(self, index, level):
+        grid_at_lvl = self.grid.at(level)
+        if level == 0:
+            _, (_, (ids, _)) = self.get_indices(index, level)
+            gc = grid_at_lvl.index2coord(ids)
+            assert gc.ndim == 2
+            cov = self._covariance(gc, gc)
+            assert cov.shape == (gc.shape[1],) * 2
+            cov_sqrt0 = jnp.linalg.cholesky(cov)
+            return (cov_sqrt0, )
+        _, ((gc, _), (gf, _)) = self.get_indices(index, level)
+        gc = self.grid.at(level - 1).index2coord(gc)
+        gf = grid_at_lvl.index2coord(gf)
+        assert gc.shape[0] == gf.shape[0]
+        odim = gc.shape[0]
+        # gc = gc.reshape(odim, np.prod(g_shape), np.prod(window_size))
+        # gf = gf.reshape(odim, np.prod(g_shape), np.prod(grid_at_lvl.splits))
+        coord = jnp.concatenate((gc, gf), axis=-1)
+        del gc, gf
+        cov = self._covariance(coord, coord)
+        del coord
+        # _cs = np.prod(window_size) + np.prod(grid_at_lvl.splits)
+        # assert cov.shape == (np.prod(g_shape),) + (_cs,) * 2
+        from ..refine.util import refinement_matrices
+
+        olf, fks = vmap(refinement_matrices, in_axes=(0, None, None))(
+            cov, gf.shape[2], self._coerce_fine_kernel
+        )
+        # olf = olf.reshape(g_shape + tuple(grid_at_lvl.splits) + tuple(window_size))
+        # fks = fks.reshape(g_shape + tuple(grid_at_lvl.splits) * 2)
+        return (olf, fks)
