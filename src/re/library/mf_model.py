@@ -8,6 +8,7 @@ from functools import reduce, partial
 from typing import Optional, Union, Callable
 
 import jax.numpy as jnp
+import numpy as np
 from jax import vmap
 from numpy.typing import ArrayLike
 
@@ -62,7 +63,7 @@ class CorrelatedMultiFrequencySky(Model):
         grid = spatial_amplitude.grid
         slicing_tuple = (slice(None),) + (None,) * len(grid.shape)
         self._prefix = prefix
-        self._freqs = jnp.array(relative_log_frequencies)[slicing_tuple]
+        self._freqs = np.array(relative_log_frequencies)[slicing_tuple]
         self._hdvol = 1.0 / grid.total_volume
         self._pd = grid.harmonic_grid.power_distributor
         self._ht = partial(hartley, axes=tuple(range(len(grid.shape))))
