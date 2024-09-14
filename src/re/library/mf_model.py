@@ -80,11 +80,15 @@ class CorrelatedMultiFrequencySky(Model):
             self.zero_mode,
             self._spatial_fluctuations,
             self.spatial_amplitude,
-            self._spectral_index_mean,
-            self._spectral_index_fluctuations,
-            self._spectral_index_deviations,
-            self.spectral_amplitude,
         ]
+
+        if self._freqs.shape[0] > 1:
+            models += [
+                self._spectral_index_mean,
+                self._spectral_index_fluctuations,
+                self._spectral_index_deviations,
+                self.spectral_amplitude,
+            ]
 
         domain = reduce(
             lambda a, b: a | b, [m.domain for m in models if m is not None]
@@ -95,9 +99,18 @@ class CorrelatedMultiFrequencySky(Model):
         domain[f"{self._prefix}_spectral_index_xi"] = ShapeWithDtype(
             grid.shape, dtype)
 
+        if self._freqs.shape[0] == 1:
+            domain.pop(f"{self._prefix}_spectral_index_xi")
+            self.spectral_amplitude = None
+            self.spectral_index_distribution = None
+            self.spectral_deviations_distribution = None
+            self.spectral_distribution = None
+
         super().__init__(domain=domain)
 
     def __call__(self, p):
+        if self._freqs.shape[0] == 1:
+            return self.reference_frequency_distribution(p)[None, ...]
         if self._spectral_index_deviations is not None:
             """
             Apply method of the model with spectral
