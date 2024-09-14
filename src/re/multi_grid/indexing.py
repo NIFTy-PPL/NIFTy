@@ -8,6 +8,7 @@ from functools import partial, reduce
 from typing import Callable, Iterable, Optional
 
 import numpy as np
+import jax.numpy as jnp
 import numpy.typing as npt
 
 # TODO make an open Grid with shifted indices
@@ -27,15 +28,18 @@ class GridAtLevel:
         self.parent_splits = parent_splits
 
     def _parse_index(self, index):
-        index = np.asarray(index)
+        index = jnp.asarray(index)
         if index.shape[0] != self.shape.size:
             l = index.shape[0]
             ve = f"index {index} is of invalid length {l} for shape {self.shape}"
             raise IndexError(ve)
-        if np.any(tuple(np.any(np.abs(idx) >= s) for idx, s in zip(index, self.shape))):
-            nm = self.__class__.__name__
-            ve = f"index {index} is out of bounds for {nm} with shape {self.shape}"
-            raise IndexError(ve)
+        # FIXME
+        #if jnp.any(
+        #    jnp.array(
+        #        list(jnp.any(jnp.abs(idx) >= s) for idx, s in zip(index, self.shape)))):
+        #    nm = self.__class__.__name__
+        #    ve = f"index {index} is out of bounds for {nm} with shape {self.shape}"
+        #    raise IndexError(ve)
         return index % self.shape[(slice(None),) + (np.newaxis,) * (index.ndim - 1)]
 
     @property
@@ -143,10 +147,13 @@ class Grid:
 @dataclass()
 class RegularGridAxisAtLevel(GridAtLevel):
     def index2coord(self, index):
-        return (index + 0.5) / self.shape[:, (np.newaxis,) * (index.ndim - 1)]
+        slc = (slice(None),)+(np.newaxis,) * (index.ndim - 1)
+        return (index + 0.5) / self.shape[slc]
 
     def coord2index(self, coord):
-        return coord * self.shape[:, (np.newaxis,) * (coord.ndim - 1)] - 0.5
+        slc = (slice(None),)+(np.newaxis,) * (coord.ndim - 1)
+        #TODO type
+        return coord * self.shape[slc] - 0.5
 
     def index2volume(self, index):
         return np.array(1.0 / self.size)[(np.newaxis,) * index.ndim]
