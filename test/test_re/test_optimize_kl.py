@@ -79,7 +79,7 @@ LH_INIT = (
                 random_draw(key, shape, float, random.normal),
                 3.0
                 + 1.0
-                / jax.tree_map(jnp.exp, random_draw(key, shape, float, random.normal)),
+                / tree_map(jnp.exp, random_draw(key, shape, float, random.normal)),
             )
         ),
     ),
