@@ -18,9 +18,7 @@ from jax import random
 from jax.tree_util import Partial, tree_map
 
 from . import optimize
-from .evi import (
-    Samples, _parse_jit, draw_linear_residual, nonlinearly_update_residual
-)
+from .evi import Samples, _parse_jit, draw_linear_residual, nonlinearly_update_residual
 from .likelihood import Likelihood
 from .logger import logger
 from .minisanity import minisanity
@@ -30,9 +28,7 @@ from .tree_math import get_map, hide_strings, vdot
 P = TypeVar("P")
 
 
-def get_status_message(
-    samples, state, residual=None, *, name="", map="lmap"
-) -> str:
+def get_status_message(samples, state, residual=None, *, name="", map="lmap") -> str:
     energy = state.minimization_state.fun
     msg_smpl = ""
     if isinstance(state.sample_state, optimize.OptimizeResults):
@@ -63,6 +59,7 @@ class _StandardHamiltonian(LazyModel):
     """Joined object storage composed of a user-defined likelihood and a
     standard normal prior.
     """
+
     likelihood: Likelihood = field(metadata=dict(static=False))
 
     def __init__(self, likelihood: Likelihood, /):
@@ -72,13 +69,10 @@ class _StandardHamiltonian(LazyModel):
         return self.energy(primals, **primals_kw)
 
     def energy(self, primals, **primals_kw):
-        return self.likelihood(primals, **
-                               primals_kw) + 0.5 * vdot(primals, primals)
+        return self.likelihood(primals, **primals_kw) + 0.5 * vdot(primals, primals)
 
     def metric(self, primals, tangents, **primals_kw):
-        return self.likelihood.metric(
-            primals, tangents, **primals_kw
-        ) + tangents
+        return self.likelihood.metric(primals, tangents, **primals_kw) + tangents
 
 
 def _kl_vg(
@@ -101,13 +95,7 @@ def _kl_vg(
 
 
 def _kl_met(
-    likelihood,
-    primals,
-    tangents,
-    primals_samples,
-    *,
-    map=jax.vmap,
-    reduce=_reduce
+    likelihood, primals, tangents, primals_samples, *, map=jax.vmap, reduce=_reduce
 ):
     assert isinstance(primals_samples, Samples)
     map = get_map(map)
@@ -123,8 +111,7 @@ def _kl_met(
 @jax.jit
 def concatenate_zip(*arrays):
     return tree_map(
-        lambda *x: jnp.stack(x, axis=1).reshape((-1, ) + x[0].shape[1:]),
-        *arrays
+        lambda *x: jnp.stack(x, axis=1).reshape((-1,) + x[0].shape[1:]), *arrays
     )
 
 
@@ -208,6 +195,7 @@ class OptimizeVI:
     `Metric Gaussian Variational Inference`, Jakob Knollmüller,
     Torsten A. Enßlin, `<https://arxiv.org/abs/1901.11033>`_
     """
+
     def __init__(
         self,
         likelihood: Likelihood,
@@ -274,14 +262,14 @@ class OptimizeVI:
                 kl_jit(_kl_vg, static_argnames=("map", "reduce")),
                 likelihood,
                 map=kl_map,
-                reduce=kl_reduce
+                reduce=kl_reduce,
             )
         if _kl_metric is None:
             _kl_metric = partial(
                 kl_jit(_kl_met, static_argnames=("map", "reduce")),
                 likelihood,
                 map=kl_map,
-                reduce=kl_reduce
+                reduce=kl_reduce,
             )
         if _draw_linear_residual is None:
             _draw_linear_residual = partial(
@@ -298,7 +286,7 @@ class OptimizeVI:
             )
             _nonlinearly_update_residual = partial(
                 nonlinearly_update_residual,
-                None, # Explicify no likelihood dependency
+                None,  # Explicify no likelihood dependency
                 _nonlinear_update_funcs=_nonlin_funcs,
             )
         if _get_status_message is None:
@@ -325,9 +313,7 @@ class OptimizeVI:
         smpls, smpls_states = sampler(primals, keys)
         # zip samples such that the mirrored-counterpart always comes right
         # after the original sample
-        smpls = Samples(
-            pos=primals, samples=concatenate_zip(smpls, -smpls), keys=keys
-        )
+        smpls = Samples(pos=primals, samples=concatenate_zip(smpls, -smpls), keys=keys)
         return smpls, smpls_states
 
     def nonlinearly_update_samples(self, samples: Samples, **kwargs):
@@ -337,7 +323,7 @@ class OptimizeVI:
         curver = Partial(self.nonlinearly_update_residual, **kwargs)
         curver = self.residual_map(curver, in_axes=(None, 0, 0, 0))
         assert len(samples.keys) == len(samples) // 2
-        metric_sample_key = concatenate_zip(*((samples.keys, ) * 2))
+        metric_sample_key = concatenate_zip(*((samples.keys,) * 2))
         sgn = jnp.ones(len(samples.keys))
         sgn = concatenate_zip(sgn, -sgn)
         smpls, smpls_states = curver(
@@ -356,7 +342,7 @@ class OptimizeVI:
         point_estimates,
         draw_linear_kwargs={},
         nonlinearly_update_kwargs={},
-        **kwargs
+        **kwargs,
     ):
         # Always resample if `n_samples` increased
         n_keys = 0 if samples.keys is None else len(samples.keys)
@@ -368,8 +354,10 @@ class OptimizeVI:
             sample_mode = sample_mode.replace("_sample", "_resample")
 
         if sample_mode.lower() in (
-            "linear_resample", "linear_sample", "nonlinear_resample",
-            "nonlinear_sample"
+            "linear_resample",
+            "linear_sample",
+            "nonlinear_resample",
+            "nonlinear_sample",
         ):
             k_smpls = samples.keys  # Re-use the keys if not re-sampling
             if sample_mode.lower().endswith("_resample"):
@@ -380,14 +368,14 @@ class OptimizeVI:
                 k_smpls,
                 point_estimates=point_estimates,
                 **draw_linear_kwargs,
-                **kwargs
+                **kwargs,
             )
             if sample_mode.lower().startswith("nonlinear"):
                 samples, st_smpls = self.nonlinearly_update_samples(
                     samples,
                     point_estimates=point_estimates,
                     **nonlinearly_update_kwargs,
-                    **kwargs
+                    **kwargs,
                 )
             elif not sample_mode.lower().startswith("linear"):
                 ve = f"invalid sampling mode {sample_mode!r}"
@@ -397,7 +385,7 @@ class OptimizeVI:
                 samples,
                 point_estimates=point_estimates,
                 **nonlinearly_update_kwargs,
-                **kwargs
+                **kwargs,
             )
         elif sample_mode == "":
             samples, st_smpls = samples, 0  # Do nothing for MAP
@@ -411,7 +399,7 @@ class OptimizeVI:
         samples: Samples,
         minimize: Callable[..., optimize.OptimizeResults] = optimize._newton_cg,
         minimize_kwargs={},
-        **kwargs
+        **kwargs,
     ) -> optimize.OptimizeResults:
         fun_and_grad = Partial(
             self.kl_value_and_grad, primals_samples=samples, **kwargs
@@ -422,7 +410,7 @@ class OptimizeVI:
             x0=samples.pos,
             fun_and_grad=fun_and_grad,
             hessp=hessp,
-            **minimize_kwargs
+            **minimize_kwargs,
         )
         return kl_opt_state
 
@@ -539,16 +527,14 @@ class OptimizeVI:
             n_samples=n_samples,
             draw_linear_kwargs=draw_linear_kwargs,
             nonlinearly_update_kwargs=nonlinearly_update_kwargs,
-            **kwargs
+            **kwargs,
         )
 
         kl_kwargs = _getitem_at_nit(config, "kl_kwargs", nit).copy()
         kl_opt_state = self.kl_minimize(samples, **kl_kwargs, **kwargs)
         samples = samples.at(kl_opt_state.x)
         # Remove unnecessary references
-        kl_opt_state = kl_opt_state._replace(
-            x=None, jac=None, hess=None, hess_inv=None
-        )
+        kl_opt_state = kl_opt_state._replace(x=None, jac=None, hess=None, hess_inv=None)
 
         state = state._replace(
             nit=nit + 1,
@@ -631,14 +617,12 @@ def optimize_kl(
             kl_map=kl_map,
             residual_map=residual_map,
             kl_reduce=kl_reduce,
-            mirror_samples=mirror_samples
+            mirror_samples=mirror_samples,
         )
 
     last_fn = os.path.join(odir, LAST_FILENAME) if odir is not None else None
     resume_fn = resume if os.path.isfile(resume) else last_fn
-    sanity_fn = os.path.join(
-        odir, MINISANITY_FILENAME
-    ) if odir is not None else None
+    sanity_fn = os.path.join(odir, MINISANITY_FILENAME) if odir is not None else None
 
     samples = None
     if isinstance(position_or_samples, Samples):
