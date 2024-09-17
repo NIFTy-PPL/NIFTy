@@ -414,11 +414,11 @@ def wiener_filter_posterior(
     sampling_map: callable
         Map function used for the residual sampling functions.
     """
-    shift = likelihood.forward(jax.tree.map(jnp.zeros_like, likelihood.domain))
+    shift = likelihood.forward(tree_map(jnp.zeros_like, likelihood.domain))
     data = likelihood.likelihood.data - shift
 
     if primals is None:
-        primals = jax.tree.map(jnp.zeros_like, likelihood.domain)
+        primals = tree_map(jnp.zeros_like, likelihood.domain)
     primals_data = likelihood.forward(primals)
 
     if optimize_for_linear:
