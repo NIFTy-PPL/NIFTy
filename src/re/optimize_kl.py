@@ -18,7 +18,9 @@ from jax import random
 from jax.tree_util import Partial, tree_map
 
 from . import optimize
-from .evi import Samples, _parse_jit, draw_linear_residual, nonlinearly_update_residual
+from .evi import (
+    Samples, _parse_jit, draw_linear_residual, nonlinearly_update_residual, concatenate_zip
+)
 from .likelihood import Likelihood
 from .logger import logger
 from .minisanity import minisanity
@@ -106,13 +108,6 @@ def _kl_met(
     vmet = map(ham.metric, in_axes=(0, None))
     s = vmet(primals_samples.at(primals).samples, tangents)
     return reduce(s)
-
-
-@jax.jit
-def concatenate_zip(*arrays):
-    return tree_map(
-        lambda *x: jnp.stack(x, axis=1).reshape((-1,) + x[0].shape[1:]), *arrays
-    )
 
 
 SMPL_MODE_TYP = Literal[
@@ -437,7 +432,7 @@ class OptimizeVI:
 
         Parameters
         ----------
-        key : jax random number generataion key
+        key : jax random number generation key
         nit : int
             Current iteration number.
         n_samples : int or callable

@@ -12,9 +12,17 @@ from jax import random
 from jax.tree_util import Partial, register_pytree_node_class, tree_leaves, tree_map
 
 from . import conjugate_gradient, optimize
-from .likelihood import Likelihood, _parse_point_estimates, partial_insert_and_remove
 from .misc import conditional_raise
 from .tree_math import Vector, assert_arithmetics, dot, random_like, stack, vdot
+from .custom_map import smap
+from .likelihood import (
+    Likelihood,
+    LikelihoodWithModel,
+    _parse_point_estimates,
+    partial_insert_and_remove,
+    _functional_conj,
+)
+
 
 P = TypeVar("P")
 
@@ -29,6 +37,13 @@ def _parse_jit(jit):
     if isinstance(jit, bool):
         return jax.jit if jit else _no_jit
     raise TypeError(f"expected `jit` to be callable or bolean; got {jit!r}")
+
+
+@jax.jit
+def concatenate_zip(*arrays):
+    return tree_map(
+        lambda *x: jnp.stack(x, axis=1).reshape((-1,) + x[0].shape[1:]), *arrays
+    )
 
 
 def _process_point_estimate(x, primals, point_estimates, insert):
@@ -369,3 +384,66 @@ class Samples:
         # if pos is not None:  # confuses JAX
         #     smpls = tree_map(lambda p, s: s - p[jnp.newaxis], pos, smpls)
         return cls(pos=pos, samples=smpls, keys=keys)
+
+
+def wiener_filter_posterior(
+    likelihood: LikelihoodWithModel,
+    key,
+    n_samples: int,
+    draw_linear_kwargs: dict,
+    primals=None,
+    optimize_for_linear=False,
+    sampling_map=smap,
+):
+    """Computes wiener filter solution for a standardized model.
+
+    Parameters
+    ----------
+    likelihood: :class:`~nifty8.re.likelihood.LikelihoodWithModel`
+        Likelihood to be used for the wiener filter.
+    key: jax random number generation key.
+    n_samples: int
+        Number of samples to draw.
+    draw_linear_kwargs: dict
+        Configuration for drawing linear samples, see
+        :func:`draw_linear_residual`.
+    primals: tree-like
+        Position around which to linearize.
+    optimize_for_linear: bool
+        Whether to optimize computation for truly linear model.
+    sampling_map: callable
+        Map function used for the residual sampling functions.
+    """
+    shift = likelihood.forward(jax.tree.map(jnp.zeros_like, likelihood.domain))
+    data = likelihood.likelihood.data - shift
+
+    if primals is None:
+        primals = jax.tree.map(jnp.zeros_like, likelihood.domain)
+    primals_data = likelihood.forward(primals)
+
+    if optimize_for_linear:
+        forward_T = jax.linear_transpose(likelihood.forward, likelihood.domain)
+    else:
+        _, forward_T = jax.vjp(likelihood.forward, primals)
+    forward_T = _functional_conj(forward_T)
+
+    n_inv_d = likelihood.likelihood.metric(primals_data, data)
+    j = forward_T(n_inv_d)[0]
+
+    def post_cov_inv(tangents, primals):
+        return likelihood.metric(primals, tangents) + tangents
+
+    post_mean, info = conjugate_gradient.cg(
+        partial(post_cov_inv, primals=primals), j, **draw_linear_kwargs["cg_kwargs"]
+    )
+    if (info < 0) if info is not None else False:
+        raise ValueError("conjugate gradient failed")
+
+    s_keys = random.split(key, n_samples)
+    draw_wiener_residual = partial(
+        draw_linear_residual, likelihood, **draw_linear_kwargs
+    )
+    draw_wiener_residual = sampling_map(draw_wiener_residual, in_axes=(None, 0))
+    smpls, _ = draw_wiener_residual(post_mean, s_keys)
+
+    return Samples(pos=post_mean, samples=concatenate_zip(smpls, -smpls), keys=s_keys)
