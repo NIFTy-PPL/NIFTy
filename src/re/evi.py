@@ -389,8 +389,8 @@ class Samples:
 def wiener_filter_posterior(
     likelihood: LikelihoodWithModel,
     key,
-    n_samples: int,
-    draw_linear_kwargs: dict,
+    n_samples: int=0,
+    draw_linear_kwargs: dict={},
     primals=None,
     optimize_for_linear=False,
     sampling_map=smap,
@@ -434,7 +434,7 @@ def wiener_filter_posterior(
         return likelihood.metric(primals, tangents) + tangents
 
     post_mean, info = conjugate_gradient.cg(
-        partial(post_cov_inv, primals=primals), j, **draw_linear_kwargs["cg_kwargs"]
+        partial(post_cov_inv, primals=primals), j, name=draw_linear_kwargs.get("cg_name", None), **draw_linear_kwargs.get("cg_kwargs", {}),
     )
     if (info < 0) if info is not None else False:
         raise ValueError("conjugate gradient failed")
