@@ -6,6 +6,8 @@ import operator
 from dataclasses import dataclass
 from functools import partial, reduce
 from typing import Callable, Iterable, Optional
+from jax.experimental import checkify
+from ..tree_math.pytree_string import PyTreeString
 
 import numpy as np
 import jax.numpy as jnp
@@ -33,13 +35,92 @@ class GridAtLevel:
             l = index.shape[0]
             ve = f"index {index} is of invalid length {l} for shape {self.shape}"
             raise IndexError(ve)
-        # FIXME
-        #if jnp.any(
-        #    jnp.array(
-        #        list(jnp.any(jnp.abs(idx) >= s) for idx, s in zip(index, self.shape)))):
-        #    nm = self.__class__.__name__
-        #    ve = f"index {index} is out of bounds for {nm} with shape {self.shape}"
-        #    raise IndexError(ve)
+        ar = jnp.array(list(jnp.all(jnp.abs(idx) < s) for idx, s in zip(index, self.shape)))
+        checkify.check(jnp.all(ar), "index {index} is out of bounds for {nm} with shape {shp}",
+                       ar=ar, index=index, nm=PyTreeString(self.__class__.__name__), shp=self.shape)
+        return index % self.shape[(slice(None),) + (np.newaxis,) * (index.ndim - 1)]
+
+    @property
+    def size(self):
+        return reduce(operator.mul, self.shape, 1)
+
+    @property
+    def ndim(self):
+        return len(self.shape)
+
+    def children(self, index) -> np.ndarray:
+        if self.splits is None:
+            raise IndexError("This level has no children")
+        index = self._parse_index(index)
+        dtp = np.result_type(index)
+        f = self.splits[(slice(None),) + (np.newaxis,) * (index.ndim - 1)]
+        c = np.mgrid[tuple(slice(sz) for sz in self.splits)].astype(dtp)
+        c_bc = (
+            (slice(None),)
+            + (np.newaxis,) * (index.ndim - 1)
+            + (slice(None),) * self.ndim
+        )
+        ids = index * f
+        return ids[(slice(None),) * ids.ndim + (np.newaxis,) * self.ndim] + c[c_bc]
+
+    def neighborhood(self, index, window_size: Iterable[int]):
+        index = self._parse_index(index)
+        dtp = np.result_type(index)
+        window_size = np.asarray(window_size)
+        assert window_size.size == self.ndim
+        c = np.mgrid[tuple(slice(sz) for sz in window_size)].astype(dtp)
+        c -= (window_size // 2)[(slice(None),) + (np.newaxis,) * self.ndim]
+        c_bc = (
+            (slice(None),)
+            + (np.newaxis,) * (index.ndim - 1)
+            + (slice(None),) * self.ndim
+        )
+        m_bc = (slice(None),) + (np.newaxis,) * (index.ndim - 1 + self.ndim)
+        id_bc = (slice(None),) * index.ndim + (np.newaxis,) * self.ndim
+        res = (index[id_bc] + c[c_bc]) % self.shape[m_bc]
+        return res
+
+    def parent(self, index):
+        if self.parent_splits is None:
+            raise IndexError("you are alone in this world")
+        index = self._parse_index(index)
+        bc = (slice(None),) + (np.newaxis,) * (index.ndim - 1)
+        return index // self.parent_splits[bc]
+
+    def index2coord(self, index, **kwargs):
+        return NotImplementedError()
+
+    def coord2index(self, coord, **kwargs):
+        return NotImplementedError()
+
+    def index2volume(self, index, **kwargs):
+        return NotImplementedError()
+
+@dataclass()
+class OpenGridAtLevel(GridAtLevel):
+    shape: npt.NDArray[np.int_]
+    splits: npt.NDArray[np.int_]
+    parent_splits: Optional[npt.NDArray[np.int_]]
+
+    def __init__(self, shape, padding, splits=None, parent_splits=None):
+        super().__init__(shape=shape, splits=splits, parent_splits=parent_splits)
+        self.shape = np.atleast_1d(shape)
+        if splits is not None:
+            splits = np.atleast_1d(splits)
+        self.splits = splits
+        if parent_splits is not None:
+            parent_splits = np.atleast_1d(parent_splits)
+        self.parent_splits = parent_splits
+
+    def _parse_index(self, index):
+        index = jnp.asarray(index)
+        if index.shape[0] != self.shape.size:
+            l = index.shape[0]
+            ve = f"index {index} is of invalid length {l} for shape {self.shape}"
+            raise IndexError(ve)
+        ar = jnp.array(list(jnp.all(jnp.abs(idx) < s) for idx, s in zip(index, self.shape)))
+        checkify.check(jnp.all(ar), "index {index} is out of bounds for {nm} with shape {shp}",
+                       ar=ar, index=index, nm=PyTreeString(self.__class__.__name__), shp=self.shape)
         return index % self.shape[(slice(None),) + (np.newaxis,) * (index.ndim - 1)]
 
     @property
@@ -157,6 +238,10 @@ class RegularGridAxisAtLevel(GridAtLevel):
 
     def index2volume(self, index):
         return np.array(1.0 / self.size)[(np.newaxis,) * index.ndim]
+
+#def RegularGrid(*, shape0, splits):
+
+
 
 
 def _fill_bad_healpix_neighbors(nside, neighbors, nest: bool = True):
@@ -376,9 +461,9 @@ class OGridAtLevel(GridAtLevel):
             ]
             assert c.shape[0] == (i.stop - i.start)
             bshp = np.broadcast_shapes(out.shape[1:], c.shape[1:])
-            c = np.broadcast_to(c, c.shape[:1] + bshp)
-            out = np.broadcast_to(out, out.shape[:1] + bshp)
-            out = np.concatenate((out, c), axis=0)
+            c = jnp.broadcast_to(c, c.shape[:1] + bshp)
+            out = jnp.broadcast_to(out, out.shape[:1] + bshp)
+            out = jnp.concatenate((out, c), axis=0)
         return out
 
     def neighborhood(self, index, window_size: tuple[int]):
@@ -390,11 +475,9 @@ class OGridAtLevel(GridAtLevel):
         )
         assert len(window_size) == self.ndim
         neighborhood = []
-        valid = []
         for i, g in zip(islice, self.grids):
-            n, v = g.neighborhood(index[i], window_size[i])
+            n = g.neighborhood(index[i], window_size[i])
             neighborhood.append(n)
-            valid.append(v)
 
         # Make initial entry broadcast-able to the full final shape
         out = neighborhood[0][
@@ -402,7 +485,7 @@ class OGridAtLevel(GridAtLevel):
             + (np.newaxis,) * (ndims_sum - self.grids[0].ndim)
         ]
         # Successively concatenate all broadcasted neighbors
-        for n, v, i in zip(neighborhood[1:], valid[1:], islice[1:]):
+        for n, i in zip(neighborhood[1:], islice[1:]):
             n = n[
                 (slice(None),) * index.ndim
                 + (np.newaxis,) * i.start
@@ -411,22 +494,22 @@ class OGridAtLevel(GridAtLevel):
             ]
             assert n.shape[0] == (i.stop - i.start)
             bshp = np.broadcast_shapes(out.shape[1:], n.shape[1:])
-            n = np.broadcast_to(n, n.shape[:1] + bshp)
-            out = np.broadcast_to(out, out.shape[:1] + bshp)
-            out = np.concatenate((out, n), axis=0)
+            n = jnp.broadcast_to(n, n.shape[:1] + bshp)
+            out = jnp.broadcast_to(out, out.shape[:1] + bshp)
+            out = jnp.concatenate((out, n), axis=0)
         return out
 
     def parent(self, index):
         ndims_off = tuple(np.cumsum(tuple(g.ndim for g in self.grids)))
         islice = tuple(slice(l, r) for l, r in zip((0,) + ndims_off[:-1], ndims_off))
         parent = tuple(g.parent(index[i]) for i, g in zip(islice, self.grids))
-        return np.concatenate(parent, axis=0)
+        return jnp.concatenate(parent, axis=0)
 
     def index2coord(self, index, **kwargs):
         ndims_off = tuple(np.cumsum(tuple(g.ndim for g in self.grids)))
         islice = tuple(slice(l, r) for l, r in zip((0,) + ndims_off[:-1], ndims_off))
         coord = tuple(g.index2coord(index[i]) for i, g in zip(islice, self.grids))
-        return np.concatenate(coord, axis=0)
+        return jnp.concatenate(coord, axis=0)
 
     def coord2index(self, coord, **kwargs):
         # TODO[@Philipp+@Gordian]: The grids do not store the ndim of the coord
@@ -695,9 +778,9 @@ class SparseGridAtLevel(FlatGridAtLevel):
         arrayid = np.searchsorted(mapping, index)
         #  TODO Benchmark searchsorted on stack instead of second one with `right`
         valid = np.searchsorted(mapping, index, side="right") == arrayid + 1
-        if not np.all(valid):
-            ids = arrayid[~valid]
-            raise IndexError(f"Flatindex {ids} not on child grid of {self.__name__}")
+
+        checkify.check(jnp.all(valid), "Flatindex {ids} not on child grid of {nm}",
+                       ids=arrayid[~valid], nm=PyTreeString(self.__class__.__name__))
         return arrayid
 
     def children(self, index) -> np.ndarray:
