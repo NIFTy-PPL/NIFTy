@@ -9,9 +9,9 @@ from jax import numpy as jnp
 
 from .logger import logger
 from .misc import doc_from
-from .tree_math import assert_arithmetics, result_type
+from .tree_math import assert_arithmetics
 from .tree_math import norm as jft_norm
-from .tree_math import size, vdot, where, zeros_like
+from .tree_math import result_type, size, vdot, where, zeros_like
 
 HessVP = Callable[[jnp.ndarray], jnp.ndarray]
 
@@ -162,7 +162,7 @@ def _cg(
                 info = 0
                 break
             else:
-                pos = previous_gamma / (-curv) * j
+                pos = previous_gamma / (-curv) * (-j)
                 info = 0
                 break
         alpha = previous_gamma / curv
@@ -229,7 +229,7 @@ def _static_cg(
     miniter=None,
     maxiter=None,
     name=None,
-    _raise_nonposdef=False,  # TODO
+    _raise_nonposdef=True,
     **kwargs
 ) -> CGResults:
     from jax.debug import callback
@@ -272,21 +272,27 @@ def _static_cg(
 
         q = mat(d)
         curv = vdot(d, q)
-        # ValueError("zero curvature in conjugate gradient")
-        info = jnp.where(curv == 0., -1, info)
         alpha = previous_gamma / curv
-        # ValueError("implausible gradient scaling `alpha < 0`")
-        info = jnp.where(alpha < 0., -1, info)
+        # ValueError("implausible or zero curvature in conjugate gradient")
+        info = jnp.where(curv <= 0., jnp.where(_raise_nonposdef, -1, 0), info)
+        alpha = jnp.where((curv <= 0.) & (not _raise_nonposdef), 0., alpha)
         pos = pos - alpha * d
+        pos = where(
+            (curv < 0.) & (not _raise_nonposdef) & (i <= 1),
+            previous_energy / (-curv) * (-j),
+            pos,
+        )
         r = cond(
-            i % N_RESET == 0, lambda x: mat(x["pos"]) - x["j"],
-            lambda x: x["r"] - x["q"] * x["alpha"], {
+            (i % N_RESET == 0) & (info < -1),
+            lambda x: mat(x["pos"]) - x["j"],
+            lambda x: x["r"] - x["q"] * x["alpha"],
+            {
                 "pos": pos,
                 "j": j,
                 "r": r,
                 "q": q,
                 "alpha": alpha
-            }
+            },
         )
         gamma = vdot(r, r)
 
@@ -304,7 +310,11 @@ def _static_cg(
         energy_diff = previous_energy - energy
         neg_energy_eps = -eps * jnp.abs(energy)
         # print(f"energy increased", file=sys.stderr)
-        info = jnp.where(energy_diff < neg_energy_eps, -1, info)
+        info = jnp.where(
+            energy_diff < neg_energy_eps,
+            jnp.where(_raise_nonposdef, -1, i),
+            info,
+        )
         if absdelta is not None:
             info = jnp.where(
                 (energy_diff < absdelta) & (i >= miniter) & (info != -1), 0,
