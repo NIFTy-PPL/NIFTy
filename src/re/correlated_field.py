@@ -234,7 +234,9 @@ def _log_modes(m_length):
     return um, log_vol
 
 
-def _make_grid(shape, distances, harmonic_type) -> RegularCartesianGrid:
+def make_grid(
+    shape, distances, harmonic_type
+) -> Union[RegularCartesianGrid, HEALPixGrid]:
     """Creates the grid for the amplitude model"""
     shape = (shape,) if isinstance(shape, int) else tuple(shape)
 
@@ -549,7 +551,7 @@ class CorrelatedFieldMaker:
         Enßlin, Torsten, `<https://arxiv.org/abs/2002.05218>`_
         `<http://dx.doi.org/10.1038/s41550-021-01548-0>`_
         """
-        grid = _make_grid(shape, distances, harmonic_type)
+        grid = make_grid(shape, distances, harmonic_type)
 
         flu = fluctuations
         if isinstance(flu, (tuple, list)):
@@ -655,7 +657,7 @@ class CorrelatedFieldMaker:
         Enßlin, Torsten, `<https://arxiv.org/abs/2105.13483>`_
         `<https://doi.org/10.1371/journal.pone.0275011>`_
         """
-        grid = _make_grid(shape, distances, harmonic_type)
+        grid = make_grid(shape, distances, harmonic_type)
 
         if isinstance(scale, (tuple, list)):
             scale = lognormal_prior(*scale)
