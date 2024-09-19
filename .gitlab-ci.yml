@@ -147,7 +147,7 @@ run_getting_started_niftyre_nonlinear_regression:
     paths:
       - '*.png'
 
-run_getting_started_niftyre_nonlinear_regression:
+run_getting_started_niftyre_wiener_filter:
   stage: demo_runs
   script:
     - python3 demos/a_wiener_filter.py
