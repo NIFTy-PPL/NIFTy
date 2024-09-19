@@ -266,6 +266,72 @@ class CorrelatedMultiFrequencySky(Model):
                                    self._freqs + deviations)
         ) + spectral_index_mean * self._freqs
 
+    def get_deviations_at_relative_log_freqency(
+        self,
+        p,
+        relative_log_frequency
+    ):
+        """Convenience function to retrieve the model's deviations at
+        a given relative log frequency."""
+        # TODO: deviations could be recalculated at
+        # given relative_log_frequency instead of interp
+        if self._spectral_index_deviations is None:
+            return 0.0
+
+        deviations = self._spectral_index_deviations(p)
+
+        def _interpolate_1d(times_series, times, target_time):
+            return jnp.interp(target_time, times, times_series)
+
+        _interp = partial(_interpolate_1d,
+                          times=self._freqs.reshape(-1),
+                          target_time=relative_log_frequency)
+
+        _mapped_interp = vmap(vmap(_interp, in_axes=0), in_axes=0)
+
+        return _mapped_interp(deviations.T)
+
+    def get_spectral_distribution_at_relative_log_frequency(
+        self,
+        p,
+        relative_log_frequency
+    ):
+        """Convenience function to retrieve the model's spectral
+        distribution at a given relative frequency."""
+        if self.spectral_amplitude is None:
+            amplitude = self.spatial_amplitude(p)
+        else:
+            amplitude = self.spectral_amplitude(p)
+        amplitude = amplitude.at[0].set(0.0)
+
+        spectral_xi = p[f"{self._prefix}_spectral_index_xi"]
+        spectral_index_mean = self._spectral_index_mean(p)
+        spectral_index_fluc = self._spectral_index_fluctuations(
+            p) * spectral_xi
+
+        deviations = self.get_deviations_at_relative_log_freqency(
+            p, relative_log_frequency)
+
+        return self._hdvol*self._ht(
+            amplitude[self._pd] * (spectral_index_fluc *
+                                   relative_log_frequency + deviations)
+        ) + spectral_index_mean * relative_log_frequency
+
+    def get_distribution_at_relative_log_frequency(
+        self,
+        p,
+        relative_log_frequency
+    ):
+        """Convenience function to retrieve the model's distribution
+        at a given relative frequency."""
+        spatial_distr = self.reference_frequency_distribution(p)
+        spec_dist = self.get_spectral_distribution_at_relative_log_frequency(
+            p,
+            relative_log_frequency
+        )
+        # FIXME: this only works for the default nonlinearity
+        return spatial_distr * self._nonlinearity(spec_dist)
+
 
 def build_default_mf_model(
     prefix: str,
