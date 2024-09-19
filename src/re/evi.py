@@ -395,62 +395,68 @@ class Samples:
 
 def wiener_filter_posterior(
     likelihood: LikelihoodWithModel,
+    position: Optional[P] = None,
+    *,
     key,
-    n_samples: int=0,
-    draw_linear_kwargs: dict={},
-    primals=None,
-    optimize_for_linear=False,
-    sampling_map=smap,
-):
+    n_samples: int = 0,
+    residual_map="smap",
+    draw_linear_kwargs: Optional[dict] = None,
+    optimize_for_linear: bool = False,
+) -> Tuple[Samples, Tuple]:
     """Computes wiener filter solution for a standardized model.
 
     Parameters
     ----------
-    likelihood: :class:`~nifty8.re.likelihood.LikelihoodWithModel`
+    likelihood : :class:`~nifty8.re.likelihood.LikelihoodWithModel`
         Likelihood to be used for the wiener filter.
-    key: jax random number generation key.
-    n_samples: int
+    primals : tree-like
+        Position around which to linearize (if the problem is non-linear).
+    key : jax random number generation key
+    n_samples : int
         Number of samples to draw.
-    draw_linear_kwargs: dict
-        Configuration for drawing linear samples, see
-        :func:`draw_linear_residual`.
-    primals: tree-like
-        Position around which to linearize.
+    residual_map: callable
+        Map function used for the residual sample drawing.
+    draw_linear_kwargs : dict
+        Optional parameters passed on to :func:`draw_linear_residual` if these
+        should not be the same as for the retrieval of the posterior mean.
     optimize_for_linear: bool
-        Whether to optimize computation for truly linear model.
-    sampling_map: callable
-        Map function used for the residual sampling functions.
+        Whether to optimize computations for linear model.
     """
-    shift = likelihood.forward(tree_map(jnp.zeros_like, likelihood.domain))
-    data = likelihood.likelihood.data - shift
+    if not isinstance(likelihood, LikelihoodWithModel):
+        msg = f"likelihood must be of LikelihoodWithModel type; got {likelihood}"
+        return TypeError(msg)
+    residual_map = get_map(residual_map)
 
-    if primals is None:
-        primals = tree_map(jnp.zeros_like, likelihood.domain)
-    primals_data = likelihood.forward(primals)
+    data = likelihood.likelihood.data
+    # Remove any constant offsets from the data/signal that are part of the model
+    data = data - likelihood.forward(zeros_like(likelihood.domain))
 
+    position = zeros_like(likelihood.domain) if position is None else position
     if optimize_for_linear:
         forward_T = jax.linear_transpose(likelihood.forward, likelihood.domain)
     else:
-        _, forward_T = jax.vjp(likelihood.forward, primals)
+        _, forward_T = jax.vjp(likelihood.forward, position)
     forward_T = _functional_conj(forward_T)
-
-    n_inv_d = likelihood.likelihood.metric(primals_data, data)
-    j = forward_T(n_inv_d)[0]
+    n_inv_d = likelihood.likelihood.metric(likelihood.forward(position), data)
+    (j,) = forward_T(n_inv_d)
 
     def post_cov_inv(tangents, primals):
         return likelihood.metric(primals, tangents) + tangents
 
-    post_mean, info = conjugate_gradient.cg(
-        partial(post_cov_inv, primals=primals), j, name=draw_linear_kwargs.get("cg_name", None), **draw_linear_kwargs.get("cg_kwargs", {}),
+    cg = draw_linear_kwargs.get("cg", conjugate_gradient.static_cg)
+    post_mean, post_info = cg(
+        Partial(post_cov_inv, primals=position),
+        j,
+        name=draw_linear_kwargs.get("cg_name", None),
+        **draw_linear_kwargs.get("cg_kwargs", {}),
     )
-    if (info < 0) if info is not None else False:
+    if post_info is not None and post_info < 0:
         raise ValueError("conjugate gradient failed")
 
-    s_keys = random.split(key, n_samples)
-    draw_wiener_residual = partial(
-        draw_linear_residual, likelihood, **draw_linear_kwargs
-    )
-    draw_wiener_residual = sampling_map(draw_wiener_residual, in_axes=(None, 0))
-    smpls, _ = draw_wiener_residual(post_mean, s_keys)
+    ks = random.split(key, n_samples)
+    draw = Partial(draw_linear_residual, likelihood, **draw_linear_kwargs)
+    draw = residual_map(draw, in_axes=(None, 0))
+    smpls, smpls_info = draw(post_mean, ks)
 
-    return Samples(pos=post_mean, samples=concatenate_zip(smpls, -smpls), keys=s_keys)
+    smpls = Samples(pos=post_mean, samples=concatenate_zip(smpls, -smpls), keys=ks)
+    return smpls, (post_info, smpls_info)

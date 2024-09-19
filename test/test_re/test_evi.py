@@ -203,15 +203,16 @@ def test_mgvi_wiener_filter_consistency(
     approx_post_mean = jax.vmap(forward)(samples_opt.samples).mean(axis=0)
     assert_allclose(post_mean, approx_post_mean, atol=1e-10, rtol=1e-10)
 
+    # Wiener filter test
     key, w_key = random.split(key)
-    wiener_samples = jft.wiener_filter_posterior(
+    wiener_samples, _ = jft.wiener_filter_posterior(
         lh,
         key=w_key,
         n_samples=n_mgvi_cov_samples,
         draw_linear_kwargs=draw_linear_kwargs,
     )
     wiener_post_mean = jax.vmap(forward)(wiener_samples.samples).mean(axis=0)
-    wiener_post_cov = jnp.cov((jax.vmap(forward)(wiener_samples.samples)), rowvar=False)
+    wiener_post_cov = jnp.cov(jax.vmap(forward)(wiener_samples.samples), rowvar=False)
     assert_allclose(post_mean, wiener_post_mean, atol=1e-8, rtol=1e-8)
     assert_allclose(post_cov, wiener_post_cov, atol=tol**0.5)
 

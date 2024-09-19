@@ -15,49 +15,51 @@ from jax import numpy as jnp
 from jax import random
 
 import nifty8.re as jft
-from nifty8.re.evi import draw_linear_residual
-
 
 jax.config.update("jax_enable_x64", True)
 
 seed = 42
 key = random.PRNGKey(seed)
 
-dims = (128, 128)
 
-grid = jft.correlated_field.make_grid(
-    dims, distances=1 / dims[0], harmonic_type="fourier"
-)
+class FixedPowerCorrelatedField(jft.Model):
+    def __init__(self, shape, *, distances=None):
+        self.shape = (shape,) if isinstance(shape, int) else shape
+        distances = (
+            tuple((1 / s for s in self.shape)) if distances is None else distances
+        )
+        self.grid = jft.correlated_field.make_grid(
+            dims, distances=distances, harmonic_type="fourier"
+        )
 
-
-def amplitude_spectrum(k):
-    return 0.02 / (1 + k**2)
-
-
-class Signal(jft.Model):
-    def __init__(self, grid, amplitude_spectrum):
-        a = amplitude_spectrum(grid.harmonic_grid.mode_lengths)
-        amplitude_harmonic = a[grid.harmonic_grid.power_distributor]
-        harmonic_dvol = 1 / grid.total_volume
-        ht = jft.correlated_field.hartley
-
-        def gaussian_process(xi):
-            return harmonic_dvol * ht(amplitude_harmonic * xi)
-
-        self.gp = gaussian_process
         super().__init__(domain=jax.ShapeDtypeStruct(shape=dims, dtype=jnp.float64))
 
+    def amplitude_spectrum(self):
+        k = self.grid.harmonic_grid.mode_lengths
+        return 0.02 / (1 + k**2)
+
+    def correlate(self, x):
+        ht = jft.correlated_field.hartley
+        harmonic_dvol = 1 / self.grid.total_volume
+
+        # Will be inlined during JIT and thus it is fine to get the amplitude
+        # anew in every call
+        a = self.amplitude_spectrum()
+        a = a[self.grid.harmonic_grid.power_distributor]
+
+        return harmonic_dvol * ht(a * x)
+
     def __call__(self, x):
-        return self.gp(x)
+        return self.correlate(x)
 
 
-signal = Signal(grid, amplitude_spectrum)
+dims = (128, 128)
+signal = FixedPowerCorrelatedField(dims)
 
 # %% [markdown]
 # ## The likelihood
 
 # %%
-
 signal_response = signal
 noise_cov = lambda x: 0.1**2 * x
 noise_cov_inv = lambda x: 0.1**-2 * x
@@ -80,17 +82,17 @@ lh = jft.Gaussian(data, noise_cov_inv).amend(signal_response)
 # %%
 delta = 1e-6
 key, k_w = random.split(key)
-draw_linear_residual = dict(
-    cg_name="SL",
-    cg_kwargs=dict(absdelta=delta * jft.size(lh.domain) / 10.0, maxiter=100),
+samples, info = jft.wiener_filter_posterior(
+    lh,
+    key=k_w,
+    n_samples=20,
+    draw_linear_kwargs=dict(
+        cg_name="W",
+        cg_kwargs=dict(absdelta=delta * jft.size(lh.domain) / 10.0, maxiter=100),
+    ),
 )
-samples = jft.wiener_filter_posterior(
-    lh, k_w, draw_linear_kwargs=draw_linear_residual, n_samples=20
-)
-
 
 # %%
-
 post_mean, post_std = jft.mean_and_std(tuple(signal(s) for s in samples))
 
 to_plot = [
@@ -105,7 +107,7 @@ for ax, v in zip(axs.flat, to_plot):
     title, field, tp, *labels = v
     ax.set_title(title)
     if tp == "im":
-        end = tuple(n * d for n, d in zip(grid.shape, grid.distances))
+        end = tuple(n * d for n, d in zip(signal.grid.shape, signal.grid.distances))
         im = ax.imshow(field.T, cmap="inferno", extent=(0.0, end[0], 0.0, end[1]))
         plt.colorbar(im, ax=ax, orientation="horizontal")
     else:
@@ -116,5 +118,5 @@ for ax, v in zip(axs.flat, to_plot):
 for ax in axs.flat[len(to_plot) :]:
     ax.set_axis_off()
 fig.tight_layout()
-fig.savefig("results_intro_wiener_filter.png", dpi=400)
+fig.savefig("wiener_filter.png", dpi=400)
 plt.show()
