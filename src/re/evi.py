@@ -12,17 +12,24 @@ from jax import random
 from jax.tree_util import Partial, register_pytree_node_class, tree_leaves, tree_map
 
 from . import conjugate_gradient, optimize
-from .misc import conditional_raise
-from .tree_math import Vector, assert_arithmetics, dot, random_like, stack, vdot
-from .custom_map import smap
 from .likelihood import (
     Likelihood,
     LikelihoodWithModel,
+    _functional_conj,
     _parse_point_estimates,
     partial_insert_and_remove,
-    _functional_conj,
 )
-
+from .misc import conditional_raise
+from .tree_math import (
+    Vector,
+    assert_arithmetics,
+    dot,
+    get_map,
+    random_like,
+    stack,
+    vdot,
+    zeros_like,
+)
 
 P = TypeVar("P")
 

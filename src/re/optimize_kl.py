@@ -19,7 +19,11 @@ from jax.tree_util import Partial, tree_map
 
 from . import optimize
 from .evi import (
-    Samples, _parse_jit, draw_linear_residual, nonlinearly_update_residual, concatenate_zip
+    Samples,
+    _parse_jit,
+    concatenate_zip,
+    draw_linear_residual,
+    nonlinearly_update_residual,
 )
 from .likelihood import Likelihood
 from .logger import logger

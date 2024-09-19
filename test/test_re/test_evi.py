@@ -215,6 +215,7 @@ def test_mgvi_wiener_filter_consistency(
     assert_allclose(post_mean, wiener_post_mean, atol=1e-8, rtol=1e-8)
     assert_allclose(post_cov, wiener_post_cov, atol=tol**0.5)
 
+
 if __name__ == "__main__":
     test_mgvi_wiener_filter_consistency(
         42,
