@@ -14,7 +14,7 @@ RUN DUCC0_OPTIMIZATION=portable pip3 install --break-system-packages \
     # Optional nifty dependencies
     matplotlib h5py astropy ducc0 jax jaxlib jaxbind mpi4py \
     # Testing dependencies
-    pytest pytest-cov \
+    pytest pytest-cov pytest-xdist \
     # Documentation build dependencies
     jupyter nbconvert jupytext sphinx pydata-sphinx-theme myst-parser
 
