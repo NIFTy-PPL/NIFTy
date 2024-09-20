@@ -34,8 +34,8 @@ Homepage = "https://github.com/nifty-ppl/nifty"
 
 [project.optional-dependencies]
 re = [
-    "jax",
-    "jaxlib",
+    "jax<=0.4.30",
+    "jaxlib<=0.4.30",
 ]
 re_sht = [
     "jaxbind",
