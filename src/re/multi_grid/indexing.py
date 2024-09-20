@@ -13,11 +13,11 @@ import numpy as np
 import jax.numpy as jnp
 import numpy.typing as npt
 
-# TODO make an open Grid with shifted indices
+
 @dataclass()
 class GridAtLevel:
     shape: npt.NDArray[np.int_]
-    splits: npt.NDArray[np.int_]
+    splits: Optional[npt.NDArray[np.int_]]
     parent_splits: Optional[npt.NDArray[np.int_]]
 
     def __init__(self, shape, splits=None, parent_splits=None):
@@ -35,9 +35,16 @@ class GridAtLevel:
             l = index.shape[0]
             ve = f"index {index} is of invalid length {l} for shape {self.shape}"
             raise IndexError(ve)
-        ar = jnp.array(list(jnp.all(jnp.abs(idx) < s) for idx, s in zip(index, self.shape)))
-        checkify.check(jnp.all(ar), "index {index} is out of bounds for {nm} with shape {shp}",
-                       ar=ar, index=index, nm=PyTreeString(self.__class__.__name__), shp=self.shape)
+        checkify.check(
+            jnp.all(
+                jnp.abs(index)
+                < self.shape[(slice(None),) + (np.newaxis,) * (index.ndim - 1)]
+            ),
+            "index {index} is out of bounds for {nm} with shape {shp}",
+            index=index,
+            nm=PyTreeString(self.__class__.__name__),
+            shp=self.shape,
+        )
         return index % self.shape[(slice(None),) + (np.newaxis,) * (index.ndim - 1)]
 
     @property
@@ -48,7 +55,7 @@ class GridAtLevel:
     def ndim(self):
         return len(self.shape)
 
-    def children(self, index) -> np.ndarray:
+    def children(self, index):
         if self.splits is None:
             raise IndexError("This level has no children")
         index = self._parse_index(index)
@@ -68,7 +75,7 @@ class GridAtLevel:
         dtp = np.result_type(index)
         window_size = np.asarray(window_size)
         assert window_size.size == self.ndim
-        c = np.mgrid[tuple(slice(sz) for sz in window_size)].astype(dtp)
+        c = np.mgrid[tuple(slice(sz) for sz in window_size)]
         c -= (window_size // 2)[(slice(None),) + (np.newaxis,) * self.ndim]
         c_bc = (
             (slice(None),)
@@ -78,90 +85,7 @@ class GridAtLevel:
         m_bc = (slice(None),) + (np.newaxis,) * (index.ndim - 1 + self.ndim)
         id_bc = (slice(None),) * index.ndim + (np.newaxis,) * self.ndim
         res = (index[id_bc] + c[c_bc]) % self.shape[m_bc]
-        return res
-
-    def parent(self, index):
-        if self.parent_splits is None:
-            raise IndexError("you are alone in this world")
-        index = self._parse_index(index)
-        bc = (slice(None),) + (np.newaxis,) * (index.ndim - 1)
-        return index // self.parent_splits[bc]
-
-    def index2coord(self, index, **kwargs):
-        return NotImplementedError()
-
-    def coord2index(self, coord, **kwargs):
-        return NotImplementedError()
-
-    def index2volume(self, index, **kwargs):
-        return NotImplementedError()
-
-@dataclass()
-class OpenGridAtLevel(GridAtLevel):
-    shape: npt.NDArray[np.int_]
-    splits: npt.NDArray[np.int_]
-    parent_splits: Optional[npt.NDArray[np.int_]]
-
-    def __init__(self, shape, padding, splits=None, parent_splits=None):
-        super().__init__(shape=shape, splits=splits, parent_splits=parent_splits)
-        self.shape = np.atleast_1d(shape)
-        if splits is not None:
-            splits = np.atleast_1d(splits)
-        self.splits = splits
-        if parent_splits is not None:
-            parent_splits = np.atleast_1d(parent_splits)
-        self.parent_splits = parent_splits
-
-    def _parse_index(self, index):
-        index = jnp.asarray(index)
-        if index.shape[0] != self.shape.size:
-            l = index.shape[0]
-            ve = f"index {index} is of invalid length {l} for shape {self.shape}"
-            raise IndexError(ve)
-        ar = jnp.array(list(jnp.all(jnp.abs(idx) < s) for idx, s in zip(index, self.shape)))
-        checkify.check(jnp.all(ar), "index {index} is out of bounds for {nm} with shape {shp}",
-                       ar=ar, index=index, nm=PyTreeString(self.__class__.__name__), shp=self.shape)
-        return index % self.shape[(slice(None),) + (np.newaxis,) * (index.ndim - 1)]
-
-    @property
-    def size(self):
-        return reduce(operator.mul, self.shape, 1)
-
-    @property
-    def ndim(self):
-        return len(self.shape)
-
-    def children(self, index) -> np.ndarray:
-        if self.splits is None:
-            raise IndexError("This level has no children")
-        index = self._parse_index(index)
-        dtp = np.result_type(index)
-        f = self.splits[(slice(None),) + (np.newaxis,) * (index.ndim - 1)]
-        c = np.mgrid[tuple(slice(sz) for sz in self.splits)].astype(dtp)
-        c_bc = (
-            (slice(None),)
-            + (np.newaxis,) * (index.ndim - 1)
-            + (slice(None),) * self.ndim
-        )
-        ids = index * f
-        return ids[(slice(None),) * ids.ndim + (np.newaxis,) * self.ndim] + c[c_bc]
-
-    def neighborhood(self, index, window_size: Iterable[int]):
-        index = self._parse_index(index)
-        dtp = np.result_type(index)
-        window_size = np.asarray(window_size)
-        assert window_size.size == self.ndim
-        c = np.mgrid[tuple(slice(sz) for sz in window_size)].astype(dtp)
-        c -= (window_size // 2)[(slice(None),) + (np.newaxis,) * self.ndim]
-        c_bc = (
-            (slice(None),)
-            + (np.newaxis,) * (index.ndim - 1)
-            + (slice(None),) * self.ndim
-        )
-        m_bc = (slice(None),) + (np.newaxis,) * (index.ndim - 1 + self.ndim)
-        id_bc = (slice(None),) * index.ndim + (np.newaxis,) * self.ndim
-        res = (index[id_bc] + c[c_bc]) % self.shape[m_bc]
-        return res
+        return res.astype(dtp)
 
     def parent(self, index):
         if self.parent_splits is None:
@@ -182,9 +106,7 @@ class OpenGridAtLevel(GridAtLevel):
 
 @dataclass()
 class Grid:
-    """Dense grid with periodic boundary conditions.
-
-    Open boundary conditions can be emulated by leaving out indices."""
+    """Dense grid with periodic boundary conditions."""
 
     shape0: npt.NDArray[np.int_]
     splits: tuple[npt.NDArray[np.int_]]
@@ -208,7 +130,9 @@ class Grid:
     def amend(self, splits):
         splits = (splits,) if isinstance(splits, int) else splits
         splits = tuple(np.atleast_1d(s) for s in splits)
-        return self.__class__(shape0=self.shape0, splits=self.splits + splits)
+        return self.__class__(
+            shape0=self.shape0, splits=self.splits + splits, atLevel=self.atLevel
+        )
 
     def at(self, level: int):
         level = self._parse_level(level)
@@ -226,22 +150,159 @@ class Grid:
 
 
 @dataclass()
-class RegularGridAxisAtLevel(GridAtLevel):
+class OpenGridAtLevel(GridAtLevel):
+    shape: npt.NDArray[np.int_]
+    splits: npt.NDArray[np.int_]
+    padding: Optional[npt.NDArray[np.int_]]
+    parent_padding: Optional[npt.NDArray[np.int_]]
+    shifts: Optional[npt.NDArray[np.int_]]
+
+    def __init__(
+        self,
+        shape,
+        splits=None,
+        parent_splits=None,
+        padding=None,
+        parent_padding=None,
+        shifts=None,
+    ):
+        if padding is not None:
+            self.padding = np.atleast_1d(padding)
+        if parent_padding is not None:
+            self.parent_padding = np.atleast_1d(parent_padding)
+        if shifts is not None:
+            self.shifts = np.atleast_1d(shifts)
+        super().__init__(shape=shape, splits=splits, parent_splits=parent_splits)
+
+    def children(self, index):
+        if (self.splits is None) or (self.padding is None):
+            raise IndexError("This level has no children")
+        lo = self.padding[(slice(None),) + (np.newaxis,) * (index.ndim - 1)]
+        hi = self.shape[(slice(None),) + (np.newaxis,) * (index.ndim - 1)] - lo
+        checkify.check(
+            jnp.all((jnp.abs(index) >= lo) * (jnp.abs(index) < hi)),
+            "Index {index} out of bounds for shape {shape} and padding {padding}",
+            index=index,
+            shape=self.shape,
+            padding=self.padding,
+        )
+        index -= lo
+        return super().children(index)
+
+    def neighborhood(self, index, window_size: Iterable[int]):
+        index = self._parse_index(index)
+        dtp = np.result_type(index)
+        window_size = np.asarray(window_size)
+        assert window_size.size == self.ndim
+        c = np.mgrid[tuple(slice(sz) for sz in window_size)]
+        c -= (window_size // 2)[(slice(None),) + (np.newaxis,) * self.ndim]
+        c_bc = (
+            (slice(None),)
+            + (np.newaxis,) * (index.ndim - 1)
+            + (slice(None),) * self.ndim
+        )
+        m_bc = (slice(None),) + (np.newaxis,) * (index.ndim - 1 + self.ndim)
+        id_bc = (slice(None),) * index.ndim + (np.newaxis,) * self.ndim
+        res = index[id_bc] + c[c_bc]
+        checkify.check(
+            jnp.all((res >= 0) * (res < self.shape[m_bc])),
+            "Neighborhood {nbr} out of bounds for index {index} and grid shape {shape}",
+            nbr=res,
+            index=index,
+            shape=self.shape,
+        )
+        return res.astype(dtp)
+
+    def parent(self, index):
+        if self.parent_splits is None:
+            raise IndexError("you are alone in this world")
+        index = self._parse_index(index)
+        bc = (slice(None),) + (np.newaxis,) * (index.ndim - 1)
+        return (index // self.parent_splits[bc]) + self.parent_padding[bc]
+
+
+@dataclass()
+class OpenGrid(Grid):
+    """Dense grid with open boundary conditions."""
+
+    def __init__(self, *, shape0, splits, padding, atLevel=OpenGridAtLevel):
+        padding = (padding,) if isinstance(padding, int) else padding
+        self.padding = tuple(np.atleast_1d(p) for p in padding)
+        super().__init__(shape0=shape0, splits=splits, atLevel=atLevel)
+        assert len(self.padding) == len(self.splits)
+
+    def amend(self, splits, padding):
+        splits = (splits,) if isinstance(splits, int) else splits
+        splits = tuple(np.atleast_1d(s) for s in splits)
+        padding = (padding,) if isinstance(padding, int) else padding
+        padding = tuple(np.atleast_1d(p) for p in padding)
+        return self.__class__(
+            shape0=self.shape0,
+            splits=self.splits + splits,
+            padding=self.padding + padding,
+            atLevel=self.atLevel,
+        )
+
+    def at(self, level: int):
+        level = self._parse_level(level)
+        shp = self.shape0
+        shifts = np.zeros_like(shp)
+        for si, pd in zip(self.splits[:level], self.padding[:level]):
+            shp -= 2 * pd
+            shp *= si
+            assert np.all(shp > 0)  # TODO check upon init
+            shifts += pd
+            shifts *= si
+        return self.atLevel(
+            shape=shp,
+            splits=self.splits[level] if level < self.depth else None,
+            parent_splits=self.splits[level - 1] if level >= 1 else None,
+            padding=self.padding[level] if level < self.depth else None,
+            parent_padding=self.padding[level - 1] if level >= 1 else None,
+            shifts=shifts,
+        )
+
+
+@dataclass()
+class RegularGridAtLevel(GridAtLevel):
     def index2coord(self, index):
-        slc = (slice(None),)+(np.newaxis,) * (index.ndim - 1)
+        slc = (slice(None),) + (np.newaxis,) * (index.ndim - 1)
         return (index + 0.5) / self.shape[slc]
 
-    def coord2index(self, coord):
-        slc = (slice(None),)+(np.newaxis,) * (coord.ndim - 1)
-        #TODO type
-        return coord * self.shape[slc] - 0.5
+    def coord2index(self, coord, dtype=np.uint64):
+        slc = (slice(None),) + (np.newaxis,) * (coord.ndim - 1)
+        # TODO type casting
+        return (coord * self.shape[slc] - 0.5).astype(dtype)
 
     def index2volume(self, index):
         return np.array(1.0 / self.size)[(np.newaxis,) * index.ndim]
 
-#def RegularGrid(*, shape0, splits):
+
+@dataclass()
+class RegularOpenGridAtLevel(OpenGridAtLevel):
+    def index2coord(self, index):
+        index += self.shifts
+        slc = (slice(None),) + (np.newaxis,) * (index.ndim - 1)
+        return (index + 0.5) / self.shape[slc]
+
+    def coord2index(self, coord):
+        slc = (slice(None),) + (np.newaxis,) * (coord.ndim - 1)
+        # TODO type
+        index = coord * self.shape[slc] - 0.5
+        index -= self.shifts
+        assert index >= 0
+        return index
+
+    def index2volume(self, index):
+        return np.array(1.0 / self.size)[(np.newaxis,) * index.ndim]
 
 
+def RegularGrid(*, shape0, splits, padding=None):
+    if padding is None:
+        return Grid(shape0=shape0, splits=splits, atLevel=RegularGridAtLevel)
+    return OpenGrid(
+        shape0=shape0, splits=splits, padding=padding, atLevel=RegularOpenGridAtLevel
+    )
 
 
 def _fill_bad_healpix_neighbors(nside, neighbors, nest: bool = True):
@@ -360,7 +421,7 @@ class HEALPixGridAtLevel(GridAtLevel):
         if self.fill_strategy == "unique":
             neighbors = _fill_bad_healpix_neighbors(neighbors)
         elif self.fill_strategy == "same":
-            raise NotImplementedError # TODO
+            raise NotImplementedError  # TODO
         else:
             raise AssertionError()
         neighbors = np.squeeze(neighbors, axis=0) if index_shape == () else neighbors
@@ -779,8 +840,12 @@ class SparseGridAtLevel(FlatGridAtLevel):
         #  TODO Benchmark searchsorted on stack instead of second one with `right`
         valid = np.searchsorted(mapping, index, side="right") == arrayid + 1
 
-        checkify.check(jnp.all(valid), "Flatindex {ids} not on child grid of {nm}",
-                       ids=arrayid[~valid], nm=PyTreeString(self.__class__.__name__))
+        checkify.check(
+            jnp.all(valid),
+            "Flatindex {ids} not on child grid of {nm}",
+            ids=arrayid[~valid],
+            nm=PyTreeString(self.__class__.__name__),
+        )
         return arrayid
 
     def children(self, index) -> np.ndarray:
