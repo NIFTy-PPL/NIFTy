@@ -4,7 +4,7 @@ from functools import partial, reduce
 import operator
 from typing import Callable, Iterable
 from jax.tree_util import register_pytree_node_class
-from src.re.multi_grid.indexing import Grid
+from indexing import Grid
 from jax import vmap, jit
 
 import numpy as np
@@ -135,7 +135,7 @@ class FrozenKernel(KernelBase):
         return self._kernels[level][self._indexmaps[level][index]]
 
 
-class FixedKernelFunction(KernelBase):
+class FixedKernelFunctionBatch(KernelBase):
     def __init__(
         self, grid: Grid, window_size: Iterable[int], kernel: Callable, periodicity=None
     ):
@@ -173,7 +173,8 @@ class FixedKernelFunction(KernelBase):
         return self._kernel(targets_pos, nbrs_delta)
 
     def get_kernel(self, index, level):
-        targets, nbrs = self.get_indices(index, level)
+        # FIXME shizophrenic behavior of level
+        (targets, _), ((nbrs, _), ) = self.get_indices(index, level)
         return (self.evaluate_kernel(targets, nbrs, level + 1),)
 
 
@@ -254,7 +255,7 @@ class CombineKernel(KernelBase):
         ),)
 
     def get_kernel(self, index, level):
-        _, children = self.get_indices(index, level)
+        _, ((children, _),) = self.get_indices(index, level)
         return (jnp.ones(children.shape[1:-1] + (1, children.shape[-1])),)
 
 
@@ -262,7 +263,7 @@ class MSCRefine(KernelBase):
     def __init__(
         self,
         interpolation: KernelBase,
-        convolution: FixedKernelFunction,
+        convolution: FixedKernelFunctionBatch,
         combine: KernelBase,
     ):
         self._interpolation = interpolation
@@ -282,6 +283,7 @@ class MSCRefine(KernelBase):
         return (target, level), ids + ((cindex, level),)
 
     def get_kernel(self, index, level):
+        # FIXME shizophrenic behavior of level
         ker = self._convolution.get_kernel(index, level)
         if level == 0:
             return (ker,)
@@ -336,20 +338,19 @@ class ICRefine(KernelBase):
         self._coerce_fine_kernel = False
 
     def get_indices(self, index, level):
+        # FIXME inconsistent behavior of level and index
         grid_at_lvl = self._grid.at(level)
         if level == 0:
             pixel_indices = np.mgrid[tuple(slice(0, sz) for sz in grid_at_lvl.shape)]
             assert pixel_indices.shape[0] == grid_at_lvl.ndim
             pixel_indices = pixel_indices.reshape(grid_at_lvl.ndim, -1)
             return (index, level), ((pixel_indices, level), )
-        # Compute neighbors and map to coordinates outside of vmap to support
-        # non-batchable (non-JAX) coordinate transformations
         gc = (
             self._grid.at(level - 1)
-            .neighborhood(pixel_indices, self._window_size)
+            .neighborhood(index, self._window_size)
             .reshape(index.shape, -1)
         )
-        gf = grid_at_lvl.children(pixel_indices).reshape(index.shape + (-1))
+        gf = grid_at_lvl.children(index).reshape(index.shape + (-1))
         return (gf, level), ((gc, level - 1), (gf, level))
 
     def get_kernel(self, index, level):
