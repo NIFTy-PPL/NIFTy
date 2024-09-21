@@ -6,8 +6,10 @@ import operator
 from dataclasses import dataclass
 from functools import partial, reduce
 from typing import Callable, Iterable, Optional
+from jax import vmap
 from jax.experimental import checkify
 from ..tree_math.pytree_string import PyTreeString
+from .jhealpix_reference import get_all_neighbours_valid, pix2vec, vec2pix
 
 import numpy as np
 import jax.numpy as jnp
@@ -305,48 +307,6 @@ def RegularGrid(*, shape0, splits, padding=None):
     )
 
 
-def _fill_bad_healpix_neighbors(nside, neighbors, nest: bool = True):
-    import warnings
-
-    from healpy.pixelfunc import get_all_neighbours
-
-    idx_w_invalid, nbr_w_invalid = np.nonzero(neighbors == -1)
-    if idx_w_invalid.size == 0:
-        return neighbors
-
-    # Account for unknown neighbors, encoded by -1
-    uniq_idx_w_invalid = np.unique(idx_w_invalid)
-    nbr_invalid = neighbors[:, 1:][uniq_idx_w_invalid]
-    with warnings.catch_warnings():
-        wmsg = "invalid value encountered in _get_neigbors"
-        warnings.filterwarnings("ignore", message=wmsg)
-        # shape of (n_2nd_neighbors, n_idx_w_invalid, n_1st_neighbors)
-        nbr2 = get_all_neighbours(nside, nbr_invalid, nest=nest)
-    nbr2 = np.transpose(nbr2, (1, 2, 0))
-    nbr2[nbr_invalid == -1] = -1
-    nbr2 = nbr2.reshape(uniq_idx_w_invalid.size, -1)
-    n_replace = np.sum(neighbors[uniq_idx_w_invalid] == -1, axis=1)
-    if np.any(np.diff(n_replace)):
-        raise AssertionError()
-    n_replace = n_replace[0]
-    pix_2nbr = np.stack(
-        [
-            np.setdiff1d(ar1, ar2)[:n_replace]
-            for ar1, ar2 in zip(nbr2, neighbors[uniq_idx_w_invalid])
-        ]
-    )
-    if np.sum(pix_2nbr == -1):
-        # `setdiff1d` should remove all `-1` because we worked with rows in
-        # neighbors that all contain them
-        raise AssertionError()
-    # Select a "random" 2nd neighbor to fill in for the missing 1st order
-    # neighbor
-    neighbors[idx_w_invalid, nbr_w_invalid] = pix_2nbr.ravel()
-    if np.sum(neighbors == -1):
-        raise AssertionError()
-    return neighbors
-
-
 @dataclass()
 class HEALPixGridAtLevel(GridAtLevel):
     nside: int
@@ -361,7 +321,6 @@ class HEALPixGridAtLevel(GridAtLevel):
         *,
         nside: int = None,
         nest=True,
-        fill_strategy="same",
     ):
         if shape is not None:
             assert nside is None
@@ -384,60 +343,45 @@ class HEALPixGridAtLevel(GridAtLevel):
         self.nside = int(nside)
         self.nest = nest
         size = 12 * self.nside**2
-        if not isinstance(fill_strategy, str):
-            raise TypeError(f"invalid fill_strategy {fill_strategy!r}")
-        if fill_strategy.lower() not in ("same", "unique"):
-            raise ValueError(f"invalid fill_strategy value {fill_strategy!r}")
-        self.fill_strategy = fill_strategy.lower()
         super().__init__(shape=size, splits=splits, parent_splits=parent_splits)
 
     def neighborhood(self, index, window_size: Iterable[int]):
-        from healpy.pixelfunc import get_all_neighbours
-
-        if not isinstance(index, int):
-            # Special case integers, otherwise remove index axis and add later again
-            (index,) = index
+        index = np.atleast_1d(index)
         if not isinstance(window_size, int):
-            (window_size,) = window_size
-
-        dtp = np.result_type(index)
-        if window_size not in (1, 9, self.size):
-            nie = "only zero, 1st and all neighbors allowed for now"
-            raise NotImplementedError(nie)
+            window_size = window_size[0]
+        assert index.shape[0] == 1
+        dtp = jnp.result_type(index)
+        if window_size == 1:
+            return index[..., jnp.newaxis]
         if window_size == self.size:
-            assert ~np.any(index < 0)
-            neighbors = np.add.outer(index, np.arange(self.size, dtype=dtp)) % self.size
-            return neighbors[np.newaxis], neighbors[np.newaxis] != -1
-
-        index_shape = np.shape(index)
-        index = np.ravel(index)
-        n_pix = np.size(index)
-        neighbors = np.zeros((n_pix, window_size), dtype=int)  # can contain `-1`
-        neighbors[:, 0] = index
-        nbr = get_all_neighbours(self.nside, index, nest=self.nest)
-        nbr = nbr.reshape(window_size - 1, n_pix).T
-        neighbors[:, 1:] = nbr
-
-        if self.fill_strategy == "unique":
-            neighbors = _fill_bad_healpix_neighbors(neighbors)
-        elif self.fill_strategy == "same":
-            raise NotImplementedError  # TODO
-        else:
-            raise AssertionError()
-        neighbors = np.squeeze(neighbors, axis=0) if index_shape == () else neighbors
-        neighbors = neighbors.reshape(index_shape + (window_size,))
-        neighbors = neighbors.astype(dtp)[np.newaxis]
-        return neighbors
+            assert np.all(index >= 0) and np.all(index < self.size)
+            nbrs = np.arange(self.size, dtype=dtp)
+            nbrs = nbrs[(np.newaxis,) * index.ndim + (slice(None),)]
+            return (index[..., jnp.newaxis] + nbrs) % self.size
+        if window_size == 9:
+            f = partial(get_all_neighbours_valid, self.nside, nest=self.nest)
+            for _ in range(index.ndim - 1):
+                f = vmap(f)
+            nbrs = f(index[0])[jnp.newaxis, ...]
+            return jnp.concatenate((index[..., jnp.newaxis], nbrs), axis=-1).astype(dtp)
+        nie = "only zero, 1st and all neighbors allowed for now"
+        raise NotImplementedError(nie)
 
     def index2coord(self, index, **kwargs):
-        from healpy.pixelfunc import pix2vec
-
-        shp = index.shape[1:]
-        cc = pix2vec(self.nside, np.ravel(index), nest=self.nest)
-        return np.stack(cc, axis=0).reshape((3,) + shp)
+        assert index.shape[0] == 1
+        f = partial(pix2vec, self.nside, nest=self.nest)
+        for _ in range(index.ndim - 1):
+            f = vmap(f)
+        cc = f(index[0])
+        return jnp.stack(cc, axis=0)
 
     def coord2index(self, coord, **kwargs):
-        return NotImplementedError()
+        assert coord.shape[0] == 3
+        f = partial(vec2pix, self.nside, nest=self.nest)
+        for _ in range(coord.ndim - 1):
+            f = vmap(f)
+        idx = f(*(cc for cc in coord))
+        return idx[jnp.newaxis, ...]
 
     def index2volume(self, index, **kwargs):
         r = 1.0
