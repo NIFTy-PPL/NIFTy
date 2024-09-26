@@ -253,7 +253,7 @@ def estimate_evidence_lower_bound(
     metric = hamiltonian.metric
     metric = _ravel_metric(metric, samples.pos, dtype=likelihood.target.dtype)
     metric_size = metric.shape[0]
-    n_data_points = likelihood.lsm_tangents_shape.size if not None else metric_size
+    n_data_points = size(likelihood.lsm_tangents_shape) if not None else metric_size
     n_relevant_dofs = min(
         n_data_points, metric_size
     )  # Number of metric eigenvalues that are not 1
