@@ -142,8 +142,7 @@ def _coordinate_refinement_matrices(
         kernel_sqrt.append(ks.reshape(shape_bc_lvl + ks.shape[-2:]))
 
     return RefinementMatrices(
-        opt_lin_filter, kernel_sqrt, cov_sqrt0, (None, ) * len(opt_lin_filter),
-        None
+        opt_lin_filter, kernel_sqrt, cov_sqrt0, (None, ) * len(opt_lin_filter)
     )
 
 
