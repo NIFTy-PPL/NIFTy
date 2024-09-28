@@ -17,6 +17,7 @@ from .util import (
     get_cov_from_loc,
     get_refinement_shapewithdtype,
     refinement_matrices,
+    projection_MatrixSq,
 )
 
 
@@ -86,7 +87,7 @@ def _coordinate_refinement_matrices(
         # Matrices are symmetrized by JAX, i.e. gradients are projected to the
         # subspace of symmetric matrices (see
         # https://github.com/google/jax/issues/10815)
-        cov_sqrt0 = jnp.linalg.cholesky(cov_from_loc(c0, c0))
+        cov_sqrt0 = projection_MatrixSq(cov_from_loc(c0, c0))
     else:
         cov_sqrt0 = None
 

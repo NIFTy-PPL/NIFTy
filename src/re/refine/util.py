@@ -24,38 +24,70 @@ RefinementMatrices = namedtuple(
 )
 
 
-def refinement_matrices(cov, n_fsz: int, coerce_fine_kernel: bool):
+def _check(v, cut=1e-16):
+    return v > cut
+
+
+@jax.custom_jvp
+def projection_inverse(A, X):
+    assert A.ndim == 2
+    assert (X.ndim == 1) or (X.ndim == 2)
+    v, U = jnp.linalg.eigh(A)
+    vi = jax.lax.select(_check(v), 1.0 / v, jnp.zeros_like(v))
+    res = U.T @ X
+    res *= vi[:, jnp.newaxis] if X.ndim == 2 else vi
+    return U @ res
+
+
+@projection_inverse.defjvp
+def projection_inverse_jvp(primals, tangents):
+    # Note: Makes use of `stable_inverse` directly to enable stable higher order
+    # derivatives. Note that this is a tradeoff agains saving compute for first
+    # order.
+    (A, X), (dA, dX) = primals, tangents
+    res = projection_inverse(A, X)
+    return res, projection_inverse(A, dX - dA @ res)
+
+
+def _get_sq(v, U):
+    vsq = jax.lax.select(_check(v), jnp.sqrt(v), jnp.zeros_like(v))
+    return U @ (vsq[:, jnp.newaxis] * U.T)
+
+
+@jax.custom_jvp
+def projection_MatrixSq(M):
+    v, U = jnp.linalg.eigh(M)
+    return _get_sq(v, U)
+
+
+@projection_MatrixSq.defjvp
+def projection_MatrixSq_jvp(M, dM):
+    # Note: Only stable 1st derivative!
+    M, dM = M[0], dM[0]
+    v, U = jnp.linalg.eigh(M)
+
+    dM = U.T @ dM @ U
+    valid = _check(v)
+    vsq = jnp.sqrt(jax.lax.select(valid, v, jnp.ones_like(v)))
+    dres = jax.lax.select(
+        valid[:, jnp.newaxis] & valid[jnp.newaxis, :],
+        dM / (vsq[:, jnp.newaxis] + vsq[jnp.newaxis, :]),
+        jnp.zeros_like(dM),
+    )
+    return _get_sq(v, U), U @ dres @ U.T
+
+
+def refinement_matrices(cov, n_fsz: int, coerce_fine_kernel: bool = None):
+    if (coerce_fine_kernel is not None) and coerce_fine_kernel:
+        warn("`coerce_fine_kernel` is not in use any longer. Ignoring keyword",
+             DeprecationWarning)
     cov_ff = cov[-n_fsz:, -n_fsz:]
     cov_fc = cov[-n_fsz:, :-n_fsz]
     cov_cc = cov[:-n_fsz, :-n_fsz]
-    del cov
-    cov_cc_inv = jnp.linalg.inv(cov_cc)
-    del cov_cc
 
-    olf = cov_fc @ cov_cc_inv
-    # Also see Schur-Complement
-    fine_kernel = cov_ff - cov_fc @ cov_cc_inv @ cov_fc.T
-    del cov_cc_inv, cov_fc, cov_ff
-    if coerce_fine_kernel:
-        # TODO: Try to work with NaN to avoid the expensive eigendecomposition;
-        # work with nan_to_num?
-        # Implicitly assume a white power spectrum beyond the numerics limit.
-        # Use the diagonal as estimate for the magnitude of the variance.
-        fine_kernel_fallback = jnp.diag(jnp.abs(jnp.diag(fine_kernel)))
-        # Never produce NaNs (https://github.com/google/jax/issues/1052)
-        # This is expensive but necessary (worse but cheaper:
-        # `jnp.all(jnp.diag(fine_kernel) > 0.)`)
-        is_pos_def = jnp.all(jnp.linalg.eigvalsh(fine_kernel) > 0)
-        fine_kernel = jnp.where(is_pos_def, fine_kernel, fine_kernel_fallback)
-        # NOTE, subsequently use the Cholesky decomposition, even though
-        # already having computed the eigenvalues, as to get consistent results
-        # across platforms
-    # Matrices are symmetrized by JAX, i.e. gradients are projected to the
-    # subspace of symmetric matrices (see
-    # https://github.com/google/jax/issues/10815)
-    fine_kernel_sqrt = jnp.linalg.cholesky(fine_kernel)
-
-    return olf, fine_kernel_sqrt
+    olf = projection_inverse(cov_cc, cov_fc.T)
+    M = cov_ff - cov_fc @ olf
+    return olf.T, projection_MatrixSq(M)
 
 
 def get_cov_from_loc(
