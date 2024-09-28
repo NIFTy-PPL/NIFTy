@@ -343,7 +343,7 @@ def hpd2ring(nside_: np.int64, hpd: T_hpd) -> np.int64:
     def s2(hpd, jr, nside):
         return jax.lax.cond(jr > 3 * nside_, c1, c2, hpd, jr, nside)
 
-    return jax.lax.cond(jr < nside_, c0, s2, hpd, jr, nside)
+    return jax.lax.cond(jr < nside_, c0, s2, hpd, jr, nside_)
 
 
 def ring2hpd(nside: np.int64, pix: np.int64):
@@ -464,13 +464,14 @@ def nest2vec(nside: np.int64, ipix: np.int64) -> T_vec:
 
 
 def nside2order(nside: np.int64) -> np.int64:
+    # Round as jnp.log may use inconsistent arithmetic
     return jax.lax.select(
-        (nside & (nside - 1)) == 0, jnp.log2(nside).astype(np.int64), -1
+        (nside & (nside - 1)) == 0, jnp.round(jnp.log2(nside)).astype(jnp.int64), -1
     )
 
 
-def face_neighbors_nest(hpd):
-    fpix = hpd.f << 2 * nside2order(nside)
+def face_neighbors_nest(nside, hpd):
+    fpix = hpd.f << (2 * nside2order(nside))
     px0 = spread_bits(hpd.x)
     py0 = spread_bits(hpd.y) << 1
     pxp = spread_bits(hpd.x + 1)
@@ -491,11 +492,10 @@ def face_neighbors_nest(hpd):
         ],
         dtype=np.int64,
     )
-
     return result
 
 
-def face_neighbors_ring(hpd):
+def face_neighbors_ring(nside, hpd):
     result = list(
         hpd2ring(
             nside, T_hpd(x=hpd.x + NB_XOFFSET[m], y=hpd.y + NB_YOFFSET[m], f=hpd.f)
@@ -505,7 +505,7 @@ def face_neighbors_ring(hpd):
     return jnp.array(result)
 
 
-def edge_neighbors(hpd, fun):
+def edge_neighbors(nside, hpd, fun):
     def bound(xx, num, shift):
         cond = 2 * (xx < 0) + (xx >= nside)
         xx = jax.lax.select_n(cond, xx, xx - nside, xx + nside)
@@ -544,7 +544,7 @@ def neighbors(nside, pix, nest=False):
 
     nsm1 = nside - 1
     cond = (hpd.x > 0) * (hpd.x < nsm1) * (hpd.y > 0) * (hpd.y < nsm1)
-    return jax.lax.cond(cond, face, edge, hpd)
+    return jax.lax.cond(cond, face, edge, nside, hpd)
 
 
 # Mimic healpy function signatures
@@ -608,7 +608,6 @@ def get_all_neighbours_valid(nside, theta_or_pix, phi=None, nest=False, lonlat=F
     if not nest:
         nbrs = jax.vmap(ring2nest, (None, 0))(nside, nbrs)
     tmp = nbrs[BAD_NBR_SLCT] + BAD_NBR_SHFT
-    print(nbrs.shape, tmp.shape)
     nbrs = jax.lax.select(nbrs != -1, nbrs, tmp)
     if not nest:
         nbrs = jax.vmap(nest2ring, (None, 0))(nside, nbrs)
