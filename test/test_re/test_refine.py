@@ -203,7 +203,7 @@ def test_refinement_fine_strategy_basic_consistency(dist, kernel=kernel):
 def test_refinement_covariance(
     dist, _coarse_size, _fine_size, _fine_strategy, kernel=kernel
 ):
-    distances0 = np.atleast_1d(dist)
+    distances0 = np.atleast_1d(np.array(dist))
     ndim = len(distances0)
 
     cf = jft.RefinementField(

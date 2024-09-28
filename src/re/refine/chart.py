@@ -169,7 +169,7 @@ class CoordinateChart():
                 )
             elif distances0 is not None:
                 distances0 = jnp.broadcast_to(
-                    jnp.atleast_1d(distances0), (self.ndim, )
+                    jnp.atleast_1d(jnp.array(distances0)), (self.ndim, )
                 )
                 distances = coarse2fine_distances(
                     distances0,
@@ -179,7 +179,7 @@ class CoordinateChart():
                 )
             else:
                 distances = jnp.broadcast_to(
-                    jnp.atleast_1d(distances), (self.ndim, )
+                    jnp.atleast_1d(jnp.array(distances)), (self.ndim, )
                 )
                 distances0 = fine2coarse_distances(
                     distances,
