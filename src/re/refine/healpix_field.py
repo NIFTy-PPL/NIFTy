@@ -44,7 +44,7 @@ def _matrices_naive(
         olf, ks = refinement_matrices(
             cov,
             chart.fine_size**(chart.ndim + 1),
-            coerce_fine_kernel=coerce_fine_kernel
+            coerce_fine_kernel=coerce_fine_kernel,
         )
         if chart.ndim > 1:
             olf = olf.reshape(
@@ -111,7 +111,7 @@ def _matrices_tol(
         olf, ks = refinement_matrices(
             cov,
             chart.fine_size**(chart.ndim + 1),
-            coerce_fine_kernel=coerce_fine_kernel
+            coerce_fine_kernel=coerce_fine_kernel,
         )
         if chart.ndim > 1:
             olf = olf.reshape(
@@ -284,7 +284,7 @@ class RefinementHPField(LazyModel):
                 self.chart,
                 kernel,
                 depth,
-                coerce_fine_kernel=coerce_fine_kernel
+                coerce_fine_kernel=coerce_fine_kernel,
             )
         else:
             rfm = _matrices_tol(

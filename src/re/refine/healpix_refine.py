@@ -11,7 +11,7 @@ import numpy as np
 from jax import numpy as jnp
 from jax.lax import dynamic_slice_in_dim
 
-from .util import get_cov_from_loc
+from .util import get_cov_from_loc, projection_MatrixSq
 
 
 def get_1st_hp_nbrs_idx(nside, pix, nest: bool = False, dtype=np.int32):
@@ -106,9 +106,8 @@ def cov_sqrt(chart, kernel, level: int = 0):
     # Matrices are symmetrized by JAX, i.e. gradients are projected to the
     # subspace of symmetric matrices (see
     # https://github.com/google/jax/issues/10815)
-    fks_sqrt = jnp.linalg.cholesky(cov_from_loc(pix0s, pix0s))
-
-    return fks_sqrt
+    fks_sqrt = cov_from_loc(pix0s, pix0s)
+    return projection_MatrixSq(fks_sqrt)
 
 
 @partial(jax.jit, static_argnames=("chart", "precision"))
