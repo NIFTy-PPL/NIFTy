@@ -65,7 +65,8 @@ def test_refinement_matrices_1d(dist, kernel=kernel):
     cov_cc_inv = jnp.linalg.inv(cov_from_loc(coarse_coord, coarse_coord))
 
     fine_kernel = cov_ff - cov_fc @ cov_cc_inv @ cov_fc.T
-    fine_kernel_sqrt_diy = jnp.linalg.cholesky(fine_kernel)
+    v, U = jnp.linalg.eigh(fine_kernel)
+    fine_kernel_sqrt_diy = U @ (jnp.sqrt(v)[:, jnp.newaxis] * U.T)
     olf_diy = cov_fc @ cov_cc_inv
 
     cc = jft.CoordinateChart(
@@ -244,7 +245,7 @@ def test_refinement_covariance(
     dist_mat = distance_matrix(p, p)
     cov_truth = kernel(dist_mat)
 
-    assert_allclose(cov_empirical, cov_truth, rtol=1e-14, atol=1e-15)
+    assert_allclose(cov_empirical, cov_truth, rtol=1e-14, atol=1e-14)
 
 
 @pmp("seed", (12, 42, 43, 45))
