@@ -3,10 +3,12 @@
 #!/usr/bin/env python3
 
 import operator
+from warnings import warn
 from dataclasses import dataclass
 from functools import partial, reduce
 from typing import Callable, Iterable, Optional
 from jax import vmap
+from jax.lax import select
 from jax.experimental import checkify
 from ..tree_math.pytree_string import PyTreeString
 from .jhealpix_reference import get_all_neighbours_valid, pix2vec, vec2pix
@@ -37,18 +39,10 @@ class GridAtLevel:
             l = index.shape[0]
             ve = f"index {index} is of invalid length {l} for shape {self.shape}"
             raise IndexError(ve)
-        #FIXME
-        #checkify.check(
-        #    jnp.all(
-        #        jnp.abs(index)
-        #        < self.shape[(slice(None),) + (np.newaxis,) * (index.ndim - 1)]
-        #    ),
-        #    "index {index} is out of bounds for {nm} with shape {shp}",
-        #    index=index,
-        #    nm=PyTreeString(self.__class__.__name__),
-        #    shp=self.shape,
-        #)
-        return index % self.shape[(slice(None),) + (np.newaxis,) * (index.ndim - 1)]
+        # Follow jax-array style out of bounds handling
+        shp_bc = self.shape[(slice(None),) + (np.newaxis,) * (index.ndim - 1)]
+        index = select(jnp.abs(index) < shp_bc, index, jnp.sign(index) * (shp_bc - 1))
+        return index % shp_bc
 
     @property
     def size(self):
@@ -185,23 +179,20 @@ class OpenGridAtLevel(GridAtLevel):
         if self.splits is None:
             raise IndexError("This level has no children")
         # TODO non-dense grid
-        return np.mgrid[tuple(slice(pp, sh-pp) for sh, pp in zip(self.shape, self.padding))]
+        return np.mgrid[
+            tuple(slice(pp, sh - pp) for sh, pp in zip(self.shape, self.padding))
+        ]
 
     def children(self, index):
         if (self.splits is None) or (self.padding is None):
             raise IndexError("This level has no children")
         lo = self.padding[(slice(None),) + (np.newaxis,) * (index.ndim - 1)]
-        #FIXME
-        #hi = self.shape[(slice(None),) + (np.newaxis,) * (index.ndim - 1)] - lo
-        #checkify.check(
-        #    jnp.all((jnp.abs(index) >= lo) * (jnp.abs(index) < hi)),
-        #    "Index {index} out of bounds for shape {shape} and padding {padding}",
-        #    index=index,
-        #    shape=self.shape,
-        #    padding=self.padding,
-        #)
-        index -= lo
-        return super().children(index)
+        hi = self.shape[(slice(None),) + (np.newaxis,) * (index.ndim - 1)] - lo
+        # TODO add option for fully jax transformable error handling
+        # Follow jax-array inspired out of bounds handling
+        index = select(index >= lo, index, lo * jnp.ones_like(index))
+        index = select(index < hi, index, (hi - 1) * jnp.ones_like(index))
+        return super().children(index - lo)
 
     def neighborhood(self, index, window_size: Iterable[int]):
         index = self._parse_index(index)
@@ -217,15 +208,13 @@ class OpenGridAtLevel(GridAtLevel):
         )
         id_bc = (slice(None),) * index.ndim + (np.newaxis,) * self.ndim
         res = index[id_bc] + c[c_bc]
-        #FIXME
-        #m_bc = (slice(None),) + (np.newaxis,) * (index.ndim - 1 + self.ndim)
-        #checkify.check(
-        #    jnp.all((res >= 0) * (res < self.shape[m_bc])),
-        #    "Neighborhood {nbr} out of bounds for index {index} and grid shape {shape}",
-        #    nbr=res,
-        #    index=index,
-        #    shape=self.shape,
-        #)
+        # TODO add option for fully jax transformable error handling
+        # Follow jax-array inspired out of bounds handling
+        shp_bc = self.shape[
+            (slice(None),) + (np.newaxis,) * (index.ndim - 1 + self.ndim)
+        ]
+        res = select(res >= 0, res, jnp.zeros_like(res))
+        res = select(res < shp_bc, res, jnp.ones_like(res) * (shp_bc - 1))
         return res.astype(dtp)
 
     def parent(self, index):
@@ -461,7 +450,7 @@ class OGridAtLevel(GridAtLevel):
         return len(self.grids)
 
     def refined_indices(self):
-        raise NotImplementedError # TODO
+        raise NotImplementedError  # TODO
 
     def children(self, index) -> np.ndarray:
         ndims_off = tuple(np.cumsum(tuple(g.ndim for g in self.grids)))
@@ -681,7 +670,7 @@ class FlatGridAtLevel(GridAtLevel):
         raise RuntimeError
 
     def refined_indices(self):
-        raise NotImplementedError # TODO
+        raise NotImplementedError  # TODO
 
     def children(self, index) -> np.ndarray:
         index = self._parse_index(index)
@@ -813,7 +802,7 @@ class SparseGridAtLevel(FlatGridAtLevel):
         return arrayid
 
     def refined_indices(self):
-        raise NotImplementedError # TODO
+        raise NotImplementedError  # TODO
 
     def children(self, index) -> np.ndarray:
         index = self.arrayindex_to_flatindex(index)
