@@ -4,8 +4,8 @@ from functools import partial, reduce
 import operator
 from typing import Callable, Iterable
 from jax.tree_util import register_pytree_node_class
-from indexing import Grid
 from jax import vmap, jit
+from .indexing import Grid
 
 import numpy as np
 import jax.numpy as jnp
@@ -82,17 +82,19 @@ class KernelBase:
         return FrozenKernel(self, indexmaps, indices)
 
     def apply_at(self, index, level, x):
+        assert index.ndim == 1
         iout, iin = self.get_indices(index, level)
         kernels = self.get_kernel(index, level)
         assert len(iin) == len(kernels)
         return iout, reduce(
-            lambda a, b: a + b, (kk @ x[ii[1]][ii[0]] for kk, ii in zip(iin, kernels))
+            lambda a, b: a + b,
+            (kk @ x[ii[1]][tuple(ii[0])] for kk, ii in zip(kernels, iin)),
         )
 
-    def apply(self, x, copy=True):
+    def apply(self, x, indices=None, copy=True):
         """Applies the kernel to values on an entire multigrid"""
         xd, gd = len(x), self.grid.depth
-        if xd != gd:
+        if xd != (gd + 1):
             raise ValueError(f"Input of length {xd} does not match grid depth {gd}")
         for lvl, xx in enumerate(x):
             xs, gs = xx.size, self.grid.at(lvl).size
@@ -101,16 +103,19 @@ class KernelBase:
                 raise ValueError(msg)
 
         x = list(jnp.copy(xx) for xx in x) if copy else x
-        for lvl in range(self.grid.depth + 1):
-            # TODO: Children of multiple pixels could be refined jointly requiring a
-            # non-unit stride
-            index = np.mgrid[tuple(slice(0, sh) for sh in self.grid.at(lvl).shape)]
-            index = index.reshape((index.shape[0], -1))
-            (index, level), res = vmap(self.apply_at, (0, None, None), ((0, None), 0))(
-                index, lvl, x
-            )
-            assert index.flatten() == np.arange(self.grid.at(level).size)
-            x[level] = res.flatten()  # TODO see above
+        # Use dummy index for base
+        _, x[0] = self.apply_at(jnp.atleast_1d(-1), -1, x)
+        for lvl in range(self.grid.depth):
+            if indices is None:
+                index = self.grid.at(lvl).refined_indices()
+            else:
+                index = indices[lvl]
+            # TODO this selects window for each index individually
+            f = self.apply_at
+            for i in range(index.ndim - 1):
+                f = vmap(f, (1, None, None), ((1, None), i))
+            (_, level), res = f(index, lvl, x)
+            x[level] = res.reshape(x[level].shape)
         return x
 
     def tree_flatten(self):
@@ -174,7 +179,7 @@ class FixedKernelFunctionBatch(KernelBase):
 
     def get_kernel(self, index, level):
         # FIXME shizophrenic behavior of level
-        (targets, _), ((nbrs, _), ) = self.get_indices(index, level)
+        (targets, _), ((nbrs, _),) = self.get_indices(index, level)
         return (self.evaluate_kernel(targets, nbrs, level + 1),)
 
 
@@ -249,10 +254,12 @@ class CombineKernel(KernelBase):
     def get_indices(self, index, level):
         if level == self._grid.depth:
             raise ValueError("Finest level has no children to combine")
-        return (index, level), ((
-            self._grid.at(level).children(index).reshape(index.shape + (-1,)),
-            level + 1,
-        ),)
+        return (index, level), (
+            (
+                self._grid.at(level).children(index).reshape(index.shape + (-1,)),
+                level + 1,
+            ),
+        )
 
     def get_kernel(self, index, level):
         _, ((children, _),) = self.get_indices(index, level)
@@ -329,58 +336,55 @@ class MSCRefine(KernelBase):
 class ICRefine(KernelBase):
     def __init__(self, grid, covariance, window_size):
         self._grid = grid
-        # TODO
-        mapped_kernel = partial(covariance, axis=0)
-        mapped_kernel = vmap(mapped_kernel, in_axes=(None, -1), out_axes=-1)
+        mapped_kernel = vmap(covariance, in_axes=(None, -1), out_axes=-1)
         mapped_kernel = vmap(mapped_kernel, in_axes=(-1, None), out_axes=-1)
         self._covariance = mapped_kernel
+        window_size = (window_size,) if isinstance(window_size, int) else window_size
         self._window_size = tuple(window_size)
-        self._coerce_fine_kernel = False
 
     def get_indices(self, index, level):
         # FIXME inconsistent behavior of level and index
-        grid_at_lvl = self._grid.at(level)
-        if level == 0:
+        if level == -1:
+            grid_at_lvl = self._grid.at(0)
             pixel_indices = np.mgrid[tuple(slice(0, sz) for sz in grid_at_lvl.shape)]
             assert pixel_indices.shape[0] == grid_at_lvl.ndim
             pixel_indices = pixel_indices.reshape(grid_at_lvl.ndim, -1)
-            return (index, level), ((pixel_indices, level), )
-        gc = (
-            self._grid.at(level - 1)
-            .neighborhood(index, self._window_size)
-            .reshape(index.shape, -1)
-        )
-        gf = grid_at_lvl.children(index).reshape(index.shape + (-1))
-        return (gf, level), ((gc, level - 1), (gf, level))
+            return (pixel_indices, 0), ((pixel_indices, 0),)
+        if (level >= self._grid.depth) or (level < -1):
+            mg = f"Level {level} out of bounds for grid deph {self._grid.depth}"
+            raise ValueError(mg)
+        atlevel = self._grid.at(level)
+        assert index.shape[0] == atlevel.ndim
+        gc = atlevel.neighborhood(index, self._window_size).reshape(index.shape + (-1,))
+        gf = self._grid.at(level).children(index).reshape(index.shape + (-1,))
+        return (gf, level + 1), ((gc, level), (gf, level + 1))
 
     def get_kernel(self, index, level):
-        grid_at_lvl = self.grid.at(level)
-        if level == 0:
-            _, (_, (ids, _)) = self.get_indices(index, level)
-            gc = grid_at_lvl.index2coord(ids)
+        if level == -1:
+            _, ((ids, _),) = self.get_indices(index, -1)
+            gc = self._grid.at(0).index2coord(ids)
             assert gc.ndim == 2
             cov = self._covariance(gc, gc)
             assert cov.shape == (gc.shape[1],) * 2
-            cov_sqrt0 = jnp.linalg.cholesky(cov)
-            return (cov_sqrt0, )
-        _, ((gc, _), (gf, _)) = self.get_indices(index, level)
-        gc = self.grid.at(level - 1).index2coord(gc)
-        gf = grid_at_lvl.index2coord(gf)
-        assert gc.shape[0] == gf.shape[0]
-        odim = gc.shape[0]
-        # gc = gc.reshape(odim, np.prod(g_shape), np.prod(window_size))
-        # gf = gf.reshape(odim, np.prod(g_shape), np.prod(grid_at_lvl.splits))
-        coord = jnp.concatenate((gc, gf), axis=-1)
-        del gc, gf
-        cov = self._covariance(coord, coord)
-        del coord
-        # _cs = np.prod(window_size) + np.prod(grid_at_lvl.splits)
-        # assert cov.shape == (np.prod(g_shape),) + (_cs,) * 2
+            from ..refine.util import projection_MatrixSq
+
+            return (projection_MatrixSq(cov),)
+        _, ((idc, _), (idf, _)) = self.get_indices(index, level)
+
         from ..refine.util import refinement_matrices
 
-        olf, fks = vmap(refinement_matrices, in_axes=(0, None, None))(
-            cov, gf.shape[2], self._coerce_fine_kernel
-        )
-        # olf = olf.reshape(g_shape + tuple(grid_at_lvl.splits) + tuple(window_size))
-        # fks = fks.reshape(g_shape + tuple(grid_at_lvl.splits) * 2)
-        return (olf, fks)
+        def _get_kernel(gc, gf):
+            gc = self.grid.at(level).index2coord(gc)
+            gf = self.grid.at(level + 1).index2coord(gf)
+            assert gc.shape[0] == gf.shape[0]
+            assert gc.ndim == gf.ndim == 2
+            coord = jnp.concatenate((gc, gf), axis=-1)
+            # del gc, gf
+            cov = self._covariance(coord, coord)
+            # del coord
+            return refinement_matrices(cov, gf.shape[1])
+
+        f = _get_kernel
+        for _ in range(index.ndim - 1):
+            f = vmap(f, in_axes=(1, 1))
+        return f(idc, idf)
