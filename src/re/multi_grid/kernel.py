@@ -5,6 +5,7 @@ import operator
 from typing import Callable, Iterable
 from jax.tree_util import register_pytree_node_class
 from jax import vmap, jit
+from jax.experimental.checkify import checkify
 from .indexing import Grid
 
 import numpy as np
