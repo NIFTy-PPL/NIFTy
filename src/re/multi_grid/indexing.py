@@ -37,16 +37,17 @@ class GridAtLevel:
             l = index.shape[0]
             ve = f"index {index} is of invalid length {l} for shape {self.shape}"
             raise IndexError(ve)
-        checkify.check(
-            jnp.all(
-                jnp.abs(index)
-                < self.shape[(slice(None),) + (np.newaxis,) * (index.ndim - 1)]
-            ),
-            "index {index} is out of bounds for {nm} with shape {shp}",
-            index=index,
-            nm=PyTreeString(self.__class__.__name__),
-            shp=self.shape,
-        )
+        #FIXME
+        #checkify.check(
+        #    jnp.all(
+        #        jnp.abs(index)
+        #        < self.shape[(slice(None),) + (np.newaxis,) * (index.ndim - 1)]
+        #    ),
+        #    "index {index} is out of bounds for {nm} with shape {shp}",
+        #    index=index,
+        #    nm=PyTreeString(self.__class__.__name__),
+        #    shp=self.shape,
+        #)
         return index % self.shape[(slice(None),) + (np.newaxis,) * (index.ndim - 1)]
 
     @property
@@ -56,6 +57,12 @@ class GridAtLevel:
     @property
     def ndim(self):
         return len(self.shape)
+
+    def refined_indices(self):
+        if self.splits is None:
+            raise IndexError("This level has no children")
+        # TODO non-dense grid
+        return np.mgrid[tuple(slice(0, sh) for sh in self.shape)]
 
     def children(self, index):
         if self.splits is None:
@@ -153,8 +160,6 @@ class Grid:
 
 @dataclass()
 class OpenGridAtLevel(GridAtLevel):
-    shape: npt.NDArray[np.int_]
-    splits: npt.NDArray[np.int_]
     padding: Optional[npt.NDArray[np.int_]]
     parent_padding: Optional[npt.NDArray[np.int_]]
     shifts: Optional[npt.NDArray[np.int_]]
@@ -176,18 +181,25 @@ class OpenGridAtLevel(GridAtLevel):
             self.shifts = np.atleast_1d(shifts)
         super().__init__(shape=shape, splits=splits, parent_splits=parent_splits)
 
+    def refined_indices(self):
+        if self.splits is None:
+            raise IndexError("This level has no children")
+        # TODO non-dense grid
+        return np.mgrid[tuple(slice(pp, sh-pp) for sh, pp in zip(self.shape, self.padding))]
+
     def children(self, index):
         if (self.splits is None) or (self.padding is None):
             raise IndexError("This level has no children")
         lo = self.padding[(slice(None),) + (np.newaxis,) * (index.ndim - 1)]
-        hi = self.shape[(slice(None),) + (np.newaxis,) * (index.ndim - 1)] - lo
-        checkify.check(
-            jnp.all((jnp.abs(index) >= lo) * (jnp.abs(index) < hi)),
-            "Index {index} out of bounds for shape {shape} and padding {padding}",
-            index=index,
-            shape=self.shape,
-            padding=self.padding,
-        )
+        #FIXME
+        #hi = self.shape[(slice(None),) + (np.newaxis,) * (index.ndim - 1)] - lo
+        #checkify.check(
+        #    jnp.all((jnp.abs(index) >= lo) * (jnp.abs(index) < hi)),
+        #    "Index {index} out of bounds for shape {shape} and padding {padding}",
+        #    index=index,
+        #    shape=self.shape,
+        #    padding=self.padding,
+        #)
         index -= lo
         return super().children(index)
 
@@ -203,16 +215,17 @@ class OpenGridAtLevel(GridAtLevel):
             + (np.newaxis,) * (index.ndim - 1)
             + (slice(None),) * self.ndim
         )
-        m_bc = (slice(None),) + (np.newaxis,) * (index.ndim - 1 + self.ndim)
         id_bc = (slice(None),) * index.ndim + (np.newaxis,) * self.ndim
         res = index[id_bc] + c[c_bc]
-        checkify.check(
-            jnp.all((res >= 0) * (res < self.shape[m_bc])),
-            "Neighborhood {nbr} out of bounds for index {index} and grid shape {shape}",
-            nbr=res,
-            index=index,
-            shape=self.shape,
-        )
+        #FIXME
+        #m_bc = (slice(None),) + (np.newaxis,) * (index.ndim - 1 + self.ndim)
+        #checkify.check(
+        #    jnp.all((res >= 0) * (res < self.shape[m_bc])),
+        #    "Neighborhood {nbr} out of bounds for index {index} and grid shape {shape}",
+        #    nbr=res,
+        #    index=index,
+        #    shape=self.shape,
+        #)
         return res.astype(dtp)
 
     def parent(self, index):
@@ -247,7 +260,7 @@ class OpenGrid(Grid):
 
     def at(self, level: int):
         level = self._parse_level(level)
-        shp = self.shape0
+        shp = np.copy(self.shape0)
         shifts = np.zeros_like(shp)
         for si, pd in zip(self.splits[:level], self.padding[:level]):
             shp -= 2 * pd
@@ -284,8 +297,9 @@ class RegularGridAtLevel(GridAtLevel):
 class RegularOpenGridAtLevel(OpenGridAtLevel):
     def index2coord(self, index):
         index += self.shifts
+        shp = self.shape + 2 * self.shifts
         slc = (slice(None),) + (np.newaxis,) * (index.ndim - 1)
-        return (index + 0.5) / self.shape[slc]
+        return (index + 0.5) / shp[slc]
 
     def coord2index(self, coord):
         slc = (slice(None),) + (np.newaxis,) * (coord.ndim - 1)
@@ -445,6 +459,9 @@ class OGridAtLevel(GridAtLevel):
     @property
     def ngrids(self):
         return len(self.grids)
+
+    def refined_indices(self):
+        raise NotImplementedError # TODO
 
     def children(self, index) -> np.ndarray:
         ndims_off = tuple(np.cumsum(tuple(g.ndim for g in self.grids)))
@@ -663,6 +680,9 @@ class FlatGridAtLevel(GridAtLevel):
 
         raise RuntimeError
 
+    def refined_indices(self):
+        raise NotImplementedError # TODO
+
     def children(self, index) -> np.ndarray:
         index = self._parse_index(index)
         index = self.flatindex_to_index(index)
@@ -791,6 +811,9 @@ class SparseGridAtLevel(FlatGridAtLevel):
             nm=PyTreeString(self.__class__.__name__),
         )
         return arrayid
+
+    def refined_indices(self):
+        raise NotImplementedError # TODO
 
     def children(self, index) -> np.ndarray:
         index = self.arrayindex_to_flatindex(index)
