@@ -97,14 +97,17 @@ class GridAtLevel:
         bc = (slice(None),) + (np.newaxis,) * (index.ndim - 1)
         return index // self.parent_splits[bc]
 
-    def index2coord(self, index, **kwargs):
-        return NotImplementedError()
+    def index2coord(self, index):
+        slc = (slice(None),) + (np.newaxis,) * (index.ndim - 1)
+        return (index + 0.5) / self.shape[slc]
 
-    def coord2index(self, coord, **kwargs):
-        return NotImplementedError()
+    def coord2index(self, coord, dtype=np.uint64):
+        slc = (slice(None),) + (np.newaxis,) * (coord.ndim - 1)
+        # TODO type casting
+        return (coord * self.shape[slc] - 0.5).astype(dtype)
 
-    def index2volume(self, index, **kwargs):
-        return NotImplementedError()
+    def index2volume(self, index):
+        return np.array(1.0 / self.size)[(np.newaxis,) * index.ndim]
 
 
 @dataclass()
@@ -224,6 +227,23 @@ class OpenGridAtLevel(GridAtLevel):
         bc = (slice(None),) + (np.newaxis,) * (index.ndim - 1)
         return (index // self.parent_splits[bc]) + self.parent_padding[bc]
 
+    def index2coord(self, index):
+        slc = (slice(None),) + (np.newaxis,) * (index.ndim - 1)
+        index += self.shifts[slc]
+        shp = self.shape + 2 * self.shifts
+        return (index + 0.5) / shp[slc]
+
+    def coord2index(self, coord):
+        slc = (slice(None),) + (np.newaxis,) * (coord.ndim - 1)
+        # TODO type
+        index = coord * self.shape[slc] - 0.5
+        index -= self.shifts
+        assert index >= 0
+        return index
+
+    def index2volume(self, index):
+        return np.array(1.0 / self.size)[(np.newaxis,) * index.ndim]
+
 
 @dataclass()
 class OpenGrid(Grid):
@@ -265,49 +285,6 @@ class OpenGrid(Grid):
             parent_padding=self.padding[level - 1] if level >= 1 else None,
             shifts=shifts,
         )
-
-
-@dataclass()
-class RegularGridAtLevel(GridAtLevel):
-    def index2coord(self, index):
-        slc = (slice(None),) + (np.newaxis,) * (index.ndim - 1)
-        return (index + 0.5) / self.shape[slc]
-
-    def coord2index(self, coord, dtype=np.uint64):
-        slc = (slice(None),) + (np.newaxis,) * (coord.ndim - 1)
-        # TODO type casting
-        return (coord * self.shape[slc] - 0.5).astype(dtype)
-
-    def index2volume(self, index):
-        return np.array(1.0 / self.size)[(np.newaxis,) * index.ndim]
-
-
-@dataclass()
-class RegularOpenGridAtLevel(OpenGridAtLevel):
-    def index2coord(self, index):
-        slc = (slice(None),) + (np.newaxis,) * (index.ndim - 1)
-        index += self.shifts[slc]
-        shp = self.shape + 2 * self.shifts
-        return (index + 0.5) / shp[slc]
-
-    def coord2index(self, coord):
-        slc = (slice(None),) + (np.newaxis,) * (coord.ndim - 1)
-        # TODO type
-        index = coord * self.shape[slc] - 0.5
-        index -= self.shifts
-        assert index >= 0
-        return index
-
-    def index2volume(self, index):
-        return np.array(1.0 / self.size)[(np.newaxis,) * index.ndim]
-
-
-def RegularGrid(*, shape0, splits, padding=None):
-    if padding is None:
-        return Grid(shape0=shape0, splits=splits, atLevel=RegularGridAtLevel)
-    return OpenGrid(
-        shape0=shape0, splits=splits, padding=padding, atLevel=RegularOpenGridAtLevel
-    )
 
 
 @dataclass()
@@ -401,7 +378,7 @@ class HEALPixGrid(Grid):
         depth: Optional[int] = None,
         nest=True,
         shape0=None,
-        splits=None
+        splits=None,
     ):
         self.nest = nest
         if shape0 is not None:
@@ -450,7 +427,20 @@ class OGridAtLevel(GridAtLevel):
         return len(self.grids)
 
     def refined_indices(self):
-        raise NotImplementedError  # TODO
+        mgrids = tuple(gg.refined_indices() for gg in self.grids)
+        res = mgrids[0]
+        for mg in mgrids[1:]:
+            slf = (slice(None),) * res.ndim + (jnp.newaxis,) * (mg.ndim - 1)
+            slb = (
+                (slice(None),)
+                + (jnp.newaxis,) * (res.ndim - 1)
+                + (slice(None),) * (mg.ndim - 1)
+            )
+            shb = res.shape[1:] + mg.shape[1:]
+            res = jnp.broadcast_to(res[slf], (res.shape[0],) + shb)
+            mg = jnp.broadcast_to(mg[slb], (mg.shape[0],) + shb)
+            res = jnp.concatenate((res, mg), axis=0)
+        return res
 
     def children(self, index) -> np.ndarray:
         ndims_off = tuple(np.cumsum(tuple(g.ndim for g in self.grids)))
@@ -538,7 +528,7 @@ class OGridAtLevel(GridAtLevel):
 class OGrid(Grid):
     grids: tuple[Grid]
 
-    def __init__(self, *grids):
+    def __init__(self, *grids, atLevel=OGridAtLevel):
         self.grids = tuple(grids)
         for i, g in enumerate(grids):
             if not isinstance(g, Grid):
@@ -554,7 +544,7 @@ class OGrid(Grid):
             np.concatenate(tuple(g.splits[lvl] for g in self.grids))
             for lvl in range(self.grids[0].depth)
         )
-        super().__init__(shape0=shape0, splits=splits, atLevel=OGridAtLevel)
+        super().__init__(shape0=shape0, splits=splits, atLevel=atLevel)
 
     @property
     def depth(self):
