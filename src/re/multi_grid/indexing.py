@@ -349,7 +349,7 @@ class HEALPixGridAtLevel(GridAtLevel):
         super().__init__(shape=size, splits=splits, parent_splits=parent_splits)
 
     def neighborhood(self, index, window_size: Iterable[int]):
-        index = np.atleast_1d(index)
+        index = jnp.atleast_1d(index)
         if not isinstance(window_size, int):
             window_size = window_size[0]
         assert index.shape[0] == 1
@@ -401,8 +401,7 @@ class HEALPixGrid(Grid):
         depth: Optional[int] = None,
         nest=True,
         shape0=None,
-        splits=None,
-        fill_strategy: str = "same",
+        splits=None
     ):
         self.nest = nest
         if shape0 is not None:
@@ -413,12 +412,13 @@ class HEALPixGrid(Grid):
             assert int(nside0) == nside0
             nside0 = int(nside0)
         self.nside0 = nside0
+        assert self.nside0 > 0
         if splits is None:
             splits = (4,) * depth
         super().__init__(
             shape0=12 * self.nside0**2,
             splits=splits,
-            atLevel=partial(HEALPixGridAtLevel, fill_strategy=fill_strategy),
+            atLevel=HEALPixGridAtLevel,
         )
 
     def amend(self, splits=None, *, added_depth: Optional[int] = None):
