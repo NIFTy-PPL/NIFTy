@@ -87,10 +87,11 @@ class KernelBase:
         iout, iin = self.get_indices(index, level)
         kernels = self.get_kernel(index, level)
         assert len(iin) == len(kernels)
-        return iout, reduce(
+        res = reduce(
             lambda a, b: a + b,
             (kk @ x[ii[1]][tuple(ii[0])] for kk, ii in zip(kernels, iin)),
         )
+        return iout, res.reshape(iout[0].shape[1:])
 
     def apply(self, x, indices=None, copy=True):
         """Applies the kernel to values on an entire multigrid"""
@@ -107,14 +108,18 @@ class KernelBase:
         # Use dummy index for base
         _, x[0] = self.apply_at(jnp.atleast_1d(-1), -1, x)
         for lvl in range(self.grid.depth):
+            atlevel = self.grid.at(lvl)
             if indices is None:
-                index = self.grid.at(lvl).refined_indices()
+                index = atlevel.refined_indices()
             else:
                 index = indices[lvl]
             # TODO this selects window for each index individually
             f = self.apply_at
-            for i in range(index.ndim - 1):
-                f = vmap(f, (1, None, None), ((1, None), i))
+            ndim = atlevel.ndim
+            for i in range(ndim):
+                f = vmap(
+                    f, (1, None, None), ((ndim - i, None), ndim - i - 1)
+                )
             (_, level), res = f(index, lvl, x)
             x[level] = res.reshape(x[level].shape)
         return x
@@ -349,16 +354,18 @@ class ICRefine(KernelBase):
             grid_at_lvl = self._grid.at(0)
             pixel_indices = np.mgrid[tuple(slice(0, sz) for sz in grid_at_lvl.shape)]
             assert pixel_indices.shape[0] == grid_at_lvl.ndim
-            pixel_indices = pixel_indices.reshape(grid_at_lvl.ndim, -1)
-            return (pixel_indices, 0), ((pixel_indices, 0),)
+            return (pixel_indices, 0), (
+                (pixel_indices.reshape(grid_at_lvl.ndim, -1), 0),
+            )
         if (level >= self._grid.depth) or (level < -1):
             mg = f"Level {level} out of bounds for grid deph {self._grid.depth}"
             raise ValueError(mg)
         atlevel = self._grid.at(level)
         assert index.shape[0] == atlevel.ndim
         gc = atlevel.neighborhood(index, self._window_size).reshape(index.shape + (-1,))
-        gf = self._grid.at(level).children(index).reshape(index.shape + (-1,))
-        return (gf, level + 1), ((gc, level), (gf, level + 1))
+        gout = self._grid.at(level).children(index)
+        gf = gout.reshape(index.shape + (-1,))
+        return (gout, level + 1), ((gc, level), (gf, level + 1))
 
     def get_kernel(self, index, level):
         if level == -1:

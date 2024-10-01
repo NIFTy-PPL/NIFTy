@@ -285,9 +285,9 @@ class RegularGridAtLevel(GridAtLevel):
 @dataclass()
 class RegularOpenGridAtLevel(OpenGridAtLevel):
     def index2coord(self, index):
-        index += self.shifts
-        shp = self.shape + 2 * self.shifts
         slc = (slice(None),) + (np.newaxis,) * (index.ndim - 1)
+        index += self.shifts[slc]
+        shp = self.shape + 2 * self.shifts
         return (index + 0.5) / shp[slc]
 
     def coord2index(self, coord):
