@@ -84,7 +84,6 @@ def _matrices_tol_prep(
 
     return idx_map, dists
 
-
 def eval_kernel(kerfunc, dists, idx_map, chart):
     """Evaluates kernel at unique distances builds `RefinementMatrices`
 
@@ -93,7 +92,6 @@ def eval_kernel(kerfunc, dists, idx_map, chart):
     `Idx_map` is then used to broadcast matrices to all indices on grid during
     application.
     """
-
     def ref_mat(cov):
         olf, ks = refinement_matrices(
             cov,
@@ -221,7 +219,6 @@ def rg2cart(x, idx0, scl):
 def cart2rg(x, idx0, scl):
     """Inverse of `rg2cart`."""
     return ((jnp.log(x[0]) - idx0) / scl)[np.newaxis, ...]
-
 
 cc = jft.HEALPixChart(
     min_shape=(
