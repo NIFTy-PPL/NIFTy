@@ -135,7 +135,7 @@ def build_frequency_deviations_model(
                                                f"{dev_name}_sigma",
                                                lognormal_prior)
 
-        domain_key = f'{dev_name}_wp'
+        domain_key = f'{dev_name}_xi'
         process = build_fixed_point_wiener_process(
             x0=jnp.zeros(shape),  # sets x0 to 0 to avoid degeneracies
             sigma=sigma,
