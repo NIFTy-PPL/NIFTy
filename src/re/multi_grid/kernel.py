@@ -52,10 +52,18 @@ class KernelBase:
     def get_kernel(self, index, level):
         raise NotImplementedError
 
-    def freeze(self, *, indices=None, indexmaps=None, rtol=1e-5, atol=1e-5, nbatch=10):
+    def freeze(self, *, uindices=None,
+               indexmaps=None, rtol=1e-5, atol=1e-5,
+               batchsize=100000):
         """Evaluate the kernel and store it in a `FrozenKernel`. Kernels may be
         grouped by similarity and accessed via lookup"""
-        if (indices is None) and (indexmaps is None):
+        if (uindices is None) and (indexmaps is None):
+            uindices = []
+            indexmaps = []
+            #for lvl in range(-1, self.grid.depth):
+
+
+
             raise NotImplementedError  # TODO
             indices = []
             indexmaps = []
@@ -80,7 +88,7 @@ class KernelBase:
             raise ValueError(
                 "`indices` and `indexmaps` must be either both None or not None"
             )
-        return FrozenKernel(self, indexmaps, indices)
+        return FrozenKernel(self, uindices, indexmaps)
 
     def apply_at(self, index, level, x):
         assert index.ndim == 1
@@ -93,7 +101,7 @@ class KernelBase:
         )
         return iout, res.reshape(iout[0].shape[1:])
 
-    def apply(self, x, indices=None, copy=True):
+    def apply(self, x, copy=True):
         """Applies the kernel to values on an entire multigrid"""
         xd, gd = len(x), self.grid.depth
         if xd != (gd + 1):
@@ -109,10 +117,7 @@ class KernelBase:
         _, x[0] = self.apply_at(jnp.atleast_1d(-1), -1, x)
         for lvl in range(self.grid.depth):
             atlevel = self.grid.at(lvl)
-            if indices is None:
-                index = atlevel.refined_indices()
-            else:
-                index = indices[lvl]
+            index = atlevel.refined_indices()
             # TODO this selects window for each index individually
             f = self.apply_at
             ndim = atlevel.ndim
@@ -121,7 +126,7 @@ class KernelBase:
                     f, (1, None, None), ((ndim - i, None), ndim - i - 1)
                 )
             (_, level), res = f(index, lvl, x)
-            x[level] = res.reshape(x[level].shape)
+            x[level] = self.grid.at(level).resort(res)
         return x
 
     def tree_flatten(self):
@@ -134,12 +139,87 @@ class KernelBase:
         # return cls(*children)
 
 
+class ICRefine(KernelBase):
+    def __init__(self, grid, covariance, window_size):
+        self._grid = grid
+        mapped_kernel = vmap(covariance, in_axes=(None, -1), out_axes=-1)
+        mapped_kernel = vmap(mapped_kernel, in_axes=(-1, None), out_axes=-1)
+        self._covariance = mapped_kernel
+        window_size = (window_size,) if isinstance(window_size, int) else window_size
+        self._window_size = tuple(window_size)
+
+    def get_indices(self, index, level):
+        # FIXME inconsistent behavior of level and index
+        if level == -1:
+            grid_at_lvl = self._grid.at(0)
+            pixel_indices = np.mgrid[tuple(slice(0, sz) for sz in grid_at_lvl.shape)]
+            assert pixel_indices.shape[0] == grid_at_lvl.ndim
+            return (pixel_indices, 0), (
+                (pixel_indices.reshape(grid_at_lvl.ndim, -1), 0),
+            )
+        if (level >= self._grid.depth) or (level < -1):
+            mg = f"Level {level} out of bounds for grid deph {self._grid.depth}"
+            raise ValueError(mg)
+        atlevel = self._grid.at(level)
+        assert index.shape[0] == atlevel.ndim
+        gc = atlevel.neighborhood(index, self._window_size).reshape(index.shape + (-1,))
+        gout = self._grid.at(level).children(index)
+        gf = gout.reshape(index.shape + (-1,))
+        return (gout, level + 1), ((gc, level), (gf, level + 1))
+
+    def get_kernel(self, index, level):
+        if level == -1:
+            _, ((ids, _),) = self.get_indices(index, -1)
+            gc = self._grid.at(0).index2coord(ids)
+            assert gc.ndim == 2
+            cov = self._covariance(gc, gc)
+            assert cov.shape == (gc.shape[1],) * 2
+            from ..refine.util import projection_MatrixSq
+
+            return (projection_MatrixSq(cov),)
+        _, ((idc, _), (idf, _)) = self.get_indices(index, level)
+
+        from ..refine.util import refinement_matrices
+
+        def _get_kernel(gc, gf):
+            gc = self.grid.at(level).index2coord(gc)
+            gf = self.grid.at(level + 1).index2coord(gf)
+            assert gc.shape[0] == gf.shape[0]
+            assert gc.ndim == gf.ndim == 2
+            coord = jnp.concatenate((gc, gf), axis=-1)
+            # del gc, gf
+            cov = self._covariance(coord, coord)
+            # del coord
+            return refinement_matrices(cov, gf.shape[1])
+
+        f = _get_kernel
+        for _ in range(index.ndim - 1):
+            f = vmap(f, in_axes=(1, 1))
+        return f(idc, idf)
+
+class ICRDistances(ICRefine):
+    def __init__(self, grid, window_size):
+        self._window_size = window_size
+        self._grid = grid
+
+    def get_indices(self, index, level):
+        raise NotImplementedError
+
+    def get_kernel(self, index, level, norm = partial(jnp.linalg.norm, axis=0)):
+        out, ids = super().get_indices(index, level)
+        out = self.grid.at(out[1]).index2coord(out[0])
+        assert index.ndim == out.ndim-1
+        ids = tuple(self.grid.at[ii[1]].index2coord(ii[0]) for ii in ids)
+        ids = jnp.concatenate(ids, axis=-1)
+        assert index.ndim == ids.ndim -1
+        return norm(out[..., jnp.newaxis] - ids[..., jnp.newaxis, :])
+
 class FrozenKernel(KernelBase):
-    def __init__(self, kernel: KernelBase, indexmaps, indices):
+    def __init__(self, kernel: KernelBase, uindices, indexmaps):
         self.get_indices = kernel.get_indices
         self._indexmaps = indexmaps
         self._kernels = tuple(
-            kernel.get_kernel(ii, ll) for ll, ii in enumerate(indices)
+            kernel.get_kernel(ii, ll) for ll, ii in enumerate(uindices)
         )
 
     def get_kernel(self, index, level):
@@ -337,62 +417,3 @@ class MSCRefine(KernelBase):
 
         parent_kernel = iwgts @ parent_kernel @ combine
         return (iwgts, ker - parent_kernel)
-
-
-class ICRefine(KernelBase):
-    def __init__(self, grid, covariance, window_size):
-        self._grid = grid
-        mapped_kernel = vmap(covariance, in_axes=(None, -1), out_axes=-1)
-        mapped_kernel = vmap(mapped_kernel, in_axes=(-1, None), out_axes=-1)
-        self._covariance = mapped_kernel
-        window_size = (window_size,) if isinstance(window_size, int) else window_size
-        self._window_size = tuple(window_size)
-
-    def get_indices(self, index, level):
-        # FIXME inconsistent behavior of level and index
-        if level == -1:
-            grid_at_lvl = self._grid.at(0)
-            pixel_indices = np.mgrid[tuple(slice(0, sz) for sz in grid_at_lvl.shape)]
-            assert pixel_indices.shape[0] == grid_at_lvl.ndim
-            return (pixel_indices, 0), (
-                (pixel_indices.reshape(grid_at_lvl.ndim, -1), 0),
-            )
-        if (level >= self._grid.depth) or (level < -1):
-            mg = f"Level {level} out of bounds for grid deph {self._grid.depth}"
-            raise ValueError(mg)
-        atlevel = self._grid.at(level)
-        assert index.shape[0] == atlevel.ndim
-        gc = atlevel.neighborhood(index, self._window_size).reshape(index.shape + (-1,))
-        gout = self._grid.at(level).children(index)
-        gf = gout.reshape(index.shape + (-1,))
-        return (gout, level + 1), ((gc, level), (gf, level + 1))
-
-    def get_kernel(self, index, level):
-        if level == -1:
-            _, ((ids, _),) = self.get_indices(index, -1)
-            gc = self._grid.at(0).index2coord(ids)
-            assert gc.ndim == 2
-            cov = self._covariance(gc, gc)
-            assert cov.shape == (gc.shape[1],) * 2
-            from ..refine.util import projection_MatrixSq
-
-            return (projection_MatrixSq(cov),)
-        _, ((idc, _), (idf, _)) = self.get_indices(index, level)
-
-        from ..refine.util import refinement_matrices
-
-        def _get_kernel(gc, gf):
-            gc = self.grid.at(level).index2coord(gc)
-            gf = self.grid.at(level + 1).index2coord(gf)
-            assert gc.shape[0] == gf.shape[0]
-            assert gc.ndim == gf.ndim == 2
-            coord = jnp.concatenate((gc, gf), axis=-1)
-            # del gc, gf
-            cov = self._covariance(coord, coord)
-            # del coord
-            return refinement_matrices(cov, gf.shape[1])
-
-        f = _get_kernel
-        for _ in range(index.ndim - 1):
-            f = vmap(f, in_axes=(1, 1))
-        return f(idc, idf)

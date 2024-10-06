@@ -58,6 +58,14 @@ class GridAtLevel:
         # TODO non-dense grid
         return np.mgrid[tuple(slice(0, sh) for sh in self.shape)]
 
+    def resort(self, batched_ar):
+        if batched_ar.ndim != 2 * self.ndim:
+            raise ValueError
+        shp = batched_ar.shape
+        if shp[1::2] != tuple(self.parent_splits):
+            raise ValueError
+        return batched_ar.reshape(tuple(a*b for a,b in zip(shp[::2], shp[1::2])))
+
     def children(self, index):
         if self.splits is None:
             raise IndexError("This level has no children")
@@ -571,20 +579,20 @@ class FlatGridAtLevel(GridAtLevel):
     """Same as :class:`GridAtLevel` but with a single global integer index for each voxel."""
 
     gridAtLevel: GridAtLevel
-    gridshape0: npt.NDArray[np.int_]
-    grid_all_splits: tuple[npt.NDArray[np.int_]]
+    all_shapes: npt.NDArray[np.int_]
+    all_splits: tuple[npt.NDArray[np.int_]]
     ordering: str
 
-    def __init__(self, gridAtLevel, gridshape0, grid_all_splits, ordering="nest"):
+    def __init__(self, gridAtLevel, shapes, splits, ordering="nest"):
         if not isinstance(gridAtLevel, GridAtLevel):
             raise TypeError(f"Grid {gridAtLevel.__name__} of invalid type")
         self.gridAtLevel = gridAtLevel
-        self.ordering = ordering
+        ordering = str(ordering).lower()
         if ordering not in ["serial", "nest"]:
             raise ValueError(f"Unknown flat index ordering scheme {ordering}")
-
-        self.gridshape0 = np.asarray(gridshape0)
-        self.grid_all_splits = tuple(np.atleast_1d(s) for s in grid_all_splits)
+        self.ordering = ordering
+        self.all_shapes = tuple(np.atleast_1d(sh) for sh in shapes)
+        self.all_splits = tuple(np.atleast_1d(sp) for sp in splits)
         super().__init__(
             shape=(reduce(operator.mul, gridAtLevel.shape, 1),),
             splits=None,
@@ -592,19 +600,13 @@ class FlatGridAtLevel(GridAtLevel):
         )
 
     def _weights_serial(self, levelshift):
-        shape = (self.gridshape0,) + self.grid_all_splits
-        if levelshift == 0:
-            shape = shape[:-1]
-        elif levelshift == -1:
-            shape = shape[:-2]
-        else:
-            if levelshift != 1:
-                raise ValueError(f"Inconsistent shift in level: {levelshift}")
-        shape = reduce(operator.mul, shape)
-        wgt = np.append(shape[1:], 1)
-        return np.cumprod(wgt[::-1])[::-1]
+        if levelshift not in (-1, 0 ,1):
+            raise ValueError(f"Inconsistent shift in level: {levelshift}")
+        shape = self.all_shapes[(-2 + levelshift)]
+        return np.cumprod(np.append(shape[1:], 1)[::-1])[::-1]
 
     def _weights_nest(self, levelshift):
+        raise NotImplementedError # TODO
         wgts = (self.gridshape0,) + self.grid_all_splits
         if levelshift == 0:
             wgts = wgts[:-1]
@@ -615,14 +617,15 @@ class FlatGridAtLevel(GridAtLevel):
                 raise ValueError(f"Inconsistent shift in level: {levelshift}")
         return np.stack(wgts, axis=0)
 
-    def index_to_flatindex(self, index, levelshift=0):
+    def index2flatindex(self, index, levelshift=0):
         # TODO vectorize better
         if self.ordering == "serial":
             wgt = self._weights_serial(levelshift)
             wgt = wgt[(slice(None),) + (np.newaxis,) * (index.ndim - 1)]
-            return (wgt * index).sum(axis=0).astype(index.dtype)[np.newaxis, ...]
+            return (wgt * index).sum(axis=0).astype(index.dtype)[jnp.newaxis, ...]
         if self.ordering == "nest":
-            fid = np.zeros(index.shape[1:], dtype=index.dtype)
+            raise NotImplementedError # TODO
+            fid = jnp.zeros(index.shape[1:], dtype=index.dtype)
             wgts = self._weights_nest(levelshift)
             for n, ww in enumerate(wgts):
                 j = 0
@@ -631,67 +634,89 @@ class FlatGridAtLevel(GridAtLevel):
                     j += (index[ax] // wgts[(n + 1) :, ax].prod()) % ww[ax]
                 fid *= ww.prod()
                 fid += j
-            return fid[np.newaxis, ...]
+            return fid[jnp.newaxis, ...]
         raise RuntimeError
 
-    def flatindex_to_index(self, index, levelshift=0):
+    def flatindex2index(self, index, levelshift=0):
         # TODO vectorize better
+        dtp = index.dtype
         if self.ordering == "serial":
             wgt = self._weights_serial(levelshift)
-            tm = np.copy(index[0])
-            index = np.zeros(wgt.shape + index.shape[1:], dtype=index.dtype)
-            for i, w in enumerate(wgt):
-                index[i] = tm // w
-                tm -= w * index[i]
-            return index.astype(index.dtype)
+            tm = jnp.copy(index[0])
+            index = np.zeros(wgt.shape + index.shape[1:], dtype=dtp)
+            index = []
+            for w in wgt:
+                tmfl = tm // w
+                tm -= w * tmfl
+                index.append(tmfl)
+            return jnp.stack(index, axis=0).astype(dtp)
         if self.ordering == "nest":
+            raise NotImplementedError # TODO
             wgts = self._weights_nest(levelshift)
-            fid = np.copy(index[0])
-            index = np.zeros((wgts.shape[1],) + index.shape[1:], dtype=index.dtype)
+            fid = jnp.copy(index[0])
+            index = jnp.zeros((wgts.shape[1],) + index.shape[1:], dtype=dtp)
             for n, ww in reversed(list(enumerate(wgts))):
                 fct = ww.prod()
                 j = fid % fct
                 for ax in range(ww.size)[::-1]:
-                    index[ax] += wgts[(n + 1) :, ax].prod() * (j % ww[ax])
+                    index = index.at[ax].add(wgts[(n + 1) :, ax].prod() * (j % ww[ax]))
                     j //= ww[ax]
                 fid //= fct
-            return index
-
+            return index.astype(dtp)
         raise RuntimeError
 
     def refined_indices(self):
-        raise NotImplementedError  # TODO
+        ids = self.gridAtLevel.refined_indices()
+        return self.index2flatindex(ids).reshape((1, -1))
+
+    def resort(self, batched_ar):
+        parent_splits = self.all_splits[-3]
+        shape = self.all_shapes[-2]
+        if batched_ar.ndim != 2:
+            raise ValueError
+        if batched_ar.shape[1] != np.prod(parent_splits):
+            raise ValueError
+        if self.ordering == 'serial':
+            shp = tuple(shape // parent_splits) + tuple(parent_splits)
+            batched_ar = batched_ar.reshape(shp)
+            ndim = shape.size
+            idx = np.arange(ndim)
+            axes = reduce(operator.add, ((a,b) for a,b in zip(idx, ndim + idx)))
+            return jnp.transpose(batched_ar, axes).ravel()
+        if self.ordering == 'nest':
+            raise NotImplementedError # TODO
+        raise RuntimeError
 
     def children(self, index) -> np.ndarray:
         index = self._parse_index(index)
-        index = self.flatindex_to_index(index)
-        children = self.gridAtLevel.children(index)
-        return self.index_to_flatindex(children, +1)
+        index = self.flatindex2index(index)
+        children = self.gridAtLevel.children(index).reshape(index.shape + (-1,))
+        return self.index2flatindex(children, +1)
 
     def neighborhood(self, index, window_size: Iterable[int]):
         index = self._parse_index(index)
-        index = self.flatindex_to_index(index)
+        index = self.flatindex2index(index)
         window = self.gridAtLevel.neighborhood(index, window_size=window_size)
-        return self.index_to_flatindex(window)
+        return self.index2flatindex(window.reshape(index.shape + (-1,)))
 
     def parent(self, index):
         index = self._parse_index(index)
-        index = self.flatindex_to_index(index)
+        index = self.flatindex2index(index)
         window = self.gridAtLevel.parent(index)
-        return self.index_to_flatindex(window, -1)
+        return self.index2flatindex(window, -1)
 
     def index2coord(self, index, **kwargs):
         index = self._parse_index(index)
-        index = self.flatindex_to_index(index)
+        index = self.flatindex2index(index)
         return self.gridAtLevel.index2coord(index, **kwargs)
 
     def coord2index(self, coord, **kwargs):
         index = self.gridAtLevel.coord2index(coord, **kwargs)
-        return self.index_to_flatindex(index)
+        return self.index2flatindex(index)
 
     def index2volume(self, index, **kwargs):
         index = self._parse_index(index)
-        index = self.flatindex_to_index(index)
+        index = self.flatindex2index(index)
         return self.gridAtLevel.index2volume(index, **kwargs)
 
 
@@ -706,6 +731,7 @@ class FlatGrid(Grid):
         if not isinstance(grid, Grid):
             raise TypeError(f"Grid {grid.__name__} of invalid type")
         self.grid = grid
+        ordering = str(ordering).lower()
         if ordering not in ["serial", "nest"]:
             raise ValueError(f"Unknown flat index ordering scheme {ordering}")
         self.ordering = ordering
@@ -719,11 +745,20 @@ class FlatGrid(Grid):
 
     def at(self, level: int):
         level = self._parse_level(level)
-        gridAtLevel = self.grid.at(level)
+        shapes = []
+        splits = []
+        for lvl in range(level + 2):
+            if lvl <= self.depth:
+                atlvl = self.grid.at(lvl)
+                shapes.append(atlvl.shape)
+                splits.append(atlvl.splits)
+            else:
+                shapes.append(None)
+                splits.append(None)
         return self.atLevel(
-            gridAtLevel,
-            self.grid.shape0,
-            self.grid.splits[: (level + 1)] + ((None,) if level == self.depth else ()),
+            gridAtLevel = self.grid.at(level),
+            shapes = shapes,
+            splits = splits,
             ordering=self.ordering,
         )
 
@@ -773,11 +808,11 @@ class SparseGridAtLevel(FlatGridAtLevel):
             raise ValueError(f"Inconsistent shift in level: {levelshift}")
         return mapping
 
-    def arrayindex_to_flatindex(self, index, levelshift=0):
+    def arrayindex2flatindex(self, index, levelshift=0):
         index = self._parse_index(index)
         return self._mapping(levelshift)[index]
 
-    def flatindex_to_arrayindex(self, index, levelshift=0):
+    def flatindex2arrayindex(self, index, levelshift=0):
         mapping = self._mapping(levelshift)
         arrayid = np.searchsorted(mapping, index)
         #  TODO Benchmark searchsorted on stack instead of second one with `right`
@@ -795,39 +830,39 @@ class SparseGridAtLevel(FlatGridAtLevel):
         raise NotImplementedError  # TODO
 
     def children(self, index) -> np.ndarray:
-        index = self.arrayindex_to_flatindex(index)
-        index = self.flatindex_to_index(index)
+        index = self.arrayindex2flatindex(index)
+        index = self.flatindex2index(index)
         children = self.gridAtLevel.children(index)
-        children = self.index_to_flatindex(children, +1)
-        return self.flatindex_to_arrayindex(children, +1)
+        children = self.index2flatindex(children, +1)
+        return self.flatindex2arrayindex(children, +1)
 
     def neighborhood(self, index, window_size: Iterable[int]):
-        window = self.arrayindex_to_flatindex(index)
-        window = self.flatindex_to_index(window)
+        window = self.arrayindex2flatindex(index)
+        window = self.flatindex2index(window)
         window = self.gridAtLevel.neighborhood(index, window_size=window_size)
-        window = self.index_to_flatindex(window)
-        return self.flatindex_to_arrayindex(window)
+        window = self.index2flatindex(window)
+        return self.flatindex2arrayindex(window)
 
     def parent(self, index):
-        index = self.arrayindex_to_flatindex(index)
-        index = self.flatindex_to_index(index)
+        index = self.arrayindex2flatindex(index)
+        index = self.flatindex2index(index)
         parent = self.gridAtLevel.parent(index)
-        parent = self.index_to_flatindex(parent, -1)
-        return self.flatindex_to_arrayindex(parent, -1)
+        parent = self.index2flatindex(parent, -1)
+        return self.flatindex2arrayindex(parent, -1)
 
     def index2coord(self, index, **kwargs):
-        index = self.arrayindex_to_flatindex(index)
-        index = self.flatindex_to_index(index)
+        index = self.arrayindex2flatindex(index)
+        index = self.flatindex2index(index)
         return self.gridAtLevel.index2coord(index, **kwargs)
 
     def coord2index(self, coord, **kwargs):
         index = self.gridAtLevel.coord2index(coord, **kwargs)
-        index = self.index_to_flatindex(index)
-        return self.flatindex_to_arrayindex(index)
+        index = self.index2flatindex(index)
+        return self.flatindex2arrayindex(index)
 
     def index2volume(self, index, **kwargs):
-        index = self.arrayindex_to_flatindex(index)
-        index = self.flatindex_to_index(index)
+        index = self.arrayindex2flatindex(index)
+        index = self.flatindex2index(index)
         return self.gridAtLevel.index2volume(index, **kwargs)
 
     def toFlatGridAtLevel(self):
@@ -847,7 +882,8 @@ class SparseGrid(FlatGrid):
 
     mapping: tuple[npt.NDArray[np.int_]]
 
-    def __init__(self, grid, mapping, ordering="nest", _check_mapping=True):
+    def __init__(self, grid, mapping, ordering="nest", _check_mapping=True,
+                 atLevel=SparseGridAtLevel):
         if not isinstance(grid, Grid):
             raise TypeError(f"Grid {grid.__class__.__name__} of invalid type")
         self.grid = grid
@@ -869,7 +905,7 @@ class SparseGrid(FlatGrid):
                     raise IndexError("Mapping must be unique and sorted")
         self.mapping = mapping
 
-        super().__init__(grid=grid, ordering=ordering, atLevel=SparseGridAtLevel)
+        super().__init__(grid=grid, ordering=ordering, atLevel=atLevel)
 
     def amend(self, splits, mapping, **kwargs):
         grid = self.grid.amend(splits, **kwargs)
