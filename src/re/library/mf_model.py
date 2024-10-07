@@ -266,7 +266,7 @@ class CorrelatedMultiFrequencySky(Model):
                                    self._freqs + deviations)
         ) + spectral_index_mean * self._freqs
 
-    def get_deviations_at_relative_log_freqency(
+    def _get_deviations_at_relative_log_freqency(
         self,
         p,
         relative_log_frequency
@@ -289,7 +289,7 @@ class CorrelatedMultiFrequencySky(Model):
 
         _mapped_interp = vmap(vmap(_interp, in_axes=0), in_axes=0)
 
-        return _mapped_interp(deviations.T)
+        return _mapped_interp(np.moveaxis(deviations, 0, -1))
 
     def get_spectral_distribution_at_relative_log_frequency(
         self,
@@ -309,7 +309,7 @@ class CorrelatedMultiFrequencySky(Model):
         spectral_index_fluc = self._spectral_index_fluctuations(
             p) * spectral_xi
 
-        deviations = self.get_deviations_at_relative_log_freqency(
+        deviations = self._get_deviations_at_relative_log_freqency(
             p, relative_log_frequency)
 
         return self._hdvol*self._ht(
