@@ -1,15 +1,17 @@
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 # Authors: Philipp Frank
+from dataclasses import dataclass
 from functools import partial, reduce
-import operator
 from typing import Callable, Iterable
 from jax.tree_util import register_pytree_node_class
-from jax import vmap, jit
-from jax.experimental.checkify import checkify
-from .indexing import Grid
+from jax import vmap, jit, eval_shape
+from jax.lax import scan
+from .indexing import Grid, FlatGrid
+from ..num import amend_unique_
 
 import numpy as np
 import jax.numpy as jnp
+import numpy.typing as npt
 
 
 def _mydist(x, y, periodicity=None):
@@ -52,43 +54,61 @@ class KernelBase:
     def get_kernel(self, index, level):
         raise NotImplementedError
 
-    def freeze(self, *, uindices=None,
-               indexmaps=None, rtol=1e-5, atol=1e-5,
-               batchsize=100000):
+    def freeze(
+        self, *, uindices=None, indexmaps=None, rtol=1e-5, atol=1e-10, buffer_size=10000
+    ):
         """Evaluate the kernel and store it in a `FrozenKernel`. Kernels may be
         grouped by similarity and accessed via lookup"""
         if (uindices is None) and (indexmaps is None):
+            fgrid = (
+                self.grid if isinstance(self.grid, FlatGrid) else FlatGrid(self.grid)
+            )
             uindices = []
             indexmaps = []
-            #for lvl in range(-1, self.grid.depth):
-
-
-
-            raise NotImplementedError  # TODO
-            indices = []
-            indexmaps = []
             for lvl in range(self.grid.depth):
-                index = np.mgrid[
-                    tuple(slice(0, sh) for sh in range(self.grid.at(lvl).shape))
-                ]
-                index = index.reshape((index.shape[0], -1))
-                if index.shape[1] > nbatch:
-                    bsz = index.shape[1] // nbatch
-                    index = tuple(
-                        index[:, bsz * i : min(bsz * (i + 1), index.shape[1])]
-                        for i in range(nbatch)
-                    )
-                else:
-                    index = (index,)
-                kernels = None
-                getker = jit(self.get_kernel, static_argnums=1)
-                for ii in index:
-                    kers = getker(ii, lvl)
+                atlevel = self.grid.at(lvl)
+                fatlevel = fgrid.at(lvl)
+
+                def get_kernel(id):
+                    id = jnp.atleast_1d(id)
+                    ker = self.get_kernel(fatlevel.flatindex2index(id), lvl)
+                    ker = jnp.concatenate(tuple(kk.ravel() for kk in ker))
+                    return ker
+
+                @jit
+                def scanned_amend_unique(carry, idx, shift):
+                    (u, inv) = carry
+                    k = get_kernel(idx)
+                    u, invid = amend_unique_(u, k, axis=0, atol=atol, rtol=rtol)
+                    inv = inv.at[idx - shift].set(invid)
+                    return (u, inv), invid
+
+                indices = atlevel.refined_indices()
+                indices = fatlevel.index2flatindex(indices)[0].ravel()
+                shift = np.min(indices)
+                size = np.max(indices) - shift
+                myinv = np.full(size, buffer_size + 1)
+
+                shp = eval_shape(get_kernel, indices[0]).shape
+                unique = jnp.full((buffer_size,) + shp, jnp.nan)
+
+                (unique, myinv), inv = scan(
+                    partial(scanned_amend_unique, shift=shift), (unique, myinv), indices
+                )
+                _, idx = np.unique(inv, return_index=True)
+                n = idx.size
+                if n >= unique.shape[0] or not np.all(np.isnan(unique[n:])):
+                    raise ValueError("`mat_buffer_size` too small")
+                uids = indices[idx]
+                uids = fatlevel.flatindex2index(uids[np.newaxis, :])
+                uindices.append(uids)
+
+                indexmaps.append(_IdxMap(myinv, shift, fatlevel.index2flatindex))
         elif indexmaps is None:
             raise ValueError(
                 "`indices` and `indexmaps` must be either both None or not None"
             )
-        return FrozenKernel(self, uindices, indexmaps)
+        return _FrozenKernel(self, uindices, indexmaps)
 
     def apply_at(self, index, level, x):
         assert index.ndim == 1
@@ -122,9 +142,7 @@ class KernelBase:
             f = self.apply_at
             ndim = atlevel.ndim
             for i in range(ndim):
-                f = vmap(
-                    f, (1, None, None), ((ndim - i, None), ndim - i - 1)
-                )
+                f = vmap(f, (1, None, None), ((ndim - i, None), ndim - i - 1))
             (_, level), res = f(index, lvl, x)
             x[level] = self.grid.at(level).resort(res)
         return x
@@ -137,6 +155,33 @@ class KernelBase:
     def tree_unflatten(cls, aux_data, children):
         raise NotImplementedError
         # return cls(*children)
+
+
+@dataclass()
+class _IdxMap:
+    idxmap: npt.NDArray[np.int_]
+    shift: int
+    index2flatindex: callable
+
+
+class _FrozenKernel(KernelBase):
+    def __init__(self, kernel: KernelBase, uindices, indexmaps):
+        self.get_indices = kernel.get_indices
+        self._indexmaps = indexmaps
+        self._kernels = tuple(
+            kernel.get_kernel(ii, ll) for ll, ii in enumerate(uindices)
+        )
+        self._base_kernel = kernel.get_kernel(jnp.atleast_1d(-1), -1)
+        self._grid = kernel.grid
+
+    def get_kernel(self, index, level):
+        if level == -1:
+            return self._base_kernel
+
+        atlevel = self._indexmaps[level]
+        index = atlevel.index2flatindex(index)[0]
+        index = atlevel.idxmap[index - atlevel.shift]
+        return tuple(kk[index] for kk in self._kernels[level])
 
 
 class ICRefine(KernelBase):
@@ -187,15 +232,14 @@ class ICRefine(KernelBase):
             assert gc.shape[0] == gf.shape[0]
             assert gc.ndim == gf.ndim == 2
             coord = jnp.concatenate((gc, gf), axis=-1)
-            # del gc, gf
             cov = self._covariance(coord, coord)
-            # del coord
             return refinement_matrices(cov, gf.shape[1])
 
         f = _get_kernel
         for _ in range(index.ndim - 1):
             f = vmap(f, in_axes=(1, 1))
         return f(idc, idf)
+
 
 class ICRDistances(ICRefine):
     def __init__(self, grid, window_size):
@@ -205,25 +249,14 @@ class ICRDistances(ICRefine):
     def get_indices(self, index, level):
         raise NotImplementedError
 
-    def get_kernel(self, index, level, norm = partial(jnp.linalg.norm, axis=0)):
+    def get_kernel(self, index, level, norm=partial(jnp.linalg.norm, axis=0)):
         out, ids = super().get_indices(index, level)
         out = self.grid.at(out[1]).index2coord(out[0])
-        assert index.ndim == out.ndim-1
+        assert index.ndim == out.ndim - 1
         ids = tuple(self.grid.at[ii[1]].index2coord(ii[0]) for ii in ids)
         ids = jnp.concatenate(ids, axis=-1)
-        assert index.ndim == ids.ndim -1
+        assert index.ndim == ids.ndim - 1
         return norm(out[..., jnp.newaxis] - ids[..., jnp.newaxis, :])
-
-class FrozenKernel(KernelBase):
-    def __init__(self, kernel: KernelBase, uindices, indexmaps):
-        self.get_indices = kernel.get_indices
-        self._indexmaps = indexmaps
-        self._kernels = tuple(
-            kernel.get_kernel(ii, ll) for ll, ii in enumerate(uindices)
-        )
-
-    def get_kernel(self, index, level):
-        return self._kernels[level][self._indexmaps[level][index]]
 
 
 class FixedKernelFunctionBatch(KernelBase):
