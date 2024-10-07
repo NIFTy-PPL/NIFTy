@@ -287,9 +287,16 @@ class CorrelatedMultiFrequencySky(Model):
                           times=self._freqs.reshape(-1),
                           target_time=relative_log_frequency)
 
-        _mapped_interp = vmap(vmap(_interp, in_axes=0), in_axes=0)
+        if len(deviations.shape) == 2:
+            return vmap(_interp)(deviations.T)
 
-        return _mapped_interp(np.moveaxis(deviations, 0, -1))
+        elif len(deviations.shape) == 3:
+            _mapped_interp = vmap(vmap(_interp, in_axes=0), in_axes=0)
+            return _mapped_interp(np.moveaxis(deviations, 0, -1))
+
+        else:
+            raise NotImplementedError("Deviations interpolation works only "
+                                      "for 1 or 2 spatial dimensions.")
 
     def get_spectral_distribution_at_relative_log_frequency(
         self,
