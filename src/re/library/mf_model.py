@@ -12,6 +12,7 @@ import numpy as np
 from jax import vmap
 from numpy.typing import ArrayLike
 
+from ..tree_math.vector import Vector
 from .frequency_deviations import build_frequency_deviations_model
 from .mf_model_utils import (
     _build_distribution_or_default, build_normalized_amplitude_model)
@@ -95,7 +96,9 @@ class CorrelatedMultiFrequencySky(Model):
             ]
 
         domain = reduce(
-            lambda a, b: a | b, [m.domain for m in models if m is not None]
+            lambda a, b: a | b,
+            [(m.domain.tree if isinstance(m.domain, Vector) else m.domain)
+             for m in models if m is not None]
         )
 
         domain[f"{self._prefix}_spatial_xi"] = ShapeWithDtype(
