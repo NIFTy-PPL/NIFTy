@@ -378,6 +378,7 @@ def build_default_mf_model(
     spectral_index_settings: dict,
     spectral_amplitude_settings: Optional[dict] = None,
     deviations_settings: Optional[dict] = None,
+    log_reference_frequency_mean_model: Optional[Model] = None,
     spatial_amplitude_model: str = "non_parametric",
     spectral_amplitude_model: str = "non_parametric",
     harmonic_type: str = 'fourier',
@@ -458,6 +459,10 @@ def build_default_mf_model(
         - sigma: callable or parameters
              for default (lognormal prior)
 
+    log_reference_frequency_mean_model: Model
+        Model for the distribution of the log mean of the
+        reference frequency.
+
     spatial_amplitude_model: str
         Type of the spatial amplitude model to be used.
         By default, the correlated field model
@@ -470,6 +475,9 @@ def build_default_mf_model(
 
     harmonic_type: str
         The type of the harmonic domain for the amplitude model.
+
+    dtype: type
+        The type of the parameters.
 
     Returns
     -------
@@ -537,5 +545,6 @@ def build_default_mf_model(
         spectral_index_fluctuations=spectral_index_fluctuations,
         spectral_amplitude=spectral_amplitude,
         spectral_index_deviations=deviations_model,
+        log_ref_freq_mean_model=log_reference_frequency_mean_model,
         dtype=dtype
     )
