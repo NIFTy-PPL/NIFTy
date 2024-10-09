@@ -3,11 +3,11 @@
 from dataclasses import dataclass
 from functools import partial, reduce
 from typing import Callable, Iterable
-from jax.tree_util import register_pytree_node_class
 from jax import vmap, jit, eval_shape
 from jax.lax import scan
 from .indexing import Grid, FlatGrid
 from ..num import amend_unique_
+from ..refine.util import refinement_matrices
 
 import numpy as np
 import jax.numpy as jnp
@@ -39,7 +39,6 @@ Ideas for kernel:
 """
 
 
-@register_pytree_node_class
 class KernelBase:
     def __getitem__(self, key):
         raise NotImplementedError
@@ -54,8 +53,27 @@ class KernelBase:
     def get_kernel(self, index, level):
         raise NotImplementedError
 
+    def get_distance_kernel(self, index, level, norm=partial(jnp.linalg.norm, axis=0)):
+        if level == -1:
+            raise NotImplementedError
+        (out, olvl), ids = self.get_indices(index, level)
+        out = out.reshape(index.shape + (-1,))
+        out = self.grid.at(olvl).index2coord(out)
+        assert index.ndim == out.ndim - 1
+        ids = tuple(self.grid.at(ii[1]).index2coord(ii[0]) for ii in ids)
+        ids = jnp.concatenate(ids, axis=-1)
+        assert index.ndim == ids.ndim - 1
+        return norm(out[..., jnp.newaxis] - ids[..., jnp.newaxis, :])
+
     def freeze(
-        self, *, uindices=None, indexmaps=None, rtol=1e-5, atol=1e-10, buffer_size=10000
+        self,
+        *,
+        uindices=None,
+        indexmaps=None,
+        rtol=1e-5,
+        atol=1e-10,
+        buffer_size=10000,
+        use_distances=True,
     ):
         """Evaluate the kernel and store it in a `FrozenKernel`. Kernels may be
         grouped by similarity and accessed via lookup"""
@@ -71,7 +89,8 @@ class KernelBase:
 
                 def get_kernel(id):
                     id = jnp.atleast_1d(id)
-                    ker = self.get_kernel(fatlevel.flatindex2index(id), lvl)
+                    f = self.get_distance_kernel if use_distances else self.get_kernel
+                    ker = f(fatlevel.flatindex2index(id), lvl)
                     ker = jnp.concatenate(tuple(kk.ravel() for kk in ker))
                     return ker
 
@@ -147,15 +166,6 @@ class KernelBase:
             x[level] = self.grid.at(level).resort(res)
         return x
 
-    def tree_flatten(self):
-        raise NotImplementedError
-        # return ((self.x, self.y), None)
-
-    @classmethod
-    def tree_unflatten(cls, aux_data, children):
-        raise NotImplementedError
-        # return cls(*children)
-
 
 @dataclass()
 class _IdxMap:
@@ -194,7 +204,6 @@ class ICRefine(KernelBase):
         self._window_size = tuple(window_size)
 
     def get_indices(self, index, level):
-        # FIXME inconsistent behavior of level and index
         if level == -1:
             grid_at_lvl = self._grid.at(0)
             pixel_indices = np.mgrid[tuple(slice(0, sz) for sz in grid_at_lvl.shape)]
@@ -224,8 +233,6 @@ class ICRefine(KernelBase):
             return (projection_MatrixSq(cov),)
         _, ((idc, _), (idf, _)) = self.get_indices(index, level)
 
-        from ..refine.util import refinement_matrices
-
         def _get_kernel(gc, gf):
             gc = self.grid.at(level).index2coord(gc)
             gf = self.grid.at(level + 1).index2coord(gf)
@@ -239,24 +246,6 @@ class ICRefine(KernelBase):
         for _ in range(index.ndim - 1):
             f = vmap(f, in_axes=(1, 1))
         return f(idc, idf)
-
-
-class ICRDistances(ICRefine):
-    def __init__(self, grid, window_size):
-        self._window_size = window_size
-        self._grid = grid
-
-    def get_indices(self, index, level):
-        raise NotImplementedError
-
-    def get_kernel(self, index, level, norm=partial(jnp.linalg.norm, axis=0)):
-        out, ids = super().get_indices(index, level)
-        out = self.grid.at(out[1]).index2coord(out[0])
-        assert index.ndim == out.ndim - 1
-        ids = tuple(self.grid.at[ii[1]].index2coord(ii[0]) for ii in ids)
-        ids = jnp.concatenate(ids, axis=-1)
-        assert index.ndim == ids.ndim - 1
-        return norm(out[..., jnp.newaxis] - ids[..., jnp.newaxis, :])
 
 
 class FixedKernelFunctionBatch(KernelBase):
