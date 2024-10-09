@@ -40,6 +40,7 @@ class CorrelatedMultiFrequencySky(Model):
         spectral_amplitude: Optional[
             Union[MaternAmplitude, NonParametricAmplitude]] = None,
         spectral_index_deviations: Optional[Model] = None,
+        log_ref_freq_mean_model: Optional[Model] = None,
         nonlinearity: Optional[Callable] = jnp.exp,
         dtype: type = jnp.float64,
     ):
@@ -76,11 +77,13 @@ class CorrelatedMultiFrequencySky(Model):
         self._spectral_index_fluctuations = spectral_index_fluctuations
         self._spectral_index_deviations = spectral_index_deviations
         self.spectral_amplitude = spectral_amplitude
+        self.log_ref_freq_mean_model = log_ref_freq_mean_model
 
         models = [
             self.zero_mode,
             self._spatial_fluctuations,
             self.spatial_amplitude,
+            self.log_ref_freq_mean_model
         ]
 
         if self._freqs.shape[0] > 1:
@@ -158,8 +161,14 @@ class CorrelatedMultiFrequencySky(Model):
                     distributed_spatial_amplitude * spatial_reference +
                     distributed_spectral_amplitude * spectral_terms)
 
-            return self._nonlinearity(
-                cf_values + spectral_index_mean*self._freqs + zm)
+            if self.log_ref_freq_mean_model is None:
+                return self._nonlinearity(
+                    cf_values + spectral_index_mean*self._freqs + zm)
+            else:
+                return self._nonlinearity(
+                    self.log_ref_freq_mean_model(p) +
+                    spectral_index_mean * self._freqs +
+                    zm)
 
         else:
             """
@@ -199,10 +208,19 @@ class CorrelatedMultiFrequencySky(Model):
                 self._spectral_index_fluctuations(p) *
                 spectral_xis)
 
-            return self._nonlinearity(
-                correlated_spatial_reference +
-                (correlated_spectral_index + spectral_index_mean)*self._freqs +
-                zm)
+            if self.log_ref_freq_mean_model is None:
+                return self._nonlinearity(
+                    correlated_spatial_reference +
+                    correlated_spectral_index +
+                    spectral_index_mean*self._freqs +
+                    zm)
+            else:
+                return self._nonlinearity(
+                    self.log_ref_freq_mean_model(p) +
+                    correlated_spatial_reference +
+                    correlated_spectral_index +
+                    spectral_index_mean * self._freqs +
+                    zm)
 
     def reference_frequency_distribution(self, p):
         """Convenience function to retrieve the model's spatial distribution at
@@ -210,11 +228,20 @@ class CorrelatedMultiFrequencySky(Model):
         amplitude = self.spatial_amplitude(p)
         amplitude = amplitude.at[0].set(0.0)
         spatial_xi = p[f"{self._prefix}_spatial_xi"]
-        return self._nonlinearity(
-            self._hdvol*self._ht(
-                amplitude[self._pd] * self._spatial_fluctuations(p) * spatial_xi)
-            + self.zero_mode(p)
-        )
+        if self.log_ref_freq_mean_model is None:
+            return self._nonlinearity(
+                self._hdvol*self._ht(
+                    amplitude[self._pd] * self._spatial_fluctuations(p) *
+                    spatial_xi)
+                + self.zero_mode(p)
+            )
+        else:
+            return self._nonlinearity(
+                self.log_ref_freq_mean_model(p) +
+                self._hdvol * self._ht(
+                    amplitude[self._pd] * self._spatial_fluctuations(p) *
+                    spatial_xi)
+            )
 
     def spectral_index_distribution(self, p):
         """Convenience function to retrieve the model's spectral index."""
