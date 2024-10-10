@@ -244,6 +244,7 @@ class CorrelatedMultiFrequencySky(Model):
                 self._hdvol * self._ht(
                     amplitude[self._pd] * self._spatial_fluctuations(p) *
                     spatial_xi)
+                + self.zero_mode(p)
             )
 
     def spectral_index_distribution(self, p):
@@ -368,6 +369,25 @@ class CorrelatedMultiFrequencySky(Model):
         )
         # FIXME: this only works for the default nonlinearity
         return spatial_distr * self._nonlinearity(spec_dist)
+
+    def reference_frequency_perturbations_distribution(self, p):
+        """Convenience function to retrieve the model's spatial distribution
+        perturbations at the reference frequency."""
+        amplitude = self.spatial_amplitude(p)
+        amplitude = amplitude.at[0].set(0.0)
+        spatial_xi = p[f"{self._prefix}_spatial_xi"]
+        return self._nonlinearity(
+            self._hdvol*self._ht(
+                amplitude[self._pd] * self._spatial_fluctuations(p) *
+                spatial_xi)
+            + self.zero_mode(p))
+
+    def reference_frequency_mean_distribution(self, p):
+        """Convenience function to retrieve the model's mean spatial
+        distribution at the reference frequency."""
+        if self.log_ref_freq_mean_model is None:
+            return 1.
+        return self._nonlinearity(self.log_ref_freq_mean_model(p))
 
 
 def build_default_mf_model(
