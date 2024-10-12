@@ -170,6 +170,7 @@ class CorrelatedMultiFrequencySky(Model):
             else:
                 return self._nonlinearity(
                     self.log_ref_freq_mean_model(p) +
+                    cf_values +
                     spectral_index_mean * self._freqs +
                     zm)
 
@@ -214,15 +215,15 @@ class CorrelatedMultiFrequencySky(Model):
             if self.log_ref_freq_mean_model is None:
                 return self._nonlinearity(
                     correlated_spatial_reference +
-                    correlated_spectral_index +
-                    spectral_index_mean*self._freqs +
+                    (correlated_spectral_index + spectral_index_mean) *
+                    self._freqs +
                     zm)
             else:
                 return self._nonlinearity(
                     self.log_ref_freq_mean_model(p) +
                     correlated_spatial_reference +
-                    correlated_spectral_index +
-                    spectral_index_mean * self._freqs +
+                    (correlated_spectral_index + spectral_index_mean) *
+                    self._freqs +
                     zm)
 
     def reference_frequency_distribution(self, p):
