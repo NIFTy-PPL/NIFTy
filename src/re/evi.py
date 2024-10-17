@@ -43,7 +43,7 @@ def _parse_jit(jit):
         return jit
     if isinstance(jit, bool):
         return jax.jit if jit else _no_jit
-    raise TypeError(f"expected `jit` to be callable or bolean; got {jit!r}")
+    raise TypeError(f"expected `jit` to be callable or boolean; got {jit!r}")
 
 
 @jax.jit
