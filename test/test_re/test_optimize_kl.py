@@ -197,7 +197,6 @@ def test_optimize_kl_sample_consistency(
         metric_sample_sign=+1,
         point_estimates=point_estimates,
         minimize_kwargs=minimize_kwargs,
-        jit=False,
     )
     residual_diy_n2, _ = jft.nonlinearly_update_residual(
         lh,
@@ -207,7 +206,6 @@ def test_optimize_kl_sample_consistency(
         metric_sample_sign=-1,
         point_estimates=point_estimates,
         minimize_kwargs=minimize_kwargs,
-        jit=False,
     )
     residual_diy = jft.stack((residual_diy_n1, residual_diy_n2))
     _assert_zero_point_estimate_residuals(residual_diy, point_estimates)

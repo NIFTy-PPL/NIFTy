@@ -275,18 +275,8 @@ class OptimizeVI:
                 residual_jit(draw_linear_residual), likelihood
             )
         if _nonlinearly_update_residual is None:
-            # TODO: Pull out `jit` from `nonlinearly_update_residual` once NCG
-            # is jit-able
-            from .evi import _nonlinearly_update_residual_functions
-
-            _nonlin_funcs = _nonlinearly_update_residual_functions(
-                likelihood=likelihood,
-                jit=residual_jit,
-            )
             _nonlinearly_update_residual = partial(
-                nonlinearly_update_residual,
-                None,  # Explicify no likelihood dependency
-                _nonlinear_update_funcs=_nonlin_funcs,
+                residual_jit(nonlinearly_update_residual), likelihood
             )
         if _get_status_message is None:
             _get_status_message = partial(

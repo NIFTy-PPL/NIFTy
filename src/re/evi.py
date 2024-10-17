@@ -28,6 +28,7 @@ from .tree_math import (
     random_like,
     stack,
     vdot,
+    conj,
     zeros_like,
 )
 
@@ -135,59 +136,6 @@ def draw_linear_residual(
     return smpl, info
 
 
-def _nonlinearly_update_residual_functions(
-    likelihood, jit: Union[Callable, bool] = False
-):
-    def _draw_linear_non_inverse(likelihood, primals, key, *, point_estimates):
-        # `draw_linear_residual` already handles `point_estimates` no need to
-        # partially insert anything here
-        return draw_linear_residual(
-            likelihood,
-            primals,
-            key,
-            point_estimates=point_estimates,
-            from_inverse=False,
-        )
-
-    def _residual_vg(likelihood, e, lh_trafo_at_p, ms_at_p, x, *, point_estimates):
-        lh, e_liquid = likelihood.freeze(point_estimates=point_estimates, primals=e)
-
-        # t = likelihood.transformation(x) - lh_trafo_at_p
-        t = tree_map(jnp.subtract, lh.transformation(x), lh_trafo_at_p)
-        g = x - e_liquid + lh.left_sqrt_metric(e_liquid, t)
-        r = ms_at_p - g
-        res = 0.5 * dot(r, r)
-
-        ngrad = tree_map(jnp.conj, r)
-        ngrad += lh.left_sqrt_metric(x, lh.right_sqrt_metric(e_liquid, ngrad))
-        return (res, -ngrad)
-
-    def _metric(likelihood, e, primals, tangents, *, point_estimates):
-        lh, e_liquid = likelihood.freeze(point_estimates=point_estimates, primals=e)
-        lsm = lh.left_sqrt_metric
-        rsm = lh.right_sqrt_metric
-        tm = lsm(e_liquid, rsm(primals, tangents)) + tangents
-        return lsm(primals, rsm(e_liquid, tm)) + tm
-
-    def _sampnorm(likelihood, e, natgrad, *, point_estimates):
-        lh, e_liquid = likelihood.freeze(point_estimates=point_estimates, primals=e)
-        fpp = lh.right_sqrt_metric(e_liquid, natgrad)
-        return jnp.sqrt(vdot(natgrad, natgrad) + vdot(fpp, fpp))
-
-    def _trafo(likelihood, e, *, point_estimates):
-        lh, e_liquid = likelihood.freeze(point_estimates=point_estimates, primals=e)
-        return lh.transformation(e_liquid)
-
-    jit = _parse_jit(jit)
-    jit = partial(jit, static_argnames=("point_estimates",))
-    draw_linear_non_inverse = partial(jit(_draw_linear_non_inverse), likelihood)
-    rag = partial(jit(_residual_vg), likelihood)
-    metric = partial(jit(_metric), likelihood)
-    sampnorm = partial(jit(_sampnorm), likelihood)
-    trafo = partial(jit(_trafo), likelihood)
-    return draw_linear_non_inverse, rag, metric, sampnorm, trafo
-
-
 def nonlinearly_update_residual(
     likelihood=None,
     pos: P = None,
@@ -196,25 +144,49 @@ def nonlinearly_update_residual(
     metric_sample_sign=1.0,
     *,
     point_estimates=(),
-    minimize: Callable[..., optimize.OptimizeResults] = optimize._newton_cg,
+    minimize: Callable[..., optimize.OptimizeResults] = optimize._static_newton_cg,
     minimize_kwargs={},
-    jit: Union[Callable, bool] = False,
-    _nonlinear_update_funcs=None,
     _raise_notconverged=False,
 ) -> tuple[P, optimize.OptimizeResults]:
     assert_arithmetics(pos)
     assert_arithmetics(residual_sample)
 
-    if _nonlinear_update_funcs is None:
-        _nonlinear_update_funcs = _nonlinearly_update_residual_functions(
-            likelihood, jit=jit
-        )
-    draw_lni, rag, metric, sampnorm, trafo = _nonlinear_update_funcs
+    draw_lni = partial(
+        draw_linear_residual,
+        likelihood,
+        from_inverse=False,
+        point_estimates=point_estimates,
+    )
+
+    def residual_vg(e, lh_trafo_at_p, ms_at_p, x):
+        lh, e_liquid = likelihood.freeze(point_estimates=point_estimates, primals=e)
+
+        # t = likelihood.transformation(x) - lh_trafo_at_p
+        t = tree_map(jnp.subtract, lh.transformation(x), lh_trafo_at_p)
+        g = x - e_liquid + lh.left_sqrt_metric(e_liquid, t)
+        r = ms_at_p - g
+        res = 0.5 * dot(r, r)
+
+        r = conj(r)
+        ngrad = r + lh.left_sqrt_metric(x, lh.right_sqrt_metric(e_liquid, r))
+        return (res, -ngrad)
+
+    def metric(e, primals, tangents):
+        lh, e_liquid = likelihood.freeze(point_estimates=point_estimates, primals=e)
+        lsm = lh.left_sqrt_metric
+        rsm = lh.right_sqrt_metric
+        tm = lsm(e_liquid, rsm(primals, tangents)) + tangents
+        return lsm(primals, rsm(e_liquid, tm)) + tm
+
+    def sampnorm(e, natgrad):
+        lh, e_liquid = likelihood.freeze(point_estimates=point_estimates, primals=e)
+        fpp = lh.right_sqrt_metric(e_liquid, natgrad)
+        return jnp.sqrt(vdot(natgrad, natgrad) + vdot(fpp, fpp))
 
     sample = pos + residual_sample
     del residual_sample
     sample = _process_point_estimate(sample, pos, point_estimates, insert=False)
-    metric_sample, _ = draw_lni(pos, metric_sample_key, point_estimates=point_estimates)
+    metric_sample, _ = draw_lni(pos, metric_sample_key)
     metric_sample *= metric_sample_sign
     metric_sample = _process_point_estimate(
         metric_sample, pos, point_estimates, insert=False
@@ -225,13 +197,12 @@ def nonlinearly_update_residual(
         and minimize_kwargs["maxiter"] == 0
     )
     if not skip:
-        trafo_at_p = trafo(pos, point_estimates=point_estimates)
+        lh_f, e_liquid = likelihood.freeze(point_estimates=point_estimates, primals=pos)
+        trafo_at_p = lh_f.transformation(e_liquid)
         options = {
-            "fun_and_grad": partial(
-                rag, pos, trafo_at_p, metric_sample, point_estimates=point_estimates
-            ),
-            "hessp": partial(metric, pos, point_estimates=point_estimates),
-            "custom_gradnorm": partial(sampnorm, pos, point_estimates=point_estimates),
+            "fun_and_grad": partial(residual_vg, pos, trafo_at_p, metric_sample),
+            "hessp": partial(metric, pos),
+            "custom_gradnorm": partial(sampnorm, pos),
         }
         opt_state = minimize(None, x0=sample, **(minimize_kwargs | options))
     else:
@@ -260,7 +231,6 @@ def draw_residual(
     cg_kwargs: Optional[dict] = None,
     minimize: Callable[..., optimize.OptimizeResults] = optimize._newton_cg,
     minimize_kwargs={},
-    _nonlinear_update_funcs=None,
     _raise_nonposdef: bool = False,
     _raise_notconverged: bool = False,
 ) -> tuple[P, optimize.OptimizeResults]:
@@ -282,9 +252,7 @@ def draw_residual(
         point_estimates=point_estimates,
         minimize=minimize,
         minimize_kwargs=minimize_kwargs,
-        jit=False,
         _raise_notconverged=_raise_notconverged,
-        _nonlinear_update_funcs=_nonlinear_update_funcs,
     )
     return stack(
         (
