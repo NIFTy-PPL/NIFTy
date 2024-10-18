@@ -240,6 +240,66 @@ def test_optimize_kl_sample_consistency(
     tree_map(aallclose, samples_opt._samples, residual_draw)
 
 
+@pmp("seed", (12, 42))
+@pmp("shape", ((5,), ((4,), (2,), (1,), (1,)), ((2, [1, 1]), {"a": (3, 1)})))
+@pmp("lh_init", LH_INIT)
+def test_optimize_kl_constants(seed, shape, lh_init):
+    lh_init_method, draw, latent_init = lh_init
+    key = random.PRNGKey(seed)
+    key, *subkeys = random.split(key, 1 + len(draw))
+    init_kwargs = {
+        k: method(key=sk, shape=shape) for (k, method), sk in zip(draw.items(), subkeys)
+    }
+    lh = lh_init_method(**init_kwargs)
+    key, sk = random.split(key)
+    pos = latent_init(sk, shape=shape)
+    jft.tree_math.assert_arithmetics(pos)
+
+    key, sk = random.split(key)
+    delta = 1e-3
+    absdelta = delta * jft.size(pos)
+
+    draw_linear_kwargs = dict(
+        cg_name="SL", cg_kwargs=dict(miniter=2, absdelta=absdelta / 10.0, maxiter=100)
+    )
+    minimize_kwargs = dict(
+        name="SN", xtol=delta, cg_kwargs=dict(name=None, miniter=2), maxiter=5
+    )
+
+    # Assign random constants
+    prob = 0.5
+    const, const_td = jax.tree_util.tree_flatten(pos)
+    const = list(random.bernoulli(sk, prob, shape=(len(const),)))
+    const[0] = False  # Ensure at least one variable is not constant
+    const = tuple(map(bool, const))
+    constants = jax.tree_util.tree_unflatten(const_td, const)
+
+    key, sk = random.split(key)
+    samples_opt, _ = jft.optimize_kl(
+        lh,
+        pos,
+        key=sk,
+        n_total_iterations=1,
+        n_samples=1,
+        constants=constants,
+        draw_linear_kwargs=draw_linear_kwargs,
+        nonlinearly_update_kwargs=dict(minimize_kwargs=minimize_kwargs),
+        kl_kwargs=dict(minimize_kwargs=dict(name="M", maxiter=5)),
+        sample_mode="linear_resample",
+        kl_jit=False,
+        residual_jit=False,
+        odir=None,
+    )
+    move, _ = jax.tree_util.tree_flatten(samples_opt.pos - pos)
+    np.testing.assert_array_equal(
+        0, np.concatenate([np.ravel(m) if c else [0] for m, c in zip(move, const)])
+    )
+    np.testing.assert_array_equal(
+        True,
+        0 != np.concatenate([[1] if c else np.ravel(m) for m, c in zip(move, const)]),
+    )
+
+
 if __name__ == "__main__":
     test_concatenate_zip(1, (5, 12), 3)
     test_optimize_kl_sample_consistency(
@@ -249,3 +309,4 @@ if __name__ == "__main__":
         random_point_estimates=True,
         sample_mode="nonlinear_resample",
     )
+    test_optimize_kl_constants(1, ((2, [1, 1]), {"a": (3, 1)}), LH_INIT[1])

@@ -93,11 +93,9 @@ def draw_linear_residual(
     if not isinstance(likelihood, Likelihood):
         te = f"`likelihood` of invalid type; got '{type(likelihood)}'"
         raise TypeError(te)
+    lh, p_liquid = likelihood, pos
     if point_estimates:
         lh, p_liquid = likelihood.freeze(point_estimates=point_estimates, primals=pos)
-    else:
-        lh = likelihood
-        p_liquid = pos
 
     def ham_metric(primals, tangents, **primals_kw):
         return lh.metric(primals, tangents, **primals_kw) + tangents
