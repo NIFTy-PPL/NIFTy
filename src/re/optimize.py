@@ -151,6 +151,7 @@ def _newton_cg(
     norm_ord = 1 if norm_ord is None else norm_ord
     miniter = 0 if miniter is None else miniter
     maxiter = 200 if maxiter is None else maxiter
+    maxiter = jnp.iinfo(jnp.uint64).max if jnp.isinf(maxiter) else maxiter
     xtol = xtol * size(x0)
 
     pos = x0
@@ -335,11 +336,13 @@ def _static_newton_cg(
         nfev, njev, nhev = v["nfev"], v["njev"], v["nhev"]
 
         cg_absdelta = 0.0 if absdelta is None else absdelta / 100.0
-        cg_absdelta = jnp.where(
-            (~jnp.isinf(old_energy)) & (energy_reduction_factor is not None),
-            energy_reduction_factor * (old_energy - energy),
-            jnp.array(cg_absdelta, dtype=energy.dtype),
-        )
+        if energy_reduction_factor is not None:
+            cg_absdelta = jnp.where(
+                ~jnp.isinf(old_energy),
+                energy_reduction_factor * (old_energy - energy),
+                cg_absdelta,
+            )
+        cg_absdelta = jnp.array(cg_absdelta, dtype=energy.dtype)
         mag_g = jft_norm(g, ord=cg_kwargs.get("norm_ord", 1))
         cg_resnorm = jnp.minimum(0.5, jnp.sqrt(mag_g)) * mag_g  # taken from SciPy
         default_kwargs = {
