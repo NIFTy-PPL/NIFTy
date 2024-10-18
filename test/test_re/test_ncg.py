@@ -232,9 +232,7 @@ def test_minimize_ncg(fun_and_init, ncg, maxiter):
         (rosenbrock, jnp.zeros(2)),
         (himmelblau, jnp.zeros(2)),
         (matyas, jnp.ones(2) * 6.0),
-        # (eggholder, jnp.ones(2) * 100.)  # `eggholder` potential leads to
-        # infinite loop in trust-ncg's subproblem solver, see
-        # https://github.com/google/jax/issues/15035
+        (eggholder, jnp.ones(2) * 100.0),
     ),
 )
 @pmp("maxiter", (jnp.inf, None))
