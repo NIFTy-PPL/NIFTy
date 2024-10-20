@@ -371,7 +371,7 @@ class CorrelatedMultiFrequencySky(Model):
         # FIXME: this only works for the default nonlinearity
         return spatial_distr * self._nonlinearity(spec_dist)
 
-    def reference_frequency_perturbations_distribution(self, p):
+    def reference_frequency_correlated_field(self, p):
         """Convenience function to retrieve the model's spatial distribution
         perturbations at the reference frequency."""
         amplitude = self.spatial_amplitude(p)
