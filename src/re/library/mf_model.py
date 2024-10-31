@@ -18,7 +18,7 @@ from .mf_model_utils import (
     _build_distribution_or_default, build_normalized_amplitude_model)
 from .. import ShapeWithDtype, logger
 from ..correlated_field import (
-    _make_grid, hartley, MaternAmplitude, NonParametricAmplitude)
+    make_grid, hartley, MaternAmplitude, NonParametricAmplitude)
 from ..model import Model
 from ..num.stats_distributions import lognormal_prior, normal_prior
 
@@ -509,7 +509,7 @@ def build_default_mf_model(
         The multi-frequency sky model
     """
 
-    grid = _make_grid(shape, distances, harmonic_type)
+    grid = make_grid(shape, distances, harmonic_type)
 
     # FIXME: FIX WITH NORMAMP
     fluct = 'fluctuations' if 'fluctuations' in spatial_amplitude_settings else 'scale'

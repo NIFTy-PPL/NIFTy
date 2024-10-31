@@ -8,7 +8,7 @@ import pytest
 from numpy.testing import assert_allclose
 
 import nifty8.re as jft
-from nifty8.re.correlated_field import (_make_grid, NonParametricAmplitude,
+from nifty8.re.correlated_field import (make_grid, NonParametricAmplitude,
 MaternAmplitude)
 from nifty8.re.library.frequency_deviations import build_frequency_deviations_model
 
@@ -78,7 +78,7 @@ def test_correlated_multi_frequency_sky_init(shape,
                                              spectral_index_fluctuations,
                                              deviations_settings,
                                              ):
-    grid = _make_grid(shape, distances, "fourier")
+    grid = make_grid(shape, distances, "fourier")
     amp = NonParametricAmplitude(grid,
                                  jft.lognormal_prior(.1, .01),
                                  None,
@@ -128,7 +128,7 @@ def test_spatial_convolution(
     spectral_index_mean,
     spectral_index_fluctuations,
 ):
-    grid = _make_grid(shape, distances, "fourier")
+    grid = make_grid(shape, distances, "fourier")
     prefix = "test"
     fluct = (1, 0.01)
     avgsl = (-4., .1)
@@ -198,7 +198,7 @@ def test_apply_with_and_without_frequency_deviations(
     spectral_index_mean,
     spectral_index_fluctuations,
 ):
-    grid = _make_grid(shape, distances, "fourier")
+    grid = make_grid(shape, distances, "fourier")
     reference_freq_idx = 0
     prefix = "test"
     fluct = (0.1, 0.01)
