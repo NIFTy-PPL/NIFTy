@@ -49,7 +49,7 @@ data = response(correlated_field(mock)) + jft.random_like(noise_key,
                                                           correlated_field.target)
 
 llh = jft.Gaussian(data).amend(response)
-print("leaves of likelihood with model", jax.jax.tree.leaves(llh))
+print("leaves of likelihood without signal model", jax.jax.tree.leaves(llh))
 
 full_lh = llh.amend(correlated_field) # Here the "const" array is missing
-print("leaves of likelihood with model", jax.jax.tree.leaves(full_lh))
+print("leaves of likelihood with signal model", jax.jax.tree.leaves(full_lh))
