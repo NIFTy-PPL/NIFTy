@@ -493,6 +493,44 @@ class LikelihoodPartial(Likelihood):
         return _parse_point_estimates(self.point_estimates, primals)[1:]
 
 
+class _ChainModel(LazyModel):
+    forward_left: Callable = field(metadata=dict(static=False))
+    forward_right: Callable = field(metadata=dict(static=False))
+
+    def __init__(
+        self,
+        forward_left,
+        forward_right,
+        *,
+        left_argnames=None,
+        domain=NoValue,
+        target=NoValue,
+    ):
+        self.forward_left = forward_left if isinstance(
+            forward_left, LazyModel
+        ) else Partial(forward_left)
+        self.forward_right = forward_right if isinstance(
+            forward_right, LazyModel
+        ) else Partial(forward_right)
+        left_argnames = () if left_argnames is None else left_argnames
+        self._left_argnames = left_argnames
+
+        domain = (
+            forward_right.domain if domain is NoValue and
+            isinstance(forward_right, LazyModel) else domain
+        )
+        target = (
+            forward_left.target if target is NoValue and
+            isinstance(forward_left, LazyModel) else target
+        )
+        super().__init__(domain=domain, target=target)
+
+    def __call__(self, primals, **kwargs):
+        kw_l = {k: kwargs.pop(k) for k in self._left_argnames}
+        kw_r = kwargs
+        return self.forward_left(self.forward_right(primals, **kw_r), **kw_l)
+
+
 class LikelihoodWithModel(Likelihood):
     likelihood: Likelihood = field(metadata=dict(static=False))
     forward: Callable = field(metadata=dict(static=False))
@@ -595,19 +633,13 @@ class LikelihoodWithModel(Likelihood):
         left_argnames=None,
         likelihood_argnames=None,
     ):
-        domain = f.domain if domain is NoValue and isinstance(
-            f, LazyModel
-        ) else domain
-        left_argnames = () if left_argnames is None else left_argnames
+        ff = _ChainModel(
+            self.forward, f, left_argnames=left_argnames, domain=domain
+        )
         likelihood_argnames = (
             self.likelihood_argnames
             if likelihood_argnames is None else likelihood_argnames
         )
-
-        def ff(primals, **kwargs):
-            kw_l = {k: kwargs.pop(k) for k in left_argnames}
-            kw_r = kwargs
-            return self.forward(f(primals, **kw_r), **kw_l)
 
         return self.__class__(
             self.likelihood,
