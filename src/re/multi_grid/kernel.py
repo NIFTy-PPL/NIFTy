@@ -41,7 +41,7 @@ Ideas for kernel:
 
 class KernelBase:
     def __getitem__(self, key):
-        raise NotImplementedError
+        return self.get_kernel(key[0], key[1])
 
     @property
     def grid(self):
@@ -65,6 +65,61 @@ class KernelBase:
         assert index.ndim == ids.ndim - 1
         return norm(out[..., jnp.newaxis] - ids[..., jnp.newaxis, :])
 
+    def _freeze(
+        self,
+        *,
+        rtol=1e-5,
+        atol=1e-10,
+        buffer_size=10000,
+        use_distances=True,
+    ):
+        """Evaluate the kernel and store it in a `FrozenKernel`. Kernels may be
+        grouped by similarity and accessed via lookup"""
+        fgrid = self.grid if isinstance(self.grid, FlatGrid) else FlatGrid(self.grid)
+        uindices = []
+        indexmaps = []
+        for lvl in range(self.grid.depth):
+            atlevel = self.grid.at(lvl)
+            fatlevel = fgrid.at(lvl)
+
+            def get_kernel(id):
+                id = jnp.atleast_1d(id)
+                f = self.get_distance_kernel if use_distances else self.get_kernel
+                ker = f(fatlevel.flatindex2index(id), lvl)
+                ker = jnp.concatenate(tuple(kk.ravel() for kk in ker))
+                return ker
+
+            @jit
+            def scanned_amend_unique(carry, idx, shift):
+                (u, inv) = carry
+                k = get_kernel(idx)
+                u, invid = amend_unique_(u, k, axis=0, atol=atol, rtol=rtol)
+                inv = inv.at[idx - shift].set(invid)
+                return (u, inv), invid
+
+            indices = atlevel.refined_indices()
+            indices = fatlevel.index2flatindex(indices)[0].ravel()
+            shift = np.min(indices)
+            size = np.max(indices) - shift
+            myinv = np.full(size, buffer_size + 1)
+
+            shp = eval_shape(get_kernel, indices[0]).shape
+            unique = jnp.full((buffer_size,) + shp, jnp.nan)
+
+            (unique, myinv), inv = scan(
+                partial(scanned_amend_unique, shift=shift), (unique, myinv), indices
+            )
+            _, idx = np.unique(inv, return_index=True)
+            n = idx.size
+            if n >= unique.shape[0] or not np.all(np.isnan(unique[n:])):
+                raise ValueError("`mat_buffer_size` too small")
+            uids = indices[idx]
+            uids = fatlevel.flatindex2index(uids[np.newaxis, :])
+            uindices.append(uids)
+
+            indexmaps.append(_IdxMap(myinv, shift, fatlevel.index2flatindex))
+        return uindices, indexmaps
+
     def freeze(
         self,
         *,
@@ -78,51 +133,12 @@ class KernelBase:
         """Evaluate the kernel and store it in a `FrozenKernel`. Kernels may be
         grouped by similarity and accessed via lookup"""
         if (uindices is None) and (indexmaps is None):
-            fgrid = (
-                self.grid if isinstance(self.grid, FlatGrid) else FlatGrid(self.grid)
+            uindices, indexmaps = self._freeze(
+                rtol=rtol,
+                atol=atol,
+                buffer_size=buffer_size,
+                use_distances=use_distances,
             )
-            uindices = []
-            indexmaps = []
-            for lvl in range(self.grid.depth):
-                atlevel = self.grid.at(lvl)
-                fatlevel = fgrid.at(lvl)
-
-                def get_kernel(id):
-                    id = jnp.atleast_1d(id)
-                    f = self.get_distance_kernel if use_distances else self.get_kernel
-                    ker = f(fatlevel.flatindex2index(id), lvl)
-                    ker = jnp.concatenate(tuple(kk.ravel() for kk in ker))
-                    return ker
-
-                @jit
-                def scanned_amend_unique(carry, idx, shift):
-                    (u, inv) = carry
-                    k = get_kernel(idx)
-                    u, invid = amend_unique_(u, k, axis=0, atol=atol, rtol=rtol)
-                    inv = inv.at[idx - shift].set(invid)
-                    return (u, inv), invid
-
-                indices = atlevel.refined_indices()
-                indices = fatlevel.index2flatindex(indices)[0].ravel()
-                shift = np.min(indices)
-                size = np.max(indices) - shift
-                myinv = np.full(size, buffer_size + 1)
-
-                shp = eval_shape(get_kernel, indices[0]).shape
-                unique = jnp.full((buffer_size,) + shp, jnp.nan)
-
-                (unique, myinv), inv = scan(
-                    partial(scanned_amend_unique, shift=shift), (unique, myinv), indices
-                )
-                _, idx = np.unique(inv, return_index=True)
-                n = idx.size
-                if n >= unique.shape[0] or not np.all(np.isnan(unique[n:])):
-                    raise ValueError("`mat_buffer_size` too small")
-                uids = indices[idx]
-                uids = fatlevel.flatindex2index(uids[np.newaxis, :])
-                uindices.append(uids)
-
-                indexmaps.append(_IdxMap(myinv, shift, fatlevel.index2flatindex))
         elif indexmaps is None:
             raise ValueError(
                 "`indices` and `indexmaps` must be either both None or not None"
