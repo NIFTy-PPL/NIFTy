@@ -1,0 +1,234 @@
+from functools import partial
+from typing import Callable, Mapping, Union
+
+from ..logger import logger
+from ..model import Model, WrappedCall
+from .kernel import KernelBase, ICRefine, _FrozenKernel
+from .indexing import Grid
+import numpy.typing as npt
+import numpy as np
+import jax.numpy as jnp
+from scipy.special import sici, j0
+from .utils import j1
+from ..tree_math import random_like, ShapeWithDtype
+from ..num.stats_distributions import lognormal_prior, normal_prior
+
+
+def log_k_offset_dist(r_min, r_max, N):
+    km = 1.0 / r_max
+    kM = 1.0 / r_min
+    dlk = (np.log(kM) - np.log(km)) / N
+    return np.log(km), dlk
+
+
+def logdists(r_min, r_max, N):
+    return np.arange(N) * (np.log(r_max) - np.log(r_min)) / N + np.log(r_min)
+
+
+def dists(r_min, r_max, N):
+    ld = logdists(r_min, r_max, N)
+    return np.concatenate([np.array([0.0]), np.exp(ld)])
+
+
+def k_lengths(r_min, r_max, N):
+    lkmin, dlk = log_k_offset_dist(r_min, r_max, N)
+    lk = np.arange(N) * dlk + lkmin
+    return np.concatenate((np.array([0.0]), np.exp(lk)))
+
+
+def k_binbounds(r_min, r_max, N):
+    lk = np.log(k_lengths(r_min, r_max, N)[1:])
+    _, dlk = log_k_offset_dist(r_min, r_max, N)
+    lk = np.append(lk - 0.5 * dlk, lk[-1] + 0.5 * dlk)
+    return np.concatenate((np.array([0.0]), np.exp(lk)))
+
+def norm_weights(r_min, r_max, N, d):
+    k_bin = k_binbounds(r_min, r_max, N)
+    if d == 1:
+        fkr = sici(k_bin * r_max)[0]
+    elif d == 2:
+        fkr = 1.0 - j0(k_bin * r_max)
+    elif d == 3:
+        fkr = sici(k_bin * r_max)[0] - np.sin(k_bin * r_max)
+    else:
+        raise NotImplementedError
+    res = fkr[1:] - fkr[:-1]
+    if (d == 1) or (d == 3):
+        res *= 2.0 / np.pi
+    return res
+
+
+def distfunc_from_specfunk(r_min, r_max, N, d, normalize=True):
+    kl = k_lengths(r_min, r_max, N)
+    f = distfunc_from_spec(r_min, r_max, N, d, normalize)
+
+    def func(specfunc):
+        spec = specfunc(kl)
+        return f(spec)
+
+    return func
+
+
+def distfunc_from_spec(r_min, r_max, N, d, normalize=True):
+    k_bin = k_binbounds(r_min, r_max, N)
+    fct = [np.pi, 2.0 * np.pi, 2.0 * np.pi**2]
+    if normalize:
+        weights = norm_weights(r_min, r_max, N, d)
+
+    def func(spec):
+        if spec.size != N + 1:
+            raise ValueError
+
+        def distfunc(r):
+            k = jnp.expand_dims(k_bin, tuple(i for i in range(len(r.shape))))
+            r = r[..., jnp.newaxis]
+            kr = r * k
+            if d == 1:
+                fkr = jnp.sin(kr)
+            elif d == 2:
+                fkr = kr * j1(kr)
+            elif d == 3:
+                fkr = jnp.sin(kr) - kr * jnp.cos(kr)
+            else:
+                raise NotImplementedError
+            res0 = (k[..., 1:] ** d - k[..., :-1] ** d) / d
+            resn0 = (fkr[..., 1:] - fkr[..., :-1]) / r**d
+            res = jnp.where(r < 1e-10, res0, resn0) / fct[d - 1]
+            res = jnp.tensordot(res, spec, axes=(-1, 0))
+            if normalize:
+                res /= (weights * spec).sum()
+            return res
+
+        return distfunc
+
+    return func
+
+
+def icrmatern_amplitude(
+    rmin: float,
+    Nbins: int,
+    cutoff: Union[tuple, Callable],
+    loglogslope: Union[tuple, Callable],
+    renormalize_amplitude: bool = False,
+    prefix: str = "",
+    kind: str = "amplitude",
+) -> Model:
+    """Constructs a function computing the amplitude of a Matérn-kernel
+    power spectrum.
+
+    See
+    :class:`nifty8.re.correlated_field.CorrelatedFieldMaker.add_fluctuations
+    _matern`
+    for more details on the parameters.
+
+    See also
+    --------
+    `Causal, Bayesian, & non-parametric modeling of the SARS-CoV-2 viral
+    load vs. patient's age`, Guardiani, Matteo and Frank, Philipp and Kostić,
+    Andrija and Edenhofer, Gordian and Roth, Jakob and Uhlmann, Berit and
+    Enßlin, Torsten, `<https://arxiv.org/abs/2105.13483>`_
+    `<https://doi.org/10.1371/journal.pone.0275011>`_
+    """
+    if isinstance(cutoff, (tuple, list)):
+        cutoff = lognormal_prior(*cutoff)
+    elif not callable(cutoff):
+        te = f"invalid `cutoff` specified; got '{type(cutoff)}'"
+        raise TypeError(te)
+    if isinstance(loglogslope, (tuple, list)):
+        loglogslope = normal_prior(*loglogslope)
+    elif not callable(loglogslope):
+        te = f"invalid `loglogslope` specified; got '{type(loglogslope)}'"
+        raise TypeError(te)
+    if renormalize_amplitude:
+        raise ValueError()
+    mode_lengths = k_lengths(rmin, 1.0, Nbins)
+
+    cutoff = WrappedCall(cutoff, name=prefix + "cutoff")
+    ptree = cutoff.domain.copy()
+    loglogslope = WrappedCall(loglogslope, name=prefix + "loglogslope")
+    ptree.update(loglogslope.domain)
+
+    def correlate(primals: Mapping) -> jnp.ndarray:
+        ctf = cutoff(primals)
+        slp = loglogslope(primals)
+
+        ln_spectrum = 0.25 * slp * jnp.log1p((mode_lengths / ctf) ** 2)
+
+        spectrum = jnp.exp(ln_spectrum)
+
+        if kind.lower() == "amplitude":
+            spectrum = spectrum**2
+        elif kind.lower() != "spectrum":
+            raise ValueError(f"invalid kind specified {kind!r}")
+        return spectrum
+
+    model = Model(correlate, domain=ptree, init=partial(random_like, primals=ptree))
+    model.klengths = mode_lengths
+    return model
+
+
+class ICRSpectral(Model):
+    def __init__(
+        self,
+        grid: Grid,
+        spectrum: Model,
+        rmin: float,
+        rmax: float,
+        dimension: int,
+        offset,  # TODO
+        scale,
+        window_size=3,
+        rtol=1e-5,
+        atol=1e-5,
+        buffer_size=1000,
+        xikey="icrxi",
+    ):
+        _get_kernelfunc = distfunc_from_spec(
+            rmin, 1.0, spectrum.target.size - 1, dimension
+        )
+
+        def get_normalized_kerfunc(spec):
+            func = _get_kernelfunc(spec)
+
+            def kerfunc(x, y):
+                r = jnp.linalg.norm(x - y, axis=0) / rmax
+                return func(r)
+
+            return kerfunc
+
+        self._get_kernelfunc = get_normalized_kerfunc
+
+        dummy = lambda x, y: jnp.linalg.norm(x - y, axis=0)
+
+        self.uindices, self.indexmaps = ICRefine(grid, dummy, window_size)._freeze(
+            rtol=rtol, atol=atol, buffer_size=buffer_size
+        )
+        self.spectrum = spectrum
+        self.grid = grid
+        self.window_size = window_size
+        self.xikey = str(xikey)
+
+        assert isinstance(spectrum.domain, dict)  # TODO use init
+        grid_domain = {
+            self.xikey+str(lvl): ShapeWithDtype(self.grid.at(lvl).shape, jnp.float_)
+            for lvl in range(grid.depth + 1)
+        }
+        domain = spectrum.domain | grid_domain
+        super().__init__(domain=domain, white_init=True)
+
+    def get_kernel_function(self, x):
+        spec = self.spectrum(x)
+        return self._get_kernelfunc(spec)
+
+    def get_kernel(self, x):
+        kerfunc = self.get_kernel_function(x)
+        kernel = ICRefine(self.grid, kerfunc, self.window_size)
+        return _FrozenKernel(kernel, self.uindices, self.indexmaps)
+
+    def __call__(self, x):
+        kernel = self.get_kernel(x)
+        xs = list(x[self.xikey+str(lvl)] for lvl in range(self.grid.depth + 1))
+        return kernel.apply(xs)
+
+    def apply(self, x):
+        return self(x)
