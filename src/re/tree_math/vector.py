@@ -6,7 +6,10 @@ from pprint import pformat
 
 from jax import numpy as jnp
 from jax.tree_util import (
-    register_pytree_node_class, tree_leaves, tree_map, tree_structure
+    register_pytree_node_class,
+    tree_leaves,
+    tree_map,
+    tree_structure,
 )
 
 from .vector_math import matmul, max, min, size, sum
@@ -73,8 +76,9 @@ def _fwd_rev_binary_op(op, name=None):
 
 
 @register_pytree_node_class
-class Vector():
+class Vector:
     """Value storage for arbitrary objects with added numerics."""
+
     def __init__(self, tree):
         """Instantiates a vector.
 
@@ -86,7 +90,7 @@ class Vector():
         self._tree = tree
 
     def tree_flatten(self):
-        return ((self._tree, ), None)
+        return ((self._tree,), None)
 
     @classmethod
     def tree_unflatten(cls, _, children):
@@ -106,7 +110,7 @@ class Vector():
 
     @property
     def shape(self):
-        return (len(self), )
+        return (len(self),)
 
     def copy(self):
         return tree_map(_copy, self)

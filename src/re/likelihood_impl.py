@@ -32,9 +32,7 @@ def _identity(x):
 
 
 def _get_cov_inv_and_std_inv(
-    cov_inv: Optional[Callable],
-    std_inv: Optional[Callable],
-    primals=None
+    cov_inv: Optional[Callable], std_inv: Optional[Callable], primals=None
 ) -> Tuple[Union[Partial, LazyModel], Union[Partial, LazyModel]]:
     if cov_inv is None and std_inv is None:
         _cov_inv, _std_inv = _identity, _identity
@@ -51,14 +49,12 @@ def _get_cov_inv_and_std_inv(
         logger.warning(wm)
         # Note, `_std_inv` is not properly initialized yet
         si = std_inv if std_inv is not None else _std_inv
-        noise_std_inv_sq = si(
-            tree_map(jnp.real, tree_map(jnp.ones_like, primals))
-        )**2
+        noise_std_inv_sq = si(tree_map(jnp.real, tree_map(jnp.ones_like, primals))) ** 2
         _cov_inv = Partial(operator.mul, noise_std_inv_sq)
     else:
-        _cov_inv = cov_inv if isinstance(cov_inv,
-                                         (Partial,
-                                          LazyModel)) else Partial(cov_inv)
+        _cov_inv = (
+            cov_inv if isinstance(cov_inv, (Partial, LazyModel)) else Partial(cov_inv)
+        )
 
     if not callable(std_inv) and std_inv is not None:
         msg = "assuming the specified sqrt of the inverse covariance is diagonal"
@@ -71,18 +67,15 @@ def _get_cov_inv_and_std_inv(
         )
         logger.warning(wm)
         noise_cov_inv_sqrt = tree_map(
-            jnp.sqrt,
-            _cov_inv(tree_map(jnp.real, tree_map(jnp.ones_like, primals)))
+            jnp.sqrt, _cov_inv(tree_map(jnp.real, tree_map(jnp.ones_like, primals)))
         )
         _std_inv = Partial(operator.mul, noise_cov_inv_sqrt)
     else:
-        _std_inv = std_inv if isinstance(std_inv,
-                                         (Partial,
-                                          LazyModel)) else Partial(std_inv)
+        _std_inv = (
+            std_inv if isinstance(std_inv, (Partial, LazyModel)) else Partial(std_inv)
+        )
 
-    assert all(
-        isinstance(c, (Partial, LazyModel)) for c in (_cov_inv, _std_inv)
-    )
+    assert all(isinstance(c, (Partial, LazyModel)) for c in (_cov_inv, _std_inv))
     return _cov_inv, _std_inv
 
 
@@ -107,6 +100,7 @@ class Gaussian(Likelihood):
 
     See :class:`Likelihood` for details on the properties.
     """
+
     data: Any = dataclasses.field(metadata=dict(static=False))
     noise_cov_inv: Callable = dataclasses.field(metadata=dict(static=False))
     noise_std_inv: Callable = dataclasses.field(metadata=dict(static=False))
@@ -115,7 +109,7 @@ class Gaussian(Likelihood):
         self,
         data,
         noise_cov_inv: Optional[Callable] = None,
-        noise_std_inv: Optional[Callable] = None
+        noise_std_inv: Optional[Callable] = None,
     ):
         self.data = data
         noise_cov_inv, noise_std_inv = _get_cov_inv_and_std_inv(
@@ -166,6 +160,7 @@ class StudentT(Likelihood):
 
     See :class:`Likelihood` for details on the properties.
     """
+
     data: Any = dataclasses.field(metadata=dict(static=False))
     dof: Any = dataclasses.field(metadata=dict(static=False))
     noise_cov_inv: Callable = dataclasses.field(metadata=dict(static=False))
@@ -195,17 +190,13 @@ class StudentT(Likelihood):
         return self.noise_cov_inv((self.dof + 1) / (self.dof + 3) * tangents)
 
     def left_sqrt_metric(self, primals, tangents):
-        return self.noise_std_inv(
-            ((self.dof + 1) / (self.dof + 3))**0.5 * tangents
-        )
+        return self.noise_std_inv(((self.dof + 1) / (self.dof + 3)) ** 0.5 * tangents)
 
     def normalized_residual(self, primals):
         return self.left_sqrt_metric(None, self.data - primals)
 
     def transformation(self, primals):
-        return self.noise_std_inv(
-            ((self.dof + 1) / (self.dof + 3))**0.5 * primals
-        )
+        return self.noise_std_inv(((self.dof + 1) / (self.dof + 3)) ** 0.5 * primals)
 
 
 class Poissonian(Likelihood):
@@ -230,6 +221,7 @@ class Poissonian(Likelihood):
 
     See :class:`Likelihood` for details on the properties.
     """
+
     data: Any = dataclasses.field(metadata=dict(static=False))
 
     def __init__(self, data, sampling_dtype=float):
@@ -255,7 +247,7 @@ class Poissonian(Likelihood):
         return self.left_sqrt_metric(primals, self.data - primals)
 
     def transformation(self, primals):
-        return 2. * primals**0.5
+        return 2.0 * primals**0.5
 
 
 class VariableCovarianceGaussian(Likelihood):
@@ -274,6 +266,7 @@ class VariableCovarianceGaussian(Likelihood):
 
     See :class:`Likelihood` for details on the properties.
     """
+
     data: Any = dataclasses.field(metadata=dict(static=False))
     iscomplex: bool = False
 
@@ -287,19 +280,16 @@ class VariableCovarianceGaussian(Likelihood):
     def energy(self, primals):
         res = (self.data - primals[0]) * primals[1]
         fct = 1 + self.iscomplex
-        return 0.5 * vdot(res,
-                          res).real - fct * sum(tree_map(jnp.log, primals[1]))
+        return 0.5 * vdot(res, res).real - fct * sum(tree_map(jnp.log, primals[1]))
 
     def metric(self, primals, tangents):
         fct = 2 * (1 + self.iscomplex)
-        prim_std_inv_sq = primals[1]**2
-        res = (
-            prim_std_inv_sq * tangents[0], fct * tangents[1] / prim_std_inv_sq
-        )
+        prim_std_inv_sq = primals[1] ** 2
+        res = (prim_std_inv_sq * tangents[0], fct * tangents[1] / prim_std_inv_sq)
         return type(primals)(res)
 
     def left_sqrt_metric(self, primals, tangents):
-        fct = jnp.sqrt(2)**(1 + self.iscomplex)
+        fct = jnp.sqrt(2) ** (1 + self.iscomplex)
         res = (primals[1] * tangents[0], fct * tangents[1] / primals[1])
         return type(primals)(res)
 
@@ -315,7 +305,7 @@ class VariableCovarianceGaussian(Likelihood):
         fct = 1 + self.iscomplex
         res = (
             primals[1] * (primals[0] - self.data),
-            fct * tree_map(jnp.log, primals[1])
+            fct * tree_map(jnp.log, primals[1]),
         )
         return type(primals)(res)
 
@@ -339,6 +329,7 @@ class VariableCovarianceStudentT(Likelihood):
 
     See :class:`Likelihood` for details on the properties.
     """
+
     data: Any = dataclasses.field(metadata=dict(static=False))
     dof: Any = dataclasses.field(metadata=dict(static=False))
 
@@ -356,22 +347,25 @@ class VariableCovarianceStudentT(Likelihood):
 
     def metric(self, primals, tangent):
         res = (
-            tangent[0] * (self.dof + 1) / (self.dof + 3) / primals[1]**2,
-            tangent[1] * 2 * self.dof / (self.dof + 3) / primals[1]**2
+            tangent[0] * (self.dof + 1) / (self.dof + 3) / primals[1] ** 2,
+            tangent[1] * 2 * self.dof / (self.dof + 3) / primals[1] ** 2,
         )
         return type(primals)(res)
 
     def left_sqrt_metric(self, primals, tangents):
         cov = (
-            (self.dof + 1) / (self.dof + 3) / primals[1]**2,
-            2 * self.dof / (self.dof + 3) / primals[1]**2
+            (self.dof + 1) / (self.dof + 3) / primals[1] ** 2,
+            2 * self.dof / (self.dof + 3) / primals[1] ** 2,
         )
-        res = (cov[0]**0.5 * tangents[0], cov[1]**0.5 * tangents[1])
+        res = (cov[0] ** 0.5 * tangents[0], cov[1] ** 0.5 * tangents[1])
         return type(primals)(res)
 
     def normalized_residual(self, primals):
-        return (self.data - primals[0]
-               ) / primals[1] * ((self.dof + 1) / (self.dof + 3))**0.5
+        return (
+            (self.data - primals[0])
+            / primals[1]
+            * ((self.dof + 1) / (self.dof + 3)) ** 0.5
+        )
 
 
 class Categorical(Likelihood):
@@ -390,6 +384,7 @@ class Categorical(Likelihood):
 
     See :class:`Likelihood` for details on the properties.
     """
+
     data: Any = dataclasses.field(metadata=dict(static=False))
     axis: int = -1
 
@@ -421,7 +416,7 @@ class Categorical(Likelihood):
         from jax.nn import softmax
 
         # FIXME: not sure if this is really the square root
-        sqrtp = tree_map(partial(softmax, axis=self.axis), primals)**0.5
+        sqrtp = tree_map(partial(softmax, axis=self.axis), primals) ** 0.5
         norm_term = tree_map(
             partial(jnp.sum, axis=self.axis, keepdims=True), sqrtp * tangents
         )

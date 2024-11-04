@@ -55,6 +55,7 @@ class QP(NamedTuple):
     momentum : Q
         Momentum.
     """
+
     position: Q
     momentum: Q
 
@@ -106,18 +107,17 @@ def leapfrog_step(
     position = qp.position
     momentum = qp.momentum
 
-    momentum_halfstep = (
-        momentum - (step_size / 2.) * potential_energy_gradient(position)
+    momentum_halfstep = momentum - (step_size / 2.0) * potential_energy_gradient(
+        position
     )
 
     position_fullstep = position + step_size * kinetic_energy_gradient(
         inverse_mass_matrix, momentum_halfstep
     )
 
-    momentum_fullstep = (
-        momentum_halfstep -
-        (step_size / 2.) * potential_energy_gradient(position_fullstep)
-    )
+    momentum_fullstep = momentum_halfstep - (
+        step_size / 2.0
+    ) * potential_energy_gradient(position_fullstep)
 
     qp_fullstep = QP(position=position_fullstep, momentum=momentum_fullstep)
 
@@ -139,8 +139,16 @@ class AcceptedAndRejected(NamedTuple):
 
 # @partial(jit, static_argnames=('potential_energy', 'potential_energy_gradient'))
 def generate_hmc_acc_rej(
-    *, key, initial_qp, potential_energy, kinetic_energy, inverse_mass_matrix,
-    stepper, num_steps, step_size, max_energy_difference
+    *,
+    key,
+    initial_qp,
+    potential_energy,
+    kinetic_energy,
+    inverse_mass_matrix,
+    stepper,
+    num_steps,
+    step_size,
+    max_energy_difference,
 ) -> AcceptedAndRejected:
     """
     Generate a sample given the initial position.
@@ -165,7 +173,7 @@ def generate_hmc_acc_rej(
         lower=0,
         upper=num_steps,
         body_fun=lambda _, args: loop_body(args),
-        init_val=initial_qp
+        init_val=initial_qp,
     )
     # this flipping is needed to make the proposal distribution symmetric
     # doesn't have any effect on acceptance though because kinetic energy depends on momentum^2
@@ -175,11 +183,11 @@ def generate_hmc_acc_rej(
     total_energy = partial(
         total_energy_of_qp,
         potential_energy=potential_energy,
-        kinetic_energy_w_inv_mass=partial(kinetic_energy, inverse_mass_matrix)
+        kinetic_energy_w_inv_mass=partial(kinetic_energy, inverse_mass_matrix),
     )
     energy_diff = total_energy(initial_qp) - total_energy(proposed_qp)
     energy_diff = jnp.where(jnp.isnan(energy_diff), jnp.inf, energy_diff)
-    transition_probability = jnp.minimum(1., jnp.exp(energy_diff))
+    transition_probability = jnp.minimum(1.0, jnp.exp(energy_diff))
 
     accept = random.bernoulli(key, transition_probability)
     accepted_qp, rejected_qp = select(
@@ -217,6 +225,7 @@ class Tree(NamedTuple):
         value. This value is distinct from `logweight` as its absolute value is
         only well defined for the very final tree of NUTS.
     """
+
     left: QP
     right: QP
     logweight: Union[jnp.ndarray, float]
@@ -228,8 +237,7 @@ class Tree(NamedTuple):
 
 
 def total_energy_of_qp(qp, potential_energy, kinetic_energy_w_inv_mass):
-    return potential_energy(qp.position
-                           ) + kinetic_energy_w_inv_mass(qp.momentum)
+    return potential_energy(qp.position) + kinetic_energy_w_inv_mass(qp.momentum)
 
 
 def generate_nuts_tree(
@@ -242,7 +250,7 @@ def generate_nuts_tree(
     kinetic_energy: Callable[[Q, Q], float],
     inverse_mass_matrix: Q,
     bias_transition: bool = True,
-    max_energy_difference: Union[jnp.ndarray, float] = jnp.inf
+    max_energy_difference: Union[jnp.ndarray, float] = jnp.inf,
 ) -> Tree:
     """Generate a sample given the initial position.
 
@@ -291,8 +299,7 @@ def generate_nuts_tree(
     """
     # initialize depth 0 tree, containing 2**0 = 1 points
     initial_neg_energy = -total_energy_of_qp(
-        initial_qp, potential_energy,
-        partial(kinetic_energy, inverse_mass_matrix)
+        initial_qp, potential_energy, partial(kinetic_energy, inverse_mass_matrix)
     )
     current_tree = Tree(
         left=initial_qp,
@@ -302,7 +309,7 @@ def generate_nuts_tree(
         turning=False,
         diverging=False,
         depth=0,
-        cumulative_acceptance=jnp.zeros_like(initial_neg_energy)
+        cumulative_acceptance=jnp.zeros_like(initial_neg_energy),
     )
 
     def _cont_cond(loop_state):
@@ -327,7 +334,7 @@ def generate_nuts_tree(
             inverse_mass_matrix,
             max_tree_depth,
             initial_neg_energy=initial_neg_energy,
-            max_energy_difference=max_energy_difference
+            max_energy_difference=max_energy_difference,
         )
         # Mark current tree as diverging if it diverges in the next step
         current_tree = current_tree._replace(diverging=new_subtree.diverging)
@@ -342,7 +349,7 @@ def generate_nuts_tree(
                 old_and_new[0],
                 old_and_new[1],
                 go_right,
-                bias_transition=bias_transition
+                bias_transition=bias_transition,
             ),
             operand=(current_tree, new_subtree),
         )
@@ -398,17 +405,24 @@ def is_euclidean_uturn(qp_left, qp_right):
     --------
     Betancourt - A conceptual introduction to Hamiltonian Monte Carlo
     """
-    return (
-        (qp_right.momentum.dot(qp_right.position - qp_left.position) < 0.) &
-        (qp_left.momentum.dot(qp_left.position - qp_right.position) < 0.)
+    return (qp_right.momentum.dot(qp_right.position - qp_left.position) < 0.0) & (
+        qp_left.momentum.dot(qp_left.position - qp_right.position) < 0.0
     )
 
 
 # Essentially algorithm 2 from https://arxiv.org/pdf/1912.11554.pdf
 def iterative_build_tree(
-    key, initial_tree, step_size, go_right, stepper, potential_energy,
-    kinetic_energy, inverse_mass_matrix, max_tree_depth, initial_neg_energy,
-    max_energy_difference
+    key,
+    initial_tree,
+    step_size,
+    go_right,
+    stepper,
+    potential_energy,
+    kinetic_energy,
+    inverse_mass_matrix,
+    max_tree_depth,
+    initial_neg_energy,
+    max_energy_difference,
 ):
     """
     Starting from either the left or right endpoint of a given tree, builds a
@@ -452,18 +466,16 @@ def iterative_build_tree(
     # need `max_tree_depth` element even though the tree can be of length `max_tree_depth +
     # 1`. This is because we will never access the last element.
     S = tree_util.tree_map(
-        lambda proto: jnp.
-        empty_like(proto, shape=(max_tree_depth, ) + jnp.shape(proto)), z
+        lambda proto: jnp.empty_like(proto, shape=(max_tree_depth,) + jnp.shape(proto)),
+        z,
     )
 
-    z = stepper(
-        jnp.where(go_right, 1., -1.) * step_size, inverse_mass_matrix, z
-    )
+    z = stepper(jnp.where(go_right, 1.0, -1.0) * step_size, inverse_mass_matrix, z)
     neg_energy = -total_energy_of_qp(
         z, potential_energy, partial(kinetic_energy, inverse_mass_matrix)
     )
     diverging = jnp.abs(neg_energy - initial_neg_energy) > max_energy_difference
-    cum_acceptance = jnp.minimum(1., jnp.exp(initial_neg_energy - neg_energy))
+    cum_acceptance = jnp.minimum(1.0, jnp.exp(initial_neg_energy - neg_energy))
     incomplete_tree = Tree(
         left=z,
         right=z,
@@ -472,7 +484,7 @@ def iterative_build_tree(
         turning=False,
         diverging=diverging,
         depth=-1,
-        cumulative_acceptance=cum_acceptance
+        cumulative_acceptance=cum_acceptance,
     )
     S = tree_index_update(S, 0, z)
 
@@ -480,9 +492,7 @@ def iterative_build_tree(
         n, incomplete_tree, z, S, key = state
 
         key, key_choose_candidate = random.split(key)
-        z = stepper(
-            jnp.where(go_right, 1., -1.) * step_size, inverse_mass_matrix, z
-        )
+        z = stepper(jnp.where(go_right, 1.0, -1.0) * step_size, inverse_mass_matrix, z)
         incomplete_tree = add_single_qp_to_tree(
             key_choose_candidate,
             incomplete_tree,
@@ -492,7 +502,7 @@ def iterative_build_tree(
             kinetic_energy,
             inverse_mass_matrix,
             initial_neg_energy=initial_neg_energy,
-            max_energy_difference=max_energy_difference
+            max_energy_difference=max_energy_difference,
         )
 
         def _even_fun(S):
@@ -518,9 +528,9 @@ def iterative_build_tree(
                 lower=i_min_incl,
                 upper=i_max_incl + 1,
                 # TODO: conditional for early termination
-                body_fun=lambda k, turning: turning |
-                is_euclidean_uturn(tree_index_get(S, k), z),
-                init_val=False
+                body_fun=lambda k, turning: turning
+                | is_euclidean_uturn(tree_index_get(S, k), z),
+                init_val=False,
             )
             return S, turning
 
@@ -532,14 +542,17 @@ def iterative_build_tree(
 
     def _cont_cond(state):
         n, incomplete_tree, *_ = state
-        return (n < max_num_proposals) & (~incomplete_tree.turning
-                                         ) & (~incomplete_tree.diverging)
+        return (
+            (n < max_num_proposals)
+            & (~incomplete_tree.turning)
+            & (~incomplete_tree.diverging)
+        )
 
     n, incomplete_tree, *_ = while_loop(
         # while n < 2**depth and not stop
         cond_fun=_cont_cond,
         body_fun=amend_incomplete_tree,
-        init_val=(1, incomplete_tree, z, S, key)
+        init_val=(1, incomplete_tree, z, S, key),
     )
 
     global _DEBUG_FLAG
@@ -552,8 +565,15 @@ def iterative_build_tree(
 
 
 def add_single_qp_to_tree(
-    key, tree, qp, go_right, potential_energy, kinetic_energy,
-    inverse_mass_matrix, initial_neg_energy, max_energy_difference
+    key,
+    tree,
+    qp,
+    go_right,
+    potential_energy,
+    kinetic_energy,
+    inverse_mass_matrix,
+    initial_neg_energy,
+    max_energy_difference,
 ):
     """Helper function for progressive sampling. Takes a tree with a sample, and
     a new endpoint, propagates sample.
@@ -576,7 +596,7 @@ def add_single_qp_to_tree(
     # NOTE, set an invalid depth as to indicate that adding a single QP to a
     # perfect binary tree does not yield another perfect binary tree
     cum_acceptance = tree.cumulative_acceptance + jnp.minimum(
-        1., jnp.exp(initial_neg_energy - neg_energy)
+        1.0, jnp.exp(initial_neg_energy - neg_energy)
     )
     return Tree(
         left,
@@ -586,7 +606,7 @@ def add_single_qp_to_tree(
         turning=tree.turning,
         diverging=diverging,
         depth=-1,
-        cumulative_acceptance=cum_acceptance
+        cumulative_acceptance=cum_acceptance,
     )
 
 
@@ -597,7 +617,7 @@ def merge_trees(key, current_subtree, new_subtree, go_right, bias_transition):
         # Bias the transition towards the new subtree (see Betancourt
         # conceptual intro (and Numpyro))
         transition_probability = jnp.minimum(
-            1., jnp.exp(new_subtree.logweight - current_subtree.logweight)
+            1.0, jnp.exp(new_subtree.logweight - current_subtree.logweight)
         )
     else:
         # expit(x-y) := 1 / (1 + e^(-(x-y))) = 1 / (1 + e^(y-x)) = e^x / (e^y + e^x)
@@ -607,7 +627,8 @@ def merge_trees(key, current_subtree, new_subtree, go_right, bias_transition):
     # print(f"prob of choosing new sample: {transition_probability}")
     new_sample = select(
         random.bernoulli(key, transition_probability),
-        new_subtree.proposal_candidate, current_subtree.proposal_candidate
+        new_subtree.proposal_candidate,
+        current_subtree.proposal_candidate,
     )
     # 6. define new tree
     left, right = select(
@@ -618,7 +639,9 @@ def merge_trees(key, current_subtree, new_subtree, go_right, bias_transition):
     turning = is_euclidean_uturn(left, right)
     diverging = current_subtree.diverging | new_subtree.diverging
     neg_energy = jnp.logaddexp(new_subtree.logweight, current_subtree.logweight)
-    cum_acceptance = current_subtree.cumulative_acceptance + new_subtree.cumulative_acceptance
+    cum_acceptance = (
+        current_subtree.cumulative_acceptance + new_subtree.cumulative_acceptance
+    )
     merged_tree = Tree(
         left=left,
         right=right,
@@ -627,6 +650,6 @@ def merge_trees(key, current_subtree, new_subtree, go_right, bias_transition):
         turning=turning,
         diverging=diverging,
         depth=current_subtree.depth + 1,
-        cumulative_acceptance=cum_acceptance
+        cumulative_acceptance=cum_acceptance,
     )
     return merged_tree

@@ -37,16 +37,20 @@ def matern_kernel(distance, scale, cutoff, dof):
     from scipy.special import kv
 
     reg_dist = jnp.sqrt(2 * dof) * distance / cutoff
-    return scale**2 * 2**(1 - dof) / jnp.exp(
-        gammaln(dof)
-    ) * (reg_dist)**dof * kv(dof, reg_dist)
+    return (
+        scale**2
+        * 2 ** (1 - dof)
+        / jnp.exp(gammaln(dof))
+        * (reg_dist) ** dof
+        * kv(dof, reg_dist)
+    )
 
 
-scale, cutoff, dof = 1., 2., 3 / 2
+scale, cutoff, dof = 1.0, 2.0, 3 / 2
 
-x = jnp.logspace(-6, 11, base=jnp.e, num=int(1e+5))
+x = jnp.logspace(-6, 11, base=jnp.e, num=int(1e5))
 y = matern_kernel(x, scale, cutoff, dof)
-y = jnp.nan_to_num(y, nan=0.)
+y = jnp.nan_to_num(y, nan=0.0)
 kernel = Partial(jnp.interp, xp=x, fp=y)
 inv_kernel = Partial(jnp.interp, xp=y, fp=x)
 
@@ -55,8 +59,8 @@ cc_0 = jft.HEALPixChart(
         12 * 2**2,
         6,
     ),
-    nonhp_rg2cart=lambda x: (jnp.exp(0.3 * x[0] - 0.3), ),
-    nonhp_cart2rg=lambda x: ((jnp.log(x[0]) + 0.3) / 0.3, ),
+    nonhp_rg2cart=lambda x: (jnp.exp(0.3 * x[0] - 0.3),),
+    nonhp_cart2rg=lambda x: ((jnp.log(x[0]) + 0.3) / 0.3,),
     depth=1,
     _coarse_size=3,
     _fine_size=2,
@@ -66,8 +70,8 @@ cc_1 = jft.HEALPixChart(
         12 * 4**2,
         6,
     ),
-    nonhp_rg2cart=lambda x: (jnp.exp(0.75 * x[0] - 1.), ),
-    nonhp_cart2rg=lambda x: ((jnp.log(x[0]) + 1.) / 0.75, ),
+    nonhp_rg2cart=lambda x: (jnp.exp(0.75 * x[0] - 1.0),),
+    nonhp_cart2rg=lambda x: ((jnp.log(x[0]) + 1.0) / 0.75,),
     depth=1,
     _coarse_size=3,
     _fine_size=2,
@@ -76,21 +80,17 @@ cc = lst2fixt((cc_0, cc_1))
 
 
 @pmp(
-    "atol,rtol,which", (
+    "atol,rtol,which",
+    (
         (1e-2 * scale, 5e-2 * scale, "cov"),
         (1e-3 * scale, 5e-3 * scale, "cov"),
-        (1e-4 * scale, 5e-2 * scale, "dist")
-    )
+        (1e-4 * scale, 5e-2 * scale, "dist"),
+    ),
 )
-def test_healpix_refinement_matrices_uniquifying(
-    cc, atol, rtol, which, kernel=kernel
-):
+def test_healpix_refinement_matrices_uniquifying(cc, atol, rtol, which, kernel=kernel):
     seed = 42
     aassert = partial(
-        assert_allclose,
-        atol=1e-11 * scale,
-        rtol=1e-10 * scale,
-        equal_nan=False
+        assert_allclose, atol=1e-11 * scale, rtol=1e-10 * scale, equal_nan=False
     )
 
     rf = jft.RefinementHPField(cc, kernel=kernel)
@@ -118,7 +118,7 @@ def test_healpix_refinement_matrices_uniquifying(
     aassert(f_u, f)
 
 
-@pmp("atol,rtol,which", ((1e-2 * scale, 5e-2 * scale, "cov"), (None, ) * 3))
+@pmp("atol,rtol,which", ((1e-2 * scale, 5e-2 * scale, "cov"), (None,) * 3))
 def test_healpix_refinement(cc, atol, rtol, which, kernel=kernel):
     cov_sqrt = jft.refine.healpix_refine.cov_sqrt(cc, kernel, cc.depth)
     cov = cov_sqrt @ cov_sqrt.T
@@ -134,11 +134,7 @@ def test_healpix_refinement(cc, atol, rtol, which, kernel=kernel):
     cov_refinement = jft.refine.util.refinement_covariance(cf_wm, kernel)
 
     assert_allclose(
-        cov_refinement,
-        cov,
-        atol=0.2 * scale,
-        rtol=0.1 * scale,
-        equal_nan=False
+        cov_refinement, cov, atol=0.2 * scale, rtol=0.1 * scale, equal_nan=False
     )
 
 
@@ -146,6 +142,4 @@ if __name__ == "__main__":
     test_healpix_refinement_matrices_uniquifying(
         cc_0, atol=1e-2, rtol=1e-5, which="cov", kernel=kernel
     )
-    test_healpix_refinement(
-        cc_0, atol=1e-2, rtol=5e-2, which="cov", kernel=kernel
-    )
+    test_healpix_refinement(cc_0, atol=1e-2, rtol=5e-2, which="cov", kernel=kernel)

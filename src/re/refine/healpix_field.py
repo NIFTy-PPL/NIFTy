@@ -17,8 +17,10 @@ from .chart import HEALPixChart
 from .healpix_refine import cov_sqrt as cov_sqrt_hp
 from .healpix_refine import refine as refine_hp
 from .util import (
-    RefinementMatrices, get_cov_from_loc, get_refinement_shapewithdtype,
-    refinement_matrices
+    RefinementMatrices,
+    get_cov_from_loc,
+    get_refinement_shapewithdtype,
+    refinement_matrices,
 )
 
 
@@ -35,7 +37,7 @@ def _matrices_naive(
         # `idx_r` is the left-most radial pixel of the to-be-refined slice
         # Extend `gc` and `gf` radially
         gc, gf = chart.get_coarse_fine_pair((idx_hp, idx_r), lvl)
-        assert gf.shape[0] == chart.fine_size**(chart.ndim + 1)
+        assert gf.shape[0] == chart.fine_size ** (chart.ndim + 1)
 
         coord = jnp.concatenate((gc, gf), axis=0)
         return cov_from_loc(coord, coord)
@@ -43,13 +45,15 @@ def _matrices_naive(
     def ref_mat_from_cov(cov):
         olf, ks = refinement_matrices(
             cov,
-            chart.fine_size**(chart.ndim + 1),
-            coerce_fine_kernel=coerce_fine_kernel
+            chart.fine_size ** (chart.ndim + 1),
+            coerce_fine_kernel=coerce_fine_kernel,
         )
         if chart.ndim > 1:
             olf = olf.reshape(
-                chart.fine_size**2, chart.fine_size, chart.coarse_size**2,
-                chart.coarse_size
+                chart.fine_size**2,
+                chart.fine_size,
+                chart.coarse_size**2,
+                chart.coarse_size,
             )
         return olf, ks
 
@@ -63,9 +67,7 @@ def _matrices_naive(
             pix_r_off = None
             vdist = jax.vmap(partial(ref_mat, lvl), in_axes=(0, 0))
         elif chart.ndim == 2:
-            pix_r_off = jnp.arange(
-                chart.shape_at(lvl)[1] - chart.coarse_size + 1
-            )
+            pix_r_off = jnp.arange(chart.shape_at(lvl)[1] - chart.coarse_size + 1)
             vdist = jax.vmap(partial(ref_mat, lvl), in_axes=(None, 0))
             vdist = jax.vmap(vdist, in_axes=(0, None))
         else:
@@ -75,7 +77,7 @@ def _matrices_naive(
         kernel_sqrt.append(ks)
 
     return RefinementMatrices(
-        opt_lin_filter, kernel_sqrt, None, (None, ) * len(opt_lin_filter)
+        opt_lin_filter, kernel_sqrt, None, (None,) * len(opt_lin_filter)
     )
 
 
@@ -102,7 +104,7 @@ def _matrices_tol(
         # `idx_r` is the left-most radial pixel of the to-be-refined slice
         # Extend `gc` and `gf` radially
         gc, gf = chart.get_coarse_fine_pair((idx_hp, idx_r), lvl)
-        assert gf.shape[0] == chart.fine_size**(chart.ndim + 1)
+        assert gf.shape[0] == chart.fine_size ** (chart.ndim + 1)
 
         coord = jnp.concatenate((gc, gf), axis=0)
         return dist_mat_from_loc(coord, coord)
@@ -110,13 +112,15 @@ def _matrices_tol(
     def ref_mat(cov):
         olf, ks = refinement_matrices(
             cov,
-            chart.fine_size**(chart.ndim + 1),
-            coerce_fine_kernel=coerce_fine_kernel
+            chart.fine_size ** (chart.ndim + 1),
+            coerce_fine_kernel=coerce_fine_kernel,
         )
         if chart.ndim > 1:
             olf = olf.reshape(
-                chart.fine_size**2, chart.fine_size, chart.coarse_size**2,
-                chart.coarse_size
+                chart.fine_size**2,
+                chart.fine_size,
+                chart.coarse_size**2,
+                chart.coarse_size,
             )
         return olf, ks
 
@@ -132,7 +136,7 @@ def _matrices_tol(
 
         # Successively amend the duplicate-free distance/covariance matrices
         d = jax.eval_shape(vdist, pix_hp_idx[0], pix_r_off)
-        u = jnp.full((mat_buffer_size, ) + d.shape, jnp.nan, dtype=d.dtype)
+        u = jnp.full((mat_buffer_size,) + d.shape, jnp.nan, dtype=d.dtype)
 
         def scanned_amend_unique(u, pix):
             d = vdist(pix, pix_r_off)
@@ -158,7 +162,7 @@ def _matrices_tol(
 
         # Finally, all distance/covariance matrices are assembled and we
         # can map over them to construct the refinement matrices as usual
-        vmat = jax.vmap(jax.vmap(ref_mat, in_axes=(0, )), in_axes=(0, ))
+        vmat = jax.vmap(jax.vmap(ref_mat, in_axes=(0,)), in_axes=(0,))
         olf, ks = vmat(u)
 
         opt_lin_filter.append(olf)
@@ -281,10 +285,7 @@ class RefinementHPField(LazyModel):
 
         if atol is None and rtol is None:
             rfm = _matrices_naive(
-                self.chart,
-                kernel,
-                depth,
-                coerce_fine_kernel=coerce_fine_kernel
+                self.chart, kernel, depth, coerce_fine_kernel=coerce_fine_kernel
             )
         else:
             rfm = _matrices_tol(
@@ -296,7 +297,7 @@ class RefinementHPField(LazyModel):
                 rtol=rtol,
                 which=which,
                 mat_buffer_size=mat_buffer_size,
-                _verbosity=_verbosity
+                _verbosity=_verbosity,
             )
         cov_sqrt0 = cov_sqrt_hp(self.chart, kernel) if not skip0 else None
         return rfm._replace(cov_sqrt0=cov_sqrt0)
@@ -316,16 +317,18 @@ class RefinementHPField(LazyModel):
         if not self.skip0:
             domain = [
                 ShapeWithDtype(
-                    (12 * self.chart.nside0**2, ) + nonhp_domain[0].shape,
-                    nonhp_domain[0].dtype
+                    (12 * self.chart.nside0**2,) + nonhp_domain[0].shape,
+                    nonhp_domain[0].dtype,
                 )
             ]
         else:
             domain = [None]
         domain += [
             ShapeWithDtype(
-                (12 * self.chart.nside_at(lvl)**2, ) + swd.shape[:-1] +
-                (4 * swd.shape[-1], ), swd.dtype
+                (12 * self.chart.nside_at(lvl) ** 2,)
+                + swd.shape[:-1]
+                + (4 * swd.shape[-1],),
+                swd.dtype,
             )
             for lvl, swd in zip(range(self.chart.depth + 1), nonhp_domain[1:])
         ]
@@ -369,14 +372,10 @@ class RefinementHPField(LazyModel):
             refinement = kernel
         else:
             refinement = RefinementHPField(chart, None, xi[0].dtype).matrices(
-                kernel=kernel,
-                skip0=skip0,
-                coerce_fine_kernel=coerce_fine_kernel
+                kernel=kernel, skip0=skip0, coerce_fine_kernel=coerce_fine_kernel
             )
         refine_w_chart = partial(
-            refine_hp if _refine is None else _refine,
-            chart=chart,
-            precision=precision
+            refine_hp if _refine is None else _refine, chart=chart, precision=precision
         )
 
         if not skip0:
@@ -386,8 +385,7 @@ class RefinementHPField(LazyModel):
                 raise AssertionError()
             fine = xi[0]
         for x, olf, k, im in zip(
-            xi[1:], refinement.filter, refinement.propagator_sqrt,
-            refinement.index_map
+            xi[1:], refinement.filter, refinement.propagator_sqrt, refinement.index_map
         ):
             fine = refine_w_chart(fine, x, olf, k, im)
         return fine

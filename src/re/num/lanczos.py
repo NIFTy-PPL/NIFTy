@@ -18,7 +18,7 @@ def lanczos_tridiag(mat: Callable[[V], V], v: V, order: int):
     """
     swd = ShapeWithDtype.from_leave(v)
     tridiag = jnp.zeros((order, order), dtype=swd.dtype)
-    vecs = jnp.zeros((order, ) + swd.shape, dtype=swd.dtype)
+    vecs = jnp.zeros((order,) + swd.shape, dtype=swd.dtype)
 
     v = v / jnp.linalg.norm(v)
     vecs = vecs.at[0].set(v)
@@ -76,9 +76,7 @@ def lanczos_tridiag(mat: Callable[[V], V], v: V, order: int):
 
         return tridiag, vecs, beta
 
-    tridiag, vecs, beta = fori_loop(
-        1, order - 1, lanczos_step, (tridiag, vecs, beta)
-    )
+    tridiag, vecs, beta = fori_loop(1, order - 1, lanczos_step, (tridiag, vecs, beta))
 
     # Final tridiag value and reorthogonalization
     v = vecs[order - 1, :].reshape(swd.shape)
@@ -132,7 +130,7 @@ def stochastic_lq_logdet(
     key_smpls = random.split(key, n_samples)
 
     def random_lanczos(k):
-        v = random.rademacher(k, (shape0, ), dtype=dtype)
+        v = random.rademacher(k, (shape0,), dtype=dtype)
         tri, _ = lanczos_tridiag(mat, v, order=order)
         return tri
 

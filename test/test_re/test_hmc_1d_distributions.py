@@ -1,6 +1,7 @@
 import sys
 
 import pytest
+
 pytest.importorskip("jax")
 
 from jax import numpy as jnp
@@ -27,8 +28,8 @@ def mnc2mc(mnc, wmean=True):
         for n, m in enumerate(mnc):
             mu.append(0)
             for k in range(n + 1):
-                sgn_comb = (-1)**(n - k) * comb(n, k, exact=True)
-                mu[n] += sgn_comb * mnc[k] * mean**(n - k)
+                sgn_comb = (-1) ** (n - k) * comb(n, k, exact=True)
+                mu[n] += sgn_comb * mnc[k] * mean ** (n - k)
         if wmean:
             mu[1] = mean
         return mu[1:]
@@ -41,18 +42,18 @@ def mnc2mc(mnc, wmean=True):
 # Test simple distributions with no extra parameters
 dists = [stats.cauchy, stats.expon, stats.laplace, stats.logistic, stats.norm]
 # Tuple of `rtol` and `atol` for every tested moment
-moments_tol = {1: (0., 2e-1), 2: (3e-1, 0.), 3: (4e-1, 8e-1), 4: (4., 0.)}
+moments_tol = {1: (0.0, 2e-1), 2: (3e-1, 0.0), 3: (4e-1, 8e-1), 4: (4.0, 0.0)}
 
 
 @pmp("distribution", dists)
 def test_moment_consistency(distribution, plot=False):
-    name = distribution.__name__.split('.')[-1]
+    name = distribution.__name__.split(".")[-1]
 
     max_tree_depth = 20
     sampler = jft.NUTSChain(
         potential_energy=lambda x: -1 * distribution.logpdf(x),
-        inverse_mass_matrix=1.,
-        position_proto=jnp.array(0.),
+        inverse_mass_matrix=1.0,
+        position_proto=jnp.array(0.0),
         step_size=0.7193,
         max_tree_depth=max_tree_depth,
     )
@@ -71,17 +72,15 @@ def test_moment_consistency(distribution, plot=False):
         bins = jnp.linspace(-10, 10)
         if distribution is stats.expon:
             bins = jnp.linspace(0, 10)
-        axs.flat[0].hist(
-            chain.samples, bins=bins, density=True, histtype="step"
-        )
-        axs.flat[0].plot(bins, distribution.pdf(bins), color='r')
+        axs.flat[0].hist(chain.samples, bins=bins, density=True, histtype="step")
+        axs.flat[0].plot(bins, distribution.pdf(bins), color="r")
         axs.flat[0].set_title(f"{name} PDF")
 
         axs.flat[1].hist(
             chain.depths,
             bins=jnp.arange(max_tree_depth + 1),
             density=True,
-            histtype="step"
+            histtype="step",
         )
         axs.flat[1].set_title(f"Tree-depth")
         fig.tight_layout()
@@ -106,11 +105,10 @@ def test_moment_consistency(distribution, plot=False):
         )
         print(msg, end="", file=sys.stderr)
         test = not jnp.isnan(dist_mom)
-        test &= not (jnp.allclose(dist_mom, 0.) and i > 1)
+        test &= not (jnp.allclose(dist_mom, 0.0) and i > 1)
         if i in moments_tol and test:
             assert_allclose(
-                dist_mom, smpl_mom,
-                **dict(zip(("rtol", "atol"), moments_tol[i]))
+                dist_mom, smpl_mom, **dict(zip(("rtol", "atol"), moments_tol[i]))
             )
             print("✓", file=sys.stderr)
         else:

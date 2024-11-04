@@ -60,7 +60,7 @@ def _cg_pretty_print_it(
     absdelta=None,
     norm=None,
     resnorm=None,
-    maxiter=None
+    maxiter=None,
 ):
     if maxiter is not None and i == maxiter:
         i_str = "✖" * len(str(i)) + f" ({i})"
@@ -83,35 +83,37 @@ def _cg(
     resnorm=None,
     norm_ord=None,
     tol=1e-5,  # taken from SciPy's linalg.cg
-    atol=0.,
+    atol=0.0,
     miniter=None,
     maxiter=None,
     name=None,
     time_threshold=None,
-    _raise_nonposdef=True
+    _raise_nonposdef=True,
 ) -> CGResults:
     norm_ord = 2 if norm_ord is None else norm_ord  # TODO: change to 1
     maxiter_fallback = 20 * size(j)  # taken from SciPy's NewtonCG minimzer
-    miniter = min(
-        (6, maxiter if maxiter is not None else maxiter_fallback)
-    ) if miniter is None else miniter
-    maxiter = max(
-        (min((200, maxiter_fallback)), miniter)
-    ) if maxiter is None else maxiter
+    miniter = (
+        min((6, maxiter if maxiter is not None else maxiter_fallback))
+        if miniter is None
+        else miniter
+    )
+    maxiter = (
+        max((min((200, maxiter_fallback)), miniter)) if maxiter is None else maxiter
+    )
 
     if absdelta is None and resnorm is None:  # fallback convergence criterion
         resnorm = jnp.maximum(tol * jft_norm(j, ord=norm_ord), atol)
 
     common_dtp = result_type(j)
-    eps = 6. * jnp.finfo(common_dtp).eps  # taken from SciPy's NewtonCG minimzer
-    tiny = 6. * jnp.finfo(common_dtp).tiny
+    eps = 6.0 * jnp.finfo(common_dtp).eps  # taken from SciPy's NewtonCG minimzer
+    tiny = 6.0 * jnp.finfo(common_dtp).tiny
 
     if x0 is None:
         pos = zeros_like(j)
         r = -j
         d = r
         # energy = .5xT M x - xT j
-        energy = 0.
+        energy = 0.0
         nfev = 0
     else:
         pos = x0
@@ -126,11 +128,7 @@ def _cg(
     energy_diff = jnp.inf
     norm = None
     pp = partial(
-        _cg_pretty_print_it,
-        name,
-        absdelta=absdelta,
-        resnorm=resnorm,
-        maxiter=maxiter
+        _cg_pretty_print_it, name, absdelta=absdelta, resnorm=resnorm, maxiter=maxiter
     )
     if name is not None:
         if resnorm is not None:
@@ -148,13 +146,13 @@ def _cg(
         nfev += 1
 
         curv = float(vdot(d, q))
-        if curv == 0.:
+        if curv == 0.0:
             if _raise_nonposdef:
                 nm = "CG" if name is None else name
                 raise ValueError(f"{nm}: zero curvature")
             info = 0
             break
-        elif curv < 0.:
+        elif curv < 0.0:
             if _raise_nonposdef:
                 nm = "CG" if name is None else name
                 raise ValueError(f"{nm}: negative curvature")
@@ -176,7 +174,7 @@ def _cg(
         if time_threshold is not None and datetime.now() > time_threshold:
             info = i
             break
-        if gamma >= 0. and gamma <= tiny:
+        if gamma >= 0.0 and gamma <= tiny:
             nm = "CG" if name is None else name
             logger.warning(f"{nm}: gamma=0, converged!")
             info = 0
@@ -225,12 +223,12 @@ def _static_cg(
     resnorm=None,
     norm_ord=None,
     tol=1e-5,  # taken from SciPy's linalg.cg
-    atol=0.,
+    atol=0.0,
     miniter=None,
     maxiter=None,
     name=None,
     _raise_nonposdef=True,
-    **kwargs
+    **kwargs,
 ) -> CGResults:
     from jax.debug import callback
     from jax.lax import cond, while_loop
@@ -243,19 +241,23 @@ def _static_cg(
 
     norm_ord = 2 if norm_ord is None else norm_ord  # TODO: change to 1
     maxiter_fallback = 20 * size(j)  # taken from SciPy's NewtonCG minimzer
-    miniter = jnp.minimum(
-        6, maxiter if maxiter is not None else maxiter_fallback
-    ) if miniter is None else miniter
-    maxiter = jnp.maximum(
-        jnp.minimum(200, maxiter_fallback), miniter
-    ) if maxiter is None else maxiter
+    miniter = (
+        jnp.minimum(6, maxiter if maxiter is not None else maxiter_fallback)
+        if miniter is None
+        else miniter
+    )
+    maxiter = (
+        jnp.maximum(jnp.minimum(200, maxiter_fallback), miniter)
+        if maxiter is None
+        else maxiter
+    )
 
     if absdelta is None and resnorm is None:  # fallback convergence criterion
         resnorm = jnp.maximum(tol * jft_norm(j, ord=norm_ord), atol)
 
     common_dtp = result_type(j)
-    eps = 6. * jnp.finfo(common_dtp).eps  # taken from SciPy's NewtonCG minimzer
-    tiny = 6. * jnp.finfo(common_dtp).tiny
+    eps = 6.0 * jnp.finfo(common_dtp).eps  # taken from SciPy's NewtonCG minimzer
+    tiny = 6.0 * jnp.finfo(common_dtp).tiny
 
     def pp(arg):
         _cg_pretty_print_it(name, **arg)
@@ -274,11 +276,11 @@ def _static_cg(
         curv = vdot(d, q)
         alpha = previous_gamma / curv
         # ValueError("implausible or zero curvature in conjugate gradient")
-        info = jnp.where(curv <= 0., jnp.where(_raise_nonposdef, -1, 0), info)
-        alpha = jnp.where((curv <= 0.) & (not _raise_nonposdef), 0., alpha)
+        info = jnp.where(curv <= 0.0, jnp.where(_raise_nonposdef, -1, 0), info)
+        alpha = jnp.where((curv <= 0.0) & (not _raise_nonposdef), 0.0, alpha)
         pos = pos - alpha * d
         pos = where(
-            (curv < 0.) & (not _raise_nonposdef) & (i <= 1),
+            (curv < 0.0) & (not _raise_nonposdef) & (i <= 1),
             previous_energy / (-curv) * (-j),
             pos,
         )
@@ -286,24 +288,14 @@ def _static_cg(
             (i % N_RESET == 0) & (info < -1),
             lambda x: mat(x["pos"]) - x["j"],
             lambda x: x["r"] - x["q"] * x["alpha"],
-            {
-                "pos": pos,
-                "j": j,
-                "r": r,
-                "q": q,
-                "alpha": alpha
-            },
+            {"pos": pos, "j": j, "r": r, "q": q, "alpha": alpha},
         )
         gamma = vdot(r, r)
 
-        info = jnp.where(
-            (gamma >= 0.) & (gamma <= tiny) & (info != -1), 0, info
-        )
+        info = jnp.where((gamma >= 0.0) & (gamma <= tiny) & (info != -1), 0, info)
         if resnorm is not None:
             norm = jft_norm(r, ord=norm_ord)
-            info = jnp.where(
-                (norm < resnorm) & (i >= miniter) & (info != -1), 0, info
-            )
+            info = jnp.where((norm < resnorm) & (i >= miniter) & (info != -1), 0, info)
         else:
             norm = None
         energy = vdot((r - j) / 2, pos)
@@ -317,8 +309,7 @@ def _static_cg(
         )
         if absdelta is not None:
             info = jnp.where(
-                (energy_diff < absdelta) & (i >= miniter) & (info != -1), 0,
-                info
+                (energy_diff < absdelta) & (i >= miniter) & (info != -1), 0, info
             )
         info = jnp.where((i >= maxiter) & (info != -1), i, info)
 
@@ -332,7 +323,7 @@ def _static_cg(
                 "absdelta": absdelta,
                 "norm": norm,
                 "resnorm": resnorm,
-                "maxiter": maxiter
+                "maxiter": maxiter,
             }
             callback(pp, printable_state)
 
@@ -343,7 +334,7 @@ def _static_cg(
             "d": d,
             "iteration": i,
             "gamma": gamma,
-            "energy": energy
+            "energy": energy,
         }
         return ret
 
@@ -358,7 +349,7 @@ def _static_cg(
         d = r
         nfev = 1
     # energy = .5xT M x - xT j
-    energy = jnp.array(0.) if x0 is None else vdot((r - j) / 2, pos)
+    energy = jnp.array(0.0) if x0 is None else vdot((r - j) / 2, pos)
 
     gamma = vdot(r, r)
     val = {
@@ -368,10 +359,10 @@ def _static_cg(
         "d": d,
         "iteration": jnp.array(0),
         "gamma": gamma,
-        "energy": energy
+        "energy": energy,
     }
     # Finish early if already converged in the initial iteration
-    val["info"] = jnp.where(gamma == 0., 0, val["info"])
+    val["info"] = jnp.where(gamma == 0.0, 0, val["info"])
 
     if name is not None:
         if resnorm is not None:
@@ -385,7 +376,7 @@ def _static_cg(
             "absdelta": absdelta,
             "norm": norm,
             "resnorm": resnorm,
-            "maxiter": maxiter
+            "maxiter": maxiter,
         }
         callback(pp, printable_state)
 
@@ -394,9 +385,7 @@ def _static_cg(
     i = val["iteration"]
     info = val["info"]
     nfev += i + i // N_RESET
-    return CGResults(
-        x=val["pos"], info=info, nit=i, nfev=nfev, success=info == 0
-    )
+    return CGResults(x=val["pos"], info=info, nit=i, nfev=nfev, success=info == 0)
 
 
 # The following is code adapted from Nicholas Mancuso to work with pytrees
@@ -473,7 +462,7 @@ def _cg_steihaug_subproblem(
     norm_ord: Union[None, int, float, jnp.ndarray] = None,
     miniter: Union[None, int] = None,
     maxiter: Union[None, int] = None,
-    name=None
+    name=None,
 ) -> _QuadSubproblemResult:
     """
     Solve the subproblem using a conjugate gradient method.
@@ -513,45 +502,47 @@ def _cg_steihaug_subproblem(
     tr_norm_ord = jnp.inf if tr_norm_ord is None else tr_norm_ord  # taken from JAX
     norm_ord = 2 if norm_ord is None else norm_ord  # TODO: change to 1
     maxiter_fallback = 20 * size(g)  # taken from SciPy's NewtonCG minimzer
-    miniter = jnp.minimum(
-        6, maxiter if maxiter is not None else maxiter_fallback
-    ) if miniter is None else miniter
-    maxiter = jnp.maximum(
-        jnp.minimum(200, maxiter_fallback), miniter
-    ) if maxiter is None else maxiter
+    miniter = (
+        jnp.minimum(6, maxiter if maxiter is not None else maxiter_fallback)
+        if miniter is None
+        else miniter
+    )
+    maxiter = (
+        jnp.maximum(jnp.minimum(200, maxiter_fallback), miniter)
+        if maxiter is None
+        else maxiter
+    )
 
     common_dtp = result_type(g)
-    eps = 6. * jnp.finfo(
-        common_dtp
-    ).eps  # Inspired by SciPy's NewtonCG minimzer
+    eps = 6.0 * jnp.finfo(common_dtp).eps  # Inspired by SciPy's NewtonCG minimzer
 
     # second-order Taylor series approximation at the current values, gradient,
     # and hessian
-    soa = partial(
-        second_order_approx, cur_val=cur_val, g=g, hessp_at_xk=hessp_at_xk
-    )
+    soa = partial(second_order_approx, cur_val=cur_val, g=g, hessp_at_xk=hessp_at_xk)
 
     def pp(arg):
         msg = (
             "{name}: |∇|:{r_norm:.6e} ➽:{resnorm:.6e} ↗:{tr:.6e}"
             " ☞:{case:1d} #∇²:{nhev:02d}"
-            "\n{name}: Iteration {i} ⛰:{energy:+.6e} Δ⛰:{energy_diff:.6e}" +
-            (" ➽:{absdelta:.6e}" if arg["absdelta"] is not None else "") + (
+            "\n{name}: Iteration {i} ⛰:{energy:+.6e} Δ⛰:{energy_diff:.6e}"
+            + (" ➽:{absdelta:.6e}" if arg["absdelta"] is not None else "")
+            + (
                 "\n{name}: Iteration Limit Reached"
-                if arg["i"] == arg["maxiter"] else ""
+                if arg["i"] == arg["maxiter"]
+                else ""
             )
         )
         logger.info(msg.format(name=name, **arg))
 
     # helpers for internal switches in the main CGSteihaug logic
     def noop(
-        param: Tuple[_CGSteihaugState, Union[float, jnp.ndarray]]
+        param: Tuple[_CGSteihaugState, Union[float, jnp.ndarray]],
     ) -> _CGSteihaugState:
         iterp, z_next = param
         return iterp
 
     def step1(
-        param: Tuple[_CGSteihaugState, Union[float, jnp.ndarray]]
+        param: Tuple[_CGSteihaugState, Union[float, jnp.ndarray]],
     ) -> _CGSteihaugState:
         iterp, z_next = param
         z, d, nhev = iterp.z, iterp.d, iterp.nhev
@@ -565,7 +556,7 @@ def _cg_steihaug_subproblem(
         )
 
     def step2(
-        param: Tuple[_CGSteihaugState, Union[float, jnp.ndarray]]
+        param: Tuple[_CGSteihaugState, Union[float, jnp.ndarray]],
     ) -> _CGSteihaugState:
         iterp, z_next = param
         z, d = iterp.z, iterp.d
@@ -575,7 +566,7 @@ def _cg_steihaug_subproblem(
         return iterp._replace(step=p_boundary, hits_boundary=True, done=True)
 
     def step3(
-        param: Tuple[_CGSteihaugState, Union[float, jnp.ndarray]]
+        param: Tuple[_CGSteihaugState, Union[float, jnp.ndarray]],
     ) -> _CGSteihaugState:
         iterp, z_next = param
         return iterp._replace(step=z_next, hits_boundary=False, done=True)
@@ -587,7 +578,7 @@ def _cg_steihaug_subproblem(
     z = p_origin
     r = g
     d = -r
-    energy = 0.
+    energy = 0.0
     init_param = _CGSteihaugState(
         z=z,
         r=r,
@@ -597,7 +588,7 @@ def _cg_steihaug_subproblem(
         hits_boundary=False,
         done=maxiter == 0,
         nit=0,
-        nhev=0
+        nhev=0,
     )
 
     # Search for the min of the approximation of the objective function.
@@ -631,15 +622,16 @@ def _cg_steihaug_subproblem(
         energy_diff = energy - energy_next
         if absdelta is not None:
             neg_energy_eps = -eps * jnp.abs(energy)
-            accept_z_next |= (energy_diff >= neg_energy_eps
-                             ) & (energy_diff < absdelta) & (nit >= miniter)
+            accept_z_next |= (
+                (energy_diff >= neg_energy_eps)
+                & (energy_diff < absdelta)
+                & (nit >= miniter)
+            )
 
         # include a junk switch to catch the case where none should be executed
         z_next_norm = jft_norm(z_next, ord=tr_norm_ord)
         index = jnp.argmax(
-            jnp.array(
-                [False, dBd <= 0, z_next_norm >= trust_radius, accept_z_next]
-            )
+            jnp.array([False, dBd <= 0, z_next_norm >= trust_radius, accept_z_next])
         )
         iterp = switch(index, [noop, step1, step2, step3], (iterp, z_next))
 
@@ -649,7 +641,7 @@ def _cg_steihaug_subproblem(
             d=d_next,
             energy=energy_next,
             nhev=iterp.nhev + 1,
-            nit=nit
+            nit=nit,
         )
         if name is not None:
             printable_state = {
@@ -662,7 +654,7 @@ def _cg_steihaug_subproblem(
                 "resnorm": resnorm,
                 "nhev": iterp.nhev,
                 "case": index,
-                "maxiter": maxiter
+                "maxiter": maxiter,
             }
             callback(pp, printable_state)
 
@@ -684,7 +676,7 @@ def _cg_steihaug_subproblem(
         nfev=0,
         njev=0,
         nhev=result.nhev + 1,
-        success=True
+        success=True,
     )
 
     return result

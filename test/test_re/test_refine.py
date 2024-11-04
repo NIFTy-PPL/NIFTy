@@ -34,28 +34,32 @@ def matern_kernel(distance, scale, cutoff, dof):
     from scipy.special import kv
 
     reg_dist = jnp.sqrt(2 * dof) * distance / cutoff
-    return scale**2 * 2**(1 - dof) / jnp.exp(
-        gammaln(dof)
-    ) * (reg_dist)**dof * kv(dof, reg_dist)
+    return (
+        scale**2
+        * 2 ** (1 - dof)
+        / jnp.exp(gammaln(dof))
+        * (reg_dist) ** dof
+        * kv(dof, reg_dist)
+    )
 
 
-scale, cutoff, dof = 1., 80., 3 / 2
+scale, cutoff, dof = 1.0, 80.0, 3 / 2
 
-x = jnp.logspace(-6, 11, base=jnp.e, num=int(1e+5))
+x = jnp.logspace(-6, 11, base=jnp.e, num=int(1e5))
 y = matern_kernel(x, scale, cutoff, dof)
-y = jnp.nan_to_num(y, nan=0.)
+y = jnp.nan_to_num(y, nan=0.0)
 kernel = Partial(jnp.interp, xp=x, fp=y)
 inv_kernel = Partial(jnp.interp, xp=y, fp=x)
 
 
-@pmp("dist", (10., 1e+3))
+@pmp("dist", (10.0, 1e3))
 def test_refinement_matrices_1d(dist, kernel=kernel):
     cov_from_loc = refine.util.get_cov_from_loc(kernel=kernel)
 
-    coarse_coord = dist * jnp.array([0., 1., 2.])
-    fine_coord = coarse_coord[tuple(
-        jnp.array(coarse_coord.shape) // 2
-    )] + (jnp.diff(coarse_coord) / jnp.array([-4., 4.]))
+    coarse_coord = dist * jnp.array([0.0, 1.0, 2.0])
+    fine_coord = coarse_coord[tuple(jnp.array(coarse_coord.shape) // 2)] + (
+        jnp.diff(coarse_coord) / jnp.array([-4.0, 4.0])
+    )
     cov_ff = cov_from_loc(fine_coord, fine_coord)
     cov_fc = cov_from_loc(fine_coord, coarse_coord)
     cov_cc_inv = jnp.linalg.inv(cov_from_loc(coarse_coord, coarse_coord))
@@ -65,14 +69,14 @@ def test_refinement_matrices_1d(dist, kernel=kernel):
     olf_diy = cov_fc @ cov_cc_inv
 
     cc = jft.CoordinateChart(
-        shape0=(12, ) * np.size(dist),
+        shape0=(12,) * np.size(dist),
         distances=dist,
         depth=0,
         _coarse_size=3,
-        _fine_size=2
+        _fine_size=2,
     )
     olf, ks = jft.RefinementField(cc).matrices_at(
-        level=0, pixel_index=(0, ) * np.size(dist), kernel=kernel
+        level=0, pixel_index=(0,) * np.size(dist), kernel=kernel
     )
 
     assert_allclose(olf, olf_diy)
@@ -80,31 +84,34 @@ def test_refinement_matrices_1d(dist, kernel=kernel):
 
 
 @pmp("seed", (12, 45))
-@pmp("dist", (10., 1e+3))
+@pmp("dist", (10.0, 1e3))
 def test_refinement_1d(seed, dist, kernel=kernel):
     rng = np.random.default_rng(seed)
 
     refs = (
-        charted_refine.refine_conv, charted_refine.refine_conv_general,
-        charted_refine.refine_loop, charted_refine.refine_vmap,
-        charted_refine.refine_loop, charted_refine.refine_slice
+        charted_refine.refine_conv,
+        charted_refine.refine_conv_general,
+        charted_refine.refine_loop,
+        charted_refine.refine_vmap,
+        charted_refine.refine_loop,
+        charted_refine.refine_slice,
     )
     cov_from_loc = refine.util.get_cov_from_loc(kernel=kernel)
     cc = jft.CoordinateChart(
-        shape0=(12, ) * np.size(dist),
+        shape0=(12,) * np.size(dist),
         distances=dist,
         depth=0,
         _coarse_size=3,
-        _fine_size=2
+        _fine_size=2,
     )
     olf, ks = jft.RefinementField(cc).matrices_at(
-        level=0, pixel_index=(0, ) * np.size(dist), kernel=kernel
+        level=0, pixel_index=(0,) * np.size(dist), kernel=kernel
     )
 
-    main_coord = jnp.linspace(0., 1000., 50)
+    main_coord = jnp.linspace(0.0, 1000.0, 50)
     cov_sqrt = jnp.linalg.cholesky(cov_from_loc(main_coord, main_coord))
     lvl0 = cov_sqrt @ rng.normal(size=main_coord.shape)
-    lvl1_exc = rng.normal(size=(2 * (lvl0.size - 2), ))
+    lvl1_exc = rng.normal(size=(2 * (lvl0.size - 2),))
 
     fine_reference = charted_refine.refine(lvl0, lvl1_exc, olf, ks)
     eps = jnp.finfo(lvl0.dtype.type).eps
@@ -116,8 +123,8 @@ def test_refinement_1d(seed, dist, kernel=kernel):
         aallclose(ref(lvl0, lvl1_exc, olf, ks))
 
 
-@pmp("seed", (12, ))
-@pmp("dist", (60., 1e+3, (40., 90.), (1e+2, 1e+3, 1e+4)))
+@pmp("seed", (12,))
+@pmp("dist", (60.0, 1e3, (40.0, 90.0), (1e2, 1e3, 1e4)))
 @pmp("_coarse_size", (3, 5))
 @pmp("_fine_size", (2, 4))
 @pmp("_fine_strategy", ("jump", "extend"))
@@ -125,23 +132,18 @@ def test_refinement_nd_cross_consistency(
     seed, dist, _coarse_size, _fine_size, _fine_strategy, kernel=kernel
 ):
     ndim = len(dist) if hasattr(dist, "__len__") else 1
-    min_shape = (12, ) * ndim
+    min_shape = (12,) * ndim
     depth = 1
     refs = (charted_refine.refine_conv_general, charted_refine.refine_slice)
     kwargs = {
         "_coarse_size": _coarse_size,
         "_fine_size": _fine_size,
-        "_fine_strategy": _fine_strategy
+        "_fine_strategy": _fine_strategy,
     }
 
-    chart = jft.CoordinateChart(
-        min_shape, depth=depth, distances=dist, **kwargs
-    )
+    chart = jft.CoordinateChart(min_shape, depth=depth, distances=dist, **kwargs)
     rfm = jft.RefinementField(chart).matrices(kernel)
-    xi = jft.random_like(
-        random.PRNGKey(seed),
-        jft.RefinementField(chart).domain
-    )
+    xi = jft.random_like(random.PRNGKey(seed), jft.RefinementField(chart).domain)
 
     cf = partial(jft.RefinementField.apply, chart=chart, kernel=rfm)
     fine_reference = cf(xi)
@@ -154,9 +156,9 @@ def test_refinement_nd_cross_consistency(
         aallclose(cf(xi, _refine=ref))
 
 
-@pmp("dist", (60., 1e+3, (40., 90.), (1e+2, 1e+3, 1e+4)))
+@pmp("dist", (60.0, 1e3, (40.0, 90.0), (1e2, 1e3, 1e4)))
 def test_refinement_fine_strategy_basic_consistency(dist, kernel=kernel):
-    shape0 = (12, ) * len(dist) if isinstance(dist, tuple) else (12, )
+    shape0 = (12,) * len(dist) if isinstance(dist, tuple) else (12,)
 
     cc_e = jft.CoordinateChart(
         shape0=shape0,
@@ -164,10 +166,10 @@ def test_refinement_fine_strategy_basic_consistency(dist, kernel=kernel):
         depth=0,
         _fine_strategy="extend",
         _coarse_size=3,
-        _fine_size=2
+        _fine_size=2,
     )
     olf_e, ks_e = jft.RefinementField(cc_e).matrices_at(
-        level=0, pixel_index=(0, ) * np.size(dist), kernel=kernel
+        level=0, pixel_index=(0,) * np.size(dist), kernel=kernel
     )
     cc_j = jft.CoordinateChart(
         shape0=shape0,
@@ -175,27 +177,25 @@ def test_refinement_fine_strategy_basic_consistency(dist, kernel=kernel):
         depth=0,
         _fine_strategy="jump",
         _coarse_size=3,
-        _fine_size=2
+        _fine_size=2,
     )
     olf_j, ks_j = jft.RefinementField(cc_j).matrices_at(
-        level=0, pixel_index=(0, ) * np.size(dist), kernel=kernel
+        level=0, pixel_index=(0,) * np.size(dist), kernel=kernel
     )
 
-    assert_allclose(olf_j, olf_e, rtol=1e-13, atol=0.)
-    assert_allclose(ks_j, ks_e, rtol=1e-13, atol=0.)
+    assert_allclose(olf_j, olf_e, rtol=1e-13, atol=0.0)
+    assert_allclose(ks_j, ks_e, rtol=1e-13, atol=0.0)
 
     depth = 2
     rm_j = jft.RefinementField(cc_j).matrices(kernel=kernel, depth=depth)
     rm_e = jft.RefinementField(cc_e).matrices(kernel=kernel, depth=depth)
 
-    assert_allclose(rm_j.filter, rm_e.filter, rtol=1e-13, atol=0.)
-    assert_allclose(
-        rm_j.propagator_sqrt, rm_e.propagator_sqrt, rtol=1e-13, atol=0.
-    )
-    assert_allclose(rm_j.cov_sqrt0, rm_e.cov_sqrt0, rtol=1e-13, atol=0.)
+    assert_allclose(rm_j.filter, rm_e.filter, rtol=1e-13, atol=0.0)
+    assert_allclose(rm_j.propagator_sqrt, rm_e.propagator_sqrt, rtol=1e-13, atol=0.0)
+    assert_allclose(rm_j.cov_sqrt0, rm_e.cov_sqrt0, rtol=1e-13, atol=0.0)
 
 
-@pmp("dist", (60., 1e+3, (40., 90.), (1e+2, 1e+3, 1e+4)))
+@pmp("dist", (60.0, 1e3, (40.0, 90.0), (1e2, 1e3, 1e4)))
 @pmp("_coarse_size", (3, 5))
 @pmp("_fine_size", (2, 4))
 @pmp("_fine_strategy", ("jump", "extend"))
@@ -206,20 +206,20 @@ def test_refinement_covariance(
     ndim = len(distances0)
 
     cf = jft.RefinementField(
-        shape0=(_coarse_size, ) * ndim,
+        shape0=(_coarse_size,) * ndim,
         depth=1,
         _coarse_size=_coarse_size,
         _fine_size=_fine_size,
         _fine_strategy=_fine_strategy,
         distances0=distances0,
-        kernel=kernel
+        kernel=kernel,
     )
     exc_shp = [
-        jft.ShapeWithDtype((_coarse_size, ) * ndim),
-        jft.ShapeWithDtype((_fine_size, ) * ndim)
+        jft.ShapeWithDtype((_coarse_size,) * ndim),
+        jft.ShapeWithDtype((_fine_size,) * ndim),
     ]
     cf_shp = jax.eval_shape(cf, exc_shp)
-    assert cf_shp.shape == (_fine_size, ) * ndim
+    assert cf_shp.shape == (_fine_size,) * ndim
 
     probe = jnp.zeros(cf_shp.shape)
     indices = np.indices(cf_shp.shape).reshape(ndim, -1)
@@ -227,16 +227,16 @@ def test_refinement_covariance(
     _, cf_T = jax.vjp(cf, jft.zeros_like(exc_shp))
     cf_cf_T = lambda x: cf(*cf_T(x))
     cov_empirical = jax.vmap(
-        lambda idx: cf_cf_T(probe.at[tuple(idx)].set(1.)).ravel(),
+        lambda idx: cf_cf_T(probe.at[tuple(idx)].set(1.0)).ravel(),
         in_axes=1,
-        out_axes=-1
+        out_axes=-1,
     )(indices)
 
     pos = np.mgrid[tuple(slice(s) for s in cf_shp.shape)].astype(float)
     if _fine_strategy == "jump":
-        pos *= distances0.reshape((-1, ) + (1, ) * ndim) / _fine_size
+        pos *= distances0.reshape((-1,) + (1,) * ndim) / _fine_size
     elif _fine_strategy == "extend":
-        pos *= distances0.reshape((-1, ) + (1, ) * ndim) / 2
+        pos *= distances0.reshape((-1,) + (1,) * ndim) / 2
     else:
         raise AssertionError(f"invalid `_fine_strategy`; {_fine_strategy}")
     pos = jnp.moveaxis(pos, 0, -1)
@@ -252,34 +252,27 @@ def test_refinement_covariance(
 def test_refinement_nd_shape(seed, n_dim, kernel=kernel):
     rng = np.random.default_rng(seed)
 
-    distances = np.exp(rng.normal(size=(n_dim, )))
+    distances = np.exp(rng.normal(size=(n_dim,)))
     cov_from_loc = refine.util.get_cov_from_loc(kernel=kernel)
     cc = jft.CoordinateChart(
-        shape0=(12, ) * n_dim,
-        distances=distances,
-        depth=0,
-        _coarse_size=3,
-        _fine_size=2
+        shape0=(12,) * n_dim, distances=distances, depth=0, _coarse_size=3, _fine_size=2
     )
     olf, ks = jft.RefinementField(cc).matrices_at(
-        level=0,
-        pixel_index=(0, ) * n_dim,
-        kernel=kernel,
-        coerce_fine_kernel=False
+        level=0, pixel_index=(0,) * n_dim, kernel=kernel, coerce_fine_kernel=False
     )
 
     shp_i = 5
-    gc = distances.reshape(n_dim, 1) * jnp.linspace(0., 1000., shp_i)
+    gc = distances.reshape(n_dim, 1) * jnp.linspace(0.0, 1000.0, shp_i)
     gc = jnp.stack(jnp.meshgrid(*gc, indexing="ij"), axis=-1).reshape(-1, n_dim)
     cov_sqrt = jnp.linalg.cholesky(cov_from_loc(gc, gc))
-    lvl0 = (cov_sqrt @ rng.normal(size=gc.shape[0])).reshape((shp_i, ) * n_dim)
-    lvl1_exc = rng.normal(size=tuple(n - 2 for n in lvl0.shape) + (2**n_dim, ))
+    lvl0 = (cov_sqrt @ rng.normal(size=gc.shape[0])).reshape((shp_i,) * n_dim)
+    lvl1_exc = rng.normal(size=tuple(n - 2 for n in lvl0.shape) + (2**n_dim,))
 
     fine_reference = charted_refine.refine(lvl0, lvl1_exc, olf, ks)
-    assert fine_reference.shape == tuple((2 * (shp_i - 2), ) * n_dim)
+    assert fine_reference.shape == tuple((2 * (shp_i - 2),) * n_dim)
 
 
-@pmp("dist", (60., 1e+3, (40., 90.)))
+@pmp("dist", (60.0, 1e3, (40.0, 90.0)))
 @pmp("_coarse_size", (3, 5))
 @pmp("_fine_size", (2, 4))
 @pmp("_fine_strategy", ("jump", "extend"))
@@ -292,12 +285,10 @@ def test_chart_refinement_regular_irregular_matrices_consistency(
     kwargs = {
         "_coarse_size": _coarse_size,
         "_fine_size": _fine_size,
-        "_fine_strategy": _fine_strategy
+        "_fine_strategy": _fine_strategy,
     }
 
-    cc = jft.CoordinateChart(
-        (12, ) * ndim, depth=depth, distances=distances, **kwargs
-    )
+    cc = jft.CoordinateChart((12,) * ndim, depth=depth, distances=distances, **kwargs)
     refinement = jft.RefinementField(cc).matrices(kernel=kernel)
 
     cc_irreg = jft.CoordinateChart(
@@ -305,7 +296,7 @@ def test_chart_refinement_regular_irregular_matrices_consistency(
         depth=depth,
         distances=distances,
         irregular_axes=tuple(range(ndim)),
-        **kwargs
+        **kwargs,
     )
     refinement_irreg = jft.RefinementField(cc_irreg).matrices(kernel=kernel)
 
@@ -314,36 +305,27 @@ def test_chart_refinement_regular_irregular_matrices_consistency(
 
     for lvl in range(depth):
         olf, ks = refinement.filter[lvl], refinement.propagator_sqrt[lvl]
-        olf_irreg, ks_irreg = refinement_irreg.filter[
-            lvl], refinement_irreg.propagator_sqrt[lvl]
-
-        olf_d = np.diff(
-            olf_irreg.reshape((-1, ) + olf_irreg.shape[-2:]), axis=0
+        olf_irreg, ks_irreg = (
+            refinement_irreg.filter[lvl],
+            refinement_irreg.propagator_sqrt[lvl],
         )
-        ks_d = np.diff(ks_irreg.reshape((-1, ) + ks_irreg.shape[-2:]), axis=0)
-        aallclose(olf_d, 0.)
-        aallclose(ks_d, 0.)
-        aallclose(olf_irreg[(0, ) * ndim], olf.squeeze())
-        aallclose(ks_irreg[(0, ) * ndim], ks.squeeze())
+
+        olf_d = np.diff(olf_irreg.reshape((-1,) + olf_irreg.shape[-2:]), axis=0)
+        ks_d = np.diff(ks_irreg.reshape((-1,) + ks_irreg.shape[-2:]), axis=0)
+        aallclose(olf_d, 0.0)
+        aallclose(ks_d, 0.0)
+        aallclose(olf_irreg[(0,) * ndim], olf.squeeze())
+        aallclose(ks_irreg[(0,) * ndim], ks.squeeze())
 
 
-@pmp("seed", (12, ))
-@pmp("dist", (60., 1e+3, (40., 90.), (1e+2, 1e+3, 1e+4)))
+@pmp("seed", (12,))
+@pmp("dist", (60.0, 1e3, (40.0, 90.0), (1e2, 1e3, 1e4)))
 @pmp("_coarse_size", (3, 5))
 @pmp("_fine_size", (2, 4))
 @pmp("_fine_strategy", ("jump", "extend"))
-@pmp(
-    "_refine",
-    (charted_refine.refine_conv_general, charted_refine.refine_slice)
-)
+@pmp("_refine", (charted_refine.refine_conv_general, charted_refine.refine_slice))
 def test_refinement_irregular_regular_consistency(
-    seed,
-    dist,
-    _coarse_size,
-    _fine_size,
-    _fine_strategy,
-    _refine,
-    kernel=kernel
+    seed, dist, _coarse_size, _fine_size, _fine_strategy, _refine, kernel=kernel
 ):
     depth = 1
     distances = np.atleast_1d(dist)
@@ -351,14 +333,11 @@ def test_refinement_irregular_regular_consistency(
     kwargs = {
         "_coarse_size": _coarse_size,
         "_fine_size": _fine_size,
-        "_fine_strategy": _fine_strategy
+        "_fine_strategy": _fine_strategy,
     }
 
     cc = jft.RefinementField(
-        shape0=(2 * _coarse_size, ) * ndim,
-        depth=depth,
-        distances=distances,
-        **kwargs
+        shape0=(2 * _coarse_size,) * ndim, depth=depth, distances=distances, **kwargs
     )
     refinement = cc.matrices(kernel=kernel)
 
@@ -367,7 +346,7 @@ def test_refinement_irregular_regular_consistency(
         depth=depth,
         distances=distances,
         irregular_axes=tuple(range(ndim)),
-        **kwargs
+        **kwargs,
     )
     refinement_irreg = cc_irreg.matrices(kernel=kernel)
 
@@ -377,19 +356,19 @@ def test_refinement_irregular_regular_consistency(
     exc = rng.normal(size=exc_swd.shape)
 
     refined = _refine(
-        fn1, exc, refinement.filter[-1], refinement.propagator_sqrt[-1],
-        **kwargs
+        fn1, exc, refinement.filter[-1], refinement.propagator_sqrt[-1], **kwargs
     )
     refined_irreg = _refine(
-        fn1, exc, refinement_irreg.filter[-1],
-        refinement_irreg.propagator_sqrt[-1], **kwargs
+        fn1,
+        exc,
+        refinement_irreg.filter[-1],
+        refinement_irreg.propagator_sqrt[-1],
+        **kwargs,
     )
     assert_allclose(refined_irreg, refined, rtol=1e-14, atol=1e-13)
 
 
-@pytest.mark.skipif(
-    healpy is None, reason="requires the software library `healpy`"
-)
+@pytest.mark.skipif(healpy is None, reason="requires the software library `healpy`")
 @pmp("nside", (1, 2, 16))
 @pmp("nest", (True, False))
 def test_healpix_refinement_neigbor_uniqueness(nside, nest):
@@ -400,7 +379,7 @@ def test_healpix_refinement_neigbor_uniqueness(nside, nest):
 
 
 if __name__ == "__main__":
-    test_refinement_matrices_1d(5.)
-    test_refinement_1d(42, 10.)
+    test_refinement_matrices_1d(5.0)
+    test_refinement_1d(42, 10.0)
     test_healpix_refinement_neigbor_uniqueness(1, True)
     test_healpix_refinement_neigbor_uniqueness(2, True)

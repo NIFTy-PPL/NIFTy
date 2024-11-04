@@ -13,8 +13,10 @@ from ..tree_math import Vector
 from .chart import CoordinateChart
 from .charted_refine import refine
 from .util import (
-    RefinementMatrices, get_cov_from_loc, get_refinement_shapewithdtype,
-    refinement_matrices
+    RefinementMatrices,
+    get_cov_from_loc,
+    get_refinement_shapewithdtype,
+    refinement_matrices,
 )
 
 
@@ -36,7 +38,7 @@ def _coordinate_pixel_refinement_matrices(
         raise ValueError("only even numbers allowed for `_fine_size`")
     ndim = chart.ndim
     if pixel_index is None:
-        pixel_index = (0, ) * ndim
+        pixel_index = (0,) * ndim
     pixel_index = jnp.asarray(pixel_index)
     if pixel_index.size != ndim:
         ve = f"`pixel_index` has {pixel_index.size} dimensions but `chart` has {ndim}"
@@ -56,17 +58,13 @@ def _coordinate_pixel_refinement_matrices(
     gf = jnp.stack(jnp.meshgrid(*gf, indexing="ij"), axis=-1)
     # On the GPU a single `cov_from_loc` call is about twice as fast as three
     # separate calls for coarse-coarse, fine-fine and coarse-fine.
-    coord = jnp.concatenate(
-        (gc.reshape(-1, ndim), gf.reshape(-1, ndim)), axis=0
-    )
+    coord = jnp.concatenate((gc.reshape(-1, ndim), gf.reshape(-1, ndim)), axis=0)
     del gc, gf
     coord = chart.ind2cart((coord + pixel_index.reshape((1, ndim))).T, level)
     coord = jnp.stack(coord, axis=-1)
 
     return refinement_matrices(
-        cov_from_loc(coord, coord),
-        fsz**ndim,
-        coerce_fine_kernel=coerce_fine_kernel
+        cov_from_loc(coord, coord), fsz**ndim, coerce_fine_kernel=coerce_fine_kernel
     )
 
 
@@ -77,7 +75,7 @@ def _coordinate_refinement_matrices(
     depth: Optional[int] = None,
     skip0=False,
     coerce_fine_kernel: bool = False,
-    _cov_from_loc=None
+    _cov_from_loc=None,
 ) -> RefinementMatrices:
     cov_from_loc = get_cov_from_loc(kernel, _cov_from_loc)
     depth = chart.depth if depth is None else depth
@@ -101,7 +99,7 @@ def _coordinate_refinement_matrices(
             _cov_from_loc=cov_from_loc,
         ),
         in_axes=(None, 0),
-        out_axes=(0, 0)
+        out_axes=(0, 0),
     )
 
     for lvl in range(depth):
@@ -122,14 +120,10 @@ def _coordinate_refinement_matrices(
             else:
                 raise AssertionError()
             if ax in chart.irregular_axes:
-                pixel_indices.append(
-                    jnp.arange(pad, shape_lvl[ax] - pad, stride)
-                )
+                pixel_indices.append(jnp.arange(pad, shape_lvl[ax] - pad, stride))
             else:
                 pixel_indices.append(jnp.array([pad]))
-        pixel_indices = jnp.stack(
-            jnp.meshgrid(*pixel_indices, indexing="ij"), axis=-1
-        )
+        pixel_indices = jnp.stack(jnp.meshgrid(*pixel_indices, indexing="ij"), axis=-1)
         shape_filtered_lvl = pixel_indices.shape[:-1]
         pixel_indices = pixel_indices.reshape(-1, chart.ndim)
 
@@ -142,7 +136,7 @@ def _coordinate_refinement_matrices(
         kernel_sqrt.append(ks.reshape(shape_bc_lvl + ks.shape[-2:]))
 
     return RefinementMatrices(
-        opt_lin_filter, kernel_sqrt, cov_sqrt0, (None, ) * len(opt_lin_filter)
+        opt_lin_filter, kernel_sqrt, cov_sqrt0, (None,) * len(opt_lin_filter)
     )
 
 
@@ -153,7 +147,7 @@ class RefinementField(LazyModel):
         kernel: Optional[Callable] = None,
         dtype=None,
         skip0: bool = False,
-        **kwargs
+        **kwargs,
     ):
         """Initialize an Iterative Charted Refinement (ICR) field.
 
@@ -188,16 +182,23 @@ class RefinementField(LazyModel):
                 raise TypeError(f"expected no keyword arguments, got {kwargs}")
 
             if len(args) == 1:
-                self._chart, = args
+                (self._chart,) = args
             elif len(args) == 2 and callable(args[1]) and kernel is None:
                 self._chart, self._kernel = args
-            elif len(args) == 3 and callable(
-                args[1]
-            ) and kernel is None and dtype is None:
+            elif (
+                len(args) == 3
+                and callable(args[1])
+                and kernel is None
+                and dtype is None
+            ):
                 self._chart, self._kernel, self._dtype = args
-            elif len(args) == 4 and callable(
-                args[1]
-            ) and kernel is None and dtype is None and skip0 == False:
+            elif (
+                len(args) == 4
+                and callable(args[1])
+                and kernel is None
+                and dtype is None
+                and skip0 == False
+            ):
                 self._chart, self._kernel, self._dtype, self._skip0 = args
             else:
                 te = "got unexpected arguments in addition to CoordinateChart"
@@ -238,7 +239,7 @@ class RefinementField(LazyModel):
         kernel: Optional[Callable] = None,
         depth: Optional[int] = None,
         skip0: Optional[bool] = None,
-        **kwargs
+        **kwargs,
     ) -> RefinementMatrices:
         """Computes the refinement matrices namely the optimal linear filter
         and the square root of the information propagator (a.k.a. the square
@@ -269,7 +270,7 @@ class RefinementField(LazyModel):
         level: int,
         pixel_index: Optional[Iterable[int]] = None,
         kernel: Optional[Callable] = None,
-        **kwargs
+        **kwargs,
     ) -> Tuple[jnp.ndarray, jnp.ndarray]:
         """Computes the refinement matrices namely the optimal linear filter
         and the square root of the information propagator (a.k.a. the square
@@ -291,11 +292,7 @@ class RefinementField(LazyModel):
             kernel = self.kernel
 
         return _coordinate_pixel_refinement_matrices(
-            self.chart,
-            level=level,
-            pixel_index=pixel_index,
-            kernel=kernel,
-            **kwargs
+            self.chart, level=level, pixel_index=pixel_index, kernel=kernel, **kwargs
         )
 
     @property
@@ -369,7 +366,7 @@ class RefinementField(LazyModel):
             _coarse_size=chart.coarse_size,
             _fine_size=chart.fine_size,
             _fine_strategy=chart.fine_strategy,
-            precision=precision
+            precision=precision,
         )
 
         if not skip0:
@@ -378,9 +375,7 @@ class RefinementField(LazyModel):
             if refinement.cov_sqrt0 is not None:
                 raise AssertionError()
             fine = xi[0]
-        for x, olf, k in zip(
-            xi[1:], refinement.filter, refinement.propagator_sqrt
-        ):
+        for x, olf, k in zip(xi[1:], refinement.filter, refinement.propagator_sqrt):
             fine = refine_w_chart(fine, x, olf, k)
         return fine
 

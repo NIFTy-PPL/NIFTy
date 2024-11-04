@@ -17,26 +17,21 @@ from nifty8.re.refine import util
 pmp = pytest.mark.parametrize
 
 
-@pmp("shape0", ((16, ), (13, 15), (11, 12, 13)))
+@pmp("shape0", ((16,), (13, 15), (11, 12, 13)))
 @pmp("depth", (1, 2))
 @pmp("_coarse_size", (3, 5, 7))
 @pmp("_fine_size", (2, 4, 6))
 @pmp("_fine_strategy", ("jump", "extend"))
-def test_shape_translations(
-    shape0, depth, _coarse_size, _fine_size, _fine_strategy
-):
+def test_shape_translations(shape0, depth, _coarse_size, _fine_size, _fine_strategy):
     kwargs = {
         "_coarse_size": _coarse_size,
         "_fine_size": _fine_size,
-        "_fine_strategy": _fine_strategy
+        "_fine_strategy": _fine_strategy,
     }
 
     def cf(shape0, xi):
         chart = jft.CoordinateChart(
-            shape0=shape0,
-            depth=depth,
-            distances0=(1., ) * len(shape0),
-            **kwargs
+            shape0=shape0, depth=depth, distances0=(1.0,) * len(shape0), **kwargs
         )
         return jft.RefinementField.apply(xi, chart=chart, kernel=lambda x: x)
 
@@ -65,14 +60,14 @@ def test_gauss_kl(seed, n_resamples=100):
         d = max(rng.poisson(4), 1)
         m_t = rng.normal(size=(d, d))
         m_t = m_t @ m_t.T
-        scl = rng.lognormal(2., 3.)
+        scl = rng.lognormal(2.0, 3.0)
 
-        np.testing.assert_allclose(util.gauss_kl(m_t, m_t), 0., atol=1e-11)
-        kl_rhs_scl = 0.5 * d * (np.log(scl) + 1. / scl - 1.)
+        np.testing.assert_allclose(util.gauss_kl(m_t, m_t), 0.0, atol=1e-11)
+        kl_rhs_scl = 0.5 * d * (np.log(scl) + 1.0 / scl - 1.0)
         np.testing.assert_allclose(
             kl_rhs_scl, util.gauss_kl(m_t, scl * m_t), rtol=1e-10
         )
-        kl_lhs_scl = 0.5 * d * (-np.log(scl) + scl - 1.)
+        kl_lhs_scl = 0.5 * d * (-np.log(scl) + scl - 1.0)
         np.testing.assert_allclose(
             kl_lhs_scl, util.gauss_kl(scl * m_t, m_t), rtol=1e-10
         )

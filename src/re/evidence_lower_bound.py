@@ -83,8 +83,7 @@ def _eigsh(
     if tot_dofs == n_eigenvalues:
         # Compute exact eigensystem
         if verbose:
-            logger.info(f"Computing all {tot_dofs} relevant "
-                        f"metric eigenvalues.")
+            logger.info(f"Computing all {tot_dofs} relevant " f"metric eigenvalues.")
         eigenvalues = slg.eigh(
             _explicify(metric),
             eigvals_only=True,
@@ -106,8 +105,7 @@ def _eigsh(
                 logger.info(f"\nNumber of eigenvalues being computed: {batch}")
             # Get eigensystem for current batch
             eigvals, eigvecs = ssl.eigsh(
-                projected_metric, k=batch, tol=tol,
-                return_eigenvectors=True, which="LM"
+                projected_metric, k=batch, tol=tol, return_eigenvectors=True, which="LM"
             )
             i = np.argsort(-eigvals)
             eigvals, eigvecs = eigvals[i], eigvecs[:, i]
@@ -117,8 +115,7 @@ def _eigsh(
                 else np.concatenate((eigenvalues, eigvals))
             )
             eigenvectors = (
-                eigvecs if eigenvectors is None else np.hstack((eigenvectors,
-                                                                eigvecs))
+                eigvecs if eigenvectors is None else np.hstack((eigenvectors, eigvecs))
             )
 
             if abs(1.0 - np.min(eigenvalues)) < min_lh_eval:
@@ -295,9 +292,11 @@ def estimate_evidence_lower_bound(
     elbo_std = np.std(elbo_samples, ddof=1)
     elbo_up = elbo_mean + elbo_std
     elbo_lw = elbo_mean - elbo_std - stats["lower_error"]
-    stats["elbo_mean"], stats["elbo_up"], stats["elbo_lw"] = (elbo_mean,
-                                                              elbo_up,
-                                                              elbo_lw)
+    stats["elbo_mean"], stats["elbo_up"], stats["elbo_lw"] = (
+        elbo_mean,
+        elbo_up,
+        elbo_lw,
+    )
     if verbose:
         s = (
             f"\nELBO decomposition (in log units)"
