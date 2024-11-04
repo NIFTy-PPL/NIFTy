@@ -64,7 +64,7 @@ class GridAtLevel:
         shp = batched_ar.shape
         if shp[1::2] != tuple(self.parent_splits):
             raise ValueError
-        return batched_ar.reshape(tuple(a*b for a,b in zip(shp[::2], shp[1::2])))
+        return batched_ar.reshape(tuple(a * b for a, b in zip(shp[::2], shp[1::2])))
 
     def children(self, index):
         if self.splits is None:
@@ -431,6 +431,24 @@ class OGridAtLevel(GridAtLevel):
         return np.concatenate(tuple(g.shape for g in self.grids))
 
     @property
+    def splits(self):
+        if self.grids[0].splits is None:
+            for gg in self.grids[1:]:
+                if gg.splits is not None:
+                    raise ValueError
+            return None
+        return np.concatenate(tuple(g.splits for g in self.grids))
+
+    @property
+    def parent_splits(self):
+        if self.grids[0].parent_splits is None:
+            for gg in self.grids[1:]:
+                if gg.parent_splits is not None:
+                    raise ValueError
+            return None
+        return np.concatenate(tuple(g.parent_splits for g in self.grids))
+
+    @property
     def ngrids(self):
         return len(self.grids)
 
@@ -449,6 +467,17 @@ class OGridAtLevel(GridAtLevel):
             mg = jnp.broadcast_to(mg[slb], (mg.shape[0],) + shb)
             res = jnp.concatenate((res, mg), axis=0)
         return res
+
+    def resort(self, batched_ar):
+        if batched_ar.ndim != 2 * self.ndim:
+            raise ValueError
+        for g in self.grids:
+            if isinstance(g, FlatGrid):
+                raise NotImplementedError  # TODO generalize using grids resort
+        shp = batched_ar.shape
+        if shp[1::2] != tuple(self.parent_splits):
+            raise ValueError
+        return batched_ar.reshape(tuple(a * b for a, b in zip(shp[::2], shp[1::2])))
 
     def children(self, index) -> np.ndarray:
         ndims_off = tuple(np.cumsum(tuple(g.ndim for g in self.grids)))
@@ -600,13 +629,13 @@ class FlatGridAtLevel(GridAtLevel):
         )
 
     def _weights_serial(self, levelshift):
-        if levelshift not in (-1, 0 ,1):
+        if levelshift not in (-1, 0, 1):
             raise ValueError(f"Inconsistent shift in level: {levelshift}")
         shape = self.all_shapes[(-2 + levelshift)]
         return np.cumprod(np.append(shape[1:], 1)[::-1])[::-1]
 
     def _weights_nest(self, levelshift):
-        raise NotImplementedError # TODO
+        raise NotImplementedError  # TODO
         wgts = (self.gridshape0,) + self.grid_all_splits
         if levelshift == 0:
             wgts = wgts[:-1]
@@ -624,7 +653,7 @@ class FlatGridAtLevel(GridAtLevel):
             wgt = wgt[(slice(None),) + (np.newaxis,) * (index.ndim - 1)]
             return (wgt * index).sum(axis=0).astype(index.dtype)[jnp.newaxis, ...]
         if self.ordering == "nest":
-            raise NotImplementedError # TODO
+            raise NotImplementedError  # TODO
             fid = jnp.zeros(index.shape[1:], dtype=index.dtype)
             wgts = self._weights_nest(levelshift)
             for n, ww in enumerate(wgts):
@@ -651,7 +680,7 @@ class FlatGridAtLevel(GridAtLevel):
                 index.append(tmfl)
             return jnp.stack(index, axis=0).astype(dtp)
         if self.ordering == "nest":
-            raise NotImplementedError # TODO
+            raise NotImplementedError  # TODO
             wgts = self._weights_nest(levelshift)
             fid = jnp.copy(index[0])
             index = jnp.zeros((wgts.shape[1],) + index.shape[1:], dtype=dtp)
@@ -676,15 +705,15 @@ class FlatGridAtLevel(GridAtLevel):
             raise ValueError
         if batched_ar.shape[1] != np.prod(parent_splits):
             raise ValueError
-        if self.ordering == 'serial':
+        if self.ordering == "serial":
             shp = tuple(shape // parent_splits) + tuple(parent_splits)
             batched_ar = batched_ar.reshape(shp)
             ndim = shape.size
             idx = np.arange(ndim)
-            axes = reduce(operator.add, ((a,b) for a,b in zip(idx, ndim + idx)))
+            axes = reduce(operator.add, ((a, b) for a, b in zip(idx, ndim + idx)))
             return jnp.transpose(batched_ar, axes).ravel()
-        if self.ordering == 'nest':
-            raise NotImplementedError # TODO
+        if self.ordering == "nest":
+            raise NotImplementedError  # TODO
         raise RuntimeError
 
     def children(self, index) -> np.ndarray:
@@ -756,9 +785,9 @@ class FlatGrid(Grid):
                 shapes.append(None)
                 splits.append(None)
         return self.atLevel(
-            gridAtLevel = self.grid.at(level),
-            shapes = shapes,
-            splits = splits,
+            gridAtLevel=self.grid.at(level),
+            shapes=shapes,
+            splits=splits,
             ordering=self.ordering,
         )
 
@@ -882,8 +911,14 @@ class SparseGrid(FlatGrid):
 
     mapping: tuple[npt.NDArray[np.int_]]
 
-    def __init__(self, grid, mapping, ordering="nest", _check_mapping=True,
-                 atLevel=SparseGridAtLevel):
+    def __init__(
+        self,
+        grid,
+        mapping,
+        ordering="nest",
+        _check_mapping=True,
+        atLevel=SparseGridAtLevel,
+    ):
         if not isinstance(grid, Grid):
             raise TypeError(f"Grid {grid.__class__.__name__} of invalid type")
         self.grid = grid
