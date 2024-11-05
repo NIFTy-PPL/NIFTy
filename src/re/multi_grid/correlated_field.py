@@ -1,6 +1,7 @@
+from dataclasses import field
 from functools import partial, reduce
 import operator
-from typing import Callable, Mapping, Union
+from typing import Callable, List, Mapping, Union
 
 from ..logger import logger
 from ..model import Model, WrappedCall
@@ -11,7 +12,7 @@ import numpy as np
 import jax.numpy as jnp
 from scipy.special import sici, j0
 from .utils import j1
-from ..tree_math import random_like, ShapeWithDtype
+from ..tree_math import random_like, ShapeWithDtype, zeros_like
 from ..num.stats_distributions import lognormal_prior, normal_prior
 from ..prior import NormalPrior, LogNormalPrior
 
@@ -43,6 +44,7 @@ def k_binbounds(r_min, r_max, N):
     _, dlk = log_k_offset_dist(r_min, r_max, N)
     lk = np.append(lk - 0.5 * dlk, lk[-1] + 0.5 * dlk)
     return np.concatenate((np.array([0.0]), np.exp(lk)))
+
 
 def norm_weights(r_min, r_max, N, d):
     k_bin = k_binbounds(r_min, r_max, N)
@@ -171,6 +173,10 @@ def icrmatern_amplitude(
 
 
 class ICRSpectral(Model):
+    uindices: List[npt.NDArray] = field(metadata=dict(static=False))
+    invindices: List[npt.NDArray] = field(metadata=dict(static=False))
+    spectrum: Model = field(metadata=dict(static=False))
+
     def __init__(
         self,
         grid: Grid,
@@ -184,13 +190,13 @@ class ICRSpectral(Model):
         rtol=1e-5,
         atol=1e-5,
         buffer_size=1000,
+        use_distances=True,
         prefix="icr",
     ):
         assert rmax > rmin
         assert rmin > 0
         _get_kernelfunc = distfunc_from_spec(
-            rmin / rmax, 1.0, spectrum.target.size - 1, dimension,
-            normalize=False
+            rmin / rmax, 1.0, spectrum.target.size - 1, dimension, normalize=False
         )
 
         def get_normalized_kerfunc(spec):
@@ -201,34 +207,39 @@ class ICRSpectral(Model):
                 return func(r) / func(jnp.zeros((1,)))[0]
 
             return kerfunc
+
         prefix = str(prefix)
         self._get_kernelfunc = get_normalized_kerfunc
-
-        dummy = lambda x, y: jnp.linalg.norm(x - y, axis=0)
-
-        self.uindices, self.indexmaps = ICRefine(grid, dummy, window_size)._freeze(
-            rtol=rtol, atol=atol, buffer_size=buffer_size
-        )
         self.spectrum = spectrum
         self.grid = grid
+
+        latent_kernel = self._get_kernelfunc(
+            self.spectrum(zeros_like(self.spectrum.domain))
+        )
+        self.uindices, self.invindices, self.indexmaps = ICRefine(
+            grid, latent_kernel, window_size
+        )._freeze(
+            rtol=rtol, atol=atol, buffer_size=buffer_size, use_distances=use_distances
+        )
+
         self.window_size = window_size
         self.xikey = prefix + "xi"
 
         if isinstance(scale, (tuple, list)):
-            scale = LogNormalPrior(*scale, name=prefix+'scale')
+            scale = LogNormalPrior(*scale, name=prefix + "scale")
         elif not isinstance(scale, Model) or not isinstance(scale, float):
             raise ValueError
         self.scale = scale
 
         if isinstance(offset, (tuple, list)):
-            offset = NormalPrior(*offset, name=prefix+'offset')
+            offset = NormalPrior(*offset, name=prefix + "offset")
         elif not isinstance(offset, Model) or not isinstance(offset, float):
             raise ValueError
         self.offset = offset
 
         assert isinstance(spectrum.domain, dict)  # TODO use init
         grid_domain = {
-            self.xikey+str(lvl): ShapeWithDtype(self.grid.at(lvl).shape, jnp.float_)
+            self.xikey + str(lvl): ShapeWithDtype(self.grid.at(lvl).shape, jnp.float_)
             for lvl in range(grid.depth + 1)
         }
         domain = spectrum.domain | grid_domain
@@ -245,15 +256,13 @@ class ICRSpectral(Model):
     def get_kernel(self, x):
         kerfunc = self.get_kernel_function(x)
         kernel = ICRefine(self.grid, kerfunc, self.window_size)
-        return _FrozenKernel(kernel, self.uindices, self.indexmaps)
-
-
+        return _FrozenKernel(kernel, self.uindices, self.invindices, self.indexmaps)
 
     def __call__(self, x):
         kernel = self.get_kernel(x)
         scale = self.scale(x) if isinstance(self.scale, Model) else self.scale
         offset = self.offset(x) if isinstance(self.offset, Model) else self.offset
-        xs = list(x[self.xikey+str(lvl)] for lvl in range(self.grid.depth + 1))
+        xs = list(x[self.xikey + str(lvl)] for lvl in range(self.grid.depth + 1))
         res = kernel.apply(xs)[-1]
         res -= jnp.mean(res)
         res /= jnp.std(res)
