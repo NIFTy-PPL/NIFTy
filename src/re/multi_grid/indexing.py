@@ -7,7 +7,7 @@ from warnings import warn
 from dataclasses import dataclass
 from functools import partial, reduce
 from typing import Callable, Iterable, Optional
-from jax import vmap
+from jax import vmap, eval_shape, ShapeDtypeStruct
 from jax.lax import select
 from jax.experimental import checkify
 from ..tree_math.pytree_string import PyTreeString
@@ -241,13 +241,14 @@ class OpenGridAtLevel(GridAtLevel):
         shp = self.shape + 2 * self.shifts
         return (index + 0.5) / shp[slc]
 
-    def coord2index(self, coord):
+    def coord2index(self, coord, dtype=np.uint64):
         slc = (slice(None),) + (np.newaxis,) * (coord.ndim - 1)
         # TODO type
-        index = coord * self.shape[slc] - 0.5
+        shp = self.shape + 2 * self.shifts
+        index = coord * shp[slc] - 0.5
         index -= self.shifts
-        assert index >= 0
-        return index
+        assert jnp.all(index >= 0)
+        return index.astype(dtype)
 
     def index2volume(self, index):
         return np.array(1.0 / self.size)[(np.newaxis,) * index.ndim]
@@ -363,13 +364,13 @@ class HEALPixGridAtLevel(GridAtLevel):
         cc = f(index[0])
         return jnp.stack(cc, axis=0)
 
-    def coord2index(self, coord, **kwargs):
+    def coord2index(self, coord, dtype=np.uint64, **kwargs):
         assert coord.shape[0] == 3
         f = partial(vec2pix, self.nside, nest=self.nest)
         for _ in range(coord.ndim - 1):
             f = vmap(f)
         idx = f(*(cc for cc in coord))
-        return idx[jnp.newaxis, ...]
+        return (idx[jnp.newaxis, ...]).astype(dtype)
 
     def index2volume(self, index, **kwargs):
         r = 1.0
@@ -550,9 +551,14 @@ class OGridAtLevel(GridAtLevel):
         return jnp.concatenate(coord, axis=0)
 
     def coord2index(self, coord, **kwargs):
-        # TODO[@Philipp+@Gordian]: The grids do not store the ndim of the coord
-        # array, thus we can not split the total coord easily
-        return NotImplementedError()
+        cdims = tuple(
+            eval_shape(gg.index2coord, ShapeDtypeStruct((gg.ndim,), jnp.int_)).shape[0]
+            for gg in self.grids
+        )
+        ndims_off = tuple(np.cumsum(cdims))
+        islice = tuple(slice(l, r) for l, r in zip((0,) + ndims_off[:-1], ndims_off))
+        index = tuple(g.coord2index(coord[i]) for i, g in zip(islice, self.grids))
+        return jnp.concatenate(index, axis=0)
 
     def index2volume(self, index, **kwargs):
         ndims_off = tuple(np.cumsum(tuple(g.ndim for g in self.grids)))
