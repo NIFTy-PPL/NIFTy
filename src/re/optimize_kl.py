@@ -580,6 +580,7 @@ def optimize_kl(
     resume: Union[str, bool] = False,
     callback: Optional[Callable[[Samples, OptimizeVIState], None]] = None,
     odir: Optional[str] = None,
+    save_all=True,
     _optimize_vi=None,
     _optimize_vi_state=None,
 ) -> tuple[Samples, OptimizeVIState]:
@@ -670,6 +671,11 @@ def optimize_kl(
                 # TODO: Make all arrays numpy arrays as to not instantiate on
                 # the main device when loading
                 pickle.dump((samples, opt_vi_st._replace(config={})), f)
+            if save_all:
+                curr_fn = os.path.join(odir, f"samples_{str(i)}.pkl")
+                with open(curr_fn, "wb") as f:
+                    pickle.dump((samples, opt_vi_st._replace(config={})), f)
+
         if callback is not None:
             callback(samples, opt_vi_st)
 
