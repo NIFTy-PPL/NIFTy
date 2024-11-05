@@ -1,4 +1,5 @@
-from functools import partial
+from functools import partial, reduce
+import operator
 from typing import Callable, Mapping, Union
 
 from ..logger import logger
@@ -107,6 +108,7 @@ def distfunc_from_spec(r_min, r_max, N, d, normalize=True):
 
 def icrmatern_amplitude(
     rmin: float,
+    rmax: float,
     Nbins: int,
     cutoff: Union[tuple, Callable],
     loglogslope: Union[tuple, Callable],
@@ -129,6 +131,8 @@ def icrmatern_amplitude(
     Enßlin, Torsten, `<https://arxiv.org/abs/2105.13483>`_
     `<https://doi.org/10.1371/journal.pone.0275011>`_
     """
+    assert rmax > rmin
+    assert rmin > 0
     if isinstance(cutoff, (tuple, list)):
         cutoff = lognormal_prior(*cutoff)
     elif not callable(cutoff):
@@ -139,7 +143,7 @@ def icrmatern_amplitude(
     elif not callable(loglogslope):
         te = f"invalid `loglogslope` specified; got '{type(loglogslope)}'"
         raise TypeError(te)
-    mode_lengths = k_lengths(rmin, 1.0, Nbins)
+    mode_lengths = k_lengths(rmin / rmax, 1.0, Nbins)
 
     cutoff = WrappedCall(cutoff, name=prefix + "cutoff")
     ptree = cutoff.domain.copy()
@@ -182,8 +186,11 @@ class ICRSpectral(Model):
         buffer_size=1000,
         prefix="icr",
     ):
+        assert rmax > rmin
+        assert rmin > 0
         _get_kernelfunc = distfunc_from_spec(
-            rmin, 1.0, spectrum.target.size - 1, dimension
+            rmin / rmax, 1.0, spectrum.target.size - 1, dimension,
+            normalize=False
         )
 
         def get_normalized_kerfunc(spec):
@@ -191,7 +198,7 @@ class ICRSpectral(Model):
 
             def kerfunc(x, y):
                 r = jnp.linalg.norm(x - y, axis=0) / rmax
-                return func(r)
+                return func(r) / func(jnp.zeros((1,)))[0]
 
             return kerfunc
         prefix = str(prefix)
@@ -240,13 +247,19 @@ class ICRSpectral(Model):
         kernel = ICRefine(self.grid, kerfunc, self.window_size)
         return _FrozenKernel(kernel, self.uindices, self.indexmaps)
 
+
+
     def __call__(self, x):
         kernel = self.get_kernel(x)
         scale = self.scale(x) if isinstance(self.scale, Model) else self.scale
         offset = self.offset(x) if isinstance(self.offset, Model) else self.offset
         xs = list(x[self.xikey+str(lvl)] for lvl in range(self.grid.depth + 1))
-        res = kernel.apply(xs)
-        return list(scale * rr  + offset for rr in res)
+        res = kernel.apply(xs)[-1]
+        res -= jnp.mean(res)
+        res /= jnp.std(res)
+        res *= scale
+        res += offset
+        return res
 
     def apply(self, x):
         return self(x)
