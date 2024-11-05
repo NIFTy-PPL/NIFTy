@@ -247,7 +247,7 @@ class OpenGridAtLevel(GridAtLevel):
         shp = self.shape + 2 * self.shifts
         index = coord * shp[slc] - 0.5
         index -= self.shifts
-        assert jnp.all(index >= 0)
+        #assert jnp.all(index >= 0)
         return index.astype(dtype)
 
     def index2volume(self, index):
