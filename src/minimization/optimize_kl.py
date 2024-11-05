@@ -19,9 +19,10 @@
 
 import pickle
 from functools import reduce
-from os import makedirs
+from os import makedirs, remove
 from os.path import isdir, isfile, join
 from warnings import warn
+from glob import glob
 
 import numpy as np
 
@@ -383,8 +384,14 @@ def optimize_kl(likelihood_energy,
 
         if output_directory is not None:
             _export_operators(iglobal, export_operator_outputs, sl, comm(iglobal))
+            if save_strategy=="last":
+                old_files = glob(join(output_directory, "pickle/","*.pickle"))
+                if old_files:
+                    for file_path in old_files:
+                        remove(file_path)               
+
             sl.save(join(output_directory, "pickle/") + _file_name_by_strategy(iglobal),
-                    overwrite=True)
+                    overwrite=False)
             _save_random_state(iglobal)
 
             if _MPI_master(comm(iglobal)):
