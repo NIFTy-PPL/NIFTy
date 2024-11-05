@@ -63,7 +63,7 @@ class KernelBase:
         ids = tuple(self.grid.at(ii[1]).index2coord(ii[0]) for ii in ids)
         ids = jnp.concatenate(ids, axis=-1)
         assert index.ndim == ids.ndim - 1
-        return norm(out[..., jnp.newaxis] - ids[..., jnp.newaxis, :])
+        return (norm(out[..., jnp.newaxis] - ids[..., jnp.newaxis, :]), )
 
     def _freeze(
         self,
@@ -77,6 +77,7 @@ class KernelBase:
         grouped by similarity and accessed via lookup"""
         fgrid = self.grid if isinstance(self.grid, FlatGrid) else FlatGrid(self.grid)
         uindices = []
+        invindices = []
         indexmaps = []
         for lvl in range(self.grid.depth):
             atlevel = self.grid.at(lvl)
@@ -116,14 +117,15 @@ class KernelBase:
             uids = indices[idx]
             uids = fatlevel.flatindex2index(uids[np.newaxis, :])
             uindices.append(uids)
-
-            indexmaps.append(_IdxMap(myinv, shift, fatlevel.index2flatindex))
-        return uindices, indexmaps
+            invindices.append(myinv)
+            indexmaps.append(_IdxMap(shift, fatlevel.index2flatindex))
+        return uindices, invindices, indexmaps
 
     def freeze(
         self,
         *,
         uindices=None,
+        invindices=None,
         indexmaps=None,
         rtol=1e-5,
         atol=1e-10,
@@ -132,18 +134,18 @@ class KernelBase:
     ):
         """Evaluate the kernel and store it in a `FrozenKernel`. Kernels may be
         grouped by similarity and accessed via lookup"""
-        if (uindices is None) and (indexmaps is None):
-            uindices, indexmaps = self._freeze(
+        if uindices is None:
+            uindices, invindices, indexmaps = self._freeze(
                 rtol=rtol,
                 atol=atol,
                 buffer_size=buffer_size,
                 use_distances=use_distances,
             )
-        elif indexmaps is None:
+        elif (indexmaps is None) or (invindices is None):
             raise ValueError(
-                "`indices` and `indexmaps` must be either both None or not None"
+                "`uindices`,  `invindices`, and `indexmaps` must be either both None or not None"
             )
-        return _FrozenKernel(self, uindices, indexmaps)
+        return _FrozenKernel(self, uindices, invindices, indexmaps)
 
     def apply_at(self, index, level, x):
         assert index.ndim == 1
@@ -185,14 +187,14 @@ class KernelBase:
 
 @dataclass()
 class _IdxMap:
-    idxmap: npt.NDArray[np.int_]
     shift: int
     index2flatindex: callable
 
 
 class _FrozenKernel(KernelBase):
-    def __init__(self, kernel: KernelBase, uindices, indexmaps):
+    def __init__(self, kernel: KernelBase, uindices, invindices, indexmaps):
         self.get_indices = kernel.get_indices
+        self._invindices = invindices
         self._indexmaps = indexmaps
         self._kernels = tuple(
             kernel.get_kernel(ii, ll) for ll, ii in enumerate(uindices)
@@ -204,9 +206,10 @@ class _FrozenKernel(KernelBase):
         if level == -1:
             return self._base_kernel
 
-        atlevel = self._indexmaps[level]
-        index = atlevel.index2flatindex(index)[0]
-        index = atlevel.idxmap[index - atlevel.shift]
+        map_atlevel = self._indexmaps[level]
+        inv_atlevel = self._invindices[level]
+        index = map_atlevel.index2flatindex(index)[0]
+        index = inv_atlevel[index - map_atlevel.shift]
         return tuple(kk[index] for kk in self._kernels[level])
 
 
