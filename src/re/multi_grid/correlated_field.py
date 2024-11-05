@@ -136,21 +136,16 @@ def icrmatern_amplitude(
     assert rmax > rmin
     assert rmin > 0
     if isinstance(cutoff, (tuple, list)):
-        cutoff = lognormal_prior(*cutoff)
+        cutoff = LogNormalPrior(*cutoff, name=prefix + "cutoff")
     elif not callable(cutoff):
         te = f"invalid `cutoff` specified; got '{type(cutoff)}'"
         raise TypeError(te)
     if isinstance(loglogslope, (tuple, list)):
-        loglogslope = normal_prior(*loglogslope)
+        loglogslope = NormalPrior(*loglogslope, name=prefix + "loglogslope")
     elif not callable(loglogslope):
         te = f"invalid `loglogslope` specified; got '{type(loglogslope)}'"
         raise TypeError(te)
     mode_lengths = k_lengths(rmin / rmax, 1.0, Nbins)
-
-    cutoff = WrappedCall(cutoff, name=prefix + "cutoff")
-    ptree = cutoff.domain.copy()
-    loglogslope = WrappedCall(loglogslope, name=prefix + "loglogslope")
-    ptree.update(loglogslope.domain)
 
     def correlate(primals: Mapping) -> jnp.ndarray:
         ctf = cutoff(primals)
@@ -167,7 +162,7 @@ def icrmatern_amplitude(
             raise ValueError(f"invalid kind specified {kind!r}")
         return spectrum
 
-    model = Model(correlate, domain=ptree, init=partial(random_like, primals=ptree))
+    model = Model(correlate, init=cutoff.init | loglogslope.init)
     model.klengths = mode_lengths
     return model
 
