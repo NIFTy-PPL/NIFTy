@@ -12,6 +12,7 @@ from scipy.special import sici, j0
 from .utils import j1
 from ..tree_math import random_like, ShapeWithDtype
 from ..num.stats_distributions import lognormal_prior, normal_prior
+from ..prior import NormalPrior, LogNormalPrior
 
 
 def log_k_offset_dist(r_min, r_max, N):
@@ -109,7 +110,6 @@ def icrmatern_amplitude(
     Nbins: int,
     cutoff: Union[tuple, Callable],
     loglogslope: Union[tuple, Callable],
-    renormalize_amplitude: bool = False,
     prefix: str = "",
     kind: str = "amplitude",
 ) -> Model:
@@ -139,8 +139,6 @@ def icrmatern_amplitude(
     elif not callable(loglogslope):
         te = f"invalid `loglogslope` specified; got '{type(loglogslope)}'"
         raise TypeError(te)
-    if renormalize_amplitude:
-        raise ValueError()
     mode_lengths = k_lengths(rmin, 1.0, Nbins)
 
     cutoff = WrappedCall(cutoff, name=prefix + "cutoff")
@@ -155,6 +153,7 @@ def icrmatern_amplitude(
         ln_spectrum = 0.25 * slp * jnp.log1p((mode_lengths / ctf) ** 2)
 
         spectrum = jnp.exp(ln_spectrum)
+        spectrum = spectrum.at[0].set(spectrum[1])
 
         if kind.lower() == "amplitude":
             spectrum = spectrum**2
@@ -175,13 +174,13 @@ class ICRSpectral(Model):
         rmin: float,
         rmax: float,
         dimension: int,
-        offset,  # TODO
+        offset,
         scale,
-        window_size=3,
+        window_size,
         rtol=1e-5,
         atol=1e-5,
         buffer_size=1000,
-        xikey="icrxi",
+        prefix="icr",
     ):
         _get_kernelfunc = distfunc_from_spec(
             rmin, 1.0, spectrum.target.size - 1, dimension
@@ -195,7 +194,7 @@ class ICRSpectral(Model):
                 return func(r)
 
             return kerfunc
-
+        prefix = str(prefix)
         self._get_kernelfunc = get_normalized_kerfunc
 
         dummy = lambda x, y: jnp.linalg.norm(x - y, axis=0)
@@ -206,7 +205,19 @@ class ICRSpectral(Model):
         self.spectrum = spectrum
         self.grid = grid
         self.window_size = window_size
-        self.xikey = str(xikey)
+        self.xikey = prefix + "xi"
+
+        if isinstance(scale, (tuple, list)):
+            scale = LogNormalPrior(*scale, name=prefix+'scale')
+        elif not isinstance(scale, Model) or not isinstance(scale, float):
+            raise ValueError
+        self.scale = scale
+
+        if isinstance(offset, (tuple, list)):
+            offset = NormalPrior(*offset, name=prefix+'offset')
+        elif not isinstance(offset, Model) or not isinstance(offset, float):
+            raise ValueError
+        self.offset = offset
 
         assert isinstance(spectrum.domain, dict)  # TODO use init
         grid_domain = {
@@ -214,6 +225,10 @@ class ICRSpectral(Model):
             for lvl in range(grid.depth + 1)
         }
         domain = spectrum.domain | grid_domain
+        if isinstance(scale, Model):
+            domain = domain | scale.domain
+        if isinstance(offset, Model):
+            domain = domain | offset.domain
         super().__init__(domain=domain, white_init=True)
 
     def get_kernel_function(self, x):
@@ -227,8 +242,11 @@ class ICRSpectral(Model):
 
     def __call__(self, x):
         kernel = self.get_kernel(x)
+        scale = self.scale(x) if isinstance(self.scale, Model) else self.scale
+        offset = self.offset(x) if isinstance(self.offset, Model) else self.offset
         xs = list(x[self.xikey+str(lvl)] for lvl in range(self.grid.depth + 1))
-        return kernel.apply(xs)
+        res = kernel.apply(xs)
+        return list(scale * rr  + offset for rr in res)
 
     def apply(self, x):
         return self(x)
