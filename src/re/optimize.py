@@ -415,7 +415,7 @@ def _static_newton_cg(
 
         ret = {
             "status": status,
-            "iteration": i,
+            "iteration": i+1,
             "pos": pos,
             "energy": energy,
             "old_energy": old_energy,
