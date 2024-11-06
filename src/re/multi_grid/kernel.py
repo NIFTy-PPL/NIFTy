@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from functools import partial, reduce
 from typing import Callable, Iterable
 from jax import vmap, jit, eval_shape
+from jax.tree_util import tree_map
 from jax.lax import scan
 from .indexing import Grid, FlatGrid
 from ..num import amend_unique_
@@ -190,6 +191,12 @@ class _IdxMap:
     shift: int
     index2flatindex: callable
 
+def _eval_kernel(func, indices, level, batchsize=1024):
+    res = []
+    for i in range(1 + (indices.shape[1]//batchsize)):
+        res.append(func(indices[i*batchsize:(i+1)*batchsize], level))
+    return tree_map(lambda *args: jnp.concatenate(args, axis=0), *res)
+
 
 class _FrozenKernel(KernelBase):
     def __init__(self, kernel: KernelBase, uindices, invindices, indexmaps):
@@ -197,7 +204,8 @@ class _FrozenKernel(KernelBase):
         self._invindices = invindices
         self._indexmaps = indexmaps
         self._kernels = tuple(
-            kernel.get_kernel(ii, ll) for ll, ii in enumerate(uindices)
+            #kernel.get_kernel(ii, ll) for ll, ii in enumerate(uindices)
+            _eval_kernel(kernel.get_kernel, ii, ll) for ll, ii in enumerate(uindices)
         )
         self._base_kernel = kernel.get_kernel(jnp.atleast_1d(-1), -1)
         self._grid = kernel.grid

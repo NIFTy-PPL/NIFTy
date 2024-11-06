@@ -10,6 +10,7 @@ from .indexing import Grid
 import numpy.typing as npt
 import numpy as np
 import jax.numpy as jnp
+from jax.lax import scan
 from scipy.special import sici, j0
 from .utils import j1
 from ..tree_math import random_like, ShapeWithDtype, zeros_like
@@ -99,6 +100,47 @@ def distfunc_from_spec(r_min, r_max, N, d, normalize=True):
             resn0 = (fkr[..., 1:] - fkr[..., :-1]) / r**d
             res = jnp.where(r < 1e-10, res0, resn0) / fct[d - 1]
             res = jnp.tensordot(res, spec, axes=(-1, 0))
+            if normalize:
+                res /= (weights * spec).sum()
+            return res
+
+        return distfunc
+
+    return func
+
+
+def _eval_jnu(kr, d):
+    if d == 1:
+        fkr = jnp.sin(kr)
+    elif d == 2:
+        fkr = kr * j1(kr)
+    elif d == 3:
+        fkr = jnp.sin(kr) - kr * jnp.cos(kr)
+    return fkr
+
+
+def distfunc_from_spec2(r_min, r_max, N, d, normalize=True):
+    # Lower memory but unstable gradient
+    k_bin = k_binbounds(r_min, r_max, N)
+    fct = [np.pi, 2.0 * np.pi, 2.0 * np.pi**2]
+    vols = (k_bin[1:] ** d - k_bin[:-1] ** d) / d
+    if normalize:
+        weights = norm_weights(r_min, r_max, N, d)
+
+    def func(spec):
+        if spec.size != N + 1:
+            raise ValueError
+        dv = jnp.vdot(vols, spec)
+
+        def binweight(r, c, vals):
+            df = _eval_jnu(r * vals[0], d) - _eval_jnu(r * vals[1], d)
+            return c + df * vals[2] / r**d, None
+
+        def distfunc(r):
+            res, _ = scan(
+                partial(binweight, r), jnp.zeros_like(r), (k_bin[1:], k_bin[:-1], spec)
+            )
+            res = jnp.where(r >= 1e-10, res, dv * jnp.ones_like(res)) / fct[d - 1]
             if normalize:
                 res /= (weights * spec).sum()
             return res
