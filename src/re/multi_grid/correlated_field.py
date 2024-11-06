@@ -309,3 +309,93 @@ class ICRSpectral(Model):
 
     def apply(self, x):
         return self(x)
+
+
+def get_normalized_kerfunc(func):
+    def kerfunc(x, y):
+        r = jnp.linalg.norm(x - y, axis=0)
+        return func(r) / func(jnp.zeros((1,)))[0]
+    return kerfunc
+
+class ICRVKernel(Model):
+    uindices: List[npt.NDArray] = field(metadata=dict(static=False))
+    invindices: List[npt.NDArray] = field(metadata=dict(static=False))
+    kernel: Model = field(metadata=dict(static=False))
+
+    def __init__(
+        self,
+        grid: Grid,
+        kernel: Model,
+        offset,
+        scale,
+        window_size,
+        rtol=1e-5,
+        atol=1e-5,
+        buffer_size=1000,
+        use_distances=True,
+        prefix="icr",
+    ):
+
+        prefix = str(prefix)
+        self._get_kernelfunc = get_normalized_kerfunc
+        self.kernel = kernel
+
+        latent_kernel = self._get_kernelfunc(
+            self.spectrum(zeros_like(self.spectrum.domain))
+        )
+        self.uindices, self.invindices, self.indexmaps = ICRefine(
+            grid, latent_kernel, window_size
+        )._freeze(
+            rtol=rtol, atol=atol, buffer_size=buffer_size, use_distances=use_distances
+        )
+
+        self.window_size = window_size
+        self.xikey = prefix + "xi"
+
+        if isinstance(scale, (tuple, list)):
+            scale = LogNormalPrior(*scale, name=prefix + "scale")
+        elif not isinstance(scale, Model) or not isinstance(scale, float):
+            raise ValueError
+        self.scale = scale
+
+        if isinstance(offset, (tuple, list)):
+            offset = NormalPrior(*offset, name=prefix + "offset")
+        elif not isinstance(offset, Model) or not isinstance(offset, float):
+            raise ValueError
+        self.offset = offset
+
+        assert isinstance(kernel.domain, dict)  # TODO use init
+        grid_domain = {
+            self.xikey + str(lvl): ShapeWithDtype(self.grid.at(lvl).shape, jnp.float_)
+            for lvl in range(grid.depth + 1)
+        }
+        domain = kernel.domain | grid_domain
+        if isinstance(scale, Model):
+            domain = domain | scale.domain
+        if isinstance(offset, Model):
+            domain = domain | offset.domain
+        super().__init__(domain=domain, white_init=True)
+
+    def get_kernel_function(self, x):
+        spec = self.spectrum(x)
+        return self._get_kernelfunc(spec)
+
+    def get_kernel(self, x):
+        kerfunc = self.get_kernel_function(x)
+        kernel = ICRefine(self.grid, kerfunc, self.window_size)
+        return _FrozenKernel(kernel, self.uindices, self.invindices, self.indexmaps)
+
+    def __call__(self, x):
+        kernel = self.get_kernel(x)
+        scale = self.scale(x) if isinstance(self.scale, Model) else self.scale
+        offset = self.offset(x) if isinstance(self.offset, Model) else self.offset
+        xs = list(x[self.xikey + str(lvl)] for lvl in range(self.grid.depth + 1))
+        res = kernel.apply(xs)[-1]
+        #res -= jnp.mean(res)
+        #res /= jnp.std(res)
+        res *= scale
+        res += offset
+        return res
+
+    def apply(self, x):
+        return self(x)

@@ -194,7 +194,7 @@ class _IdxMap:
 def _eval_kernel(func, indices, level, batchsize=1024):
     res = []
     for i in range(1 + (indices.shape[1]//batchsize)):
-        res.append(func(indices[i*batchsize:(i+1)*batchsize], level))
+        res.append(func(indices[:,i*batchsize:(i+1)*batchsize], level))
     return tree_map(lambda *args: jnp.concatenate(args, axis=0), *res)
 
 
