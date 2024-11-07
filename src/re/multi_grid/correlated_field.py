@@ -339,9 +339,10 @@ class ICRVKernel(Model):
         prefix = str(prefix)
         self._get_kernelfunc = get_normalized_kerfunc
         self.kernel = kernel
+        self.grid = grid
 
         latent_kernel = self._get_kernelfunc(
-            self.spectrum(zeros_like(self.spectrum.domain))
+            self.kernel(zeros_like(self.kernel.domain))
         )
         self.uindices, self.invindices, self.indexmaps = ICRefine(
             grid, latent_kernel, window_size
@@ -377,8 +378,8 @@ class ICRVKernel(Model):
         super().__init__(domain=domain, white_init=True)
 
     def get_kernel_function(self, x):
-        spec = self.spectrum(x)
-        return self._get_kernelfunc(spec)
+        ker = self.kernel(x)
+        return self._get_kernelfunc(ker)
 
     def get_kernel(self, x):
         kerfunc = self.get_kernel_function(x)
