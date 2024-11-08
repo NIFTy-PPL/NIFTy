@@ -315,7 +315,9 @@ def get_normalized_kerfunc(func):
     def kerfunc(x, y):
         r = jnp.linalg.norm(x - y, axis=0)
         return func(r) / func(jnp.zeros((1,)))[0]
+
     return kerfunc
+
 
 class ICRVKernel(Model):
     uindices: List[npt.NDArray] = field(metadata=dict(static=False))
@@ -334,6 +336,9 @@ class ICRVKernel(Model):
         buffer_size=1000,
         use_distances=True,
         prefix="icr",
+        _uindices=None,
+        _invindices=None,
+        _indexmaps=None,
     ):
 
         prefix = str(prefix)
@@ -344,11 +349,21 @@ class ICRVKernel(Model):
         latent_kernel = self._get_kernelfunc(
             self.kernel(zeros_like(self.kernel.domain))
         )
-        self.uindices, self.invindices, self.indexmaps = ICRefine(
-            grid, latent_kernel, window_size
-        )._freeze(
-            rtol=rtol, atol=atol, buffer_size=buffer_size, use_distances=use_distances
-        )
+        if _uindices is None:
+            self.uindices, self.invindices, self.indexmaps = ICRefine(
+                grid, latent_kernel, window_size
+            )._freeze(
+                rtol=rtol,
+                atol=atol,
+                buffer_size=buffer_size,
+                use_distances=use_distances,
+            )
+        else:
+            self.uindices, self.invindices, self.indexmaps = (
+                _uindices,
+                _invindices,
+                _indexmaps,
+            )
 
         self.window_size = window_size
         self.xikey = prefix + "xi"
@@ -392,8 +407,8 @@ class ICRVKernel(Model):
         offset = self.offset(x) if isinstance(self.offset, Model) else self.offset
         xs = list(x[self.xikey + str(lvl)] for lvl in range(self.grid.depth + 1))
         res = kernel.apply(xs)[-1]
-        #res -= jnp.mean(res)
-        #res /= jnp.std(res)
+        # res -= jnp.mean(res)
+        # res /= jnp.std(res)
         res *= scale
         res += offset
         return res
