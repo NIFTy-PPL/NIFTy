@@ -228,6 +228,7 @@ class ICRSpectral(Model):
         atol=1e-5,
         buffer_size=1000,
         use_distances=True,
+        scan_kernel=True,
         prefix="icr",
     ):
         assert rmax > rmin
@@ -253,11 +254,14 @@ class ICRSpectral(Model):
         latent_kernel = self._get_kernelfunc(
             self.spectrum(zeros_like(self.spectrum.domain))
         )
-        self.uindices, self.invindices, self.indexmaps = ICRefine(
-            grid, latent_kernel, window_size
-        )._freeze(
-            rtol=rtol, atol=atol, buffer_size=buffer_size, use_distances=use_distances
-        )
+        if scan_kernel:
+            self.uindices, self.invindices, self.indexmaps = ICRefine(
+                grid, latent_kernel, window_size
+            )._freeze(
+                rtol=rtol, atol=atol, buffer_size=buffer_size, use_distances=use_distances
+            )
+        else:
+            self.uindices, self.invindices, self.indexmaps =None, None, None
 
         self.window_size = window_size
         self.xikey = prefix + "xi"
@@ -293,7 +297,9 @@ class ICRSpectral(Model):
     def get_kernel(self, x):
         kerfunc = self.get_kernel_function(x)
         kernel = ICRefine(self.grid, kerfunc, self.window_size)
-        return _FrozenKernel(kernel, self.uindices, self.invindices, self.indexmaps)
+        if self.uindices is not None:
+            kernel = _FrozenKernel(kernel, self.uindices, self.invindices, self.indexmaps)
+        return kernel
 
     def __call__(self, x):
         kernel = self.get_kernel(x)
@@ -336,6 +342,7 @@ class ICRVKernel(Model):
         buffer_size=1000,
         use_distances=True,
         prefix="icr",
+        scan_kernel=True,
         _uindices=None,
         _invindices=None,
         _indexmaps=None,
@@ -349,21 +356,25 @@ class ICRVKernel(Model):
         latent_kernel = self._get_kernelfunc(
             self.kernel(zeros_like(self.kernel.domain))
         )
-        if _uindices is None:
-            self.uindices, self.invindices, self.indexmaps = ICRefine(
-                grid, latent_kernel, window_size
-            )._freeze(
-                rtol=rtol,
-                atol=atol,
-                buffer_size=buffer_size,
-                use_distances=use_distances,
-            )
+
+        if scan_kernel:
+            if _uindices is None:
+                self.uindices, self.invindices, self.indexmaps = ICRefine(
+                    grid, latent_kernel, window_size
+                )._freeze(
+                    rtol=rtol,
+                    atol=atol,
+                    buffer_size=buffer_size,
+                    use_distances=use_distances,
+                )
+            else:
+                self.uindices, self.invindices, self.indexmaps = (
+                    _uindices,
+                    _invindices,
+                    _indexmaps,
+                )
         else:
-            self.uindices, self.invindices, self.indexmaps = (
-                _uindices,
-                _invindices,
-                _indexmaps,
-            )
+            self.uindices, self.invindices, self.indexmaps =None, None, None
 
         self.window_size = window_size
         self.xikey = prefix + "xi"
@@ -399,7 +410,9 @@ class ICRVKernel(Model):
     def get_kernel(self, x):
         kerfunc = self.get_kernel_function(x)
         kernel = ICRefine(self.grid, kerfunc, self.window_size)
-        return _FrozenKernel(kernel, self.uindices, self.invindices, self.indexmaps)
+        if self.uindices is not None:
+            kernel = _FrozenKernel(kernel, self.uindices, self.invindices, self.indexmaps)
+        return kernel
 
     def __call__(self, x):
         kernel = self.get_kernel(x)
