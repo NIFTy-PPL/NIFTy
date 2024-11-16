@@ -1,14 +1,16 @@
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 # Authors: Philipp Frank
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from functools import partial, reduce
-from typing import Callable, Iterable
+from typing import Callable, Iterable, Optional, Tuple, Union
 from jax import vmap, jit, eval_shape
 from jax.tree_util import tree_map
 from jax.lax import scan
 from .indexing import Grid, FlatGrid
 from ..num import amend_unique_
+from ..tree_math.vector_math import ShapeWithDtype
 from ..refine.util import refinement_matrices
+from ..model import Model
 
 import numpy as np
 import jax.numpy as jnp
@@ -40,13 +42,27 @@ Ideas for kernel:
 """
 
 
-class KernelBase:
+class KernelBase(Model):
+    grid: Grid = field(metadata=dict(static=True))  # TODO
+    eval_indices: Tuple[npt.NDArray[np.int_]] = field(metadata=dict(static=False))
+
+    def __init__(self, grid, *, dtype=jnp.float_):
+        if not isinstance(grid, Grid):
+            raise ValueError(f"Unknown grid type: {grid}")
+        self.grid = grid
+
+        eval_indices = []
+        domain = []
+        for lvl in range(self.grid.depth + 1):
+            atLevel = self.grid.at(lvl)
+            if lvl != self.grid.depth:
+                eval_indices.append(atLevel.refined_indices())
+            domain.append(ShapeWithDtype(atLevel.shape, dtype=dtype))
+        self.eval_indices = tuple(eval_indices)
+        super().__init__(domain=domain, white_init=True)
+
     def __getitem__(self, key):
         return self.get_kernel(key[0], key[1])
-
-    @property
-    def grid(self):
-        return self._grid
 
     def get_indices(self, index, level):
         raise NotImplementedError
@@ -64,7 +80,7 @@ class KernelBase:
         ids = tuple(self.grid.at(ii[1]).index2coord(ii[0]) for ii in ids)
         ids = jnp.concatenate(ids, axis=-1)
         assert index.ndim == ids.ndim - 1
-        return (norm(out[..., jnp.newaxis] - ids[..., jnp.newaxis, :]), )
+        return (norm(out[..., jnp.newaxis] - ids[..., jnp.newaxis, :]),)
 
     def _freeze(
         self,
@@ -148,10 +164,10 @@ class KernelBase:
             )
         return _FrozenKernel(self, uindices, invindices, indexmaps)
 
-    def apply_at(self, index, level, x):
+    def apply_at(self, index, level, x, **kwargs):
         assert index.ndim == 1
-        iout, iin = self.get_indices(index, level)
-        kernels = self.get_kernel(index, level)
+        iout, iin = self.get_indices(index, level, **kwargs)
+        kernels = self.get_kernel(index, level, **kwargs)
         assert len(iin) == len(kernels)
         res = reduce(
             lambda a, b: a + b,
@@ -159,25 +175,25 @@ class KernelBase:
         )
         return iout, res.reshape(iout[0].shape[1:])
 
-    def apply(self, x, copy=True):
+    def apply(self, x, *, copy=True, _eval_indices=None, **kwargs):
         """Applies the kernel to values on an entire multigrid"""
         xd, gd = len(x), self.grid.depth
         if xd != (gd + 1):
             raise ValueError(f"Input of length {xd} does not match grid depth {gd}")
         for lvl, xx in enumerate(x):
-            xs, gs = xx.size, self.grid.at(lvl).size
-            if xs != gs:
-                msg = f"Input at level {lvl} of size {xs} does not match grid of size {gs}"
+            xs, gs = xx.shape, self.grid.at(lvl).shape
+            if np.any(xs != gs):
+                msg = f"Input at level {lvl} of shape {xs} does not match grid of shape {gs}"
                 raise ValueError(msg)
 
         x = list(jnp.copy(xx) for xx in x) if copy else x
         # Use dummy index for base
-        _, x[0] = self.apply_at(jnp.atleast_1d(-1), -1, x)
-        for lvl in range(self.grid.depth):
+        _, x[0] = self.apply_at(jnp.atleast_1d(-1), -1, x, **kwargs)
+        eval_indices = self.eval_indices if _eval_indices is None else _eval_indices
+        for lvl, index in enumerate(eval_indices):
             atlevel = self.grid.at(lvl)
-            index = atlevel.refined_indices()
             # TODO this selects window for each index individually
-            f = self.apply_at
+            f = partial(self.apply_at, **kwargs)
             ndim = atlevel.ndim
             for i in range(ndim):
                 f = vmap(f, (1, None, None), ((ndim - i, None), ndim - i - 1))
@@ -185,16 +201,21 @@ class KernelBase:
             x[level] = self.grid.at(level).resort(res)
         return x
 
+    def __call__(self, x):
+        return self.apply(x)
 
+
+# TODO replace
 @dataclass()
 class _IdxMap:
     shift: int
     index2flatindex: callable
 
+
 def _eval_kernel(func, indices, level, batchsize=1024):
     res = []
-    for i in range(1 + (indices.shape[1]//batchsize)):
-        res.append(func(indices[:,i*batchsize:(i+1)*batchsize], level))
+    for i in range(1 + (indices.shape[1] // batchsize)):
+        res.append(func(indices[:, i * batchsize : (i + 1) * batchsize], level))
     return tree_map(lambda *args: jnp.concatenate(args, axis=0), *res)
 
 
@@ -204,11 +225,13 @@ class _FrozenKernel(KernelBase):
         self._invindices = invindices
         self._indexmaps = indexmaps
         self._kernels = tuple(
-            #kernel.get_kernel(ii, ll) for ll, ii in enumerate(uindices)
-            _eval_kernel(kernel.get_kernel, ii, ll) for ll, ii in enumerate(uindices)
+            kernel.get_kernel(ii, ll)
+            for ll, ii in enumerate(uindices)
+            # _eval_kernel(kernel.get_kernel, ii, ll) FIXME
+            for ll, ii in enumerate(uindices)
         )
         self._base_kernel = kernel.get_kernel(jnp.atleast_1d(-1), -1)
-        self._grid = kernel.grid
+        super().__init__(grid=kernel.grid)
 
     def get_kernel(self, index, level):
         if level == -1:
@@ -222,38 +245,51 @@ class _FrozenKernel(KernelBase):
 
 
 class ICRefine(KernelBase):
-    def __init__(self, grid, covariance, window_size):
-        self._grid = grid
-        mapped_kernel = vmap(covariance, in_axes=(None, -1), out_axes=-1)
-        mapped_kernel = vmap(mapped_kernel, in_axes=(-1, None), out_axes=-1)
-        self._covariance = mapped_kernel
+    def __init__(
+        self,
+        grid: Grid,
+        window_size: Union[Iterable, int],
+        covariance: Optional[Callable] = None,
+    ):
+        self._covariance = covariance
         window_size = (window_size,) if isinstance(window_size, int) else window_size
         self._window_size = tuple(window_size)
+        reset = False
+        if self._covariance is None:
+            self._covariance = lambda x,y: jnp.linalg.norm(x-y)
+            reset = True
+        super().__init__(grid=grid)
+        if reset:
+            self._covariance = None
 
-    def get_indices(self, index, level):
+    def get_indices(self, index, level, **kwargs):
         if level == -1:
-            grid_at_lvl = self._grid.at(0)
+            grid_at_lvl = self.grid.at(0)
             pixel_indices = np.mgrid[tuple(slice(0, sz) for sz in grid_at_lvl.shape)]
             assert pixel_indices.shape[0] == grid_at_lvl.ndim
             return (pixel_indices, 0), (
                 (pixel_indices.reshape(grid_at_lvl.ndim, -1), 0),
             )
-        if (level >= self._grid.depth) or (level < -1):
-            mg = f"Level {level} out of bounds for grid deph {self._grid.depth}"
+        if (level >= self.grid.depth) or (level < -1):
+            mg = f"Level {level} out of bounds for grid deph {self.grid.depth}"
             raise ValueError(mg)
-        atlevel = self._grid.at(level)
+        atlevel = self.grid.at(level)
         assert index.shape[0] == atlevel.ndim
         gc = atlevel.neighborhood(index, self._window_size).reshape(index.shape + (-1,))
-        gout = self._grid.at(level).children(index)
+        gout = self.grid.at(level).children(index)
         gf = gout.reshape(index.shape + (-1,))
         return (gout, level + 1), ((gc, level), (gf, level + 1))
 
-    def get_kernel(self, index, level):
+    def get_kernel(self, index, level, _covariance=None):
+        fcov = self._covariance if _covariance is None else _covariance
+        fcov = vmap(fcov, in_axes=(None, -1), out_axes=-1)
+        fcov = vmap(fcov, in_axes=(-1, None), out_axes=-1)
+
         if level == -1:
             _, ((ids, _),) = self.get_indices(index, -1)
-            gc = self._grid.at(0).index2coord(ids)
+            gc = self.grid.at(0).index2coord(ids)
             assert gc.ndim == 2
-            cov = self._covariance(gc, gc)
+            cov = fcov(gc, gc)
             assert cov.shape == (gc.shape[1],) * 2
             from ..refine.util import projection_MatrixSq
 
@@ -266,7 +302,7 @@ class ICRefine(KernelBase):
             assert gc.shape[0] == gf.shape[0]
             assert gc.ndim == gf.ndim == 2
             coord = jnp.concatenate((gc, gf), axis=-1)
-            cov = self._covariance(coord, coord)
+            cov = fcov(coord, coord)
             return refinement_matrices(cov, gf.shape[1])
 
         f = _get_kernel
@@ -275,6 +311,7 @@ class ICRefine(KernelBase):
         return f(idc, idf)
 
 
+# FIXME old code from here
 class FixedKernelFunctionBatch(KernelBase):
     def __init__(
         self, grid: Grid, window_size: Iterable[int], kernel: Callable, periodicity=None

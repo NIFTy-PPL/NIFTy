@@ -1,11 +1,9 @@
 from dataclasses import field
-from functools import partial, reduce
-import operator
+from functools import partial
 from typing import Callable, List, Mapping, Union
 
-from ..logger import logger
-from ..model import Model, WrappedCall
-from .kernel import KernelBase, ICRefine, _FrozenKernel
+from ..model import Model
+from .kernel import ICRefine, _FrozenKernel
 from .indexing import Grid
 import numpy.typing as npt
 import numpy as np
@@ -13,9 +11,9 @@ import jax.numpy as jnp
 from jax.lax import scan
 from scipy.special import sici, j0
 from .utils import j1
-from ..tree_math import random_like, ShapeWithDtype, zeros_like
-from ..num.stats_distributions import lognormal_prior, normal_prior
+from ..tree_math import ShapeWithDtype, zeros_like
 from ..prior import NormalPrior, LogNormalPrior
+
 
 
 def log_k_offset_dist(r_min, r_max, N):
@@ -258,10 +256,13 @@ class ICRSpectral(Model):
             self.uindices, self.invindices, self.indexmaps = ICRefine(
                 grid, latent_kernel, window_size
             )._freeze(
-                rtol=rtol, atol=atol, buffer_size=buffer_size, use_distances=use_distances
+                rtol=rtol,
+                atol=atol,
+                buffer_size=buffer_size,
+                use_distances=use_distances,
             )
         else:
-            self.uindices, self.invindices, self.indexmaps =None, None, None
+            self.uindices, self.invindices, self.indexmaps = None, None, None
 
         self.window_size = window_size
         self.xikey = prefix + "xi"
@@ -298,7 +299,9 @@ class ICRSpectral(Model):
         kerfunc = self.get_kernel_function(x)
         kernel = ICRefine(self.grid, kerfunc, self.window_size)
         if self.uindices is not None:
-            kernel = _FrozenKernel(kernel, self.uindices, self.invindices, self.indexmaps)
+            kernel = _FrozenKernel(
+                kernel, self.uindices, self.invindices, self.indexmaps
+            )
         return kernel
 
     def __call__(self, x):
@@ -324,11 +327,11 @@ def get_normalized_kerfunc(func):
 
     return kerfunc
 
+class ICRVKernel(ICRefine):
+    kernel: Model = field(metadata=dict(static=False))
 
-class ICRVKernel(Model):
     uindices: List[npt.NDArray] = field(metadata=dict(static=False))
     invindices: List[npt.NDArray] = field(metadata=dict(static=False))
-    kernel: Model = field(metadata=dict(static=False))
 
     def __init__(
         self,
@@ -374,7 +377,7 @@ class ICRVKernel(Model):
                     _indexmaps,
                 )
         else:
-            self.uindices, self.invindices, self.indexmaps =None, None, None
+            self.uindices, self.invindices, self.indexmaps = None, None, None
 
         self.window_size = window_size
         self.xikey = prefix + "xi"
@@ -411,7 +414,9 @@ class ICRVKernel(Model):
         kerfunc = self.get_kernel_function(x)
         kernel = ICRefine(self.grid, kerfunc, self.window_size)
         if self.uindices is not None:
-            kernel = _FrozenKernel(kernel, self.uindices, self.invindices, self.indexmaps)
+            kernel = _FrozenKernel(
+                kernel, self.uindices, self.invindices, self.indexmaps
+            )
         return kernel
 
     def __call__(self, x):
