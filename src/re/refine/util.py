@@ -29,7 +29,7 @@ def _check(v, cut=1e-16):
 
 
 @jax.custom_jvp
-def projection_inverse(A, X):
+def solve(A, X):
     assert A.ndim == 2
     assert (X.ndim == 1) or (X.ndim == 2)
     v, U = jnp.linalg.eigh(A)
@@ -39,29 +39,29 @@ def projection_inverse(A, X):
     return U @ res
 
 
-@projection_inverse.defjvp
-def projection_inverse_jvp(primals, tangents):
+@solve.defjvp
+def solve_jvp(primals, tangents):
     # Note: Makes use of `stable_inverse` directly to enable stable higher order
     # derivatives. Note that this is a tradeoff agains saving compute for first
     # order.
     (A, X), (dA, dX) = primals, tangents
-    res = projection_inverse(A, X)
-    return res, projection_inverse(A, dX - dA @ res)
+    res = solve(A, X)
+    return res, solve(A, dX - dA @ res)
 
 
-def _get_sq(v, U):
+def _get_sqrt(v, U):
     vsq = jax.lax.select(_check(v), jnp.sqrt(v), jnp.zeros_like(v))
     return U @ (vsq[:, jnp.newaxis] * U.T)
 
 
 @jax.custom_jvp
-def projection_MatrixSq(M):
+def sqrtm(M):
     v, U = jnp.linalg.eigh(M)
-    return _get_sq(v, U)
+    return _get_sqrt(v, U)
 
 
-@projection_MatrixSq.defjvp
-def projection_MatrixSq_jvp(M, dM):
+@sqrtm.defjvp
+def sqrtm_jvp(M, dM):
     # Note: Only stable 1st derivative!
     M, dM = M[0], dM[0]
     v, U = jnp.linalg.eigh(M)
@@ -74,20 +74,21 @@ def projection_MatrixSq_jvp(M, dM):
         dM / (vsq[:, jnp.newaxis] + vsq[jnp.newaxis, :]),
         jnp.zeros_like(dM),
     )
-    return _get_sq(v, U), U @ dres @ U.T
+    return _get_sqrt(v, U), U @ dres @ U.T
 
 
 def refinement_matrices(cov, n_fsz: int, coerce_fine_kernel: bool = None):
     if (coerce_fine_kernel is not None) and coerce_fine_kernel:
-        warn("`coerce_fine_kernel` is not in use any longer. Ignoring keyword",
-             DeprecationWarning)
+        warn(
+            "`coerce_fine_kernel` is not in use any longer. Ignoring keyword",
+            DeprecationWarning,
+        )
     cov_ff = cov[-n_fsz:, -n_fsz:]
     cov_fc = cov[-n_fsz:, :-n_fsz]
     cov_cc = cov[:-n_fsz, :-n_fsz]
 
-    olf = projection_inverse(cov_cc, cov_fc.T)
-    M = cov_ff - cov_fc @ olf
-    return olf.T, projection_MatrixSq(M)
+    olf = solve(cov_cc, cov_fc.T)
+    return olf.T, sqrtm(cov_ff - cov_fc @ olf)
 
 
 def get_cov_from_loc(

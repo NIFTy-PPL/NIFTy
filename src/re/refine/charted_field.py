@@ -17,7 +17,7 @@ from .util import (
     get_cov_from_loc,
     get_refinement_shapewithdtype,
     refinement_matrices,
-    projection_MatrixSq,
+    sqrtm,
 )
 
 
@@ -84,10 +84,7 @@ def _coordinate_refinement_matrices(
     if not skip0:
         rg0 = jnp.mgrid[tuple(slice(s) for s in chart.shape0)]
         c0 = jnp.stack(chart.ind2cart(rg0, 0), axis=-1).reshape(-1, chart.ndim)
-        # Matrices are symmetrized by JAX, i.e. gradients are projected to the
-        # subspace of symmetric matrices (see
-        # https://github.com/google/jax/issues/10815)
-        cov_sqrt0 = projection_MatrixSq(cov_from_loc(c0, c0))
+        cov_sqrt0 = sqrtm(cov_from_loc(c0, c0))
     else:
         cov_sqrt0 = None
 
