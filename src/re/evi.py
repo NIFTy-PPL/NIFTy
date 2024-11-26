@@ -229,7 +229,7 @@ def draw_residual(
     cg: Callable = conjugate_gradient.static_cg,
     cg_name: Optional[str] = None,
     cg_kwargs: Optional[dict] = None,
-    minimize: Callable[..., optimize.OptimizeResults] = optimize._newton_cg,
+    minimize: Callable[..., optimize.OptimizeResults] = optimize._static_newton_cg,
     minimize_kwargs={},
     _raise_nonposdef: bool = False,
     _raise_notconverged: bool = False,

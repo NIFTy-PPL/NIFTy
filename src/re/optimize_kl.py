@@ -386,7 +386,7 @@ class OptimizeVI:
     def kl_minimize(
         self,
         samples: Samples,
-        minimize: Callable[..., optimize.OptimizeResults] = optimize._newton_cg,
+        minimize: Callable[..., optimize.OptimizeResults] = optimize._static_newton_cg,
         minimize_kwargs={},
         **kwargs,
     ) -> optimize.OptimizeResults:
