@@ -3,6 +3,14 @@ Changes since NIFTy 8
 
 Minimum Python version increased to 3.10
 
+Stabilize ICR at the cost of disallowing using old ICR reconstructions
+----------------------------------------------------------------------
+
+ICR's refinement now uses `eigsh` based matrix inversions and square roots,
+significantly stabilizing the scheme. However, previous latent parameters for
+ICR will now produce different results, effectively disallowing the use of old
+reconstruction results with the new `eigsh` based refinement.
+
 `optimize_kl`
 -------------
 
