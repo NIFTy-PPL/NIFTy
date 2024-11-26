@@ -17,37 +17,25 @@ import nifty8.re as jft
 pmp = pytest.mark.parametrize
 
 
-def rosenbrock(np):
-    def func(x):
-        return jnp.sum(100.0 * jnp.diff(x) ** 2 + (1.0 - x[:-1]) ** 2)
-
-    return func
+def rosenbrock(x):
+    return jnp.sum(100.0 * jnp.diff(x) ** 2 + (1.0 - x[:-1]) ** 2)
 
 
-def himmelblau(np):
-    def func(p):
-        x, y = p
-        return (x**2 + y - 11.0) ** 2 + (x + y**2 - 7.0) ** 2
-
-    return func
+def himmelblau(p):
+    x, y = p
+    return (x**2 + y - 11.0) ** 2 + (x + y**2 - 7.0) ** 2
 
 
-def matyas(np):
-    def func(p):
-        x, y = p
-        return 0.26 * (x**2 + y**2) - 0.48 * x * y
-
-    return func
+def matyas(p):
+    x, y = p
+    return 0.26 * (x**2 + y**2) - 0.48 * x * y
 
 
-def eggholder(np):
-    def func(p):
-        x, y = p
-        return -(y + 47) * jnp.sin(jnp.sqrt(jnp.abs(x / 2.0 + y + 47.0))) - x * jnp.sin(
-            jnp.sqrt(jnp.abs(x - (y + 47.0)))
-        )
-
-    return func
+def eggholder(p):
+    x, y = p
+    return -(y + 47) * jnp.sin(jnp.sqrt(jnp.abs(x / 2.0 + y + 47.0))) - x * jnp.sin(
+        jnp.sqrt(jnp.abs(x - (y + 47.0)))
+    )
 
 
 @pmp("ncg", (jft.newton_cg, jft.static_newton_cg))
@@ -212,47 +200,72 @@ def test_static_cg_jittability(seed):
     "fun_and_init",
     (
         (rosenbrock, jnp.zeros(2)),
+        # (himmelblau, jnp.zeros(2)),  # FIXME: a tough cookie
+        (matyas, jnp.ones(2) * 6.0),
+        (eggholder, jnp.ones(2) * 100.0),
+    ),
+)
+@pmp("ncg", (jft.newton_cg, jft.static_newton_cg))
+@pmp("maxiter", (jnp.inf, None))
+def test_minimize_ncg(fun_and_init, ncg, maxiter):
+    from jax import grad, hessian
+    from scipy.optimize import minimize as opt_minimize
+
+    func, x0 = fun_and_init
+    jax_res = ncg(
+        func,
+        x0,
+        maxiter=maxiter,
+        xtol=1e-6,
+        energy_reduction_factor=None,
+        name="N",
+    )
+    scipy_res = opt_minimize(
+        func, x0, jac=grad(func), hess=hessian(func), method="trust-ncg"
+    ).x
+    assert_allclose(jax_res, scipy_res, rtol=2e-6, atol=2e-5)
+
+
+@pmp(
+    "fun_and_init",
+    (
+        (rosenbrock, jnp.zeros(2)),
         (himmelblau, jnp.zeros(2)),
         (matyas, jnp.ones(2) * 6.0),
-        # (eggholder, jnp.ones(2) * 100.)  # `eggholder` potential leads to
-        # infinite loop in trust-ncg's subproblem solver, see
-        # https://github.com/google/jax/issues/15035
+        (eggholder, jnp.ones(2) * 100.0),
     ),
 )
 @pmp("maxiter", (jnp.inf, None))
-def test_minimize(fun_and_init, maxiter):
+def test_minimize_trust_ncg(fun_and_init, maxiter):
     from jax import grad, hessian
     from scipy.optimize import minimize as opt_minimize
 
     func, x0 = fun_and_init
 
-    def jft_minimize(x0):
-        result = jft.minimize(
-            func(jnp),
-            x0,
-            method="trust-ncg",
-            options=dict(
-                maxiter=maxiter,
-                energy_reduction_factor=None,
-                gtol=1e-6,
-                initial_trust_radius=1.0,
-                max_trust_radius=1000.0,
-            ),
-        )
-        return result.x
+    result = jft.minimize(
+        func,
+        x0,
+        method="trust-ncg",
+        options=dict(
+            maxiter=maxiter,
+            energy_reduction_factor=None,
+            gtol=1e-6,
+            initial_trust_radius=1.0,
+            max_trust_radius=1000.0,
+        ),
+    )
+    jax_res = result.x
 
-    def scp_minimize(x0):
-        # Use JAX primitives to take derivates
-        fun = func(jnp)
-        result = opt_minimize(
-            fun, x0, jac=grad(fun), hess=hessian(fun), method="trust-ncg"
-        )
-        return result.x
+    # Use JAX primitives to take derivates
+    result = opt_minimize(
+        func, x0, jac=grad(func), hess=hessian(func), method="trust-ncg"
+    )
+    scipy_res = result.x
 
-    jax_res = jft_minimize(x0)
-    scipy_res = scp_minimize(x0)
-    assert_allclose(scipy_res, jax_res, rtol=2e-6, atol=2e-5)
+    assert_allclose(jax_res, scipy_res, rtol=2e-6, atol=2e-5)
 
 
 if __name__ == "__main__":
-    test_ncg_for_pytree()
+    test_minimize_ncg((rosenbrock, jnp.zeros(2)), jft.static_newton_cg, jnp.inf)
+    # test_minimize_ncg((himmelblau, jnp.zeros(2)), jft.static_newton_cg, jnp.inf)
+    test_ncg_for_pytree(jft.static_newton_cg)

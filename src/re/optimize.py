@@ -151,6 +151,7 @@ def _newton_cg(
     norm_ord = 1 if norm_ord is None else norm_ord
     miniter = 0 if miniter is None else miniter
     maxiter = 200 if maxiter is None else maxiter
+    maxiter = jnp.iinfo(jnp.uint64).max if jnp.isinf(maxiter) else maxiter
     xtol = xtol * size(x0)
 
     pos = x0
@@ -334,15 +335,14 @@ def _static_newton_cg(
         old_energy = v["old_energy"]
         nfev, njev, nhev = v["nfev"], v["njev"], v["nhev"]
 
-        cg_absdelta = jnp.where(
-            (~jnp.isinf(old_energy)) & (energy_reduction_factor is not None),
-            energy_reduction_factor * (old_energy - energy),
-            (
-                None
-                if absdelta is None
-                else jnp.array(absdelta / 100.0, dtype=energy.dtype)
-            ),
-        )
+        cg_absdelta = 0.0 if absdelta is None else absdelta / 100.0
+        if energy_reduction_factor is not None:
+            cg_absdelta = jnp.where(
+                ~jnp.isinf(old_energy),
+                energy_reduction_factor * (old_energy - energy),
+                cg_absdelta,
+            )
+        cg_absdelta = jnp.array(cg_absdelta, dtype=energy.dtype)
         mag_g = jft_norm(g, ord=cg_kwargs.get("norm_ord", 1))
         cg_resnorm = jnp.minimum(0.5, jnp.sqrt(mag_g)) * mag_g  # taken from SciPy
         default_kwargs = {
@@ -392,9 +392,8 @@ def _static_newton_cg(
         conditional_raise(jnp.isnan(energy), ValueError("energy is NaN"))
         min_cond = (ret_ls["iteration"] < 2) & (i > miniter)
         status = jnp.where(
-            (absdelta is not None)
-            & (0.0 <= energy_diff)
-            & (energy_diff < absdelta)
+            (0.0 <= energy_diff)
+            & (False if absdelta is None else (energy_diff < absdelta))
             & min_cond
             & (status != -1),
             0,
@@ -407,7 +406,7 @@ def _static_newton_cg(
 
         ret = {
             "status": status,
-            "iteration": i,
+            "iteration": i + 1,
             "pos": pos,
             "energy": energy,
             "old_energy": old_energy,
