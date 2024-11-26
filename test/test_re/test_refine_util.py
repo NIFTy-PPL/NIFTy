@@ -33,7 +33,7 @@ def test_shape_translations(shape0, depth, _coarse_size, _fine_size, _fine_strat
         chart = jft.CoordinateChart(
             shape0=shape0, depth=depth, distances0=(1.0,) * len(shape0), **kwargs
         )
-        return jft.RefinementField.apply(xi, chart=chart, kernel=lambda x: x)
+        return jft.ChartedField.apply(xi, chart=chart, kernel=lambda x: x)
 
     dom = util.get_refinement_shapewithdtype(shape0, depth, **kwargs)
     tgt = jax.eval_shape(partial(cf, shape0), dom)

@@ -127,7 +127,7 @@ def eval_kernel(kerfunc, dists, idx_map, chart):
 class VariableICR(jft.Model):
     def __init__(
         self,
-        rField: jft.RefinementHPField,
+        rField: jft.ChartedHPField,
         kernelparams: jft.Model,
         kernelfunc: callable,
         exkey: str = "xi",
@@ -234,7 +234,7 @@ cc = jft.HEALPixChart(
     _fine_size=2,
 )
 print(cc.shape)
-rf = jft.RefinementHPField(cc)
+rf = jft.ChartedHPField(cc)
 
 # %%
 # Model for kernel

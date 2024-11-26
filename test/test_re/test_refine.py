@@ -76,7 +76,7 @@ def test_refinement_matrices_1d(dist, kernel=kernel):
         _coarse_size=3,
         _fine_size=2,
     )
-    olf, ks = jft.RefinementField(cc).matrices_at(
+    olf, ks = jft.ChartedField(cc).matrices_at(
         level=0, pixel_index=(0,) * np.size(dist), kernel=kernel
     )
 
@@ -105,7 +105,7 @@ def test_refinement_1d(seed, dist, kernel=kernel):
         _coarse_size=3,
         _fine_size=2,
     )
-    olf, ks = jft.RefinementField(cc).matrices_at(
+    olf, ks = jft.ChartedField(cc).matrices_at(
         level=0, pixel_index=(0,) * np.size(dist), kernel=kernel
     )
 
@@ -143,10 +143,10 @@ def test_refinement_nd_cross_consistency(
     }
 
     chart = jft.CoordinateChart(min_shape, depth=depth, distances=dist, **kwargs)
-    rfm = jft.RefinementField(chart).matrices(kernel)
-    xi = jft.random_like(random.PRNGKey(seed), jft.RefinementField(chart).domain)
+    rfm = jft.ChartedField(chart).matrices(kernel)
+    xi = jft.random_like(random.PRNGKey(seed), jft.ChartedField(chart).domain)
 
-    cf = partial(jft.RefinementField.apply, chart=chart, kernel=rfm)
+    cf = partial(jft.ChartedField.apply, chart=chart, kernel=rfm)
     fine_reference = cf(xi)
     eps = jnp.finfo(fine_reference.dtype.type).eps
     aallclose = partial(
@@ -169,7 +169,7 @@ def test_refinement_fine_strategy_basic_consistency(dist, kernel=kernel):
         _coarse_size=3,
         _fine_size=2,
     )
-    olf_e, ks_e = jft.RefinementField(cc_e).matrices_at(
+    olf_e, ks_e = jft.ChartedField(cc_e).matrices_at(
         level=0, pixel_index=(0,) * np.size(dist), kernel=kernel
     )
     cc_j = jft.CoordinateChart(
@@ -180,7 +180,7 @@ def test_refinement_fine_strategy_basic_consistency(dist, kernel=kernel):
         _coarse_size=3,
         _fine_size=2,
     )
-    olf_j, ks_j = jft.RefinementField(cc_j).matrices_at(
+    olf_j, ks_j = jft.ChartedField(cc_j).matrices_at(
         level=0, pixel_index=(0,) * np.size(dist), kernel=kernel
     )
 
@@ -188,8 +188,8 @@ def test_refinement_fine_strategy_basic_consistency(dist, kernel=kernel):
     assert_allclose(ks_j, ks_e, rtol=1e-13, atol=0.0)
 
     depth = 2
-    rm_j = jft.RefinementField(cc_j).matrices(kernel=kernel, depth=depth)
-    rm_e = jft.RefinementField(cc_e).matrices(kernel=kernel, depth=depth)
+    rm_j = jft.ChartedField(cc_j).matrices(kernel=kernel, depth=depth)
+    rm_e = jft.ChartedField(cc_e).matrices(kernel=kernel, depth=depth)
 
     assert_allclose(rm_j.filter, rm_e.filter, rtol=1e-13, atol=0.0)
     assert_allclose(rm_j.propagator_sqrt, rm_e.propagator_sqrt, rtol=1e-13, atol=0.0)
@@ -206,7 +206,7 @@ def test_refinement_covariance(
     distances0 = np.atleast_1d(dist)
     ndim = len(distances0)
 
-    cf = jft.RefinementField(
+    cf = jft.ChartedField(
         shape0=(_coarse_size,) * ndim,
         depth=1,
         _coarse_size=_coarse_size,
@@ -258,8 +258,8 @@ def test_refinement_nd_shape(seed, n_dim, kernel=kernel):
     cc = jft.CoordinateChart(
         shape0=(12,) * n_dim, distances=distances, depth=0, _coarse_size=3, _fine_size=2
     )
-    olf, ks = jft.RefinementField(cc).matrices_at(
-        level=0, pixel_index=(0,) * n_dim, kernel=kernel, coerce_fine_kernel=False
+    olf, ks = jft.ChartedField(cc).matrices_at(
+        level=0, pixel_index=(0,) * n_dim, kernel=kernel
     )
 
     shp_i = 5
@@ -290,7 +290,7 @@ def test_chart_refinement_regular_irregular_matrices_consistency(
     }
 
     cc = jft.CoordinateChart((12,) * ndim, depth=depth, distances=distances, **kwargs)
-    refinement = jft.RefinementField(cc).matrices(kernel=kernel)
+    refinement = jft.ChartedField(cc).matrices(kernel=kernel)
 
     cc_irreg = jft.CoordinateChart(
         shape0=cc.shape0,
@@ -299,7 +299,7 @@ def test_chart_refinement_regular_irregular_matrices_consistency(
         irregular_axes=tuple(range(ndim)),
         **kwargs,
     )
-    refinement_irreg = jft.RefinementField(cc_irreg).matrices(kernel=kernel)
+    refinement_irreg = jft.ChartedField(cc_irreg).matrices(kernel=kernel)
 
     aallclose = partial(assert_allclose, rtol=1e-14, atol=1e-13)
     aallclose(refinement.cov_sqrt0, refinement_irreg.cov_sqrt0)
@@ -337,12 +337,12 @@ def test_refinement_irregular_regular_consistency(
         "_fine_strategy": _fine_strategy,
     }
 
-    cc = jft.RefinementField(
+    cc = jft.ChartedField(
         shape0=(2 * _coarse_size,) * ndim, depth=depth, distances=distances, **kwargs
     )
     refinement = cc.matrices(kernel=kernel)
 
-    cc_irreg = jft.RefinementField(
+    cc_irreg = jft.ChartedField(
         shape0=cc.chart.shape0,
         depth=depth,
         distances=distances,

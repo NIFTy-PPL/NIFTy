@@ -111,7 +111,7 @@ signal = Signal(correlated_field, scaling)
 # care when translating them to NIFTy.re/JAX which requires known dtypes.
 
 # %% [markdown]
-# ### Notes on Refinement Field
+# ### Notes on Charted Field
 
 # The above could just as well be a refinement field e.g. on a HEALPix sphere
 # with logarithmically spaced radial voxels. All of NIFTy.re is agnostic to the
@@ -148,7 +148,7 @@ signal = Signal(correlated_field, scaling)
 #     nonhp_rg2cart=partial(rg2cart, idx0=-0.27, scl=1.1),  # radial spacing
 #     nonhp_cart2rg=partial(cart2rg, idx0=-0.27, scl=1.1),
 # )
-# rf = jft.RefinementHPField(cc)
+# rf = jft.ChartedHPField(cc)
 # # Make the refinement fast by leaving the kernel fixed
 # rfm = rf.matrices(matern_kernel)
 # correlated_field = jft.Model(

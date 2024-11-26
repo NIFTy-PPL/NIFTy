@@ -77,12 +77,7 @@ def sqrtm_jvp(M, dM):
     return _get_sqrt(v, U), U @ dres @ U.T
 
 
-def refinement_matrices(cov, n_fsz: int, coerce_fine_kernel: bool = None):
-    if (coerce_fine_kernel is not None) and coerce_fine_kernel:
-        warn(
-            "`coerce_fine_kernel` is not in use any longer. Ignoring keyword",
-            DeprecationWarning,
-        )
+def refinement_matrices(cov, n_fsz: int):
     cov_ff = cov[-n_fsz:, -n_fsz:]
     cov_fc = cov[-n_fsz:, :-n_fsz]
     cov_cc = cov[:-n_fsz, :-n_fsz]
@@ -330,13 +325,13 @@ def gauss_kl(cov_desired, cov_approx, *, m_desired=None, m_approx=None):
 def refinement_covariance(chart_or_model, kernel=None, jit=True):
     """Computes the implied covariance as modeled by the refinement scheme."""
     from .chart import CoordinateChart, HEALPixChart
-    from .charted_field import RefinementField
+    from .charted_field import ChartedField
 
     if isinstance(chart_or_model, CoordinateChart):
-        cf = RefinementField(chart_or_model, kernel=kernel)
+        cf = ChartedField(chart_or_model, kernel=kernel)
         shape = chart_or_model.shape
     elif isinstance(chart_or_model, HEALPixChart):
-        cf = RefinementField(chart_or_model, kernel=kernel)
+        cf = ChartedField(chart_or_model, kernel=kernel)
         shape = chart_or_model.shape
     elif isinstance(chart_or_model, LazyModel):
         cf = chart_or_model

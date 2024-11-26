@@ -46,6 +46,6 @@ from .prior import (
     UniformPrior,
 )
 from .refine.chart import CoordinateChart, HEALPixChart
-from .refine.charted_field import RefinementField
-from .refine.healpix_field import RefinementHPField
+from .refine.charted_field import ChartedField
+from .refine.healpix_field import ChartedHPField
 from .tree_math import *
