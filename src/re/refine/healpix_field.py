@@ -24,13 +24,7 @@ from .util import (
 )
 
 
-def _matrices_naive(
-    chart,
-    kernel: Callable,
-    depth: int,
-    *,
-    coerce_fine_kernel: bool = False,
-):
+def _matrices_naive(chart, kernel: Callable, depth: int):
     cov_from_loc = get_cov_from_loc(kernel)
 
     def cov_mat(lvl, idx_hp, idx_r):
@@ -43,11 +37,7 @@ def _matrices_naive(
         return cov_from_loc(coord, coord)
 
     def ref_mat_from_cov(cov):
-        olf, ks = refinement_matrices(
-            cov,
-            chart.fine_size ** (chart.ndim + 1),
-            coerce_fine_kernel=coerce_fine_kernel,
-        )
+        olf, ks = refinement_matrices(cov, chart.fine_size ** (chart.ndim + 1))
         if chart.ndim > 1:
             olf = olf.reshape(
                 chart.fine_size**2,
@@ -86,7 +76,6 @@ def _matrices_tol(
     kernel: Callable,
     depth: int,
     *,
-    coerce_fine_kernel: bool = False,
     atol: Optional[float] = None,
     rtol: Optional[float] = None,
     which: Optional[str] = "dist",
@@ -110,11 +99,7 @@ def _matrices_tol(
         return dist_mat_from_loc(coord, coord)
 
     def ref_mat(cov):
-        olf, ks = refinement_matrices(
-            cov,
-            chart.fine_size ** (chart.ndim + 1),
-            coerce_fine_kernel=coerce_fine_kernel,
-        )
+        olf, ks = refinement_matrices(cov, chart.fine_size ** (chart.ndim + 1))
         if chart.ndim > 1:
             olf = olf.reshape(
                 chart.fine_size**2,
@@ -172,7 +157,7 @@ def _matrices_tol(
     return RefinementMatrices(opt_lin_filter, kernel_sqrt, None, idx_map)
 
 
-class RefinementHPField(LazyModel):
+class ChartedHPField(LazyModel):
     def __init__(
         self,
         chart: HEALPixChart,
@@ -233,7 +218,6 @@ class RefinementHPField(LazyModel):
         depth: Optional[int] = None,
         skip0: Optional[bool] = None,
         *,
-        coerce_fine_kernel: bool = False,
         atol: Optional[float] = None,
         rtol: Optional[float] = None,
         which: Optional[str] = "dist",
@@ -255,9 +239,6 @@ class RefinementHPField(LazyModel):
             `HEALPixChart`.
         skip0 :
             Whether to skip the first refinement level.
-        coerce_fine_kernel :
-            Whether to coerce the refinement matrices at scales at which the
-            kernel matrix becomes singular or numerically highly unstable.
         atol :
             Absolute tolerance of the element-wise difference between distance
             matrices up to which refinement matrices are merged.
@@ -284,15 +265,12 @@ class RefinementHPField(LazyModel):
         skip0 = self.skip0 if skip0 is None else skip0
 
         if atol is None and rtol is None:
-            rfm = _matrices_naive(
-                self.chart, kernel, depth, coerce_fine_kernel=coerce_fine_kernel
-            )
+            rfm = _matrices_naive(self.chart, kernel, depth)
         else:
             rfm = _matrices_tol(
                 self.chart,
                 kernel,
                 depth,
-                coerce_fine_kernel=coerce_fine_kernel,
                 atol=atol,
                 rtol=rtol,
                 which=which,
@@ -341,7 +319,6 @@ class RefinementHPField(LazyModel):
         kernel: Union[Callable, RefinementMatrices],
         *,
         skip0: bool = False,
-        coerce_fine_kernel: bool = False,
         _refine: Optional[Callable] = None,
         precision=None,
     ):
@@ -358,9 +335,6 @@ class RefinementHPField(LazyModel):
             Covariance kernel with which to build the refinement matrices.
         skip0 :
             Whether to skip the first refinement level.
-        coerce_fine_kernel :
-            Whether to coerce the refinement matrices at scales at which the
-            kernel matrix becomes singular or numerically highly unstable.
         precision :
             See JAX's precision.
         """
@@ -371,8 +345,8 @@ class RefinementHPField(LazyModel):
         if isinstance(kernel, RefinementMatrices):
             refinement = kernel
         else:
-            refinement = RefinementHPField(chart, None, xi[0].dtype).matrices(
-                kernel=kernel, skip0=skip0, coerce_fine_kernel=coerce_fine_kernel
+            refinement = ChartedHPField(chart, None, xi[0].dtype).matrices(
+                kernel=kernel, skip0=skip0
             )
         refine_w_chart = partial(
             refine_hp if _refine is None else _refine, chart=chart, precision=precision
@@ -391,7 +365,7 @@ class RefinementHPField(LazyModel):
         return fine
 
     def __call__(self, xi, kernel=None, *, skip0=None, **kwargs):
-        """See `RefinementField.apply`."""
+        """See `ChartedField.apply`."""
         kernel = self.kernel if kernel is None else kernel
         skip0 = self.skip0 if skip0 is None else skip0
         return self.apply(xi, self.chart, kernel=kernel, skip0=skip0, **kwargs)

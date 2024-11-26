@@ -27,7 +27,6 @@ def _coordinate_pixel_refinement_matrices(
     pixel_index: Optional[Iterable[int]] = None,
     kernel: Optional[Callable] = None,
     *,
-    coerce_fine_kernel: bool = False,
     _cov_from_loc: Optional[Callable] = None,
 ) -> Tuple[jnp.ndarray, jnp.ndarray]:
     cov_from_loc = get_cov_from_loc(kernel, _cov_from_loc)
@@ -64,9 +63,7 @@ def _coordinate_pixel_refinement_matrices(
     coord = chart.ind2cart((coord + pixel_index.reshape((1, ndim))).T, level)
     coord = jnp.stack(coord, axis=-1)
 
-    return refinement_matrices(
-        cov_from_loc(coord, coord), fsz**ndim, coerce_fine_kernel=coerce_fine_kernel
-    )
+    return refinement_matrices(cov_from_loc(coord, coord), fsz**ndim)
 
 
 def _coordinate_refinement_matrices(
@@ -75,7 +72,6 @@ def _coordinate_refinement_matrices(
     *,
     depth: Optional[int] = None,
     skip0=False,
-    coerce_fine_kernel: bool = False,
     _cov_from_loc=None,
 ) -> RefinementMatrices:
     cov_from_loc = get_cov_from_loc(kernel, _cov_from_loc)
@@ -91,10 +87,7 @@ def _coordinate_refinement_matrices(
     opt_lin_filter, kernel_sqrt = [], []
     olf_at = vmap(
         partial(
-            _coordinate_pixel_refinement_matrices,
-            chart,
-            coerce_fine_kernel=coerce_fine_kernel,
-            _cov_from_loc=cov_from_loc,
+            _coordinate_pixel_refinement_matrices, chart, _cov_from_loc=cov_from_loc
         ),
         in_axes=(None, 0),
         out_axes=(0, 0),
@@ -138,7 +131,7 @@ def _coordinate_refinement_matrices(
     )
 
 
-class RefinementField(LazyModel):
+class ChartedField(LazyModel):
     def __init__(
         self,
         *args,
@@ -314,7 +307,6 @@ class RefinementField(LazyModel):
         *,
         skip0: bool = False,
         depth: Optional[int] = None,
-        coerce_fine_kernel: bool = False,
         _refine: Optional[Callable] = None,
         _cov_from_loc: Optional[Callable] = None,
         precision=None,
@@ -334,9 +326,6 @@ class RefinementField(LazyModel):
             Whether to skip the first refinement level.
         depth :
             Refinement depth if different to the depth of the coordinate chart.
-        coerce_fine_kernel :
-            Whether to coerce the refinement matrices at scales at which the
-            kernel matrix becomes singular or numerically highly unstable.
         precision :
             See JAX's precision.
         """
@@ -356,7 +345,6 @@ class RefinementField(LazyModel):
                 kernel=kernel,
                 depth=depth,
                 skip0=skip0,
-                coerce_fine_kernel=coerce_fine_kernel,
                 _cov_from_loc=_cov_from_loc,
             )
         refine_w_chart = partial(
@@ -378,7 +366,7 @@ class RefinementField(LazyModel):
         return fine
 
     def __call__(self, xi, kernel=None, *, skip0=None, **kwargs):
-        """See `RefinementField.apply`."""
+        """See `ChartedField.apply`."""
         if kernel is None and "_cov_from_loc" not in kwargs:
             kernel = self.kernel
         skip0 = self.skip0 if skip0 is None else skip0

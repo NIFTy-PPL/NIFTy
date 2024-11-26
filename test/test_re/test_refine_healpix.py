@@ -93,7 +93,7 @@ def test_healpix_refinement_matrices_uniquifying(cc, atol, rtol, which, kernel=k
         assert_allclose, atol=1e-11 * scale, rtol=1e-10 * scale, equal_nan=False
     )
 
-    rf = jft.RefinementHPField(cc, kernel=kernel)
+    rf = jft.ChartedHPField(cc, kernel=kernel)
     rfm = rf.matrices()
     mbs = 12 * cc.nside**2 - 1
     rfm_u = rf.matrices(atol=atol, rtol=rtol, which=which, mat_buffer_size=mbs)
@@ -123,7 +123,7 @@ def test_healpix_refinement(cc, atol, rtol, which, kernel=kernel):
     cov_sqrt = jft.refine.healpix_refine.cov_sqrt(cc, kernel, cc.depth)
     cov = cov_sqrt @ cov_sqrt.T
 
-    cf = jft.RefinementHPField(cc, kernel)
+    cf = jft.ChartedHPField(cc, kernel)
     mbs = 12 * cc.nside**2 - 1
     rfm = cf.matrices(atol=atol, rtol=rtol, which=which, mat_buffer_size=mbs)
     if which is not None:
