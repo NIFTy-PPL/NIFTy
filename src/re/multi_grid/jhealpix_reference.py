@@ -33,8 +33,6 @@ import jax.numpy as jnp
 from dataclasses import dataclass
 import numpy as np
 
-jax.config.update("jax_enable_x64", True)
-
 
 PI = 3.141592653589793238462643383279502884197
 JRLL = jnp.array([2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4])
@@ -172,7 +170,6 @@ class T_hpd:
 
 
 def loc2hpc(loc: T_loc) -> T_hpc:
-
     def loc2hpc_mid(loc, tt):  # Equatorial region
         temp1 = 0.5 + tt  # [0.5; 4.5)
         temp2 = loc.z * 0.75  # [-0.5; +0.5]
