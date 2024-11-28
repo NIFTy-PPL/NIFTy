@@ -3,15 +3,15 @@
 from dataclasses import dataclass
 from functools import partial, reduce
 from typing import Callable, Iterable
-from jax import vmap, jit, eval_shape
+
+import jax.numpy as jnp
+import numpy as np
+from jax import eval_shape, jit, vmap
 from jax.lax import scan
-from .indexing import Grid, FlatGrid
+
 from ..num import amend_unique_
 from ..refine.util import refinement_matrices
-
-import numpy as np
-import jax.numpy as jnp
-import numpy.typing as npt
+from .indexing import FlatGrid, Grid
 
 
 def _mydist(x, y, periodicity=None):
@@ -63,7 +63,7 @@ class KernelBase:
         ids = tuple(self.grid.at(ii[1]).index2coord(ii[0]) for ii in ids)
         ids = jnp.concatenate(ids, axis=-1)
         assert index.ndim == ids.ndim - 1
-        return (norm(out[..., jnp.newaxis] - ids[..., jnp.newaxis, :]), )
+        return (norm(out[..., jnp.newaxis] - ids[..., jnp.newaxis, :]),)
 
     def _freeze(
         self,
