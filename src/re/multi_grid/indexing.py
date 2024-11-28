@@ -3,19 +3,19 @@
 #!/usr/bin/env python3
 
 import operator
-from warnings import warn
 from dataclasses import dataclass
 from functools import partial, reduce
 from typing import Callable, Iterable, Optional
-from jax import vmap, eval_shape, ShapeDtypeStruct
-from jax.lax import select
+
+import jax.numpy as jnp
+import numpy as np
+import numpy.typing as npt
+from jax import ShapeDtypeStruct, eval_shape, vmap
 from jax.experimental import checkify
+from jax.lax import select
+
 from ..tree_math.pytree_string import PyTreeString
 from .jhealpix_reference import get_all_neighbours_valid, pix2vec, vec2pix
-
-import numpy as np
-import jax.numpy as jnp
-import numpy.typing as npt
 
 
 @dataclass()
@@ -247,7 +247,7 @@ class OpenGridAtLevel(GridAtLevel):
         shp = self.shape + 2 * self.shifts
         index = coord * shp[slc] - 0.5
         index -= self.shifts
-        #assert jnp.all(index >= 0)
+        # assert jnp.all(index >= 0)
         return index.astype(dtype)
 
     def index2volume(self, index):
