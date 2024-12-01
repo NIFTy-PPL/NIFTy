@@ -75,28 +75,34 @@ class KernelBase:
         assert index.ndim == ids.ndim - 1
         return (norm(out[..., jnp.newaxis] - ids[..., jnp.newaxis, :]),)
 
-    def _freeze(
+    def freeze(
         self,
         *,
         rtol=1e-5,
         atol=1e-10,
         buffer_size=10000,
         use_distances=True,
+        uindices=None,
+        invindices=None,
+        indexmaps=None,
     ):
         """Evaluate the kernel and store it in a `FrozenKernel`. Kernels may be
         grouped by similarity and accessed via lookup"""
-        fgrid = self.grid if isinstance(self.grid, FlatGrid) else FlatGrid(self.grid)
+        if uindices is not None and invindices is not None and indexmaps is not None:
+            _FrozenKernel(self, uindices, invindices, indexmaps)
+
+        gridf = self.grid if isinstance(self.grid, FlatGrid) else FlatGrid(self.grid)
         uindices = []
         invindices = []
         indexmaps = []
         for lvl in range(self.grid.depth):
-            atlevel = self.grid.at(lvl)
-            fatlevel = fgrid.at(lvl)
+            grid_at = self.grid.at(lvl)
+            grid_at_f = gridf.at(lvl)
 
             def get_kernel(id):
                 id = jnp.atleast_1d(id)
                 f = self.get_distance_kernel if use_distances else self.get_kernel
-                ker = f(fatlevel.flatindex2index(id), lvl)
+                ker = f(grid_at_f.flatindex2index(id), lvl)
                 ker = jnp.concatenate(tuple(kk.ravel() for kk in ker))
                 return ker
 
@@ -108,8 +114,8 @@ class KernelBase:
                 inv = inv.at[idx - shift].set(invid)
                 return (u, inv), invid
 
-            indices = atlevel.refined_indices()
-            indices = fatlevel.index2flatindex(indices)[0].ravel()
+            indices = grid_at.refined_indices()
+            indices = grid_at_f.index2flatindex(indices)[0].ravel()
             shift = np.min(indices)
             size = np.max(indices) - shift
             inv = np.full(size, buffer_size + 1)
@@ -125,36 +131,10 @@ class KernelBase:
             if n >= unique.shape[0] or not np.all(np.isnan(unique[n:])):
                 raise ValueError("`mat_buffer_size` too small")
             uids = indices[idx]
-            uids = fatlevel.flatindex2index(uids[np.newaxis, :])
+            uids = grid_at_f.flatindex2index(uids[np.newaxis, :])
             uindices.append(uids)
-            invindices.append(myinv)
-            indexmaps.append(_IdxMap(shift, fatlevel.index2flatindex))
-        return uindices, invindices, indexmaps
-
-    def freeze(
-        self,
-        *,
-        uindices=None,
-        invindices=None,
-        indexmaps=None,
-        rtol=1e-5,
-        atol=1e-10,
-        buffer_size=10000,
-        use_distances=True,
-    ):
-        """Evaluate the kernel and store it in a `FrozenKernel`. Kernels may be
-        grouped by similarity and accessed via lookup"""
-        if uindices is None:
-            uindices, invindices, indexmaps = self._freeze(
-                rtol=rtol,
-                atol=atol,
-                buffer_size=buffer_size,
-                use_distances=use_distances,
-            )
-        elif (indexmaps is None) or (invindices is None):
-            raise ValueError(
-                "`uindices`,  `invindices`, and `indexmaps` must be either both None or not None"
-            )
+            invindices.append(inv)
+            indexmaps.append(_IdxMap(shift, grid_at_f.index2flatindex))
         return _FrozenKernel(self, uindices, invindices, indexmaps)
 
     def apply_at(self, index, level, x):
@@ -193,29 +173,26 @@ class KernelBase:
         return x
 
 
-@dataclass()
-class _IdxMap:
-    shift: int
-    index2flatindex: callable
-
-
 class _FrozenKernel(KernelBase):
     def __init__(self, kernel: KernelBase, uindices, invindices, indexmaps):
+        # TODO: "frozenness" should be part of the kernel itself; if more than
+        # just `get_indices` is overwritten by `kernel`, we should honor that!
         self.get_indices = kernel.get_indices
-        self._invindices = invindices
-        self._indexmaps = indexmaps
+        self.uindices = uindices
+        self.invindices = invindices
+        self.indexmaps = indexmaps
         self._kernels = tuple(
             kernel.get_kernel(ii, ll) for ll, ii in enumerate(uindices)
         )
         self._base_kernel = kernel.get_kernel(jnp.atleast_1d(-1), -1)
-        self._grid = kernel.grid
+        super().__init__(grid=kernel.grid)
 
     def get_kernel(self, index, level):
         if level == -1:
             return self._base_kernel
 
-        map_atlevel = self._indexmaps[level]
-        inv_atlevel = self._invindices[level]
+        map_atlevel = self.indexmaps[level]
+        inv_atlevel = self.invindices[level]
         index = map_atlevel.index2flatindex(index)[0]
         index = inv_atlevel[index - map_atlevel.shift]
         return tuple(kk[index] for kk in self._kernels[level])

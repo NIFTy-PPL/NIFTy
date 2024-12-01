@@ -208,10 +208,13 @@ class ICRSpectral(Model):
         latent_kernel = self._get_kernelfunc(
             self.spectrum(zeros_like(self.spectrum.domain))
         )
-        self.uindices, self.invindices, self.indexmaps = ICRefine(
-            grid, latent_kernel, window_size
-        )._freeze(
+        f = ICRefine(grid, latent_kernel, window_size).freeze(
             rtol=rtol, atol=atol, buffer_size=buffer_size, use_distances=use_distances
+        )
+        self.uindices, self.invindices, self.indexmaps = (
+            f.uindices,
+            f.invindices,
+            f.indexmaps,
         )
 
         self.window_size = window_size
