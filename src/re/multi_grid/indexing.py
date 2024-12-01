@@ -421,7 +421,7 @@ class HEALPixGrid(Grid):
 
 
 @dataclass()
-class OGridAtLevel(GridAtLevel):
+class MGridAtLevel(GridAtLevel):
     """Open (not fleshed out) multi-dimensional product of multiple grids."""
 
     grids: tuple[GridAtLevel]
@@ -563,10 +563,10 @@ class OGridAtLevel(GridAtLevel):
 
 
 @dataclass()
-class OGrid(Grid):
+class MGrid(Grid):
     grids: tuple[Grid]
 
-    def __init__(self, *grids, atLevel=OGridAtLevel):
+    def __init__(self, *grids, atLevel=MGridAtLevel):
         self.grids = tuple(grids)
         for i, g in enumerate(grids):
             if not isinstance(g, Grid):
