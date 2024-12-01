@@ -1,20 +1,17 @@
 from dataclasses import field
-from functools import partial, reduce
-import operator
 from typing import Callable, List, Mapping, Union
 
-from ..logger import logger
-from ..model import Model, WrappedCall
-from .kernel import KernelBase, ICRefine, _FrozenKernel
-from .indexing import Grid
-import numpy.typing as npt
-import numpy as np
 import jax.numpy as jnp
-from scipy.special import sici, j0
-from .utils import j1
-from ..tree_math import random_like, ShapeWithDtype, zeros_like
-from ..num.stats_distributions import lognormal_prior, normal_prior
-from ..prior import NormalPrior, LogNormalPrior
+import numpy as np
+import numpy.typing as npt
+from scipy.special import j0, sici
+
+from ..model import Model
+from ..prior import LogNormalPrior, NormalPrior
+from ..tree_math import ShapeWithDtype, zeros_like
+from .indexing import Grid
+from .kernel import ICRefine, _FrozenKernel
+from .correlated_field_util import j1
 
 
 def log_k_offset_dist(r_min, r_max, N):
