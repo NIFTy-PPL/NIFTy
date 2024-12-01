@@ -44,10 +44,6 @@ class KernelBase:
     def __init__(self, grid):
         self._grid = grid
 
-    def __getitem__(self, key):
-        index, level = key
-        return self.get_matrices(index, level)
-
     @property
     def grid(self) -> Grid:
         return self._grid
