@@ -408,7 +408,7 @@ class HEALPixGrid(Grid):
         super().__init__(
             shape0=12 * self.nside0**2,
             splits=splits,
-            atLevel=HEALPixGridAtLevel,
+            atLevel=partial(HEALPixGridAtLevel, nest=self.nest),
         )
 
     def amend(self, splits=None, *, added_depth: Optional[int] = None):
