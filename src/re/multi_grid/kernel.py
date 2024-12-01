@@ -243,15 +243,16 @@ class ICRefine(KernelBase):
         return (gout, level + 1), ((gc, level), (gf, level + 1))
 
     def get_kernel(self, index, level):
+        from ..refine.util import sqrtm
+
         if level == -1:
             _, ((ids, _),) = self.get_indices(index, -1)
             gc = self._grid.at(0).index2coord(ids)
             assert gc.ndim == 2
             cov = self._covariance(gc, gc)
             assert cov.shape == (gc.shape[1],) * 2
-            from ..refine.util import projection_MatrixSq
+            return (sqrtm(cov),)
 
-            return (projection_MatrixSq(cov),)
         _, ((idc, _), (idf, _)) = self.get_indices(index, level)
 
         def _get_kernel(gc, gf):
