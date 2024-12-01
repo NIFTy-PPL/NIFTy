@@ -50,8 +50,8 @@ class KernelBase:
         self._grid = grid
 
     def __getitem__(self, key):
-        k0, k1 = key
-        return self.get_kernel(k0, k1)
+        index, level = key
+        return self.get_kernel(index, level)
 
     @property
     def grid(self):
@@ -137,16 +137,6 @@ class KernelBase:
             indexmaps.append(_IdxMap(shift, grid_at_f.index2flatindex))
         return _FrozenKernel(self, uindices, invindices, indexmaps)
 
-    def apply_at(self, index, level, x):
-        assert index.ndim == 1
-        iout, iin = self.get_indices(index, level)
-        kernels = self.get_kernel(index, level)
-        assert len(iin) == len(kernels)
-        res = reduce(
-            operator.add, (kk @ x[ii[1]][tuple(ii[0])] for kk, ii in zip(kernels, iin))
-        )
-        return iout, res.reshape(iout[0].shape[1:])
-
     def apply(self, x, copy=True):
         """Applies the kernel to values on an entire multigrid"""
         if len(x) != (self.grid.depth + 1):
@@ -158,14 +148,25 @@ class KernelBase:
                 msg = f"input at level {lvl} of size {xx.size} does not match grid of size {g.size}"
                 raise ValueError(msg)
 
+        def apply_at(index, level, x):
+            assert index.ndim == 1
+            iout, iin = self.get_indices(index, level)
+            kernels = self.get_kernel(index, level)
+            assert len(iin) == len(kernels)
+            res = reduce(
+                operator.add,
+                (kk @ x[x_lvl][tuple(idx)] for kk, (idx, x_lvl) in zip(kernels, iin)),
+            )
+            return iout, res.reshape(iout[0].shape[1:])
+
         x = list(jnp.copy(xx) for xx in x) if copy else x
         # Use dummy index for base
-        _, x[0] = self.apply_at(jnp.array([-1]), -1, x)
+        _, x[0] = apply_at(jnp.array([-1]), -1, x)
         for lvl in range(self.grid.depth):
             g = self.grid.at(lvl)
             index = g.refined_indices()
             # TODO this selects window for each index individually
-            f = self.apply_at
+            f = apply_at
             for i in range(g.ndim):
                 f = vmap(f, (1, None, None), ((g.ndim - i, None), g.ndim - i - 1))
             (_, lvl_nxt), res = f(index, lvl, x)
