@@ -63,18 +63,6 @@ class KernelBase:
     def get_kernel(self, index, level):
         raise NotImplementedError
 
-    def get_distance_kernel(self, index, level, norm=partial(jnp.linalg.norm, axis=0)):
-        if level == -1:
-            raise NotImplementedError
-        (out, olvl), ids = self.get_indices(index, level)
-        out = out.reshape(index.shape + (-1,))
-        out = self.grid.at(olvl).index2coord(out)
-        assert index.ndim == out.ndim - 1
-        ids = tuple(self.grid.at(ii[1]).index2coord(ii[0]) for ii in ids)
-        ids = jnp.concatenate(ids, axis=-1)
-        assert index.ndim == ids.ndim - 1
-        return (norm(out[..., jnp.newaxis] - ids[..., jnp.newaxis, :]),)
-
     def freeze(
         self,
         *,
@@ -85,11 +73,24 @@ class KernelBase:
         uindices=None,
         invindices=None,
         indexmaps=None,
+        distance_norm=partial(jnp.linalg.norm, axis=0),
     ):
         """Evaluate the kernel and store it in a `FrozenKernel`. Kernels may be
         grouped by similarity and accessed via lookup"""
         if uindices is not None and invindices is not None and indexmaps is not None:
             _FrozenKernel(self, uindices, invindices, indexmaps)
+
+        def get_distance_kernel(index, level):
+            if level == -1:
+                raise NotImplementedError
+            (out, olvl), ids = self.get_indices(index, level)
+            out = out.reshape(index.shape + (-1,))
+            out = self.grid.at(olvl).index2coord(out)
+            assert index.ndim == out.ndim - 1
+            ids = tuple(self.grid.at(ii[1]).index2coord(ii[0]) for ii in ids)
+            ids = jnp.concatenate(ids, axis=-1)
+            assert index.ndim == ids.ndim - 1
+            return (distance_norm(out[..., jnp.newaxis] - ids[..., jnp.newaxis, :]),)
 
         gridf = self.grid if isinstance(self.grid, FlatGrid) else FlatGrid(self.grid)
         uindices = []
@@ -101,7 +102,7 @@ class KernelBase:
 
             def get_kernel(id):
                 id = jnp.atleast_1d(id)
-                f = self.get_distance_kernel if use_distances else self.get_kernel
+                f = get_distance_kernel if use_distances else self.get_kernel
                 ker = f(grid_at_f.flatindex2index(id), lvl)
                 ker = jnp.concatenate(tuple(kk.ravel() for kk in ker))
                 return ker
