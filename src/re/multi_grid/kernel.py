@@ -129,11 +129,11 @@ class KernelBase:
         indexmaps = []
         for lvl in range(self.grid.depth):
             grid_at = self.grid.at(lvl)
-            grid_at_f = gridf.at(lvl)
+            gridf_at = gridf.at(lvl)
 
             def get_matrices(idx):
                 f = get_distance_matrix if use_distances else self.get_matrices
-                ker = f(grid_at_f.flatindex2index(jnp.atleast_1d(idx)), lvl)
+                ker = f(gridf_at.flatindex2index(jnp.atleast_1d(idx)), lvl)
                 ker = jnp.concatenate(tuple(kk.ravel() for kk in ker))
                 return ker
 
@@ -146,7 +146,7 @@ class KernelBase:
                 return (u, inv), invid
 
             indices = grid_at.refined_indices()
-            indices = grid_at_f.index2flatindex(indices)[0].ravel()
+            indices = gridf_at.index2flatindex(indices)[0].ravel()
             shift = np.min(indices)
             size = np.max(indices) - shift
             inv = np.full(size, buffer_size + 1)
@@ -162,16 +162,16 @@ class KernelBase:
             if n >= unique.shape[0] or not np.all(np.isnan(unique[n:])):
                 raise ValueError("`mat_buffer_size` too small")
             uids = indices[idx]
-            uids = grid_at_f.flatindex2index(uids[np.newaxis, :])
+            uids = gridf_at.flatindex2index(uids[np.newaxis, :])
             uindices.append(uids)
             invindices.append(inv)
-            indexmaps.append(_IdxMap(shift, grid_at_f.index2flatindex))
+            indexmaps.append(_IdxMap(shift, gridf_at.index2flatindex))
         return _FrozenKernel(self, uindices, invindices, indexmaps)
 
 
 class _FrozenKernel(KernelBase):
     def __init__(self, kernel: KernelBase, uindices, invindices, indexmaps):
-        self._get_refinement_indices = kernel.get_output_input_indices
+        self._get_output_input_indices = kernel.get_output_input_indices
         self.uindices = uindices
         self.invindices = invindices
         self.indexmaps = indexmaps
@@ -182,7 +182,7 @@ class _FrozenKernel(KernelBase):
         super().__init__(grid=kernel.grid)
 
     def get_output_input_indices(self, index, level):
-        return self._get_refinement_indices(index, level)
+        return self._get_output_input_indices(index, level)
 
     def get_matrices(self, index, level):
         if level is None:
@@ -246,7 +246,7 @@ class ICRefine(KernelBase):
 
         _, ((idc, _), (idf, _)) = self.get_output_input_indices(index, level)
 
-        def _get_kernel(gc, gf):
+        def get_mat(gc, gf):
             gc = self.grid.at(level).index2coord(gc)
             gf = self.grid.at(level + 1).index2coord(gf)
             assert gc.shape[0] == gf.shape[0]
@@ -255,7 +255,7 @@ class ICRefine(KernelBase):
             cov = self.covariance_outer(coord, coord)
             return refinement_matrices(cov, gf.shape[1])
 
-        f = _get_kernel
+        f = get_mat
         for _ in range(index.ndim - 1):
             f = vmap(f, in_axes=(1, 1))
         return f(idc, idf)
