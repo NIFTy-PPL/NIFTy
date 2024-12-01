@@ -148,12 +148,11 @@ class Grid:
 
     def at(self, level: int):
         level = self._parse_level(level)
+        fct = 1
         if level > 0:
             fct = np.array(
                 [reduce(operator.mul, si) for si in zip(*self.splits[:level])]
             )
-        else:
-            fct = 1
         return self.atLevel(
             shape=self.shape0 * fct,
             splits=self.splits[level] if level < self.depth else None,
@@ -203,32 +202,15 @@ class OpenGridAtLevel(GridAtLevel):
         hi = self.shape[(slice(None),) + (np.newaxis,) * (index.ndim - 1)] - lo
         # TODO add option for fully jax transformable error handling
         # Follow jax-array inspired out of bounds handling
-        index = select(index >= lo, index, lo * jnp.ones_like(index))
-        index = select(index < hi, index, (hi - 1) * jnp.ones_like(index))
-        return super().children(index - lo)
+        return super().children(index.clip(lo, hi - 1) - lo)
 
     def neighborhood(self, index, window_size: Iterable[int]):
-        index = self._parse_index(index)
-        dtp = np.result_type(index)
-        window_size = np.asarray(window_size)
-        assert window_size.size == self.ndim
-        c = np.mgrid[tuple(slice(sz) for sz in window_size)]
-        c -= (window_size // 2)[(slice(None),) + (np.newaxis,) * self.ndim]
-        c_bc = (
-            (slice(None),)
-            + (np.newaxis,) * (index.ndim - 1)
-            + (slice(None),) * self.ndim
-        )
-        id_bc = (slice(None),) * index.ndim + (np.newaxis,) * self.ndim
-        res = index[id_bc] + c[c_bc]
         # TODO add option for fully jax transformable error handling
         # Follow jax-array inspired out of bounds handling
         shp_bc = self.shape[
             (slice(None),) + (np.newaxis,) * (index.ndim - 1 + self.ndim)
         ]
-        res = select(res >= 0, res, jnp.zeros_like(res))
-        res = select(res < shp_bc, res, jnp.ones_like(res) * (shp_bc - 1))
-        return res.astype(dtp)
+        return super().neighborhood(index, window_size).clip(0, (shp_bc - 1))
 
     def parent(self, index):
         if self.parent_splits is None:
@@ -239,7 +221,7 @@ class OpenGridAtLevel(GridAtLevel):
 
     def index2coord(self, index):
         slc = (slice(None),) + (np.newaxis,) * (index.ndim - 1)
-        index += self.shifts[slc]
+        index = index + self.shifts[slc]
         shp = self.shape + 2 * self.shifts
         return (index + 0.5) / shp[slc]
 
@@ -247,8 +229,7 @@ class OpenGridAtLevel(GridAtLevel):
         slc = (slice(None),) + (np.newaxis,) * (coord.ndim - 1)
         # TODO type
         shp = self.shape + 2 * self.shifts
-        index = coord * shp[slc] - 0.5
-        index -= self.shifts
+        index = coord * shp[slc] - self.shifts - 0.5
         # assert jnp.all(index >= 0)
         return index.astype(dtype)
 
@@ -287,14 +268,11 @@ class OpenGrid(Grid):
 
     def at(self, level: int):
         level = self._parse_level(level)
-        shp = np.copy(self.shape0)
+        shp = self.shape0
         shifts = np.zeros_like(shp)
         for si, pd in zip(self.splits[:level], self.padding[:level]):
-            shp -= 2 * pd
-            shp *= si
-            assert np.all(shp > 0)  # TODO check upon init
-            shifts += pd
-            shifts *= si
+            shp = si * (shp - 2 * pd)
+            shifts = si * (shifts + pd)
         return self.atLevel(
             shape=shp,
             splits=self.splits[level] if level < self.depth else None,
@@ -449,18 +427,17 @@ class OGridAtLevel(GridAtLevel):
     @property
     def splits(self):
         if self.grids[0].splits is None:
-            for gg in self.grids[1:]:
-                if gg.splits is not None:
-                    raise ValueError
+            if any(gg.splits is not None for gg in self.grids[1:]):
+                raise ValueError(f"inconsistent `None` splits in grids {self.grids}")
             return None
         return np.concatenate(tuple(g.splits for g in self.grids))
 
     @property
     def parent_splits(self):
         if self.grids[0].parent_splits is None:
-            for gg in self.grids[1:]:
-                if gg.parent_splits is not None:
-                    raise ValueError
+            if any(gg.parent_splits is not None for gg in self.grids[1:]):
+                msg = f"inconsistent `None` parent_splits in grids {self.grids}"
+                raise ValueError(msg)
             return None
         return np.concatenate(tuple(g.parent_splits for g in self.grids))
 
