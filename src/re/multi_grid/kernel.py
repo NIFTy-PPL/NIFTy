@@ -268,10 +268,10 @@ class FixedKernelFunctionBatch(KernelBase):
     def __init__(
         self, grid: Grid, window_size: Iterable[int], kernel: Callable, periodicity=None
     ):
-        self._grid = grid
         self._kernel = kernel
         self._window_size = window_size  # TODO different at different levels?
         self._periodicity = periodicity
+        super().__init__(grid=grid)
 
     def get_indices(self, index, level):
         if level == 0:
@@ -283,18 +283,18 @@ class FixedKernelFunctionBatch(KernelBase):
                 index[(slice(None),) * index.ndim + (1,)]
                 * grid[(slice(None),) + (1,) * index.ndim + (slice(None),)]
             )
-        targets = self._grid.at(level - 1).children(index).reshape(index.shape + (-1,))
+        targets = self.grid.at(level - 1).children(index).reshape(index.shape + (-1,))
         nbrs = (
-            self._grid.at(level)
+            self.grid.at(level)
             .neighborhood(targets[..., -1], self._window_size)
             .reshape(index.shape + (-1,))
         )
         return (targets, level), ((nbrs, level),)
 
     def evaluate_kernel(self, out_index, in_index, level):
-        gridAtLevel = self.grid.at(level)
-        targets_pos = gridAtLevel.index2coord(out_index)
-        nbrs_delta = gridAtLevel.index2coord(in_index)
+        grid_at_level = self.grid.at(level)
+        targets_pos = grid_at_level.index2coord(out_index)
+        nbrs_delta = grid_at_level.index2coord(in_index)
         targets_pos = targets_pos[..., jnp.newaxis]
         nbrs_delta = _dist(
             targets_pos, nbrs_delta[..., jnp.newaxis, :], periodicity=self._periodicity
@@ -311,26 +311,26 @@ class IsoPowerInterpolationKernel(KernelBase):
     def __init__(
         self, grid: Grid, window_size: Iterable[int], scale=None, p=2, periodicity=None
     ):
-        self._grid = grid
         self._scale = scale
         self._p = p
         self._window_size = window_size
         self._periodicity = periodicity
+        super().__init__(grid=grid)
 
     def get_indices(self, index, level):
-        if level == self._grid.depth:
+        if level == self.grid.depth:
             raise ValueError("Finest level has no children to interpolate to")
-        gridAtLevel = self._grid.at(level)
-        target = gridAtLevel.children(index).reshape(index.shape + (-1,))
-        source = gridAtLevel.neighborhood(index, self._window_size)
+        g = self.grid.at(level)
+        target = g.children(index).reshape(index.shape + (-1,))
+        source = g.neighborhood(index, self._window_size)
         source = source.reshape(index.shape + (-1,))
         return (target, level + 1), ((source, level),)
 
     def get_kernel(self, index, level):
         """Get distances between neighbors and distances to children from an index."""
         target, source = self.get_indices(index, level)
-        coord_source = self._grid.at(level).index2coord(source)
-        coord_target = self._grid.at(level + 1).index2coord(target)
+        coord_source = self.grid.at(level).index2coord(source)
+        coord_target = self.grid.at(level + 1).index2coord(target)
 
         child_dist = _dist(
             coord_target[..., jnp.newaxis],
@@ -372,15 +372,12 @@ class IsoPowerInterpolationKernel(KernelBase):
 
 
 class CombineKernel(KernelBase):
-    def __init__(self, grid):
-        self._grid = grid
-
     def get_indices(self, index, level):
-        if level == self._grid.depth:
+        if level == self.grid.depth:
             raise ValueError("Finest level has no children to combine")
         return (index, level), (
             (
-                self._grid.at(level).children(index).reshape(index.shape + (-1,)),
+                self.grid.at(level).children(index).reshape(index.shape + (-1,)),
                 level + 1,
             ),
         )
@@ -401,7 +398,7 @@ class MSCRefine(KernelBase):
         self._convolution = convolution
         self._combine = combine
         assert self._convolution.grid == self._interpolation.grid
-        self._grid = self._convolution.grid
+        super().__init__(grid=self._convolution.grid)
 
     def get_indices(self, index, level):
         target, cindex = self._convolution.get_indices(index, level)
