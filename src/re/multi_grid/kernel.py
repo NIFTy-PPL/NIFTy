@@ -1,6 +1,10 @@
+#!/usr/bin/env python3
+
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
-# Authors: Philipp Frank
-from dataclasses import dataclass
+# Authors: Philipp Frank, Gordian Edenhofer
+
+import operator
+from collections import namedtuple
 from functools import partial, reduce
 from typing import Callable, Iterable
 
@@ -153,8 +157,7 @@ class KernelBase:
         kernels = self.get_kernel(index, level)
         assert len(iin) == len(kernels)
         res = reduce(
-            lambda a, b: a + b,
-            (kk @ x[ii[1]][tuple(ii[0])] for kk, ii in zip(kernels, iin)),
+            operator.add, (kk @ x[ii[1]][tuple(ii[0])] for kk, ii in zip(kernels, iin))
         )
         return iout, res.reshape(iout[0].shape[1:])
 

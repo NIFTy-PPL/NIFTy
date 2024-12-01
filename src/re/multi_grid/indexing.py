@@ -1,6 +1,7 @@
+#!/usr/bin/env python3
+
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 # Authors: Gordian Edenhofer, Philipp Frank
-#!/usr/bin/env python3
 
 import operator
 from dataclasses import dataclass
@@ -13,9 +14,6 @@ import numpy.typing as npt
 from jax import ShapeDtypeStruct, eval_shape, vmap
 from jax.experimental import checkify
 from jax.lax import select
-
-from ..tree_math.pytree_string import PyTreeString
-from .jhealpix_reference import get_all_neighbours_valid, pix2vec, vec2pix
 
 
 @dataclass()
@@ -36,8 +34,7 @@ class GridAtLevel:
     def _parse_index(self, index):
         index = jnp.asarray(index)
         if index.shape[0] != self.shape.size:
-            l = index.shape[0]
-            ve = f"index {index} is of invalid length {l} for shape {self.shape}"
+            ve = f"index {index} is of invalid length {index.shape[0]} for shape {self.shape}"
             raise IndexError(ve)
         # Follow jax-array style out of bounds handling
         shp_bc = self.shape[(slice(None),) + (np.newaxis,) * (index.ndim - 1)]
@@ -54,7 +51,7 @@ class GridAtLevel:
 
     def refined_indices(self):
         if self.splits is None:
-            raise IndexError("This level has no children")
+            raise IndexError("this level has no children")
         # TODO non-dense grid
         return np.mgrid[tuple(slice(0, sh) for sh in self.shape)]
 
@@ -68,7 +65,7 @@ class GridAtLevel:
 
     def children(self, index):
         if self.splits is None:
-            raise IndexError("This level has no children")
+            raise IndexError("this level has no children")
         index = self._parse_index(index)
         dtp = np.result_type(index)
         f = self.splits[(slice(None),) + (np.newaxis,) * (index.ndim - 1)]
@@ -188,7 +185,7 @@ class OpenGridAtLevel(GridAtLevel):
 
     def refined_indices(self):
         if self.splits is None:
-            raise IndexError("This level has no children")
+            raise IndexError("ths level has no children")
         # TODO non-dense grid
         return np.mgrid[
             tuple(slice(pp, sh - pp) for sh, pp in zip(self.shape, self.padding))
@@ -196,7 +193,7 @@ class OpenGridAtLevel(GridAtLevel):
 
     def children(self, index):
         if (self.splits is None) or (self.padding is None):
-            raise IndexError("This level has no children")
+            raise IndexError("this level has no children")
         lo = self.padding[(slice(None),) + (np.newaxis,) * (index.ndim - 1)]
         hi = self.shape[(slice(None),) + (np.newaxis,) * (index.ndim - 1)] - lo
         # TODO add option for fully jax transformable error handling
@@ -335,6 +332,8 @@ class HEALPixGridAtLevel(GridAtLevel):
         super().__init__(shape=size, splits=splits, parent_splits=parent_splits)
 
     def neighborhood(self, index, window_size: Iterable[int]):
+        from .jhealpix_reference import get_all_neighbours_valid
+
         index = jnp.atleast_1d(index)
         if not isinstance(window_size, int):
             window_size = window_size[0]
@@ -357,6 +356,8 @@ class HEALPixGridAtLevel(GridAtLevel):
         raise NotImplementedError(nie)
 
     def index2coord(self, index, **kwargs):
+        from .jhealpix_reference import pix2vec
+
         assert index.shape[0] == 1
         f = partial(pix2vec, self.nside, nest=self.nest)
         for _ in range(index.ndim - 1):
@@ -365,6 +366,8 @@ class HEALPixGridAtLevel(GridAtLevel):
         return jnp.stack(cc, axis=0)
 
     def coord2index(self, coord, dtype=np.uint64, **kwargs):
+        from .jhealpix_reference import vec2pix
+
         assert coord.shape[0] == 3
         f = partial(vec2pix, self.nside, nest=self.nest)
         for _ in range(coord.ndim - 1):
@@ -480,7 +483,7 @@ class OGridAtLevel(GridAtLevel):
             raise ValueError
         return batched_ar.reshape(tuple(a * b for a, b in zip(shp[::2], shp[1::2])))
 
-    def children(self, index) -> np.ndarray:
+    def children(self, index) -> npt.NDArray:
         ndims_off = tuple(np.cumsum(tuple(g.ndim for g in self.grids)))
         ndims_sum = ndims_off[-1]
         islice = tuple(slice(l, r) for l, r in zip((0,) + ndims_off[:-1], ndims_off))
@@ -826,11 +829,7 @@ class SparseGridAtLevel(FlatGridAtLevel):
             ordering=ordering,
         )
         # Overrides shape to utilize base functions
-        self.shape = np.array(
-            [
-                self.mapping.size,
-            ]
-        )
+        self.shape = np.array([self.mapping.size])
 
     def _mapping(self, levelshift):
         if levelshift == -1:
@@ -840,7 +839,7 @@ class SparseGridAtLevel(FlatGridAtLevel):
         elif levelshift == 1:
             mapping = self.children_mapping
         else:
-            raise ValueError(f"Inconsistent shift in level: {levelshift}")
+            raise ValueError(f"invalid shift in level: {levelshift}")
         return mapping
 
     def arrayindex2flatindex(self, index, levelshift=0):
@@ -855,9 +854,8 @@ class SparseGridAtLevel(FlatGridAtLevel):
 
         checkify.check(
             jnp.all(valid),
-            "Flatindex {ids} not on child grid of {nm}",
+            f"flat index {{ids}} not on child grid of {self.__class__.__name__}",
             ids=arrayid[~valid],
-            nm=PyTreeString(self.__class__.__name__),
         )
         return arrayid
 
