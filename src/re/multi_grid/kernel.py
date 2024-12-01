@@ -179,7 +179,7 @@ class _FrozenKernel(KernelBase):
     def __init__(self, kernel: KernelBase, uindices, invindices, indexmaps):
         # TODO: "frozenness" should be part of the kernel itself; if more than
         # just `get_indices` is overwritten by `kernel`, we should honor that!
-        self.get_indices = kernel.get_indices
+        self._get_indices = kernel.get_indices
         self.uindices = uindices
         self.invindices = invindices
         self.indexmaps = indexmaps
@@ -188,6 +188,9 @@ class _FrozenKernel(KernelBase):
         )
         self._base_kernel = kernel.get_kernel(jnp.array([-1]), None)
         super().__init__(grid=kernel.grid)
+
+    def get_indices(self, index, level):
+        return self._get_indices(index, level)
 
     def get_kernel(self, index, level):
         if level is None:
