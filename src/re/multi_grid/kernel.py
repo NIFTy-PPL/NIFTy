@@ -62,7 +62,7 @@ class KernelBase:
     def get_matrices(self, index, level):
         raise NotImplementedError()
 
-    def apply(self, x, copy=True):
+    def __call__(self, x, copy=True):
         """Applies the kernel to values on an entire multigrid"""
         if len(x) != (self.grid.depth + 1):
             msg = f"input depth {len(x)} does not match grid depth {self.grid.depth}"
