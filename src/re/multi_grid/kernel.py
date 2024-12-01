@@ -199,29 +199,40 @@ class _FrozenKernel(KernelBase):
 
 
 class ICRefine(KernelBase):
-    def __init__(self, grid, covariance, window_size):
-        self._grid = grid
-        mapped_kernel = vmap(covariance, in_axes=(None, -1), out_axes=-1)
-        mapped_kernel = vmap(mapped_kernel, in_axes=(-1, None), out_axes=-1)
-        self._covariance = mapped_kernel
-        window_size = (window_size,) if isinstance(window_size, int) else window_size
-        self._window_size = tuple(window_size)
+    def __init__(self, grid, covariance, *, window_size):
+        self._covariance_elem = covariance
+        k = self._covariance_elem
+        k = vmap(k, in_axes=(None, -1), out_axes=-1)
+        k = vmap(k, in_axes=(-1, None), out_axes=-1)
+        self._covariance_outer = k
+        self._window_size = tuple(
+            np.broadcast_to(window_size, (grid.depth,) + grid.at(0).shape.shape)
+        )
+        super().__init__(grid=grid)
+
+    @property
+    def covariance_outer(self):
+        return self._covariance_outer
+
+    @property
+    def window_size(self):
+        return self._window_size
 
     def get_indices(self, index, level):
         if level == -1:
-            grid_at_lvl = self._grid.at(0)
+            grid_at_lvl = self.grid.at(0)
             pixel_indices = np.mgrid[tuple(slice(0, sz) for sz in grid_at_lvl.shape)]
             assert pixel_indices.shape[0] == grid_at_lvl.ndim
             return (pixel_indices, 0), (
                 (pixel_indices.reshape(grid_at_lvl.ndim, -1), 0),
             )
-        if (level >= self._grid.depth) or (level < -1):
-            mg = f"Level {level} out of bounds for grid deph {self._grid.depth}"
+        if (level >= self.grid.depth) or (level < -1):
+            mg = f"Level {level} out of bounds for grid deph {self.grid.depth}"
             raise ValueError(mg)
-        atlevel = self._grid.at(level)
-        assert index.shape[0] == atlevel.ndim
-        gc = atlevel.neighborhood(index, self._window_size).reshape(index.shape + (-1,))
-        gout = self._grid.at(level).children(index)
+        g = self.grid.at(level)
+        assert index.shape[0] == g.ndim
+        gc = g.neighborhood(index, self.window_size[level]).reshape(index.shape + (-1,))
+        gout = g.children(index)
         gf = gout.reshape(index.shape + (-1,))
         return (gout, level + 1), ((gc, level), (gf, level + 1))
 
@@ -230,9 +241,9 @@ class ICRefine(KernelBase):
 
         if level == -1:
             _, ((ids, _),) = self.get_indices(index, -1)
-            gc = self._grid.at(0).index2coord(ids)
+            gc = self.grid.at(0).index2coord(ids)
             assert gc.ndim == 2
-            cov = self._covariance(gc, gc)
+            cov = self.covariance_outer(gc, gc)
             assert cov.shape == (gc.shape[1],) * 2
             return (sqrtm(cov),)
 
@@ -244,7 +255,7 @@ class ICRefine(KernelBase):
             assert gc.shape[0] == gf.shape[0]
             assert gc.ndim == gf.ndim == 2
             coord = jnp.concatenate((gc, gf), axis=-1)
-            cov = self._covariance(coord, coord)
+            cov = self.covariance_outer(coord, coord)
             return refinement_matrices(cov, gf.shape[1])
 
         f = _get_kernel
