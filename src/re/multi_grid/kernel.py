@@ -18,13 +18,12 @@ from ..refine.util import refinement_matrices
 from .indexing import FlatGrid, Grid
 
 
-def _mydist(x, y, periodicity=None):
+def _dist(x, y, periodicity=None):
+    d = y - x
     if periodicity is not None:
-        L = np.atleast_1d(periodicity)
-        d = y - x
-        L = L[(slice(None),) + (np.newaxis,) * (d.ndim - 1)]
-        return jnp.where(jnp.abs(d) > L / 2.0, d - jnp.sign(d) * L, d)
-    return x - y
+        p = np.atleast_1d(periodicity)[(slice(None),) + (np.newaxis,) * (d.ndim - 1)]
+        return jnp.where(jnp.abs(d) > p / 2.0, d - jnp.sign(d) * p, d)
+    return d
 
 
 """
@@ -106,15 +105,15 @@ class KernelBase:
             indices = fatlevel.index2flatindex(indices)[0].ravel()
             shift = np.min(indices)
             size = np.max(indices) - shift
-            myinv = np.full(size, buffer_size + 1)
+            inv = np.full(size, buffer_size + 1)
 
             shp = eval_shape(get_kernel, indices[0]).shape
             unique = jnp.full((buffer_size,) + shp, jnp.nan)
 
-            (unique, myinv), inv = scan(
-                partial(scanned_amend_unique, shift=shift), (unique, myinv), indices
+            (unique, inv), invid = scan(
+                partial(scanned_amend_unique, shift=shift), (unique, inv), indices
             )
-            _, idx = np.unique(inv, return_index=True)
+            _, idx = np.unique(invid, return_index=True)
             n = idx.size
             if n >= unique.shape[0] or not np.all(np.isnan(unique[n:])):
                 raise ValueError("`mat_buffer_size` too small")
@@ -302,7 +301,7 @@ class FixedKernelFunctionBatch(KernelBase):
         targets_pos = gridAtLevel.index2coord(out_index)
         nbrs_delta = gridAtLevel.index2coord(in_index)
         targets_pos = targets_pos[..., jnp.newaxis]
-        nbrs_delta = _mydist(
+        nbrs_delta = _dist(
             targets_pos, nbrs_delta[..., jnp.newaxis, :], periodicity=self._periodicity
         )
         return self._kernel(targets_pos, nbrs_delta)
@@ -338,12 +337,12 @@ class IsoPowerInterpolationKernel(KernelBase):
         coord_source = self._grid.at(level).index2coord(source)
         coord_target = self._grid.at(level + 1).index2coord(target)
 
-        child_dist = _mydist(
+        child_dist = _dist(
             coord_target[..., jnp.newaxis],
             coord_source[..., jnp.newaxis, :],
             self._periodicity,
         )
-        distances = _mydist(
+        distances = _dist(
             coord_source[..., jnp.newaxis],
             coord_source[..., jnp.newaxis, :],
             self._periodicity,
