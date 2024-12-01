@@ -239,7 +239,14 @@ class OpenGridAtLevel(GridAtLevel):
 
 @dataclass()
 class OpenGrid(Grid):
-    """Dense grid with open boundary conditions."""
+    """Dense grid with open boundary conditions.
+
+    At each level the grid has all required indices for a full
+    refinement/convolution even for those that are not split. However, indices
+    used for padding don't have children. The coordinates for the
+    refinement/convolution span the full space including any padding on all
+    previous layers.
+    """
 
     def __init__(self, *, shape0, splits, padding, atLevel=OpenGridAtLevel):
         super().__init__(shape0=shape0, splits=splits, atLevel=atLevel)
@@ -415,6 +422,8 @@ class HEALPixGrid(Grid):
 
 @dataclass()
 class OGridAtLevel(GridAtLevel):
+    """Open (not fleshed out) multi-dimensional product of multiple grids."""
+
     grids: tuple[GridAtLevel]
 
     def __init__(self, *grids):
@@ -578,6 +587,10 @@ class OGrid(Grid):
     @property
     def depth(self):
         return self.grids[0].depth
+
+    @property
+    def ngrids(self):
+        return len(self.grids)
 
     def amend(self, splits):
         splits = (splits,) if isinstance(splits, int) else splits
@@ -895,9 +908,9 @@ class SparseGridAtLevel(FlatGridAtLevel):
 
 @dataclass()
 class SparseGrid(FlatGrid):
-    """Realized :class:`FlatGrid` keeping track of the indices that are actually
-    being modeled at the end of the day. This class is especially convenient for
-    open boundary conditions but works for arbitrarily sparsely resolved grids."""
+    """Same as :class:`FlatGrid` but keeping track of the indices that are actually
+    being modeled. This class is especially convenient for open boundary conditions
+    but works for arbitrarily sparsely resolved grids."""
 
     mapping: tuple[npt.NDArray[np.int_]]
 
