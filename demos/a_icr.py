@@ -47,23 +47,22 @@ class ICRCorrelate(jft.Model):
         self.covariance = covariance
         self.grid = grid
 
-        self.frozen_kernel = ICRefine(grid, covariance, window_size=window_size).freeze(
+        self.kernel = ICRefine(grid, covariance, window_size=window_size)
+        self.frozen_kernel = self.kernel.freeze(
             rtol=rtol, atol=atol, buffer_size=buffer_size, use_distances=use_distances
         )
 
         self.window_size = window_size
         self._name = str(prefix) + "xi"
 
-        domain = {
-            self._name + str(lvl): ShapeWithDtype(self.grid.at(lvl).shape, jnp.float_)
+        shapes = [
+            ShapeWithDtype(self.grid.at(lvl).shape, jnp.float_)
             for lvl in range(grid.depth + 1)
-        }
-        super().__init__(domain=domain, white_init=True)
+        ]
+        super().__init__(domain={self._name: shapes}, white_init=True)
 
     def __call__(self, x):
-        kernel = self.frozen_kernel
-        xs = list(x[self._name + str(lvl)] for lvl in range(self.grid.depth + 1))
-        return kernel(xs)[-1]
+        return self.frozen_kernel(x[self._name])[-1]
 
 
 # %%
