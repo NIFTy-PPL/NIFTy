@@ -81,7 +81,7 @@ class KernelBase:
             _FrozenKernel(self, uindices, invindices, indexmaps)
 
         def get_distance_kernel(index, level):
-            if level == -1:
+            if level is None:
                 raise NotImplementedError
             (out, olvl), ids = self.get_indices(index, level)
             out = out.reshape(index.shape + (-1,))
@@ -162,7 +162,7 @@ class KernelBase:
 
         x = list(jnp.copy(xx) for xx in x) if copy else x
         # Use dummy index for base
-        _, x[0] = apply_at(jnp.array([-1]), -1, x)
+        _, x[0] = apply_at(jnp.array([-1]), None, x)
         for lvl in range(self.grid.depth):
             g = self.grid.at(lvl)
             index = g.refined_indices()
@@ -186,11 +186,11 @@ class _FrozenKernel(KernelBase):
         self._kernels = tuple(
             kernel.get_kernel(ii, ll) for ll, ii in enumerate(uindices)
         )
-        self._base_kernel = kernel.get_kernel(jnp.atleast_1d(-1), -1)
+        self._base_kernel = kernel.get_kernel(jnp.array([-1]), None)
         super().__init__(grid=kernel.grid)
 
     def get_kernel(self, index, level):
-        if level == -1:
+        if level is None:
             return self._base_kernel
 
         map_atlevel = self.indexmaps[level]
@@ -221,7 +221,7 @@ class ICRefine(KernelBase):
         return self._window_size
 
     def get_indices(self, index, level):
-        if level == -1:
+        if level is None:
             grid_at_lvl = self.grid.at(0)
             pixel_indices = np.mgrid[tuple(slice(0, sz) for sz in grid_at_lvl.shape)]
             assert pixel_indices.shape[0] == grid_at_lvl.ndim
@@ -241,8 +241,8 @@ class ICRefine(KernelBase):
     def get_kernel(self, index, level):
         from ..refine.util import sqrtm
 
-        if level == -1:
-            _, ((ids, _),) = self.get_indices(index, -1)
+        if level is None:
+            _, ((ids, _),) = self.get_indices(index, None)
             gc = self.grid.at(0).index2coord(ids)
             assert gc.ndim == 2
             cov = self.covariance_outer(gc, gc)
