@@ -55,7 +55,8 @@ class GridAtLevel:
         # TODO non-dense grid
         return np.mgrid[tuple(slice(0, sh) for sh in self.shape)]
 
-    def resort(self, batched_ar):
+    def resort(self, batched_ar, /):
+        # TODO: Does not reshape really need to be part of the grid?
         if batched_ar.ndim != 2 * self.ndim:
             raise ValueError
         shp = batched_ar.shape
@@ -472,16 +473,10 @@ class OGridAtLevel(GridAtLevel):
             res = jnp.concatenate((res, mg), axis=0)
         return res
 
-    def resort(self, batched_ar):
-        if batched_ar.ndim != 2 * self.ndim:
-            raise ValueError
-        for g in self.grids:
-            if isinstance(g, FlatGrid):
-                raise NotImplementedError  # TODO generalize using grids resort
-        shp = batched_ar.shape
-        if shp[1::2] != tuple(self.parent_splits):
-            raise ValueError
-        return batched_ar.reshape(tuple(a * b for a, b in zip(shp[::2], shp[1::2])))
+    def resort(self, batched_ar, /):
+        if any(isinstance(g, FlatGrid) for g in self.grids):
+            raise NotImplementedError()  # TODO generalize using grids resort
+        return super().resort(batched_ar)
 
     def children(self, index) -> npt.NDArray:
         ndims_off = tuple(np.cumsum(tuple(g.ndim for g in self.grids)))
@@ -707,7 +702,7 @@ class FlatGridAtLevel(GridAtLevel):
         ids = self.gridAtLevel.refined_indices()
         return self.index2flatindex(ids).reshape((1, -1))
 
-    def resort(self, batched_ar):
+    def resort(self, batched_ar, /):
         parent_splits = self.all_splits[-3]
         shape = self.all_shapes[-2]
         if batched_ar.ndim != 2:
