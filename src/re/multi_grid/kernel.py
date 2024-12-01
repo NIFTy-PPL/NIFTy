@@ -42,9 +42,16 @@ Ideas for kernel:
 """
 
 
+_IdxMap = namedtuple("_IdxMap", ("shift", "index2flatindex"))
+
+
 class KernelBase:
+    def __init__(self, grid):
+        self._grid = grid
+
     def __getitem__(self, key):
-        return self.get_kernel(key[0], key[1])
+        k0, k1 = key
+        return self.get_kernel(k0, k1)
 
     @property
     def grid(self):
@@ -162,28 +169,27 @@ class KernelBase:
 
     def apply(self, x, copy=True):
         """Applies the kernel to values on an entire multigrid"""
-        xd, gd = len(x), self.grid.depth
-        if xd != (gd + 1):
-            raise ValueError(f"Input of length {xd} does not match grid depth {gd}")
+        if len(x) != (self.grid.depth + 1):
+            msg = f"input depth {len(x)} does not match grid depth {self.grid.depth}"
+            raise ValueError(msg)
         for lvl, xx in enumerate(x):
-            xs, gs = xx.size, self.grid.at(lvl).size
-            if xs != gs:
-                msg = f"Input at level {lvl} of size {xs} does not match grid of size {gs}"
+            g = self.grid.at(lvl)
+            if xx.size != g.size:
+                msg = f"input at level {lvl} of size {xx.size} does not match grid of size {g.size}"
                 raise ValueError(msg)
 
         x = list(jnp.copy(xx) for xx in x) if copy else x
         # Use dummy index for base
-        _, x[0] = self.apply_at(jnp.atleast_1d(-1), -1, x)
+        _, x[0] = self.apply_at(jnp.array([-1]), -1, x)
         for lvl in range(self.grid.depth):
-            atlevel = self.grid.at(lvl)
-            index = atlevel.refined_indices()
+            g = self.grid.at(lvl)
+            index = g.refined_indices()
             # TODO this selects window for each index individually
             f = self.apply_at
-            ndim = atlevel.ndim
-            for i in range(ndim):
-                f = vmap(f, (1, None, None), ((ndim - i, None), ndim - i - 1))
-            (_, level), res = f(index, lvl, x)
-            x[level] = self.grid.at(level).resort(res)
+            for i in range(g.ndim):
+                f = vmap(f, (1, None, None), ((g.ndim - i, None), g.ndim - i - 1))
+            (_, lvl_nxt), res = f(index, lvl, x)
+            x[lvl_nxt] = self.grid.at(lvl_nxt).resort(res)
         return x
 
 
