@@ -27,26 +27,20 @@ def _dist(x, y, periodicity=None):
     return d
 
 
-"""
-Ideas for kernel:
-- A structure on a multigrid that can apply linear operators with inputs accross
-  the grid
-- A Kernel could be as simple as coarse graining children to a parent; or could
-  be a full ICRefine or MSCrefine
-- Should be fully jax transformable (TODO) to allow seamlessly being used in
-  larger models (e.g. models for variable kernels should be able to output an
-  instance of 'kernel')
-- Unified way of common functions such as `apply_at`, `apply`, `freeze` (see
-  below)
-- Current internal logic: `index` always refers to a parent and operations (such
-  as refine/convolve) are constructed for all children of this parent.
-"""
-
-
 _IdxMap = namedtuple("_IdxMap", ("shift", "index2flatindex"))
 
 
 class KernelBase:
+    """
+    - A structure on a multigrid that can apply linear operators with inputs accross
+      the grid
+    - A Kernel could be as simple as coarse graining children to a parent; or could
+      be a full ICRefine or MSCrefine
+    - Should be fully jax transformable to allow seamlessly being used in larger
+      models (e.g. models for variable kernels should be able to output an instance
+      of 'kernel')
+    """
+
     def __init__(self, grid):
         self._grid = grid
 
