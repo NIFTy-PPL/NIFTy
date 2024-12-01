@@ -258,7 +258,7 @@ class ICRSpectral(Model):
         scale = self.scale(x) if isinstance(self.scale, Model) else self.scale
         offset = self.offset(x) if isinstance(self.offset, Model) else self.offset
         xs = list(x[self.xikey + str(lvl)] for lvl in range(self.grid.depth + 1))
-        res = kernel.apply(xs)[-1]
+        res = kernel(xs)[-1]
         res -= jnp.mean(res)
         res /= jnp.std(res)
         res *= scale
