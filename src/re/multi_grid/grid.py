@@ -491,7 +491,7 @@ class FlatGridAtLevel(GridAtLevel):
     all_splits: tuple[npt.NDArray[np.int_]]
     ordering: str
 
-    def __init__(self, grid_at_level, all_shapes, all_splits, ordering="serial"):
+    def __init__(self, grid_at_level, *, all_shapes, all_splits, ordering="serial"):
         if not isinstance(grid_at_level, GridAtLevel):
             raise TypeError(f"Grid {grid_at_level.__name__} of invalid type")
         self.grid_at_level = grid_at_level
