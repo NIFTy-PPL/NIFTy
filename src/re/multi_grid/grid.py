@@ -772,6 +772,7 @@ class SparseGridAtLevel(FlatGridAtLevel):
         return self.grid_at_level.index2volume(index, **kwargs)
 
     def to_flat_grid(self):
+        # FIXME @ph-frank incompatible with the current `FlatGridAtLevel` impl
         return FlatGridAtLevel(
             self.grid_at_level,
             self.shape0,
@@ -832,7 +833,7 @@ class SparseGrid(FlatGrid):
         children_mapping = None if level == self.depth else self.mapping[level + 1]
         return self.atLevel(
             grid_at_level,
-            # TODO pass `all_shapes`,
+            # FIXME @ph-frank pass `all_shapes`,
             self.grid.splits[: (level + 1)] + ((None,) if level == self.depth else ()),
             self.mapping[level],
             ordering=self.ordering,
