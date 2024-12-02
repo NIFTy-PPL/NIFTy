@@ -299,18 +299,28 @@ class HPLogRGridAtLevel(MGridAtLevel):
 
 
 def HPLogRGrid(
-    min_shape: Tuple[int, int],
+    min_shape: Optional[Tuple[int, int]] = None,
+    *,
+    nside: Optional[int] = None,
+    r_min_shape: Optional[int] = None,
     r_min,
     r_max,
+    r_window_size,
     nside0=16,
     atLevel=HPLogRGridAtLevel,
 ) -> MGrid:
-    nside, min_r_size = min_shape
+    if r_min_shape is None and nside is None:
+        hp_size, r_min_shape = min_shape
+        nside = (hp_size / 12) ** 0.5
     depth = np.log2(nside / nside0)
     assert depth == int(depth)
     depth = int(depth)
     grid_hp = HEALPixGrid(nside0=nside0, depth=depth)
     grid_r = LogarithmicGrid(
-        min_shape=min_r_size, r_min=r_min, r_max=r_max, depth=depth
+        min_shape=r_min_shape,
+        r_min=r_min,
+        r_max=r_max,
+        window_size=r_window_size,
+        depth=depth,
     )
     return MGrid(grid_hp, grid_r, atLevel=atLevel)
