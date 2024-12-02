@@ -80,7 +80,7 @@ class KernelBase:
             )
             return iout, res.reshape(iout[0].shape[1:])
 
-        x = list(jnp.copy(xx) for xx in x) if copy else x
+        x = list(x) if copy else x
         # Use dummy index for base
         _, x[0] = apply_at(jnp.array([-1]), None, x)
         for lvl in range(self.grid.depth):
@@ -239,7 +239,6 @@ class ICRefine(KernelBase):
         if level is None:
             _, ((ids, _),) = self.get_output_input_indices(index, None)
             gc = self.grid.at(0).index2coord(ids)
-            assert gc.ndim == 2
             cov = self.covariance_outer(gc, gc)
             assert cov.shape == (gc.shape[1],) * 2
             return (sqrtm(cov),)
