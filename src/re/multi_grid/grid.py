@@ -234,7 +234,8 @@ class OpenGridAtLevel(GridAtLevel):
         return index.astype(dtype)
 
     def index2volume(self, index):
-        return np.array(1.0 / self.size)[(np.newaxis,) * index.ndim]
+        sz = np.prod(self.shape + 2 * self.shifts)
+        return np.array(1.0 / sz)[(np.newaxis,) * index.ndim]
 
 
 @dataclass()
