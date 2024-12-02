@@ -176,6 +176,7 @@ class OpenGridAtLevel(GridAtLevel):
         parent_padding=None,
         shifts=None,
         level=None,
+        all_splits=None,
     ):
         super().__init__(shape=shape, splits=splits, parent_splits=parent_splits)
         if padding is not None:
@@ -187,7 +188,7 @@ class OpenGridAtLevel(GridAtLevel):
         self.padding = padding
         self.parent_padding = parent_padding
         self.shifts = shifts
-        del level  # not used here but might be used by child classes
+        del level, all_splits  # not used here but used by child classes
 
     def refined_indices(self):
         if self.splits is None:
@@ -291,6 +292,7 @@ class OpenGrid(Grid):
             parent_padding=self.padding[level - 1] if level >= 1 else None,
             shifts=shifts,
             level=level,
+            all_splits=self.splits[: level + 1],
         )
 
 
