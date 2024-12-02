@@ -146,14 +146,19 @@ class CartesianGridAtLevel(OpenGridAtLevel):
         splits=None,
         parent_splits=None,
         *,
-        distances0=None,
-        all_splits=None,
+        shifts0,
+        distances0,
+        all_splits,
         level=None,
+        shifts=None,
         **kwargs,
     ):
-        super().__init__(shape, splits=splits, parent_splits=parent_splits, **kwargs)
         assert level <= len(all_splits)
+        shifts = shifts - shifts0 * np.prod(all_splits[:level], axis=0, initial=1.0)
         self.distances = distances0 / np.prod(all_splits[:level], axis=0, initial=1.0)
+        super().__init__(
+            shape, splits=splits, parent_splits=parent_splits, shifts=shifts, **kwargs
+        )
 
     def index2coord(self, index):
         bc = (slice(None),) + (np.newaxis,) * (index.ndim - 1)
@@ -213,9 +218,11 @@ class CartesianGrid(OpenGrid):
             + 1
         ).astype(np.int_)
         # Exact final shape assuming the above conservative `shape0`
-        shape = shape0
+        shape, shifts = shape0, np.zeros_like(shape0, dtype=float)
         for si, pd in zip(splits, padding):
             shape = si * (shape - 2 * pd)
+            shifts = si * (shifts + pd)
+        self.shifts0 = shifts / np.prod(splits, axis=0, initial=1)
         distances = 1.0 / shape if distances is None else distances
         self.distances0 = np.atleast_1d(distances) * np.prod(splits, axis=0, initial=1)
         super().__init__(
@@ -223,7 +230,10 @@ class CartesianGrid(OpenGrid):
             splits=splits,
             padding=padding,
             atLevel=partial(
-                CartesianGridAtLevel, distances0=self.distances0, all_splits=splits
+                CartesianGridAtLevel,
+                shifts0=self.shifts0,
+                distances0=self.distances0,
+                all_splits=splits,
             ),
         )
 
