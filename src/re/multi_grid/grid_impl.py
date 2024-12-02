@@ -1,7 +1,9 @@
-import numpy as np
-import jax.numpy as jnp
 from functools import partial
-from .indexing import OpenGrid, OpenGridAtLevel, MGrid, MGridAtLevel, HEALPixGrid
+
+import jax.numpy as jnp
+import numpy as np
+
+from .grid import HEALPixGrid, MGrid, MGridAtLevel, OpenGrid, OpenGridAtLevel
 
 
 def logaritmic_grid(depth, rshape0, rlim):
