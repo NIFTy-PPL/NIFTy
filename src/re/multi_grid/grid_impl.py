@@ -139,6 +139,92 @@ class HEALPixGrid(Grid):
         return self.__class__(nside0=self.nside0, splits=self.splits + splits)
 
 
+class CartesianGridAtLevel(OpenGridAtLevel):
+    def __init__(
+        self,
+        shape,
+        splits=None,
+        parent_splits=None,
+        *,
+        distances0=None,
+        all_splits=None,
+        level=None,
+        **kwargs,
+    ):
+        super().__init__(shape, splits=splits, parent_splits=parent_splits, **kwargs)
+        assert level <= len(all_splits)
+        self.distances = distances0 / np.prod(all_splits[:level], axis=0, initial=1.0)
+
+    def index2coord(self, index):
+        bc = (slice(None),) + (np.newaxis,) * (index.ndim - 1)
+        coord = super().index2coord(index)
+        return coord * ((self.shape + 2 * self.shifts) * self.distances)[bc]
+
+    def coord2index(self, coord, dtype=np.uint64):
+        bc = (slice(None),) + (np.newaxis,) * (coord.ndim - 1)
+        coord = coord / ((self.shape + 2 * self.shifts) * self.distances)[bc]
+        return super().coord2index(self, coord, dtype=dtype)
+
+    def index2volume(self, index):
+        vol = super().index2volume(index)
+        return vol * np.prod((self.shape + 2 * self.shifts) * self.distances)
+
+
+class CartesianGrid(OpenGrid):
+    def __init__(
+        self,
+        *,
+        min_shape,
+        window_size,
+        distances=None,
+        splits=2,
+        depth=None,
+        desired_shape0=128,
+    ):
+        """Create a regular Cartesian grid with a given minimum shape and a default
+        volume of unity at the final depth.
+
+        The initialization automatically determines a suitable depth (if left
+        unspecified) and padding (using the `window_size`). Amending the grid
+        will increase the resolution while keeping the previous grids including
+        their pixel distances the same.
+        """
+        if np.ndim(splits) != 2:
+            if depth is None:
+                desired_shape0 = np.broadcast_to(desired_shape0, np.shape(min_shape))
+                splits = np.broadcast_to(splits, np.shape(min_shape))
+                depth = max(
+                    np.emath.logn(splits, min_shape)
+                    - np.emath.logn(splits, desired_shape0)
+                )
+                depth = max(int(np.ceil(depth)), 0)
+            splits = np.broadcast_to(splits, (depth,) + np.shape(min_shape))
+        padding = np.ceil((window_size - 1) // 2).astype(np.int_)
+        padding = np.broadcast_to(padding, (depth,) + np.shape(min_shape))
+
+        # Conservative estimate of the shape at zero depth
+        shape0 = np.ceil(
+            np.array(min_shape) / np.prod(splits, axis=0, initial=1)
+            + (2 + 2 / np.min(splits, axis=0, initial=1))
+            * np.max(padding, axis=0, initial=0)
+            + 1
+        ).astype(np.int_)
+        # Exact final shape assuming the above conservative `shape0`
+        shape = shape0
+        for si, pd in zip(splits, padding):
+            shape = si * (shape - 2 * pd)
+        distances = 1.0 / shape if distances is None else distances
+        self.distances0 = np.atleast_1d(distances) * np.prod(splits, axis=0, initial=1)
+        super().__init__(
+            shape0=shape0,
+            splits=splits,
+            padding=padding,
+            atLevel=partial(
+                CartesianGridAtLevel, distances0=self.distances0, all_splits=splits
+            ),
+        )
+
+
 def logaritmic_grid(depth, rshape0, rlim):
     gr_r = OpenGrid(shape0=(rshape0,), splits=(2,) * depth, padding=(1,) * depth)
     grd = gr_r.at(gr_r.depth)
