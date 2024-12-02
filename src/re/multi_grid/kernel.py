@@ -111,7 +111,7 @@ class KernelBase:
         if uindices is not None and invindices is not None and indexmaps is not None:
             _FrozenKernel(self, uindices, invindices, indexmaps)
 
-        def get_distance_matrix(index, level):
+        def get_distance_matrices(index, level):
             if level is None:
                 raise NotImplementedError
             (out, olvl), ids = self.get_output_input_indices(index, level)
@@ -132,7 +132,7 @@ class KernelBase:
             gridf_at = gridf.at(lvl)
 
             def get_matrices(idx):
-                f = get_distance_matrix if use_distances else self.get_matrices
+                f = get_distance_matrices if use_distances else self.get_matrices
                 ker = f(gridf_at.flatindex2index(jnp.atleast_1d(idx)), lvl)
                 ker = jnp.concatenate(tuple(kk.ravel() for kk in ker))
                 return ker
