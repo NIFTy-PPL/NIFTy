@@ -9,7 +9,7 @@ from scipy.special import j0, sici
 from ..model import Model
 from ..prior import LogNormalPrior, NormalPrior
 from ..tree_math import ShapeWithDtype, zeros_like
-from .indexing import Grid
+from .grid import Grid
 from .kernel import ICRefine, _FrozenKernel
 from .correlated_field_util import j1
 

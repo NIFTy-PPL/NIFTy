@@ -16,7 +16,7 @@ from jax.lax import scan
 
 from ..num import amend_unique_
 from ..refine.util import refinement_matrices
-from .indexing import FlatGrid, Grid
+from .grid import FlatGrid, Grid
 
 
 def _dist(x, y, periodicity=None):
