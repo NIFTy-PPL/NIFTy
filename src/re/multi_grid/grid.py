@@ -679,7 +679,7 @@ class SparseGridAtLevel(FlatGridAtLevel):
 
     def __init__(
         self,
-        gridAtLevel,
+        grid_at_level,
         all_shapes,
         all_splits,
         mapping,
@@ -687,13 +687,13 @@ class SparseGridAtLevel(FlatGridAtLevel):
         parent_mapping=None,
         children_mapping=None,
     ):
-        if not isinstance(gridAtLevel, GridAtLevel):
-            raise TypeError(f"Grid {gridAtLevel.__name__} of invalid type")
+        if not isinstance(grid_at_level, GridAtLevel):
+            raise TypeError(f"Grid {grid_at_level.__name__} of invalid type")
         self.mapping = mapping
         self.parent_mapping = parent_mapping
         self.children_mapping = children_mapping
         super().__init__(
-            grid_at_level=gridAtLevel,
+            grid_at_level=grid_at_level,
             all_shapes=all_shapes,
             all_splits=all_splits,
             ordering=ordering,
@@ -768,7 +768,7 @@ class SparseGridAtLevel(FlatGridAtLevel):
         index = self.flatindex2index(index)
         return self.grid_at_level.index2volume(index, **kwargs)
 
-    def toFlatGridAtLevel(self):
+    def to_flat_grid(self):
         return FlatGridAtLevel(
             self.grid_at_level,
             self.shape0,
