@@ -69,7 +69,7 @@ class ICRCorrelate(jft.Model):
 shape = (32, 32)
 window_size = 3
 
-grid = gi.SimpleOpenGrid(min_shape=shape, window_size=window_size, desired_shape0=6)
+grid = gi.SimpleOpenGrid(min_shape=shape, window_size=window_size, desired_size0=6)
 cf = ICRCorrelate(
     grid,
     partial(matern_kernel, scale=1.0, cutoff=1.0, dof=0.5),
