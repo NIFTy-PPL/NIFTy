@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from functools import partial
-from typing import Iterable, Optional
+from typing import Iterable, Optional, Tuple
 
 import jax.numpy as jnp
 import numpy as np
@@ -139,7 +139,7 @@ class HEALPixGrid(Grid):
         return self.__class__(nside0=self.nside0, splits=self.splits + splits)
 
 
-class CartesianGridAtLevel(OpenGridAtLevel):
+class SimpleOpenGridAtLevel(OpenGridAtLevel):
     def __init__(
         self,
         shape,
@@ -175,144 +175,140 @@ class CartesianGridAtLevel(OpenGridAtLevel):
         return vol * np.prod((self.shape + 2 * self.shifts) * self.distances)
 
 
-class CartesianGrid(OpenGrid):
-    def __init__(
-        self,
-        *,
-        min_shape,
-        window_size,
-        distances=None,
-        splits=2,
-        depth=None,
-        desired_shape0=128,
-    ):
-        """Create a regular Cartesian grid with a given minimum shape and a default
-        volume of unity at the final depth.
+def SimpleOpenGrid(
+    *,
+    min_shape,
+    window_size,
+    splits=2,
+    distances=None,
+    depth=None,
+    desired_shape0=128,  # TODO: make size0
+    atLevel=SimpleOpenGridAtLevel,
+) -> OpenGrid:
+    """Create a regular Cartesian grid with a given minimum shape and a default
+    volume of unity at the final depth.
 
-        The initialization automatically determines a suitable depth and padding
-        (using the `window_size`) if they are unspecified.
+    The initialization automatically determines a suitable depth and padding
+    (using the `window_size`).
 
-        Amending the grid will increase the resolution while keeping the previous
-        grids including their pixel distances the same. Due to padding, the amended
-        grids will live on slightly smaller volume than the previous grids and will
-        not anymore start exactly at zero.
-        """
-        if np.ndim(splits) != 2:
-            if depth is None:
-                desired_shape0 = np.broadcast_to(desired_shape0, np.shape(min_shape))
-                splits = np.broadcast_to(splits, np.shape(min_shape))
-                depth = max(
-                    np.emath.logn(splits, min_shape)
-                    - np.emath.logn(splits, desired_shape0)
-                )
-                depth = max(int(np.ceil(depth)), 0)
-            splits = np.broadcast_to(splits, (depth,) + np.shape(min_shape))
-        padding = np.ceil((window_size - 1) // 2).astype(np.int_)
-        padding = np.broadcast_to(padding, (depth,) + np.shape(min_shape))
+    Amending the grid will increase the resolution while keeping the previous
+    grids including their pixel distances the same. Due to padding, the amended
+    grids will live on a slightly smaller volume than the previous grids and won't
+    start exactly at zero.
+    """
+    min_shape = np.atleast_1d(min_shape)
+    if np.ndim(splits) != 2:
+        if depth is None:
+            desired_shape0 = np.broadcast_to(desired_shape0, min_shape.shape)
+            splits = np.broadcast_to(splits, min_shape.shape)
+            depth = max(
+                np.emath.logn(splits, min_shape) - np.emath.logn(splits, desired_shape0)
+            )
+            depth = max(int(np.ceil(depth)), 0)
+        splits = np.broadcast_to(splits, (depth,) + min_shape.shape)
+    padding = np.ceil((window_size - 1) // 2).astype(np.int_)
+    padding = np.broadcast_to(padding, (depth,) + min_shape.shape)
 
-        # Conservative estimate of the shape at zero depth
-        shape0 = np.ceil(
-            np.array(min_shape) / np.prod(splits, axis=0, initial=1)
-            + (2 + 2 / np.min(splits, axis=0, initial=1))
-            * np.max(padding, axis=0, initial=0)
-            + 1
-        ).astype(np.int_)
-        # Exact final shape assuming the above conservative `shape0`
-        shape, shifts = shape0, np.zeros_like(shape0, dtype=float)
-        for si, pd in zip(splits, padding):
-            shape = si * (shape - 2 * pd)
-            shifts = si * (shifts + pd)
-        self.shifts0 = shifts / np.prod(splits, axis=0, initial=1)
-        distances = 1.0 / shape if distances is None else distances
-        self.distances0 = np.atleast_1d(distances) * np.prod(splits, axis=0, initial=1)
-        super().__init__(
-            shape0=shape0,
-            splits=splits,
-            padding=padding,
-            atLevel=partial(
-                CartesianGridAtLevel,
-                shifts0=self.shifts0,
-                distances0=self.distances0,
-                all_splits=splits,
-            ),
-        )
-
-    def amend(self, splits, padding):
-        splits = (splits,) if isinstance(splits, int) else splits
-        splits = tuple(np.broadcast_to(s, self.shape0.shape) for s in splits)
-        padding = (padding,) if isinstance(padding, int) else padding
-        padding = tuple(np.broadcast_to(p, self.shape0.shape) for p in padding)
-        return self.__class__(
-            shape0=self.shape0,
-            splits=self.splits + splits,
-            padding=self.padding + padding,
-            atLevel=partial(self.atLevel, all_splits=self.splits + splits),
-        )
-
-
-def logaritmic_grid(depth, rshape0, rlim):
-    gr_r = OpenGrid(shape0=(rshape0,), splits=(2,) * depth, padding=(1,) * depth)
-    grd = gr_r.at(gr_r.depth)
-    Nr = grd.size
-    ls = grd.index2coord(np.arange(grd.size))
-    print("Log-grid size:", Nr)
-
-    def l_to_r(l, lmi, lma, rmi, rma):
-        dl = lma - lmi
-        lp = (l - lmi) / dl
-        b = np.log(rmi)
-        a = np.log(rma) - b
-        return jnp.exp(a * lp + b)
-
-    def r_to_l(r, lmi, lma, rmi, rma):
-        dl = lma - lmi
-        b = np.log(rmi)
-        a = np.log(rma) - b
-
-        lp = (jnp.log(r) - b) / a
-        return lp * dl + lmi
-
-    f_rl = partial(l_to_r, lmi=ls[0], lma=ls[-1], rmi=rlim[0], rma=rlim[1])
-    f_lr = partial(r_to_l, lmi=ls[0], lma=ls[-1], rmi=rlim[0], rma=rlim[1])
-
-    assert np.allclose(ls, f_lr(f_rl(ls)))
-    assert np.allclose(rlim[0], f_rl(ls[0]))
-    assert np.allclose(rlim[1], f_rl(ls[-1]))
-
-    class MyLGrid(OpenGridAtLevel):
-        def coord2index(self, coord):
-            coord = f_lr(coord)
-            return super().coord2index(coord)
-
-        def index2coord(self, index):
-            coord = super().index2coord(index)
-            return f_rl(coord)
-
-        def index2volume(self, index):
-            coords = super().index2coord(index + jnp.array([-0.5, 0.5])[:, None])
-            return jnp.prod(coords[1] - coords[0], axis=0)
-
+    # Conservative estimate of the shape at zero depth
+    shape0 = np.ceil(
+        min_shape / np.prod(splits, axis=0, initial=1)
+        + (2 + 2 / np.min(splits, axis=0, initial=1))
+        * np.max(padding, axis=0, initial=0)
+        + 1
+    ).astype(np.int_)
+    # Exact final shape assuming the above conservative `shape0`
+    shape, shifts = shape0, np.zeros_like(shape0, dtype=float)
+    for si, pd in zip(splits, padding):
+        shape = si * (shape - 2 * pd)
+        shifts = si * (shifts + pd)
+    shifts0 = shifts / np.prod(splits, axis=0, initial=1)
+    distances = 1.0 / shape if distances is None else distances
+    distances0 = np.atleast_1d(distances) * np.prod(splits, axis=0, initial=1)
     return OpenGrid(
-        shape0=gr_r.shape0, splits=gr_r.splits, padding=gr_r.padding, atLevel=MyLGrid
+        shape0=shape0,
+        splits=splits,
+        padding=padding,
+        atLevel=partial(atLevel, shifts0=shifts0, distances0=distances0),
     )
 
 
-def get_hplogr_grid(depth, rshape0, nside0, rlim):
-    gr_r = logaritmic_grid(depth, rshape0, rlim)
-    gr_hp = HEALPixGrid(nside0=nside0, depth=depth)
-    print("HP Nside:", gr_hp.at(gr_hp.depth).nside)
+class LogarithmicGridAtLevel(SimpleOpenGridAtLevel):
+    def __init__(self, *args, coord_offset, coord_scale, **kwargs):
+        # NOTE, technically `coord_offset` and `coord_scale` are redundant with
+        # `shifts` and `distances`, however, for ease of use, we first let them
+        # scale the grid to (0, 1).
+        self.coord_offset = coord_offset
+        self.coord_scale = coord_scale
+        super().__init__(*args, **kwargs)
 
-    class MyMGrid(MGridAtLevel):
-        def index2coord(self, index, **kwargs):
-            coords = super().index2coord(index, **kwargs)
-            return coords[:1] * coords[1:]
+    @property
+    def r_min(self):
+        return self.index2coord(np.array([-0.5]))
 
-        def coord2index(self, coord, **kwargs):
-            assert coord.shape[0] == 3
-            r = jnp.linalg.norm(coord, axis=0)[jnp.newaxis, ...]
-            coord = jnp.concatenate((r, coord / r), axis=0)
-            return super().coord2index(coord, **kwargs)
+    @property
+    def r_max(self):
+        return self.index2coord(np.array([self.shape[0] - 0.5]))
 
-    gr = MGrid(gr_r, gr_hp, atLevel=MyMGrid)
-    print("Base size:", gr.at(0).size)
-    return gr
+    def index2coord(self, index):
+        coord = super().index2coord(index)
+        return np.exp(self.coord_scale * coord + self.coord_offset)
+
+    def coord2index(self, coord, dtype=np.uint64):
+        coord = (np.log(coord) - self.coord_offset) / self.coord_scale
+        return super().coord2index(self, coord, dtype=dtype)
+
+    def index2volume(self, index):
+        a = (slice(None),) + (np.newaxis,) * index.ndim
+        coords = super().index2coord(index + jnp.array([-0.5, 0.5])[a])
+        return jnp.prod(coords[1] - coords[0], axis=0)
+
+
+def LogarithmicGrid(
+    *,
+    r_min: float,
+    r_max: float,
+    distances=None,
+    **kwargs,
+) -> OpenGrid:
+    if distances is not None:
+        raise ValueError("`distances` are incompatible with a logarithmic grid")
+    if r_min < 0.0 or r_max < r_min:
+        raise ValueError(f"invalid r_min {r_min!r} or r_max {r_max!r}")
+    coord_offset = np.log(r_min)
+    coord_scale = np.log(r_max) - coord_offset
+    return SimpleOpenGrid(
+        **kwargs,
+        atLevel=partial(
+            LogarithmicGridAtLevel, coord_offset=coord_offset, coord_scale=coord_scale
+        ),
+    )
+
+
+class HPLogRGridAtLevel(MGridAtLevel):
+    def index2coord(self, index, **kwargs):
+        coords = super().index2coord(index, **kwargs)
+        return coords[:1] * coords[1:]
+
+    def coord2index(self, coord, **kwargs):
+        assert coord.shape[0] == 3
+        r = jnp.linalg.norm(coord, axis=0)[jnp.newaxis, ...]
+        coord = jnp.concatenate((r, coord / r), axis=0)
+        return super().coord2index(coord, **kwargs)
+
+
+def HPLogRGrid(
+    min_shape: Tuple[int, int],
+    r_min,
+    r_max,
+    nside0=16,
+    atLevel=HPLogRGridAtLevel,
+) -> MGrid:
+    nside, min_r_size = min_shape
+    depth = np.log2(nside / nside0)
+    assert depth == int(depth)
+    depth = int(depth)
+    grid_hp = HEALPixGrid(nside0=nside0, depth=depth)
+    grid_r = LogarithmicGrid(
+        min_shape=min_r_size, r_min=r_min, r_max=r_max, depth=depth
+    )
+    return MGrid(grid_hp, grid_r, atLevel=atLevel)
