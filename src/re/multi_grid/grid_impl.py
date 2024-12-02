@@ -184,10 +184,13 @@ class CartesianGrid(OpenGrid):
         """Create a regular Cartesian grid with a given minimum shape and a default
         volume of unity at the final depth.
 
-        The initialization automatically determines a suitable depth (if left
-        unspecified) and padding (using the `window_size`). Amending the grid
-        will increase the resolution while keeping the previous grids including
-        their pixel distances the same.
+        The initialization automatically determines a suitable depth and padding
+        (using the `window_size`) if they are unspecified.
+
+        Amending the grid will increase the resolution while keeping the previous
+        grids including their pixel distances the same. Due to padding, the amended
+        grids will live on slightly smaller volume than the previous grids and will
+        not anymore start exactly at zero.
         """
         if np.ndim(splits) != 2:
             if depth is None:
@@ -222,6 +225,18 @@ class CartesianGrid(OpenGrid):
             atLevel=partial(
                 CartesianGridAtLevel, distances0=self.distances0, all_splits=splits
             ),
+        )
+
+    def amend(self, splits, padding):
+        splits = (splits,) if isinstance(splits, int) else splits
+        splits = tuple(np.broadcast_to(s, self.shape0.shape) for s in splits)
+        padding = (padding,) if isinstance(padding, int) else padding
+        padding = tuple(np.broadcast_to(p, self.shape0.shape) for p in padding)
+        return self.__class__(
+            shape0=self.shape0,
+            splits=self.splits + splits,
+            padding=self.padding + padding,
+            atLevel=partial(self.atLevel, all_splits=self.splits + splits),
         )
 
 
