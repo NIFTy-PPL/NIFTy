@@ -7,7 +7,8 @@ import jax.numpy as jnp
 import matplotlib.pyplot as plt
 
 import nifty8.re as jft
-from nifty8.re.multi_grid.indexing import Grid, OpenGrid
+from nifty8.re.multi_grid.grid import Grid
+from nifty8.re.multi_grid import grid_impl as gi
 from nifty8.re.multi_grid.kernel import ICRefine, _FrozenKernel
 from nifty8.re.tree_math import ShapeWithDtype
 
@@ -65,16 +66,10 @@ class ICRCorrelate(jft.Model):
         return self.frozen_kernel(x[self._name])[-1]
 
 
-# %%
-depth = 2
 shape = (32, 32)
-splits = 2
-
 window_size = 3
-padding = window_size // 2
-shape0 = tuple(int(s / splits**depth + (2 + 2 / splits) * padding) + 1 for s in shape)
-grid = OpenGrid(shape0=shape0, splits=(splits,) * depth, padding=(padding,) * depth)
 
+grid = gi.CartesianGrid(min_shape=shape, window_size=window_size, desired_shape0=6)
 cf = ICRCorrelate(
     grid,
     partial(matern_kernel, scale=1.0, cutoff=1.0, dof=0.5),
