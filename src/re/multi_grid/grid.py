@@ -56,12 +56,11 @@ class GridAtLevel:
         return np.mgrid[tuple(slice(0, sh) for sh in self.shape)]
 
     def resort(self, batched_ar, /):
-        # TODO: Does not reshape really need to be part of the grid?
         if batched_ar.ndim != 2 * self.ndim:
             raise ValueError
-        shp = batched_ar.shape
-        if shp[1::2] != tuple(self.parent_splits):
+        if batched_ar.shape[1::2] != tuple(self.parent_splits):
             raise ValueError
+        shp = batched_ar.shape
         return batched_ar.reshape(tuple(a * b for a, b in zip(shp[::2], shp[1::2])))
 
     def children(self, index):
