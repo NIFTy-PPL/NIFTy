@@ -49,6 +49,10 @@ class GridAtLevel:
     def ndim(self):
         return len(self.shape)
 
+    @property
+    def raw_grids(self):
+        return (self,)
+
     def refined_indices(self):
         if self.splits is None:
             raise IndexError("this level has no children")
@@ -329,6 +333,10 @@ class MGridAtLevel(GridAtLevel):
     def ngrids(self):
         return len(self.grids)
 
+    @property
+    def raw_grids(self):
+        return reduce(operator.add, (g.raw_grids for g in self.grids))
+
     def refined_indices(self):
         mgrids = tuple(gg.refined_indices() for gg in self.grids)
         res = mgrids[0]
@@ -510,6 +518,10 @@ class FlatGridAtLevel(GridAtLevel):
             splits=None,
             parent_splits=None,
         )
+
+    @property
+    def raw_grids(self):
+        return self.grid_at_level.raw_grids
 
     def _weights_serial(self, levelshift):
         if levelshift not in (-1, 0, 1):

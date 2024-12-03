@@ -38,7 +38,7 @@ class ICRCorrelate(jft.Model):
         grid: Grid,
         covariance: callable,
         *,
-        window_size,
+        window_size=None,
         rtol=1e-5,
         atol=1e-5,
         buffer_size=1000,
@@ -53,9 +53,7 @@ class ICRCorrelate(jft.Model):
             rtol=rtol, atol=atol, buffer_size=buffer_size, use_distances=use_distances
         )
 
-        self.window_size = window_size
         self._name = str(prefix) + "xi"
-
         shapes = [
             ShapeWithDtype(self.grid.at(lvl).shape, jnp.float_)
             for lvl in range(grid.depth + 1)
@@ -67,14 +65,9 @@ class ICRCorrelate(jft.Model):
 
 
 shape = (32, 32)
-window_size = 3
 
-grid = gi.SimpleOpenGrid(min_shape=shape, window_size=window_size, desired_size0=6)
-cf = ICRCorrelate(
-    grid,
-    partial(matern_kernel, scale=1.0, cutoff=1.0, dof=0.5),
-    window_size=window_size,
-)
+grid = gi.SimpleOpenGrid(min_shape=shape, desired_size0=6)
+cf = ICRCorrelate(grid, partial(matern_kernel, scale=1.0, cutoff=1.0, dof=0.5))
 
 # %%
 res = cf(cf.init(jax.random.PRNGKey(42)))
