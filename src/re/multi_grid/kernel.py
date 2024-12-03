@@ -30,7 +30,7 @@ def _dist(x, y, periodicity=None):
 _IdxMap = namedtuple("_IdxMap", ("shift", "index2flatindex"))
 
 
-class KernelBase:
+class Kernel:
     """
     - A structure on a multigrid that can apply linear operators with inputs accross
       the grid
@@ -167,8 +167,8 @@ class KernelBase:
         return OptimizedKernel(self, uindices, invindices, indexmaps)
 
 
-class OptimizedKernel(KernelBase):
-    def __init__(self, kernel: KernelBase, uindices, invindices, indexmaps):
+class OptimizedKernel(Kernel):
+    def __init__(self, kernel: Kernel, uindices, invindices, indexmaps):
         self._get_output_input_indices = kernel.get_output_input_indices
         self.uindices = uindices
         self.invindices = invindices
@@ -199,7 +199,7 @@ class OptimizedKernel(KernelBase):
         return tuple(kk[index] for kk in self._kernels[level])
 
 
-class ICRefine(KernelBase):
+class ICRKernel(Kernel):
     def __init__(self, grid, covariance, *, window_size):
         self._covariance_elem = covariance
         k = self._covariance_elem
@@ -261,7 +261,7 @@ class ICRefine(KernelBase):
         return f(idc, idf)
 
 
-class FixedKernelFunctionBatch(KernelBase):
+class FixedKernelFunctionBatch(Kernel):
     def __init__(
         self, grid: Grid, window_size: Iterable[int], kernel: Callable, periodicity=None
     ):
@@ -304,7 +304,7 @@ class FixedKernelFunctionBatch(KernelBase):
         return (self.evaluate_kernel(targets, nbrs, level + 1),)
 
 
-class IsoPowerInterpolationKernel(KernelBase):
+class IsoPowerInterpolationKernel(Kernel):
     def __init__(
         self, grid: Grid, window_size: Iterable[int], scale=None, p=2, periodicity=None
     ):
@@ -368,7 +368,7 @@ class IsoPowerInterpolationKernel(KernelBase):
         return (wgts @ pre[sl] + post[sl],)
 
 
-class CombineKernel(KernelBase):
+class CombineKernel(Kernel):
     def get_output_input_indices(self, index, level):
         if level == self.grid.depth:
             raise ValueError("Finest level has no children to combine")
@@ -384,12 +384,12 @@ class CombineKernel(KernelBase):
         return (jnp.ones(children.shape[1:-1] + (1, children.shape[-1])),)
 
 
-class MSCRefine(KernelBase):
+class MSCKernel(Kernel):
     def __init__(
         self,
-        interpolation: KernelBase,
+        interpolation: Kernel,
         convolution: FixedKernelFunctionBatch,
-        combine: KernelBase,
+        combine: Kernel,
     ):
         self._interpolation = interpolation
         self._convolution = convolution
