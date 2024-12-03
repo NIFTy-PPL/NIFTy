@@ -227,9 +227,6 @@ class ICRefine(KernelBase):
             return (pixel_indices, 0), (
                 (pixel_indices.reshape(grid_at_lvl.ndim, -1), 0),
             )
-        if (level >= self.grid.depth) or (level < -1):
-            mg = f"Level {level} out of bounds for grid deph {self.grid.depth}"
-            raise ValueError(mg)
         g = self.grid.at(level)
         assert index.shape[0] == g.ndim
         gc = g.neighborhood(index, self.window_size[level]).reshape(index.shape + (-1,))
