@@ -8,11 +8,11 @@ from collections import namedtuple
 from functools import partial, reduce
 from typing import Callable, Iterable, Tuple
 
-from numpy import typing as npt
 import jax.numpy as jnp
 import numpy as np
 from jax import eval_shape, jit, vmap
 from jax.lax import scan
+from numpy import typing as npt
 
 from ..num import amend_unique_
 from ..refine.util import refinement_matrices
@@ -28,6 +28,42 @@ def _dist(x, y, periodicity=None):
 
 
 _IdxMap = namedtuple("_IdxMap", ("shift", "index2flatindex"))
+
+
+def apply_kernel(x, *, kernel):
+    """Applies the kernel to values on an entire multigrid"""
+    if len(x) != (kernel.grid.depth + 1):
+        msg = f"input depth {len(x)} does not match grid depth {kernel.grid.depth}"
+        raise ValueError(msg)
+    for lvl, xx in enumerate(x):
+        g = kernel.grid.at(lvl)
+        if xx.size != g.size:
+            msg = f"input at level {lvl} of size {xx.size} does not match grid of size {g.size}"
+            raise ValueError(msg)
+
+    def apply_at(index, level, x):
+        assert index.ndim == 1
+        iout, iin = kernel.get_output_input_indices(index, level)
+        kernels = kernel.get_matrices(index, level)
+        assert len(iin) == len(kernels)
+        res = reduce(
+            operator.add,
+            (kk @ x[x_lvl][tuple(idx)] for kk, (idx, x_lvl) in zip(kernels, iin)),
+        )
+        return iout, res.reshape(iout[0].shape[1:])
+
+    x = list(x)
+    _, x[0] = apply_at(jnp.array([-1]), None, x)  # Use dummy index for base
+    for lvl in range(kernel.grid.depth):
+        g = kernel.grid.at(lvl)
+        index = g.refined_indices()
+        # TODO this selects window for each index individually
+        f = apply_at
+        for i in range(g.ndim):
+            f = vmap(f, (1, None, None), ((g.ndim - i, None), g.ndim - i - 1))
+        (_, lvl_nxt), res = f(index, lvl, x)
+        x[lvl_nxt] = kernel.grid.at(lvl_nxt).resort(res)
+    return x
 
 
 class Kernel:
@@ -57,42 +93,6 @@ class Kernel:
 
     def get_matrices(self, index, level):
         raise NotImplementedError()
-
-    def __call__(self, x, copy=True):
-        """Applies the kernel to values on an entire multigrid"""
-        if len(x) != (self.grid.depth + 1):
-            msg = f"input depth {len(x)} does not match grid depth {self.grid.depth}"
-            raise ValueError(msg)
-        for lvl, xx in enumerate(x):
-            g = self.grid.at(lvl)
-            if xx.size != g.size:
-                msg = f"input at level {lvl} of size {xx.size} does not match grid of size {g.size}"
-                raise ValueError(msg)
-
-        def apply_at(index, level, x):
-            assert index.ndim == 1
-            iout, iin = self.get_output_input_indices(index, level)
-            kernels = self.get_matrices(index, level)
-            assert len(iin) == len(kernels)
-            res = reduce(
-                operator.add,
-                (kk @ x[x_lvl][tuple(idx)] for kk, (idx, x_lvl) in zip(kernels, iin)),
-            )
-            return iout, res.reshape(iout[0].shape[1:])
-
-        x = list(x) if copy else x
-        # Use dummy index for base
-        _, x[0] = apply_at(jnp.array([-1]), None, x)
-        for lvl in range(self.grid.depth):
-            g = self.grid.at(lvl)
-            index = g.refined_indices()
-            # TODO this selects window for each index individually
-            f = apply_at
-            for i in range(g.ndim):
-                f = vmap(f, (1, None, None), ((g.ndim - i, None), g.ndim - i - 1))
-            (_, lvl_nxt), res = f(index, lvl, x)
-            x[lvl_nxt] = self.grid.at(lvl_nxt).resort(res)
-        return x
 
     def optimize(
         self,
