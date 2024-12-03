@@ -10,7 +10,7 @@ from ..model import Model
 from ..prior import LogNormalPrior, NormalPrior
 from ..tree_math import ShapeWithDtype, zeros_like
 from .grid import Grid
-from .kernel import ICRefine
+from .kernel import ICRKernel
 from .correlated_field_util import j1
 
 
@@ -208,7 +208,7 @@ class ICRSpectral(Model):
         latent_kernel = self._get_kernelfunc(
             self.spectrum(zeros_like(self.spectrum.domain))
         )
-        self.optimized_kernel = ICRefine(grid, latent_kernel, window_size).optimize(
+        self.optimized_kernel = ICRKernel(grid, latent_kernel, window_size).optimize(
             rtol=rtol, atol=atol, buffer_size=buffer_size, use_distances=use_distances
         )
 
@@ -245,7 +245,7 @@ class ICRSpectral(Model):
 
     def get_kernel(self, x):
         kerfunc = self.get_kernel_function(x)
-        kernel = ICRefine(self.grid, kerfunc, self.window_size)
+        kernel = ICRKernel(self.grid, kerfunc, self.window_size)
         return self.optimized_kernel.replace_kernel(kernel)
 
     def __call__(self, x):
