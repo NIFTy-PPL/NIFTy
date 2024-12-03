@@ -94,22 +94,20 @@ class KernelBase:
             x[lvl_nxt] = self.grid.at(lvl_nxt).resort(res)
         return x
 
-    def freeze(
+    def optimize(
         self,
         *,
         rtol=1e-5,
         atol=1e-10,
         buffer_size=10000,
         use_distances=True,
-        uindices=None,
-        invindices=None,
-        indexmaps=None,
         distance_norm=partial(jnp.linalg.norm, axis=0),
     ):
-        """Evaluate the kernel and store it in a `FrozenKernel`. Kernels may be
-        grouped by similarity and accessed via lookup"""
-        if uindices is not None and invindices is not None and indexmaps is not None:
-            _FrozenKernel(self, uindices, invindices, indexmaps)
+        """Optimize the kernel for the given grid.
+
+        This links kernel matrices by similarity and subsequently looks them up via
+        tables.
+        """
 
         def get_distance_matrices(index, level):
             if level is None:
@@ -166,10 +164,10 @@ class KernelBase:
             uindices.append(uids)
             invindices.append(inv)
             indexmaps.append(_IdxMap(shift, gridf_at.index2flatindex))
-        return _FrozenKernel(self, uindices, invindices, indexmaps)
+        return OptimizedKernel(self, uindices, invindices, indexmaps)
 
 
-class _FrozenKernel(KernelBase):
+class OptimizedKernel(KernelBase):
     def __init__(self, kernel: KernelBase, uindices, invindices, indexmaps):
         self._get_output_input_indices = kernel.get_output_input_indices
         self.uindices = uindices
@@ -181,17 +179,23 @@ class _FrozenKernel(KernelBase):
         self._base_kernel = kernel.get_matrices(jnp.array([-1]), None)
         super().__init__(grid=kernel.grid)
 
+    def replace_kernel(self, kernel):
+        """Replace the kernel and recomput the kernel matrices while keeping the
+        tables for speedy lookups fixed.
+
+        This is useful for updating the covariance function of a kernel without
+        recreating the tables in an expensive optimization.
+        """
+        return self.__class__(kernel, self.uindices, self.invindices, self.indexmaps)
+
     def get_output_input_indices(self, index, level):
         return self._get_output_input_indices(index, level)
 
     def get_matrices(self, index, level):
         if level is None:
             return self._base_kernel
-
-        map_atlevel = self.indexmaps[level]
-        inv_atlevel = self.invindices[level]
-        index = map_atlevel.index2flatindex(index)[0]
-        index = inv_atlevel[index - map_atlevel.shift]
+        index = self.indexmaps[level].index2flatindex(index)[0]
+        index = self.invindices[level][index - self.indexmaps[level].shift]
         return tuple(kk[index] for kk in self._kernels[level])
 
 

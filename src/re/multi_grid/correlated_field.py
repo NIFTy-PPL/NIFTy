@@ -10,7 +10,7 @@ from ..model import Model
 from ..prior import LogNormalPrior, NormalPrior
 from ..tree_math import ShapeWithDtype, zeros_like
 from .grid import Grid
-from .kernel import ICRefine, _FrozenKernel
+from .kernel import ICRefine
 from .correlated_field_util import j1
 
 
@@ -208,13 +208,8 @@ class ICRSpectral(Model):
         latent_kernel = self._get_kernelfunc(
             self.spectrum(zeros_like(self.spectrum.domain))
         )
-        f = ICRefine(grid, latent_kernel, window_size).freeze(
+        self.optimized_kernel = ICRefine(grid, latent_kernel, window_size).optimize(
             rtol=rtol, atol=atol, buffer_size=buffer_size, use_distances=use_distances
-        )
-        self.uindices, self.invindices, self.indexmaps = (
-            f.uindices,
-            f.invindices,
-            f.indexmaps,
         )
 
         self.window_size = window_size
@@ -251,7 +246,7 @@ class ICRSpectral(Model):
     def get_kernel(self, x):
         kerfunc = self.get_kernel_function(x)
         kernel = ICRefine(self.grid, kerfunc, self.window_size)
-        return _FrozenKernel(kernel, self.uindices, self.invindices, self.indexmaps)
+        return self.optimized_kernel.replace_kernel(kernel)
 
     def __call__(self, x):
         kernel = self.get_kernel(x)
@@ -259,10 +254,8 @@ class ICRSpectral(Model):
         offset = self.offset(x) if isinstance(self.offset, Model) else self.offset
         xs = list(x[self.xikey + str(lvl)] for lvl in range(self.grid.depth + 1))
         res = kernel(xs)[-1]
-        res -= jnp.mean(res)
-        res /= jnp.std(res)
-        res *= scale
-        res += offset
+        res = (res - jnp.mean(res)) / jnp.std(res)
+        res = (scale * res) + offset
         return res
 
     def apply(self, x):
