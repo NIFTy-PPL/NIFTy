@@ -178,7 +178,7 @@ class SimpleOpenGridAtLevel(OpenGridAtLevel):
 def SimpleOpenGrid(
     *,
     min_shape,
-    window_size,
+    window_size=3,
     splits=2,
     distances=None,
     depth=None,
@@ -305,7 +305,7 @@ def HPLogRGrid(
     r_min_shape: Optional[int] = None,
     r_min,
     r_max,
-    r_window_size,
+    r_window_size=3,
     nside0=16,
     atLevel=HPLogRGridAtLevel,
 ) -> MGrid:

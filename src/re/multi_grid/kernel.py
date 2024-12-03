@@ -16,7 +16,8 @@ from numpy import typing as npt
 
 from ..num import amend_unique_
 from ..refine.util import refinement_matrices
-from .grid import FlatGrid, Grid
+from .grid import FlatGrid, Grid, OpenGridAtLevel
+from .grid_impl import HEALPixGridAtLevel
 
 
 def _dist(x, y, periodicity=None):
@@ -199,13 +200,29 @@ class OptimizedKernel(Kernel):
         return tuple(kk[index] for kk in self._kernels[level])
 
 
+def _suitable_window_size(grid_at_level, default=3) -> Tuple[int]:
+    wsz = []
+    for g in grid_at_level.raw_grids:
+        if isinstance(g, HEALPixGridAtLevel):  # special-case HEALPix
+            wsz += [9]
+        elif isinstance(g, OpenGridAtLevel):
+            wsz += list(g.padding * 2 + 1)
+        else:
+            wsz += [default] * g.ndim
+    return tuple(wsz)
+
+
 class ICRKernel(Kernel):
-    def __init__(self, grid, covariance, *, window_size):
+    def __init__(self, grid, covariance, *, window_size=None):
         self._covariance_elem = covariance
         k = self._covariance_elem
         k = vmap(k, in_axes=(None, -1), out_axes=-1)
         k = vmap(k, in_axes=(-1, None), out_axes=-1)
         self._covariance_outer = k
+        if window_size is None:
+            window_size = tuple(
+                _suitable_window_size(grid.at(lvl)) for lvl in range(grid.depth)
+            )
         self._window_size = tuple(
             np.broadcast_to(window_size, (grid.depth,) + grid.at(0).shape.shape)
         )
