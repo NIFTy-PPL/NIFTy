@@ -48,7 +48,7 @@ class HEALPixGridAtLevel(GridAtLevel):
         super().__init__(shape=size, splits=splits, parent_splits=parent_splits)
 
     def neighborhood(self, index, window_size: Iterable[int]):
-        from .jhealpix_reference import get_all_neighbours_valid
+        from .jhealpix import get_all_neighbours_valid
 
         index = jnp.atleast_1d(index)
         if not isinstance(window_size, int):
@@ -72,7 +72,7 @@ class HEALPixGridAtLevel(GridAtLevel):
         raise NotImplementedError(nie)
 
     def index2coord(self, index, **kwargs):
-        from .jhealpix_reference import pix2vec
+        from .jhealpix import pix2vec
 
         assert index.shape[0] == 1
         f = partial(pix2vec, self.nside, nest=self.nest)
@@ -82,7 +82,7 @@ class HEALPixGridAtLevel(GridAtLevel):
         return jnp.stack(cc, axis=0)
 
     def coord2index(self, coord, dtype=np.uint64, **kwargs):
-        from .jhealpix_reference import vec2pix
+        from .jhealpix import vec2pix
 
         assert coord.shape[0] == 3
         f = partial(vec2pix, self.nside, nest=self.nest)
