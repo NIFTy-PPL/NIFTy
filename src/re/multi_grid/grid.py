@@ -530,16 +530,7 @@ class FlatGridAtLevel(GridAtLevel):
         return np.cumprod(np.append(shape[1:], 1)[::-1])[::-1]
 
     def _weights_nest(self, levelshift):
-        raise NotImplementedError  # TODO
-        wgts = (self.gridshape0,) + self.grid_all_splits
-        if levelshift == 0:
-            wgts = wgts[:-1]
-        elif levelshift == -1:
-            wgts = wgts[:-2]
-        else:
-            if levelshift != 1:
-                raise ValueError(f"Inconsistent shift in level: {levelshift}")
-        return np.stack(wgts, axis=0)
+        raise NotImplementedError
 
     def index2flatindex(self, index, levelshift=0):
         # TODO vectorize better
@@ -548,17 +539,7 @@ class FlatGridAtLevel(GridAtLevel):
             wgt = wgt[(slice(None),) + (np.newaxis,) * (index.ndim - 1)]
             return (wgt * index).sum(axis=0).astype(index.dtype)[jnp.newaxis, ...]
         if self.ordering == "nest":
-            raise NotImplementedError  # TODO
-            fid = jnp.zeros(index.shape[1:], dtype=index.dtype)
-            wgts = self._weights_nest(levelshift)
-            for n, ww in enumerate(wgts):
-                j = 0
-                for ax in range(ww.size):
-                    j *= ww[ax]
-                    j += (index[ax] // wgts[(n + 1) :, ax].prod()) % ww[ax]
-                fid *= ww.prod()
-                fid += j
-            return fid[jnp.newaxis, ...]
+            raise NotImplementedError
         raise RuntimeError
 
     def flatindex2index(self, index, levelshift=0):
@@ -575,18 +556,7 @@ class FlatGridAtLevel(GridAtLevel):
                 index.append(tmfl)
             return jnp.stack(index, axis=0).astype(dtp)
         if self.ordering == "nest":
-            raise NotImplementedError  # TODO
-            wgts = self._weights_nest(levelshift)
-            fid = jnp.copy(index[0])
-            index = jnp.zeros((wgts.shape[1],) + index.shape[1:], dtype=dtp)
-            for n, ww in reversed(list(enumerate(wgts))):
-                fct = ww.prod()
-                j = fid % fct
-                for ax in range(ww.size)[::-1]:
-                    index = index.at[ax].add(wgts[(n + 1) :, ax].prod() * (j % ww[ax]))
-                    j //= ww[ax]
-                fid //= fct
-            return index.astype(dtp)
+            raise NotImplementedError
         raise RuntimeError
 
     def refined_indices(self):
@@ -600,6 +570,7 @@ class FlatGridAtLevel(GridAtLevel):
             raise ValueError
         if batched_ar.shape[1] != np.prod(parent_splits):
             raise ValueError
+
         if self.ordering == "serial":
             shp = tuple(shape // parent_splits) + tuple(parent_splits)
             batched_ar = batched_ar.reshape(shp)
@@ -608,7 +579,7 @@ class FlatGridAtLevel(GridAtLevel):
             axes = reduce(operator.add, ((a, b) for a, b in zip(idx, ndim + idx)))
             return jnp.transpose(batched_ar, axes).ravel()
         if self.ordering == "nest":
-            raise NotImplementedError  # TODO
+            raise NotImplementedError
         raise RuntimeError
 
     def children(self, index) -> npt.NDArray:
