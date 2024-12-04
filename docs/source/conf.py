@@ -40,8 +40,7 @@ project = u'NIFTy8'
 copyright = u'2013-2022, Max-Planck-Society'
 author = u'Martin Reinecke'
 
-release = nifty8.version.__version__
-version = release[:-2]
+version = nifty8.__version__[:-2]
 
 language = "en"
 exclude_patterns = []
