@@ -95,7 +95,7 @@ class Kernel:
     def get_matrices(self, index, level):
         raise NotImplementedError()
 
-    def optimize(
+    def compress(
         self,
         *,
         rtol=1e-5,
@@ -104,10 +104,12 @@ class Kernel:
         use_distances=True,
         distance_norm=partial(jnp.linalg.norm, axis=0),
     ):
-        """Optimize the kernel for the given grid.
+        """Compress the kernel matrices for the given grid.
 
         This links kernel matrices by similarity and subsequently looks them up via
-        tables.
+        tables. Compressing the kernel in this way has the potential to drastically
+        reduce the memory requirements of applying it and make the inference of
+        kernels faster.
         """
 
         def get_distance_matrices(index, level):
@@ -165,10 +167,10 @@ class Kernel:
             uindices.append(uids)
             invindices.append(inv)
             indexmaps.append(_IdxMap(shift, gridf_at.index2flatindex))
-        return OptimizedKernel(self, uindices, invindices, indexmaps)
+        return CompressedKernel(self, uindices, invindices, indexmaps)
 
 
-class OptimizedKernel(Kernel):
+class CompressedKernel(Kernel):
     def __init__(self, kernel: Kernel, uindices, invindices, indexmaps):
         self._get_output_input_indices = kernel.get_output_input_indices
         self.uindices = uindices

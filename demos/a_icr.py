@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import nifty8.re as jft
 from nifty8.re.multi_grid.grid import Grid
 from nifty8.re.multi_grid import grid_impl as gi
-from nifty8.re.multi_grid.kernel import ICRKernel, OptimizedKernel, apply_kernel
+from nifty8.re.multi_grid.kernel import ICRKernel, CompressedKernel, apply_kernel
 from nifty8.re.tree_math import ShapeWithDtype
 
 
@@ -31,7 +31,7 @@ def matern_kernel(x, y, scale=1.0, cutoff=1.0, dof=1.5):
 
 
 class ICRCorrelate(jft.Model):
-    opt_kernel: OptimizedKernel = field(metadata=dict(static=False))
+    comp_kernel: CompressedKernel = field(metadata=dict(static=False))
 
     def __init__(
         self,
@@ -49,7 +49,7 @@ class ICRCorrelate(jft.Model):
         self.grid = grid
 
         self.kernel = ICRKernel(grid, covariance, window_size=window_size)
-        self.opt_kernel = self.kernel.optimize(
+        self.comp_kernel = self.kernel.compress(
             rtol=rtol, atol=atol, buffer_size=buffer_size, use_distances=use_distances
         )
 
@@ -61,7 +61,7 @@ class ICRCorrelate(jft.Model):
         super().__init__(domain={self._name: shapes}, white_init=True)
 
     def __call__(self, x):
-        return apply_kernel(x[self._name], kernel=self.opt_kernel)[-1]
+        return apply_kernel(x[self._name], kernel=self.comp_kernel)[-1]
 
 
 shape = (32, 32)
