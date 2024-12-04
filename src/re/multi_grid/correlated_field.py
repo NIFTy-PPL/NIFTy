@@ -208,7 +208,7 @@ class ICRSpectral(Model):
         latent_kernel = self._get_kernelfunc(
             self.spectrum(zeros_like(self.spectrum.domain))
         )
-        self.optimized_kernel = ICRKernel(grid, latent_kernel, window_size).optimize(
+        self.optimized_kernel = ICRKernel(grid, latent_kernel, window_size).compress(
             rtol=rtol, atol=atol, buffer_size=buffer_size, use_distances=use_distances
         )
 
