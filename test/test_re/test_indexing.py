@@ -6,7 +6,8 @@ import numpy as np
 import pytest
 from jax.tree_util import tree_flatten, tree_map
 
-from nifty8.re.multi_grid.indexing import FlatGrid, Grid, HEALPixGrid, OGrid, SparseGrid
+from nifty8.re.multi_grid.grid import FlatGrid, Grid, MGrid
+from nifty8.re.multi_grid.grid_impl import HEALPixGrid
 
 pmp = pytest.mark.parametrize
 
@@ -81,7 +82,7 @@ def test_ogrid(seed):
     g1 = Grid(shape0=(3,), splits=(2,) * 3)
     g2 = HEALPixGrid(nside0=4, depth=3)
     g3 = Grid(shape0=(3, 5), splits=((1, 2),) * 3)
-    g = OGrid(g1, g2, g3)
+    g = MGrid(g1, g2, g3)
     _test_grid(g, nbr=(3, 9, 2, 3), seed=seed)
 
 
@@ -99,11 +100,3 @@ def test_flat_grid(seed, grid, ordering):
     g = FlatGrid(grid, ordering=ordering)
 
     _test_grid(g, nbr=(9,) * grid.at(0).ndim, seed=seed)
-
-
-# TODO: currently broken
-# TODO more tests and input variety
-# @pmp("seed", (12,))
-# def test_sparse_grid(seed):
-#     g = SparseGrid(Grid(shape0=(10,), splits=(2,)), (np.arange(10), np.arange(6)))
-#     _test_grid(g, nbr=(3,), seed=seed)
