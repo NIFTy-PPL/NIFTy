@@ -42,10 +42,9 @@ def _test_grid(grid, *, nbr=None, seed):
         vol_prev = vol
 
         # Validate children and parent mappings are consistent
-        if lvl > 0:
-            ga_prev = grid.at(lvl - 1)
-            children = ga_prev.children(rand_idx)
-            parents = ga.parent(children)
+        if lvl < grid.depth:
+            children = ga.children(rand_idx)
+            parents = grid.at(lvl + 1).parent(children)
             n_extra_dims = parents.ndim - rand_idx.ndim
             bc = (slice(None),) * rand_idx.ndim + (np.newaxis,) * n_extra_dims
             np.testing.assert_array_equal(parents - rand_idx[bc], 0)
