@@ -12,20 +12,20 @@ from nifty8.re.multi_grid.grid_impl import HEALPixGrid
 pmp = pytest.mark.parametrize
 
 
-def _test_grid(grid, id=None, nbr=None, *, seed):
+def _test_grid(grid, *, nbr=None, seed):
     rng = np.random.default_rng(seed)
 
     index = np.mgrid[tuple(slice(s) for s in grid.at(0).shape)]
     vol_prev = grid.at(0).index2volume(index).sum()
 
-    params = []
     for lvl in range(grid.depth + 1):
         ga = grid.at(lvl)
-        id = np.array([rng.integers(0, 1 + 1)] * ga.ndim) if id is None else id
-        ch = ga.children(id) if lvl != grid.depth else None
+
+        # Check for input errors (with complete disregard to the output)
+        rand_idx = np.array([rng.integers(0, ga.shape)]).T
+        ga.children(rand_idx) if lvl != grid.depth else None
         nbr = (3,) * ga.ndim if nbr is None else nbr
-        nbrs = ga.neighborhood(id, nbr)
-        params.append((ga.size, ga.ndim, ch, nbrs))
+        ga.neighborhood(rand_idx, nbr)
 
         # Assert indices are mapped to valid coordinates and vice versa
         index = np.mgrid[tuple(slice(s) for s in ga.shape)]
@@ -41,15 +41,14 @@ def _test_grid(grid, id=None, nbr=None, *, seed):
         assert vol <= vol_prev
         vol_prev = vol
 
-        if lvl != 0:
-            g_ap = grid.at(lvl - 1)
-            children = g_ap.children(id)
+        # Validate children and parent mappings are consistent
+        if lvl > 0:
+            ga_prev = grid.at(lvl - 1)
+            children = ga_prev.children(rand_idx)
             parents = ga.parent(children)
-            nextra = parents.ndim - id.ndim
-            sl = (slice(None),) * id.ndim + (np.newaxis,) * nextra
-            assert np.all(parents == id[sl])
-
-    return params
+            n_extra_dims = parents.ndim - rand_idx.ndim
+            bc = (slice(None),) * rand_idx.ndim + (np.newaxis,) * n_extra_dims
+            np.testing.assert_array_equal(parents - rand_idx[bc], 0)
 
 
 @pmp("seed", (12,))
@@ -57,21 +56,33 @@ def _test_grid(grid, id=None, nbr=None, *, seed):
     "shape0, splits",
     [(3, 2), ((3,), (2, 4)), ((2, 3), ((2,) * 2, (2,) * 2)), ((1, 2, 3), ())],
 )
-def test_grid(seed, shape0, splits):
-    g = Grid(shape0=shape0, splits=splits)
+def test_base_grid(seed, shape0, splits):
+    grid = Grid(shape0=shape0, splits=splits)
     if isinstance(splits, int):
         splits = (splits,)
-    assert g.depth == len(splits)
+    assert grid.depth == len(splits)
+    idx = np.array([0] * grid.at(0).ndim)
 
-    params = _test_grid(g, seed=seed)
+    _test_grid(grid, seed=seed)
+    params_orig = []
+    for lvl in range(grid.depth + 1):
+        g = grid.at(lvl)
+        ch = g.children(idx) if lvl != grid.depth else None
+        nbrs = g.neighborhood(idx, (3,) * g.ndim)
+        params_orig.append((g.size, g.ndim, ch, nbrs))
 
     if len(splits) > 1:
         sp0, sp1 = splits[:1], splits[1:]
         gn = Grid(shape0=shape0, splits=sp0)
         gn = gn.amend(sp1)
-        paramsn = _test_grid(gn, seed=seed)
-        valid = tree_map(np.array_equal, params, paramsn)
-        assert np.all(tree_flatten(valid)[0])
+        _test_grid(gn, seed=seed)
+        params = []
+        for lvl in range(gn.depth + 1):
+            g = gn.at(lvl)
+            ch = g.children(idx) if lvl != grid.depth else None
+            nbrs = g.neighborhood(idx, (3,) * g.ndim)
+            params.append((g.size, g.ndim, ch, nbrs))
+        assert np.all(tree_flatten(tree_map(np.array_equal, params, params_orig))[0])
 
 
 @pmp("seed", (12,))
@@ -79,15 +90,8 @@ def test_grid(seed, shape0, splits):
 @pmp("depth", [0, 1, 4])
 def test_hp_grid(seed, nside0, depth):
     g = HEALPixGrid(nside0=nside0, depth=depth)
-
     assert g.depth == depth
-    gn = HEALPixGrid(nside0=nside0, depth=depth + 2)
-    paramsn = _test_grid(gn, nbr=(9,), seed=seed)
-
-    g = g.amend(added_depth=2)
-    params = _test_grid(g, nbr=(9,), seed=seed)
-    valid = tree_map(np.array_equal, params, paramsn)
-    assert np.all(tree_flatten(valid)[0])
+    _test_grid(g, nbr=(9,), seed=seed)
 
 
 # TODO more tests and input variety
@@ -112,12 +116,11 @@ def test_mgrid(seed):
 @pmp("ordering", ["serial"])
 def test_flat_grid(seed, grid, ordering):
     g = FlatGrid(grid, ordering=ordering)
-
     _test_grid(g, nbr=(9,) * grid.at(0).ndim, seed=seed)
 
 
 if __name__ == "__main__":
-    test_grid(seed=12, shape0=(3, 2), splits=(2, 4))
+    test_base_grid(seed=12, shape0=(3, 2), splits=(2, 4))
     test_hp_grid(seed=12, nside0=16, depth=2)
     test_mgrid(seed=12)
     test_flat_grid(seed=12, grid=HEALPixGrid(nside0=8, depth=2), ordering="serial")
