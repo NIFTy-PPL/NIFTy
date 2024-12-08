@@ -6,7 +6,7 @@
 import operator
 from collections import namedtuple
 from functools import partial, reduce
-from typing import Callable, Iterable, Tuple
+from typing import Tuple
 
 import jax.numpy as jnp
 import numpy as np
