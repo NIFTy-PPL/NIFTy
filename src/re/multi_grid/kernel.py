@@ -6,7 +6,7 @@
 import operator
 from collections import namedtuple
 from functools import partial, reduce
-from typing import Tuple
+from typing import Optional, Tuple
 
 import jax.numpy as jnp
 import numpy as np
@@ -18,17 +18,6 @@ from ..num import amend_unique_
 from ..refine.util import refinement_matrices
 from .grid import FlatGrid, Grid, OpenGridAtLevel
 from .grid_impl import HEALPixGridAtLevel
-
-
-def _dist(x, y, periodicity=None):
-    d = y - x
-    if periodicity is not None:
-        p = np.atleast_1d(periodicity)[(slice(None),) + (np.newaxis,) * (d.ndim - 1)]
-        return jnp.where(jnp.abs(d) > p / 2.0, d - jnp.sign(d) * p, d)
-    return d
-
-
-_IdxMap = namedtuple("_IdxMap", ("shift", "index2flatindex"))
 
 
 def apply_kernel(x, *, kernel):
@@ -67,6 +56,13 @@ def apply_kernel(x, *, kernel):
     return x
 
 
+_IdxMap = namedtuple("_IdxMap", ("shift", "index2flatindex"))
+_CompressedIndexMap = namedtuple(
+    "_CompressedIndexMap",
+    ("base_kernel", "kernels", "uindices", "indexmaps", "invindices"),
+)
+
+
 class Kernel:
     """
     - A structure on a multigrid that can apply linear operators with inputs accross
@@ -78,12 +74,21 @@ class Kernel:
       of 'kernel')
     """
 
-    def __init__(self, grid):
+    def __init__(self, grid, *, _cim: Optional[_CompressedIndexMap] = None):
         self._grid = grid
+        self._cim = _cim
+
+    def replace(self, *, _cim=None, **kwargs):
+        _cim = self._cim if _cim is None else _cim
+        return self.__class__(self.grid, **kwargs, _cim=_cim)
 
     @property
     def grid(self) -> Grid:
         return self._grid
+
+    @property
+    def compressed(self) -> bool:
+        return self._cim is not None
 
     def get_output_input_indices(
         self, index, level: int
@@ -93,9 +98,25 @@ class Kernel:
         raise NotImplementedError()
 
     def get_matrices(self, index, level):
+        if self.compressed:
+            return self.lookup_matrices(index, level)
+        return self.compute_matrices(index, level)
+
+    def compute_matrices(self, index, level):
         raise NotImplementedError()
 
-    def compress(
+    def lookup_matrices(self, index, level):
+        if self._cim is None:
+            msg = "kernel needs to be compressed first for fast lookups"
+            raise NotImplementedError(msg)
+
+        if level is None:
+            return self._cim.base_kernel
+        index = self._cim.indexmaps[level].index2flatindex(index)[0]
+        index = self._cim.invindices[level][index - self._cim.indexmaps[level].shift]
+        return tuple(kk[index] for kk in self._cim.kernels[level])
+
+    def compress_indices(
         self,
         *,
         rtol=1e-5,
@@ -104,12 +125,10 @@ class Kernel:
         use_distances=True,
         distance_norm=partial(jnp.linalg.norm, axis=0),
     ):
-        """Compress the kernel matrices for the given grid.
+        """Link kernel matrices to preserve memory and increase speed.
 
-        This links kernel matrices by similarity and subsequently looks them up via
-        tables. Compressing the kernel in this way has the potential to drastically
-        reduce the memory requirements of applying it and make the inference of
-        kernels faster.
+        You probably don't want to access this function directly. Instead use
+        `compress` or `replace` and `compress_matrices`.
         """
 
         def get_distance_matrices(index, level):
@@ -133,7 +152,7 @@ class Kernel:
             gridf_at = gridf.at(lvl)
 
             def get_matrices(idx):
-                f = get_distance_matrices if use_distances else self.get_matrices
+                f = get_distance_matrices if use_distances else self.compute_matrices
                 ker = f(gridf_at.flatindex2index(jnp.atleast_1d(idx)), lvl)
                 ker = jnp.concatenate(tuple(kk.ravel() for kk in ker))
                 return ker
@@ -167,39 +186,42 @@ class Kernel:
             uindices.append(uids)
             invindices.append(inv)
             indexmaps.append(_IdxMap(shift, gridf_at.index2flatindex))
-        return CompressedKernel(self, uindices, invindices, indexmaps)
 
-
-class CompressedKernel(Kernel):
-    def __init__(self, kernel: Kernel, uindices, invindices, indexmaps):
-        self._get_output_input_indices = kernel.get_output_input_indices
-        self.uindices = uindices
-        self.invindices = invindices
-        self.indexmaps = indexmaps
-        self._kernels = tuple(
-            kernel.get_matrices(ii, ll) for ll, ii in enumerate(uindices)
+        return self.replace(
+            _cim=_CompressedIndexMap(
+                base_kernel=None,
+                kernels=None,
+                uindices=uindices,
+                indexmaps=indexmaps,
+                invindices=invindices,
+            )
         )
-        self._base_kernel = kernel.get_matrices(jnp.array([-1]), None)
-        super().__init__(grid=kernel.grid)
 
-    def replace_kernel(self, kernel):
-        """Replace the kernel and recomput the kernel matrices while keeping the
-        tables for speedy lookups fixed.
+    def compress_matrices(self):
+        """Recompute the kernel matrices while keeping the tables for speedy lookups
+        fixed.
 
         This is useful for updating the covariance function of a kernel without
         recreating the tables in an expensive optimization.
         """
-        return self.__class__(kernel, self.uindices, self.invindices, self.indexmaps)
+        assert self._cim is not None
 
-    def get_output_input_indices(self, index, level):
-        return self._get_output_input_indices(index, level)
+        base_kernel = self.compute_matrices(jnp.array([-1]), None)
+        kernels = tuple(
+            self.compute_matrices(ii, ll) for ll, ii in enumerate(self._cim.uindices)
+        )
+        cim = self._cim._replace(base_kernel=base_kernel, kernels=kernels)
+        return self.replace(_cim=cim)
 
-    def get_matrices(self, index, level):
-        if level is None:
-            return self._base_kernel
-        index = self.indexmaps[level].index2flatindex(index)[0]
-        index = self.invindices[level][index - self.indexmaps[level].shift]
-        return tuple(kk[index] for kk in self._kernels[level])
+    def compress(self, *args, **kwargs):
+        """Optimize the kernel matrices for the given grid.
+
+        This links kernel matrices by similarity and subsequently looks them up via
+        tables. Compressing the kernel in this way has the potential to drastically
+        reduce the memory requirements of applying it and make the inference of
+        kernels faster.
+        """
+        return self.compress_indices(*args, **kwargs).compress_matrices()
 
 
 def _suitable_window_size(grid_at_level, default=3) -> Tuple[int]:
@@ -215,12 +237,8 @@ def _suitable_window_size(grid_at_level, default=3) -> Tuple[int]:
 
 
 class ICRKernel(Kernel):
-    def __init__(self, grid, covariance, *, window_size=None):
+    def __init__(self, grid, covariance, *, window_size=None, _cim=None):
         self._covariance_elem = covariance
-        k = self._covariance_elem
-        k = vmap(k, in_axes=(None, -1), out_axes=-1)
-        k = vmap(k, in_axes=(-1, None), out_axes=-1)
-        self._covariance_outer = k
         if window_size is None:
             window_size = tuple(
                 _suitable_window_size(grid.at(lvl)) for lvl in range(grid.depth)
@@ -228,11 +246,23 @@ class ICRKernel(Kernel):
         self._window_size = tuple(
             np.broadcast_to(window_size, (grid.depth,) + grid.at(0).shape.shape)
         )
-        super().__init__(grid=grid)
+        super().__init__(grid=grid, _cim=_cim)
+
+    def replace(self, *, covariance=None, window_size=None, _cim=None):
+        cim = self._cim if _cim is None else _cim
+        if covariance is not None and cim is not None:
+            cim = cim._replace(base_kernel=None, kernels=None)
+        else:
+            covariance = self._covariance_elem
+        window_size = self.window_size if window_size is None else window_size
+        return self.__class__(self.grid, covariance, window_size=window_size, _cim=cim)
 
     @property
     def covariance_outer(self):
-        return self._covariance_outer
+        k = self._covariance_elem
+        k = vmap(k, in_axes=(None, -1), out_axes=-1)
+        k = vmap(k, in_axes=(-1, None), out_axes=-1)
+        return k
 
     @property
     def window_size(self):
@@ -253,7 +283,7 @@ class ICRKernel(Kernel):
         gf = gout.reshape(index.shape + (-1,))
         return (gout, level + 1), ((gc, level), (gf, level + 1))
 
-    def get_matrices(self, index, level):
+    def compute_matrices(self, index, level):
         from ..refine.util import sqrtm
 
         if level is None:
