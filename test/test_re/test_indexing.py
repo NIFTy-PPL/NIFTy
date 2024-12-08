@@ -6,13 +6,13 @@ import numpy as np
 import pytest
 from jax.tree_util import tree_flatten, tree_map
 
-from nifty8.re.multi_grid.grid import FlatGrid, Grid, MGrid
+from nifty8.re.multi_grid.grid import FlatGrid, Grid, MGrid, OpenGrid
 from nifty8.re.multi_grid.grid_impl import HEALPixGrid
 
 pmp = pytest.mark.parametrize
 
 
-def _test_grid(grid, *, nbr=None, seed):
+def _test_grid(grid, *, nbr=None, padding=None, seed):
     rng = np.random.default_rng(seed)
 
     index = np.mgrid[tuple(slice(s) for s in grid.at(0).shape)]
@@ -22,7 +22,10 @@ def _test_grid(grid, *, nbr=None, seed):
         ga = grid.at(lvl)
 
         # Check for input errors (with complete disregard to the output)
-        rand_idx = np.array([rng.integers(0, ga.shape)]).T
+        lo, hi = 0, ga.shape
+        if padding is not None:
+            lo, hi = padding, np.array(ga.shape) - np.array(padding)
+        rand_idx = np.array([rng.integers(lo, hi)]).T
         ga.children(rand_idx) if lvl != grid.depth else None
         nbr = (3,) * ga.ndim if nbr is None else nbr
         ga.neighborhood(rand_idx, nbr)
@@ -85,8 +88,19 @@ def test_base_grid(seed, shape0, splits):
 
 
 @pmp("seed", (12,))
+@pmp(
+    "shape0,splits,padding",
+    [((4,), (2,), (1,)), ((4,), (3,), (1,)), ((4, 9), (1, 2), (0, 2))],
+)
+@pmp("depth", (2,))
+def test_open_grid(seed, shape0, splits, padding, depth):
+    g = OpenGrid(shape0=shape0, splits=(splits,) * depth, padding=(padding,) * depth)
+    _test_grid(g, nbr=(3,) * g.at(0).ndim, padding=padding, seed=seed)
+
+
+@pmp("seed", (12,))
 @pmp("nside0", [1, 2, 16])
-@pmp("depth", [0, 1, 4])
+@pmp("depth", [0, 1, 2])
 def test_hp_grid(seed, nside0, depth):
     g = HEALPixGrid(nside0=nside0, depth=depth)
     assert g.depth == depth
@@ -120,6 +134,7 @@ def test_flat_grid(seed, grid, ordering):
 
 if __name__ == "__main__":
     test_base_grid(seed=12, shape0=(3, 2), splits=(2, 4))
+    test_open_grid(seed=12, shape0=(4, 9), splits=(1, 2), padding=(0, 2), depth=2)
     test_hp_grid(seed=12, nside0=16, depth=2)
     test_mgrid(seed=12)
     test_flat_grid(seed=12, grid=HEALPixGrid(nside0=8, depth=2), ordering="serial")

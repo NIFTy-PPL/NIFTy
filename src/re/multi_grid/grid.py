@@ -227,15 +227,15 @@ class OpenGridAtLevel(GridAtLevel):
 
     def index2coord(self, index):
         slc = (slice(None),) + (np.newaxis,) * (index.ndim - 1)
-        index = index + self.shifts[slc]
         shp = self.shape + 2 * self.shifts
+        index = index + self.shifts[slc]
         return (index + 0.5) / shp[slc]
 
     def coord2index(self, coord, dtype=np.uint64):
         slc = (slice(None),) + (np.newaxis,) * (coord.ndim - 1)
-        # TODO type
         shp = self.shape + 2 * self.shifts
-        index = coord * shp[slc] - self.shifts - 0.5
+        # TODO type
+        index = coord * shp[slc] - self.shifts[slc] - 0.5
         # assert jnp.all(index >= 0)
         return index.astype(dtype)
 
