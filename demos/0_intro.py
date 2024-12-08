@@ -111,52 +111,6 @@ signal = Signal(correlated_field, scaling)
 # care when translating them to NIFTy.re/JAX which requires known dtypes.
 
 # %% [markdown]
-# ### Notes on Charted Field
-
-# The above could just as well be a refinement field e.g. on a HEALPix sphere
-# with logarithmically spaced radial voxels. All of NIFTy.re is agnostic to the
-# specifics of the forward model. The sampling and minimization always works the
-# same.
-
-# ```python
-# def matern_kernel(distance, scale=1., cutoff=1., dof=1.5):
-#     if dof == 0.5:
-#         cov = scale**2 * jnp.exp(-distance / cutoff)
-#     elif dof == 1.5:
-#         reg_dist = jnp.sqrt(3) * distance / cutoff
-#         cov = scale**2 * (1 + reg_dist) * jnp.exp(-reg_dist)
-#     elif dof == 2.5:
-#         reg_dist = jnp.sqrt(5) * distance / cutoff
-#         cov = scale**2 * (1 + reg_dist + reg_dist**2 / 3) * jnp.exp(-reg_dist)
-#     else:
-#         raise NotImplementedError()
-#     # NOTE, this is not safe for differentiating because `cov` still may
-#     # contain NaNs
-#     return jnp.where(distance < 1e-8 * cutoff, scale**2, cov)
-
-# def rg2cart(x, idx0, scl):
-#     """Transforms regular, points from a Euclidean space to irregular points in
-#     an cartesian coordinate system in 1D."""
-#     return jnp.exp(scl * x[0] + idx0)[jnp.newaxis, ...]
-
-# def cart2rg(x, idx0, scl):
-#     """Inverse of `rg2cart`."""
-#     return ((jnp.log(x[0]) - idx0) / scl)[jnp.newaxis, ...]
-
-# cc = jft.HEALPixChart(
-#     min_shape=(12 * 32**2, 4),  # 32 (Nside) times (at least) 4 radial bins
-#     nonhp_rg2cart=partial(rg2cart, idx0=-0.27, scl=1.1),  # radial spacing
-#     nonhp_cart2rg=partial(cart2rg, idx0=-0.27, scl=1.1),
-# )
-# rf = jft.ChartedHPField(cc)
-# # Make the refinement fast by leaving the kernel fixed
-# rfm = rf.matrices(matern_kernel)
-# correlated_field = jft.Model(
-#     partial(rf, kernel=rfm), domain=rf.domain, init=rf.init
-# )
-# ```
-
-# %% [markdown]
 # ## The likelihood
 
 # %%
