@@ -6,6 +6,10 @@ import jax.numpy as jnp
 import numpy as np
 from jax import vmap
 
+# NOTE, jhealpix must be a top-level import so that the global jnp.ndarray defined
+# therein are defined at import time instead during jax.jit as this would lead to
+# seemingly leaky tracers.
+from . import jhealpix
 from .grid import Grid, GridAtLevel, MGrid, MGridAtLevel, OpenGrid, OpenGridAtLevel
 
 
@@ -48,8 +52,6 @@ class HEALPixGridAtLevel(GridAtLevel):
         super().__init__(shape=size, splits=splits, parent_splits=parent_splits)
 
     def neighborhood(self, index, window_size: Iterable[int]):
-        from .jhealpix import get_all_neighbours_valid
-
         index = jnp.atleast_1d(index)
         if not isinstance(window_size, int):
             window_size = window_size[0]
@@ -63,7 +65,7 @@ class HEALPixGridAtLevel(GridAtLevel):
             nbrs = nbrs[(np.newaxis,) * index.ndim + (slice(None),)]
             return (index[..., jnp.newaxis] + nbrs) % self.size
         if window_size == 9:
-            f = partial(get_all_neighbours_valid, self.nside, nest=self.nest)
+            f = partial(jhealpix.get_all_neighbours_valid, self.nside, nest=self.nest)
             for _ in range(index.ndim - 1):
                 f = vmap(f)
             nbrs = f(index[0])[jnp.newaxis, ...]
@@ -72,20 +74,16 @@ class HEALPixGridAtLevel(GridAtLevel):
         raise NotImplementedError(nie)
 
     def index2coord(self, index, **kwargs):
-        from .jhealpix import pix2vec
-
         assert index.shape[0] == 1
-        f = partial(pix2vec, self.nside, nest=self.nest)
+        f = partial(jhealpix.pix2vec, self.nside, nest=self.nest)
         for _ in range(index.ndim - 1):
             f = vmap(f)
         cc = f(index[0])
         return jnp.stack(cc, axis=0)
 
     def coord2index(self, coord, dtype=np.uint64, **kwargs):
-        from .jhealpix import vec2pix
-
         assert coord.shape[0] == 3
-        f = partial(vec2pix, self.nside, nest=self.nest)
+        f = partial(jhealpix.vec2pix, self.nside, nest=self.nest)
         for _ in range(coord.ndim - 1):
             f = vmap(f)
         idx = f(*(cc for cc in coord))
