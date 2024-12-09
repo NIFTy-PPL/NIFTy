@@ -103,6 +103,7 @@ class HEALPixGrid(Grid):
         self,
         *,
         nside0: Optional[int] = None,
+        nside: Optional[int] = None,
         depth: Optional[int] = None,
         nest=True,
         shape0=None,
@@ -116,6 +117,11 @@ class HEALPixGrid(Grid):
             nside0 = (shape0 / 12) ** 0.5
             assert int(nside0) == nside0
             nside0 = int(nside0)
+        if nside is not None:
+            assert nside0 is None
+            assert depth is not None
+            nside0 = nside / 2**depth
+            assert int(nside0) == nside0
         self.nside0 = nside0
         assert self.nside0 > 0
         if splits is None:
