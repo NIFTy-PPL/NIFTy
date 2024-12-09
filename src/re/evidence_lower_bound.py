@@ -171,7 +171,6 @@ def estimate_evidence_lower_bound(
     utilize the ELBO (as a proxy for the actual evidences) and calculate the
     Bayes factors for model comparison.
 
-
     Parameters
     ----------
     likelihood : :class:`nifty8.re.likelihood.Likelihood`
@@ -240,9 +239,10 @@ def estimate_evidence_lower_bound(
     --------
     For further details we refer to:
 
-    * Analytic geoVI parametrization: P. Frank et al., Geometric Variational
+    - Analytic geoVI parametrization: P. Frank et al., Geometric Variational
     Inference <https://arxiv.org/pdf/2105.10470.pdf> (Sec. 5.1)
-    * Conceptualization: A. Kostić et al. (manuscript in preparation).
+    - Conceptualization: A. Kostić et al. (manuscript in preparation).
+
     """
     if not isinstance(samples, Samples):
         raise TypeError("samples attribute should be of type `Samples`.")

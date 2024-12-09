@@ -148,9 +148,9 @@ def conditional_call(condition, fn, *args, **kwargs):
         If True, will call `fn` on the host
     fn: Callable
         Function that will be called on the host if `condition` is True
-    *args:
+    args:
         Positional arguments passed to `fn`
-    **kwargs:
+    kwargs:
         Keyword arguments passed to `fn`
     """
     from jax.debug import callback
