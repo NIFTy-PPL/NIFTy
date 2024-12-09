@@ -274,8 +274,10 @@ def si(x):
 
 
 def sin_integral_antilinearly_exact(f, xs, k):
-    """Compute integral of f(x) * sin(kx) using antilinearly exact evaluation.
-    That is, $f(x) \approx c_1+\frac{c_2}{x}$ piecewise approximated and then analytically integrated.
+    """Compute integral of $f(x) \cdot sin(kx)$ using antilinearly exact evaluation.
+
+    That is, $f(x) \\approx c_1 + \\frac{c_2}{x}$ piecewise approximated and then
+    analytically integrated.
     """
     x = xs
     kx = k * x
