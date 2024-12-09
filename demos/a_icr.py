@@ -13,8 +13,7 @@ key = random.PRNGKey(seed)
 
 shape = (32, 32)
 
-# TODO: increase grid size and remove desired_size0
-grid = jft.SimpleOpenGrid(min_shape=shape, desired_size0=6)
+grid = jft.SimpleOpenGrid(min_shape=shape)
 cf = jft.ICRCorrelatedField(
     grid,
     kernel=dict(

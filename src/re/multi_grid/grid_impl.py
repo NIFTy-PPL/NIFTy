@@ -202,6 +202,9 @@ def SimpleOpenGrid(
             desired_shape0 = desired_size0 ** (1.0 / min_shape.ndim)
             desired_shape0 = np.ceil(desired_shape0).astype(np.int_)
             desired_shape0 = np.broadcast_to(desired_shape0, min_shape.shape)
+            desired_shape0 = np.min(
+                (desired_shape0, (min_shape / 1.5).astype(int)), axis=0
+            )
             splits = np.broadcast_to(splits, min_shape.shape)
             depth = max(
                 np.emath.logn(splits, min_shape) - np.emath.logn(splits, desired_shape0)
