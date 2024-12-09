@@ -1,27 +1,25 @@
-"""
-Re-implemantation of C based healpix reference: https://gitlab.mpcdf.mpg.de/mtr/healpix_reference
+# Re-implemantation of C based healpix reference: https://gitlab.mpcdf.mpg.de/mtr/healpix_reference
 
-/* -----------------------------------------------------------------------------
- *
- *  Copyright (C) 1997-2019 Krzysztof M. Gorski, Eric Hivon, Martin Reinecke,
- *                          Benjamin D. Wandelt, Anthony J. Banday,
- *                          Matthias Bartelmann,
- *                          Reza Ansari & Kenneth M. Ganga
- *
- *  Implementation of the Healpix bare bones C library
- *
- *  Licensed under a 3-clause BSD style license - see LICENSE
- *
- *  For more information on HEALPix and additional software packages, see
- *  https://healpix.sourceforge.io/
- *
- *  If you are using this code in your own packages, please consider citing
- *  the original paper in your publications:
- *  K.M. Gorski et al., 2005, Ap.J., 622, p.759
- *  (http://adsabs.harvard.edu/abs/2005ApJ...622..759G)
- *
- *----------------------------------------------------------------------------*/
-"""
+# /* -----------------------------------------------------------------------------
+#  *
+#  *  Copyright (C) 1997-2019 Krzysztof M. Gorski, Eric Hivon, Martin Reinecke,
+#  *                          Benjamin D. Wandelt, Anthony J. Banday,
+#  *                          Matthias Bartelmann,
+#  *                          Reza Ansari & Kenneth M. Ganga
+#  *
+#  *  Implementation of the Healpix bare bones C library
+#  *
+#  *  Licensed under a 3-clause BSD style license - see LICENSE
+#  *
+#  *  For more information on HEALPix and additional software packages, see
+#  *  https://healpix.sourceforge.io/
+#  *
+#  *  If you are using this code in your own packages, please consider citing
+#  *  the original paper in your publications:
+#  *  K.M. Gorski et al., 2005, Ap.J., 622, p.759
+#  *  (http://adsabs.harvard.edu/abs/2005ApJ...622..759G)
+#  *
+#  *----------------------------------------------------------------------------*/
 
 from functools import partial
 import jax
