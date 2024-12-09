@@ -301,7 +301,7 @@ class OpenGrid(Grid):
 
 @dataclass()
 class MGridAtLevel(GridAtLevel):
-    """Open (not fleshed out) multi-dimensional product of multiple grids."""
+    """Multi-dimensional meshgrid product of multiple grids."""
 
     grids: tuple[GridAtLevel]
 
@@ -447,6 +447,8 @@ class MGridAtLevel(GridAtLevel):
 
 @dataclass()
 class MGrid(Grid):
+    """Multi-dimensional meshgrid product of multiple grids."""
+
     grids: tuple[Grid]
 
     def __init__(self, *grids, atLevel=MGridAtLevel):

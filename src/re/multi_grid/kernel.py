@@ -65,13 +65,10 @@ _CompressedIndexMap = namedtuple(
 
 class Kernel:
     """
-    - A structure on a multigrid that can apply linear operators with inputs accross
-      the grid
-    - A Kernel could be as simple as coarse graining children to a parent; or could
-      be a full ICRefine or MSCrefine
-    - Should be fully jax transformable to allow seamlessly being used in larger
-      models (e.g. models for variable kernels should be able to output an instance
-      of 'kernel')
+    - Apply linear operators with inputs accross an arbitrary grid
+    - A Kernel could be as simple as coarse graining children to a parent; or a full
+      ICR or MSC implementation
+    - Fully jax transformable to allow seamlessly being used in larger models
     """
 
     def __init__(self, grid, *, _cim: Optional[_CompressedIndexMap] = None):
@@ -98,14 +95,17 @@ class Kernel:
         raise NotImplementedError()
 
     def get_matrices(self, index, level):
+        """Compute or lookup kernel matrices."""
         if self.compressed:
             return self.lookup_matrices(index, level)
         return self.compute_matrices(index, level)
 
     def compute_matrices(self, index, level):
+        """Compute kernel matrices from scratch."""
         raise NotImplementedError()
 
     def lookup_matrices(self, index, level):
+        """Efficient retrieval of kernel matrices for a compressed kernel."""
         if self._cim is None:
             msg = "kernel needs to be compressed first for fast lookups"
             raise NotImplementedError(msg)
@@ -237,6 +237,8 @@ def _suitable_window_size(grid_at_level, default=3) -> Tuple[int]:
 
 
 class ICRKernel(Kernel):
+    """Full ICR implementation taking an arbitrary grid and a covariance function."""
+
     def __init__(self, grid, covariance, *, window_size=None, _cim=None):
         self._covariance_elem = covariance
         if window_size is None:

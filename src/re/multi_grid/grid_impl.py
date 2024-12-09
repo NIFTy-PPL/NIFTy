@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from functools import partial
-from typing import Iterable, Optional, Tuple
+from typing import Iterable, Optional, Tuple, Union
 
 import jax.numpy as jnp
 import numpy as np
@@ -109,6 +109,11 @@ class HEALPixGrid(Grid):
         shape0=None,
         splits=None,
     ):
+        """HEALPix pixelization grid.
+
+        The grid can be defined either via the final nside, the initial nside
+        (nside0), or the initial shape (shape0).
+        """
         self.nest = nest
         if shape0 is not None:
             assert nside0 is None
@@ -183,13 +188,13 @@ class SimpleOpenGridAtLevel(OpenGridAtLevel):
 
 def SimpleOpenGrid(
     *,
-    min_shape,
-    window_size=3,
-    splits=2,
-    distances=None,
-    depth=None,
-    desired_size0=128,
-    atLevel=SimpleOpenGridAtLevel,
+    min_shape: Tuple[int],
+    window_size: Union[int, Tuple[int]] = 3,
+    splits: Union[int, Tuple[int], Tuple[Tuple[int]]] = 2,
+    distances: Optional[Union[float, Tuple[float]]] = None,
+    depth: Optional[int] = None,
+    desired_size0: int = 128,
+    atLevel: GridAtLevel = SimpleOpenGridAtLevel,
 ) -> OpenGrid:
     """Create a regular Cartesian grid with a given minimum shape and a default
     volume of unity at the final depth.
@@ -201,6 +206,23 @@ def SimpleOpenGrid(
     grids including their pixel distances the same. Due to padding, the amended
     grids will live on a slightly smaller volume than the previous grids and won't
     start exactly at zero.
+
+    Parameters
+    ----------
+    min_shape:
+        Minimum shape along each dimension. If the shape can be larger than requested
+        at no additional costs, it will be automatically extended.
+    window_size:
+        Size of the refinement window. The larger the window, the more accurate but
+        more costly the refinement.
+    splits:
+        Number of child pixels of a parent pixels.
+    distances:
+        Distance between pixels if the grid is regular.
+    depth:
+        Refinement depth.
+    desired_size0:
+        Approximate size of the initial coarse-most grid.
     """
     min_shape = np.atleast_1d(min_shape)
     if np.ndim(splits) != 2:
@@ -281,6 +303,9 @@ def LogarithmicGrid(
     distances=None,
     **kwargs,
 ) -> OpenGrid:
+    """Logarithmic grid on top of `SimpleOpenGrid` spanning from `r_min` to `r_max`
+    at the final depth.
+    """
     if distances is not None:
         raise ValueError("`distances` are incompatible with a logarithmic grid")
     if r_min < 0.0 or r_max < r_min:
@@ -318,6 +343,9 @@ def HPLogRGrid(
     nside0=16,
     atLevel=HPLogRGridAtLevel,
 ) -> MGrid:
+    """Meshgrid of a HEALPix grid and a logarithmic grid.
+
+    See `HEALPixGrid` and `LogarithmicGrid`."""
     if r_min_shape is None and nside is None:
         hp_size, r_min_shape = min_shape
         nside = (hp_size / 12) ** 0.5

@@ -1,20 +1,26 @@
 from dataclasses import field
+from typing import Union
 
 import jax.numpy as jnp
 
 from ..model import Model
 from ..prior import NormalPrior
 from ..tree_math import ShapeWithDtype
-from .kernel import ICRKernel, apply_kernel
+from .grid import Grid
+from .kernel import ICRKernel, Kernel, apply_kernel
 
 
 class ICRCorrelatedField(Model):
+    grid: Grid
+    kernel: Kernel
+    covariance: Union[Model, callable] = field(metadata=dict(static=False))
     offset: Model = field(metadata=dict(static=False))
-    covariance: Model = field(metadata=dict(static=False))
+    compress: bool
+    fixed_kernel: bool
 
     def __init__(
         self,
-        grid,
+        grid: Grid,
         *,
         kernel=dict(kind="matern"),
         offset=0.0,
@@ -22,6 +28,39 @@ class ICRCorrelatedField(Model):
         compress=dict(rtol=1e-5, atol=1e-10, buffer_size=10_000, use_distances=True),
         prefix="mgcfm",
     ):
+        """Correlated field model utilizing ICR to work on arbitrarily charted grids.
+
+        Parameters
+        ----------
+        grid: Grid
+            Storage object wiht instructions on how pixels are spaces.
+        kernel: dict
+            Parameters for the kernel. Currently supports `kind='matern'` with the
+            following additional arguments
+
+            - scale: tuple or callable or float -- Prior scale of the kernel.
+            - cutoff: tuple or callable or float -- Prior cutoff of the covariance kernel.
+            - loglogslope: tuple or callable or float -- Prior power-law slope of the covariance kernel correlating modes.
+            - n_integrate = 2_000 -- Number of integration points for the harmonic transformation.
+            - n_interpolate = 128 -- Number of interpolation points for interpolating the kernel.
+            - interpolation_dists_min_max = (1e-5, 1e2) -- Interpolation range.
+
+            alternatively, `kind='fixed'` with
+
+            - covariance: callable -- Covariance kernel function.
+
+            is supported.
+        offset: tuple or allable or float
+            Prior shift from zero in addition to the field intrinsic random shift.
+        window_size:
+            Shape of the refinement matrices. Its value is automatically inferred
+            from the padding in the grid or set to sane defaults if left unspecified.
+        compress:
+            Arguments for compressing the refinement matrices. If this is set to an
+            empty dictionary, no compression is applied.
+        prexi: str
+            Prefix for the latent parameter names.
+        """
         from .matern import MaternCovariance
 
         self.grid = grid

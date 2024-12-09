@@ -11,6 +11,15 @@ jax.config.update("jax_enable_x64", True)
 seed = 42
 key = random.PRNGKey(seed)
 
+# %% [markdown]
+# ## ICR Correlated Field Model
+#
+# Create a correlated field on an arbitrary grid. There are a few prespecfieid grids
+# but it is trivial to define a new grid on top of e.g. `SimpleOpenGrid`. NIFTy
+# provides grids for common spaces such as a HEALPIx grid, a logarithmic grid, and a
+# `HPLogRGrid` (HEALPix times log radius grid).
+
+# %%
 shape = (32, 32)
 
 grid = jft.SimpleOpenGrid(min_shape=shape)
