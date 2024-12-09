@@ -102,8 +102,7 @@ samples, state = jft.optimize_kl(
     # can be specified as point_estimates (effectively we are doing MAP for
     # these degrees of freedom).
     # point_estimates=("cfax1flexibility", "cfax1asperity"),
-    # Arguments for the conjugate gradient method used to drawing samples from
-    # an implicit covariance matrix
+    # Arguments for the conjugate gradient method used to drawing samples
     draw_linear_kwargs=dict(
         cg_name="SL",
         cg_kwargs=dict(absdelta=delta * jft.size(lh.domain) / 10.0, maxiter=100),
