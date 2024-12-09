@@ -284,10 +284,10 @@ class LogarithmicGridAtLevel(SimpleOpenGridAtLevel):
 
     def index2coord(self, index):
         coord = super().index2coord(index)
-        return np.exp(self.coord_scale * coord + self.coord_offset)
+        return jnp.exp(self.coord_scale * coord + self.coord_offset)
 
     def coord2index(self, coord, dtype=np.uint64):
-        coord = (np.log(coord) - self.coord_offset) / self.coord_scale
+        coord = (jnp.log(coord) - self.coord_offset) / self.coord_scale
         return super().coord2index(self, coord, dtype=dtype)
 
     def index2volume(self, index):
