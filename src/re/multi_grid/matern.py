@@ -17,7 +17,10 @@ from ..prior import LogNormalPrior, NormalPrior
 def si(x):
     """Calculates the integral of sin(t)/t from 0 to x.
 
-    Based on https://github.com/GalSim-developers/GalSim/blob/releases/2.6/src/math/Sinc.cpp"""
+    Following https://en.wikipedia.org/wiki/Trigonometric_integral#Efficient_evaluation
+    and https://github.com/GalSim-developers/GalSim/blob/releases/2.6/src/math/Sinc.cpp
+    this functions implements formulae by Rowe et al. (2015).
+    """
     x2 = x * x
 
     def g(_x):
