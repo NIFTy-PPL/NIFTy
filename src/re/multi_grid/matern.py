@@ -315,7 +315,8 @@ class MaternCovariance(Model):
         *,
         n_integrate=2_000,
         n_interpolate=128,
-        interpolation_dists_min_max=(1e-5, 1e2),
+        interpolation_dists_min_max=(1e-3, 1e-2),
+        integration_dists_min_max=(1e-3, 1e4),
         prefix: str = "",
     ):
         if isinstance(cutoff, (tuple, list)):
@@ -334,12 +335,11 @@ class MaternCovariance(Model):
             raise TypeError(f"invalid `scale` specified; got '{scale!r}'")
         self.scale = scale
 
-        self._interpolation_log_dists = jnp.logspace(
-            *tuple(np.log10(interpolation_dists_min_max)), n_interpolate
+        self._interpolation_log_dists = jnp.geomspace(
+            *interpolation_dists_min_max, n_interpolate
         )
-        integration_dists_min_max = (1e-5, 1e4)
-        self._integration_log_dists = jnp.logspace(
-            *tuple(np.log10(integration_dists_min_max)), n_integrate, base=10.0
+        self._integration_log_dists = jnp.geomspace(
+            *integration_dists_min_max, n_integrate
         )
 
         super().__init__(
@@ -349,15 +349,10 @@ class MaternCovariance(Model):
     @staticmethod
     def _cov(x, y, *, scale, distances, logcorr):
         r = jnp.linalg.norm(x - y, axis=0, ord=2)
-        cov = jnp.where(
-            r == 0.0,
-            jnp.ones_like(r) + 1.0e-5,
-            jnp.exp(
-                jnp.interp(
-                    r, distances, logcorr, left="extrapolate", right="extrapolate"
-                )
-            ),
+        cov = jnp.exp(
+            jnp.interp(r, distances, logcorr, left="extrapolate", right="extrapolate")
         )
+        cov = jnp.where(r == 0.0, jnp.ones_like(r), cov)
         return scale * cov
 
     def __call__(self, x):
