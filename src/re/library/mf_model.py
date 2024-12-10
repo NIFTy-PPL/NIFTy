@@ -27,6 +27,14 @@ class CorrelatedMultiFrequencySky(Model):
     """
     A model for generating a correlated multi-frequency sky map based on
     spatial and spectral correlation models.
+
+    .. math ::
+        sky = \\exp(F[A_spatial *
+              io(k, \\nu_0) + A_spectral *
+              (slope(k) * (\\nu-\\nu_0) +
+              GaussMarkovProcess(k, \\nu-\\nu_0)
+              - AvgSlope[GaussMarkovProcess]
+              )] + zero_mode)
     """
 
     def __init__(
@@ -45,6 +53,44 @@ class CorrelatedMultiFrequencySky(Model):
         nonlinearity: Optional[Callable] = jnp.exp,
         dtype: type = jnp.float64,
     ):
+        """Parameters
+        ----------
+        prefix: str
+            The prefix of the multi-frequency model.
+        relative_log_frequencies: Union[tuple[float], ArrayLike]
+            The log_frequencies relative to the reference frequency:
+            delta log(v) = log(v) - log(v_ref)
+        zero_model: jft.Model
+            The model for the zero mode
+        spatial_fluctuations: jft.Model
+            Multiplicative factor on the spatial xis at reference frequency.
+        spatial_amplitude: Union[MaternAmplitude, NonParametricAmplitude]
+            Amplitude model for the spatial correlations.
+        spectral_index_mean: jft.Model
+            This is the mean of the spectral index. This is one number, which
+            gets modified by the `spectral_index_fluctuations`*`spectral_xi`
+            field.
+        spectral_index_fluctuations: jft.Model
+            This is the strength of the deviations of the spectral index field,
+            i.e. `spectral_index_fluctuations`*`spectral_xi`
+        spectral_amplitude: Optional[Union[MaternAmplitude, NonParametricAmplitude]]
+            An optional amplitude model for the spectral correlations of the
+            spectral_index field.
+            If `None` the `spatial_amplitude` is used for the spectral
+            correlations.
+        spectral_index_deviations: Optional[jft.Model]
+            A model capturing deviations from the spectral behavior of the
+            spectral index model.
+        log_ref_freq_mean_model: Optional[jft.Model]
+            Optional mean model applied spatially to the spatial reference in
+            `nonlinearity` units. This can be used to tapper the spatial
+            reference model.
+        nonlinearity: Optional[jnp.callable]
+            The nonlinearity to be applied to the multifrequency correlated
+            field.
+        dtype: type
+            The dtype of the model output. Needed for compilation.
+        """
 
         # The amplitudes supplied need to be normalized, as both the spatial
         # and the spectral fluctuations are applied directly in the call to
