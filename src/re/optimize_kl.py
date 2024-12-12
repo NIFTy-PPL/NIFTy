@@ -388,19 +388,52 @@ class OptimizeVI:
         samples: Samples,
         minimize: Callable[..., optimize.OptimizeResults] = optimize._static_newton_cg,
         minimize_kwargs={},
+        constants=(),
         **kwargs,
     ) -> optimize.OptimizeResults:
         fun_and_grad = Partial(
             self.kl_value_and_grad, primals_samples=samples, **kwargs
         )
         hessp = Partial(self.kl_metric, primals_samples=samples, **kwargs)
+        pl = samples.pos
+        if constants:
+            from .likelihood import _parse_point_estimates, partial_insert_and_remove
+            from .tree_math import zeros_like, Vector
+
+            insert_axes, pl, primals_frozen = _parse_point_estimates(constants, pl)
+            unflatten = Vector if insert_axes else None
+            fun_and_grad = partial_insert_and_remove(
+                fun_and_grad,
+                insert_axes=(insert_axes,),
+                flat_fill=(primals_frozen,),
+                remove_axes=(False, insert_axes),
+                unflatten=lambda x: (x[0], unflatten(x[1:])),
+            )
+            hessp = partial_insert_and_remove(
+                hessp,
+                insert_axes=(insert_axes, insert_axes),
+                flat_fill=(primals_frozen, zeros_like(primals_frozen)),
+                remove_axes=insert_axes,
+                unflatten=unflatten,
+            )
         kl_opt_state = minimize(
             None,
-            x0=samples.pos,
+            x0=pl,
             fun_and_grad=fun_and_grad,
             hessp=hessp,
             **minimize_kwargs,
         )
+        if constants:
+            insert = partial_insert_and_remove(
+                lambda x: x,
+                insert_axes=(insert_axes,),
+                flat_fill=(primals_frozen,),
+                remove_axes=None,
+                unflatten=None,
+            )
+            kl_opt_state = kl_opt_state._replace(
+                x=insert(kl_opt_state.x), jac=insert(kl_opt_state.jac)
+            )
         return kl_opt_state
 
     def init_state(
@@ -420,7 +453,7 @@ class OptimizeVI:
         ),
         sample_mode: SMPL_MODE_GENERIC_TYP = "nonlinear_resample",
         point_estimates=(),
-        constants=(),  # TODO
+        constants=(),
     ) -> OptimizeVIState:
         """Initialize the state of the (otherwise state-less) VI approximation.
 
@@ -455,8 +488,11 @@ class OptimizeVI:
             inputs, a tuple of strings is also valid. From these the boolean
             indicator pytree is automatically constructed.
         constants: tree-like structure or tuple of str
-            Not implemented yet, sorry :( Do bug me (Gordian) at
-            edh@mpa-garching.mpg.de if you wanted to run with this option.
+            Pytree of same structure as likelihood input but with boolean
+            leaves indicating whether to keep these values constant during the
+            KL minimization. As a convenience method, for dict-like inputs, a
+            tuple of strings is also valid. From these the boolean indicator
+            pytree is automatically constructed.
 
         Most of the parameters can be callable, in which case they are called
         with the current iteration number as argument and should return the
@@ -495,12 +531,9 @@ class OptimizeVI:
         assert isinstance(state, OptimizeVIState)
         nit, key, config = state.nit, state.key, state.config
 
-        constants = _getitem_at_nit(config, "constants", nit)
-        if not (constants == () or constants is None):
-            raise NotImplementedError()
-
         sample_mode = _getitem_at_nit(config, "sample_mode", nit)
         point_estimates = _getitem_at_nit(config, "point_estimates", nit)
+        constants = _getitem_at_nit(config, "constants", nit)
         n_samples = _getitem_at_nit(config, "n_samples", nit)
         draw_linear_kwargs = _getitem_at_nit(config, "draw_linear_kwargs", nit)
         nonlinearly_update_kwargs = _getitem_at_nit(
@@ -520,7 +553,9 @@ class OptimizeVI:
         )
 
         kl_kwargs = _getitem_at_nit(config, "kl_kwargs", nit).copy()
-        kl_opt_state = self.kl_minimize(samples, **kl_kwargs, **kwargs)
+        kl_opt_state = self.kl_minimize(
+            samples, constants=constants, **kl_kwargs, **kwargs
+        )
         samples = samples.at(kl_opt_state.x)
         # Remove unnecessary references
         kl_opt_state = kl_opt_state._replace(x=None, jac=None, hess=None, hess_inv=None)
