@@ -25,7 +25,9 @@ class ICRCorrelatedField(Model):
         kernel=dict(kind="matern"),
         offset=0.0,
         window_size=None,
-        compress=dict(rtol=1e-5, atol=1e-10, buffer_size=10_000, use_distances=True),
+        compress: Union[bool, dict] = dict(
+            rtol=1e-5, atol=1e-10, buffer_size=10_000, use_distances=True
+        ),
         prefix="mgcfm",
     ):
         """Correlated field model utilizing ICR to work on arbitrarily charted grids.
@@ -33,7 +35,7 @@ class ICRCorrelatedField(Model):
         Parameters
         ----------
         grid: Grid
-            Storage object wiht instructions on how pixels are spaces.
+            Storage object with instructions on how pixels are spaced.
         kernel: dict
             Parameters for the kernel. Currently supports `kind='matern'` with the
             following additional arguments
@@ -50,12 +52,12 @@ class ICRCorrelatedField(Model):
             - covariance: callable -- Covariance kernel function.
 
             is supported.
-        offset: tuple or allable or float
+        offset: tuple or callable or float
             Prior shift from zero in addition to the field intrinsic random shift.
         window_size:
             Shape of the refinement matrices. Its value is automatically inferred
             from the padding in the grid or set to sane defaults if left unspecified.
-        compress:
+        compress: dict
             Arguments for compressing the refinement matrices. If this is set to an
             empty dictionary, no compression is applied.
         prexi: str
