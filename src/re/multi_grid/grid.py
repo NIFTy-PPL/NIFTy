@@ -25,9 +25,9 @@ class GridAtLevel:
     def __init__(self, shape, splits=None, parent_splits=None):
         self.shape = np.atleast_1d(shape)
         if splits is not None:
-            splits = np.broadcast_to(splits, self.shape.shape)
+            splits = np.broadcast_to(splits, (self.ndim,))
         if parent_splits is not None:
-            parent_splits = np.broadcast_to(parent_splits, self.shape.shape)
+            parent_splits = np.broadcast_to(parent_splits, (self.ndim,))
         self.splits = splits
         self.parent_splits = parent_splits
 
@@ -183,11 +183,11 @@ class OpenGridAtLevel(GridAtLevel):
     ):
         super().__init__(shape=shape, splits=splits, parent_splits=parent_splits)
         if padding is not None:
-            padding = np.broadcast_to(padding, self.shape.shape)
+            padding = np.broadcast_to(padding, (self.ndim,))
         if parent_padding is not None:
-            parent_padding = np.broadcast_to(parent_padding, self.shape.shape)
+            parent_padding = np.broadcast_to(parent_padding, (self.ndim,))
         if shifts is not None:
-            shifts = np.broadcast_to(shifts, self.shape.shape)
+            shifts = np.broadcast_to(shifts, (self.ndim,))
         self.padding = padding
         self.parent_padding = parent_padding
         self.shifts = shifts
