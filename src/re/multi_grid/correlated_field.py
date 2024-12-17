@@ -3,7 +3,7 @@ from typing import Union
 
 import jax.numpy as jnp
 
-from ..model import Model
+from ..model import Model, WrappedCall
 from ..prior import NormalPrior
 from ..tree_math import ShapeWithDtype
 from .grid import Grid
@@ -89,13 +89,17 @@ class ICRCorrelatedField(Model):
         if not self.fixed_kernel:
             domain |= self.covariance.domain
 
+        # Parse offset
+        name_off = prefix + "offset"
         if isinstance(offset, (tuple, list)):
-            offset = NormalPrior(*offset, name=prefix + "offset")
-        elif callable(offset) or not isinstance(offset, float):
+            offset = NormalPrior(*offset, name=name_off)
+        elif callable(offset) and not isinstance(offset, Model):
+            offset = WrappedCall(offset, name=name_off, white_init=True)
+        if not isinstance(offset, Model) or not isinstance(offset, float):
             raise ValueError
+        if isinstance(offset, Model):
+            domain |= offset.domain
         self.offset = offset
-        if callable(self.offset):
-            domain |= self.offset.domain
 
         self.compress = isinstance(compress, dict) and len(compress) > 0
         kernel = ICRKernel(self.grid, None, window_size=window_size)
@@ -115,5 +119,5 @@ class ICRCorrelatedField(Model):
             kernel = self.kernel.replace(covariance=self.covariance(x))
             if self.compress:
                 kernel = kernel.compress_matrices()
-        off = self.offset(x) if callable(self.offset) else self.offset
+        off = self.offset(x) if isinstance(self.offset, Model) else self.offset
         return off + apply_kernel(x[self._name_exc], kernel=kernel)[-1]
