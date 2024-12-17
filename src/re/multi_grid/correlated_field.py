@@ -2,6 +2,8 @@ from dataclasses import field
 from typing import Union
 
 import jax.numpy as jnp
+from jax.tree_util import Partial
+from numpy import typing as npt
 
 from ..model import Model, WrappedCall
 from ..prior import NormalPrior
@@ -22,7 +24,9 @@ class ICRCorrelatedField(Model):
         self,
         grid: Grid,
         *,
-        kernel=dict(kind="matern"),
+        kernel: Union[dict, Model, callable[[npt.array, npt.array], npt.array]] = dict(
+            kind="matern"
+        ),
         offset=0.0,
         window_size=None,
         compress: Union[bool, dict] = dict(
@@ -36,7 +40,7 @@ class ICRCorrelatedField(Model):
         ----------
         grid: Grid
             Storage object with instructions on how pixels are spaced.
-        kernel: dict
+        kernel: dict or Model or callable
             Parameters for the kernel. Currently supports `kind='matern'` with the
             following additional arguments
 
@@ -47,11 +51,9 @@ class ICRCorrelatedField(Model):
             - n_interpolate = 128 -- Number of interpolation points for interpolating the kernel.
             - interpolation_dists_min_max = (1e-5, 1e2) -- Interpolation range.
 
-            alternatively, `kind='fixed'` with
-
-            - covariance: callable -- Covariance kernel function.
-
-            is supported.
+            alternatively, `kernel` can be a NIFTy `Model` which yields a callable
+            covariance function (`kernel(xi: dict) -> callable[[x, y], z]`), or a
+            `callable[[x, y], z]` covarinace function.
         offset: tuple or callable or float
             Prior shift from zero in addition to the field intrinsic random shift.
         window_size:
@@ -73,21 +75,25 @@ class ICRCorrelatedField(Model):
         self._name_exc = str(prefix) + "excitations"
         domain = {self._name_exc: shapes}
 
+        # Parse kernel
         DEFAULT_KERNEL_KIND = "matern"
-        if not isinstance(kernel, dict):
-            raise TypeError(f"invalid kernel type; got {kernel!r}")
-        fixed_kernel = False
-        kernel = kernel.copy()
-        kernel_kind = kernel.pop("kind", DEFAULT_KERNEL_KIND).lower()
-        if kernel_kind == "matern":
-            covariance = MaternCovariance(**kernel, prefix=prefix)
-        elif kernel_kind == "fixed":
+        fixed_kernel, covariance = False, None
+        if isinstance(kernel, dict):
+            kernel = kernel.copy()
+            kernel_kind = kernel.pop("kind", DEFAULT_KERNEL_KIND).lower()
+            if kernel_kind == "matern":
+                covariance = MaternCovariance(**kernel, prefix=prefix)
+            else:
+                raise ValueError(f"kernel {kernel_kind!r} not supported")
+        elif isinstance(kernel, Model):
+            covariance = kernel
+        elif callable(kernel):
             fixed_kernel = True
-            covariance = kernel["covariance"]
+            covariance = Partial(kernel)
         else:
-            raise ValueError(f"kernel {kernel_kind!r} not supported")
-        self.covariance = covariance
+            raise TypeError(f"invalid kernel type; got {kernel!r}")
         self.fixed_kernel = fixed_kernel
+        self.covariance = covariance
         if not self.fixed_kernel:
             domain |= self.covariance.domain
 
