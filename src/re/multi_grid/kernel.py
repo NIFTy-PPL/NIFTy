@@ -224,7 +224,7 @@ class Kernel:
         return self.compress_indices(*args, **kwargs).compress_matrices()
 
 
-def _suitable_window_size(grid_at_level, default=3) -> Tuple[int]:
+def _default_window_size(grid_at_level, default=3) -> Tuple[int]:
     wsz = []
     for g in grid_at_level.raw_grids:
         if isinstance(g, HEALPixGridAtLevel):  # special-case HEALPix
@@ -243,7 +243,7 @@ class ICRKernel(Kernel):
         self._covariance_elem = covariance
         if window_size is None:
             window_size = tuple(
-                _suitable_window_size(grid.at(lvl)) for lvl in range(grid.depth)
+                _default_window_size(grid.at(lvl)) for lvl in range(grid.depth)
             )
         self._window_size = tuple(
             np.broadcast_to(window_size, (grid.depth, grid.at(0).ndim))
