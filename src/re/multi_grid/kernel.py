@@ -246,7 +246,7 @@ class ICRKernel(Kernel):
                 _suitable_window_size(grid.at(lvl)) for lvl in range(grid.depth)
             )
         self._window_size = tuple(
-            np.broadcast_to(window_size, (grid.depth,) + grid.at(0).shape.shape)
+            np.broadcast_to(window_size, (grid.depth, grid.at(0).ndim))
         )
         super().__init__(grid=grid, _cim=_cim)
 
