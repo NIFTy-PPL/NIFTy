@@ -1,5 +1,6 @@
 [project]
 name = "nifty8"
+version = "8.5.3"
 description = "Probabilistic programming framework for signal inference algorithms that operate regardless of the underlying grids and their resolutions"
 readme = "README.md"
 authors = [
@@ -20,10 +21,7 @@ classifiers = [
     "Operating System :: OS Independent",
     "Programming Language :: Python",
 ]
-dynamic = ["version"]
 
-[tool.setuptools.dynamic]
-version = {attr = "nifty8.__version__"}
 
 [project.urls]
 Homepage = "https://github.com/nifty-ppl/nifty"
@@ -36,8 +34,6 @@ Homepage = "https://github.com/nifty-ppl/nifty"
 re = [
     "jax<=0.4.30",
     "jaxlib<=0.4.30",
-]
-re_sht = [
     "jaxbind",
     "ducc0>=0.27.0",
 ]
@@ -67,7 +63,7 @@ test = [
     "ducc0",
     "jaxbind",
 ]
-all = ["nifty8[re,re_sht,native,parallel,doc,util,test]"]
+all = ["nifty8[re,native,parallel,doc,util,test]"]
 
 [build-system]
 requires = [
