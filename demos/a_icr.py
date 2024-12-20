@@ -26,7 +26,7 @@ grid = jft.SimpleOpenGrid(min_shape=shape)
 cf = jft.ICRField(
     grid,
     kernel=dict(
-        kind="matern",
+        kind="experimental_matern",
         scale=(1.0, 0.2),
         cutoff=(1e-1, 1e-2),
         loglogslope=(-6.0, 0.5),

@@ -300,7 +300,7 @@ def sin_integral_antilinearly_exact(f, xs, k):
     return result
 
 
-class MaternCovariance(Model):
+class MaternHarmonicCovariance(Model):
     scale: Union[Model, float] = field(metadata=dict(static=False))
     cutoff: Union[Model, float] = field(metadata=dict(static=False))
     loglogslope: Union[Model, float] = field(metadata=dict(static=False))
@@ -313,6 +313,7 @@ class MaternCovariance(Model):
         cutoff: Union[tuple, Callable, float],
         loglogslope: Union[tuple, Callable, float],
         *,
+        ndim: int,
         n_integrate=2_000,
         n_interpolate=128,
         interpolation_dists_min_max=(1e-3, 1e-2),
@@ -334,6 +335,8 @@ class MaternCovariance(Model):
         elif not callable(scale) or not isinstance(scale, float):
             raise TypeError(f"invalid `scale` specified; got '{scale!r}'")
         self.scale = scale
+
+        self.ndim = ndim
 
         self._interpolation_log_dists = jnp.geomspace(
             *interpolation_dists_min_max, n_interpolate
@@ -361,6 +364,9 @@ class MaternCovariance(Model):
         loglogslope = (
             self.loglogslope(x) if callable(self.loglogslope) else self.loglogslope
         )
+        # NOTE, emulate an ndim-harmonic transform by decrementing the slope. This
+        # is technically not the same but at least for the Matern kernel it is similar.
+        loglogslope = loglogslope - self.ndim
 
         def integral(r):
             r = jnp.abs(r) + 1.0e-5  # avoid numerical nonsense
