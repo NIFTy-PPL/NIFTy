@@ -10,16 +10,12 @@ from jax import vmap
 
 from ..misc import deprecated
 from ..model import LazyModel
+from ..multi_grid.kernel import refinement_matrices
+from ..multi_grid.util import sqrtm
 from ..tree_math import Vector
 from .chart import CoordinateChart
 from .charted_refine import refine
-from .util import (
-    RefinementMatrices,
-    get_cov_from_loc,
-    get_refinement_shapewithdtype,
-    refinement_matrices,
-    sqrtm,
-)
+from .util import RefinementMatrices, get_cov_from_loc, get_refinement_shapewithdtype
 
 
 def _coordinate_pixel_refinement_matrices(

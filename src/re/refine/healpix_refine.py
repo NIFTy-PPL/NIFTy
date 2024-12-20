@@ -11,7 +11,8 @@ import numpy as np
 from jax import numpy as jnp
 from jax.lax import dynamic_slice_in_dim
 
-from .util import get_cov_from_loc, sqrtm
+from ..multi_grid.util import sqrtm
+from .util import get_cov_from_loc
 
 
 def get_1st_hp_nbrs_idx(nside, pix, nest: bool = False, dtype=np.int32):
