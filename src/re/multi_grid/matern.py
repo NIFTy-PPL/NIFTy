@@ -316,7 +316,7 @@ class MaternHarmonicCovariance(Model):
         ndim: int,
         n_integrate=2_000,
         n_interpolate=128,
-        interpolation_dists_min_max=(1e-3, 1e-2),
+        interpolation_dists_min_max=(1e-3, 1e2),
         integration_dists_min_max=(1e-3, 1e4),
         prefix: str = "",
     ):
