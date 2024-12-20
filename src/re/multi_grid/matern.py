@@ -322,17 +322,17 @@ class MaternHarmonicCovariance(Model):
     ):
         if isinstance(cutoff, (tuple, list)):
             cutoff = LogNormalPrior(*cutoff, name=prefix + "cutoff")
-        elif not callable(cutoff) or not isinstance(cutoff, float):
+        elif not (callable(cutoff) or isinstance(cutoff, float)):
             raise TypeError(f"invalid `cutoff` specified; got '{cutoff!r}'")
         self.cutoff = cutoff
         if isinstance(loglogslope, (tuple, list)):
             loglogslope = NormalPrior(*loglogslope, name=prefix + "loglogslope")
-        elif not callable(loglogslope) or not isinstance(loglogslope, float):
+        elif not (callable(loglogslope) or isinstance(loglogslope, float)):
             raise TypeError(f"invalid `loglogslope` specified; got '{loglogslope!r}'")
         self.loglogslope = loglogslope
         if isinstance(scale, (tuple, list)):
             scale = LogNormalPrior(*scale, name=prefix + "scale")
-        elif not callable(scale) or not isinstance(scale, float):
+        elif not (callable(scale) or isinstance(scale, float)):
             raise TypeError(f"invalid `scale` specified; got '{scale!r}'")
         self.scale = scale
 

@@ -109,8 +109,8 @@ class ICRField(Model):
             offset = NormalPrior(*offset, name=name_off)
         elif callable(offset) and not isinstance(offset, Model):
             offset = WrappedCall(offset, name=name_off, white_init=True)
-        if not isinstance(offset, Model) or not isinstance(offset, float):
-            raise ValueError
+        if not (isinstance(offset, Model) or isinstance(offset, float)):
+            raise ValueError(f"invalid `offset`; got {offset!r}")
         if isinstance(offset, Model):
             domain |= offset.domain
         self.offset = offset
