@@ -12,7 +12,7 @@ import numpy as np
 from jax import vmap
 from numpy.typing import ArrayLike
 
-from .frequency_deviations import build_frequency_deviations_model
+from .frequency_deviations import build_frequency_deviations_model_with_degeneracies
 from .mf_model_utils import (
     _build_distribution_or_default, build_normalized_amplitude_model)
 from .spectral_behaviour import (
@@ -26,9 +26,8 @@ from ..model import Model
 from ..num.stats_distributions import lognormal_prior, normal_prior
 
 
-class CorrelatedMultiFrequencySkyNew(Model):
-    """
-    A model for generating a correlated multi-frequency sky map based on
+class CorrelatedMultiFrequencySky(Model):
+    """A model for generating a correlated multi-frequency sky map based on
     spatial and spectral correlation models.
 
     .. math ::
@@ -38,11 +37,45 @@ class CorrelatedMultiFrequencySkyNew(Model):
               GaussMarkovProcess(k, \\nu-\\nu_0)
               - AvgSlope[GaussMarkovProcess]
               )] + zero_mode)
+
+    Parameters
+    ----------
+    relative_log_frequencies: Union[tuple[float], ArrayLike]
+        The log_frequencies relative to the reference frequency:
+        delta log(v) = log(v) - log(v_ref)
+    zero_model: jft.Model
+        The model for the zero mode
+    spatial_fluctuations: jft.Model
+        Multiplicative factor on the spatial xis at reference frequency.
+    spatial_amplitude: Union[MaternAmplitude, NonParametricAmplitude]
+        Amplitude model for the spatial correlations.
+    spectral_index_mean: jft.Model
+        This is the mean of the spectral index. This is one number, which
+        gets modified by the `spectral_index_fluctuations` field.
+    spectral_index_fluctuations: jft.Model
+        This is the strength of the deviations of the spectral index field,
+    spectral_amplitude: Optional[Union[MaternAmplitude,
+        NonParametricAmplitude]]
+        An optional amplitude model for the spectral correlations of the
+        spectral_index field.
+        If `None` the `spatial_amplitude` is used for the spectral
+        correlations.
+    spectral_index_deviations: Optional[jft.Model]
+        A model capturing deviations from the spectral behavior of the
+        spectral index model.
+    log_ref_freq_mean_model: Optional[jft.Model]
+        Optional mean model applied spatially to the spatial reference in
+        `nonlinearity` units. This can be used to tapper the spatial
+        reference model.
+    nonlinearity: Optional[jnp.callable]
+        The nonlinearity to be applied to the multifrequency correlated
+        field.
+    dtype: type
+        The dtype of the model output. Needed for compilation.
     """
 
     def __init__(
         self,
-        prefix: str,
         zero_mode: Model,
         spatial_fluctuations: Model,
         spatial_amplitude: Union[MaternAmplitude, NonParametricAmplitude],
@@ -54,43 +87,6 @@ class CorrelatedMultiFrequencySkyNew(Model):
         nonlinearity: Optional[Callable] = jnp.exp,
         dtype: type = jnp.float64,
     ):
-        """Parameters
-        ----------
-        prefix: str
-            The prefix of the multi-frequency model.
-        relative_log_frequencies: Union[tuple[float], ArrayLike]
-            The log_frequencies relative to the reference frequency:
-            delta log(v) = log(v) - log(v_ref)
-        zero_model: jft.Model
-            The model for the zero mode
-        spatial_fluctuations: jft.Model
-            Multiplicative factor on the spatial xis at reference frequency.
-        spatial_amplitude: Union[MaternAmplitude, NonParametricAmplitude]
-            Amplitude model for the spatial correlations.
-        spectral_index_mean: jft.Model
-            This is the mean of the spectral index. This is one number, which
-            gets modified by the `spectral_index_fluctuations` field.
-        spectral_index_fluctuations: jft.Model
-            This is the strength of the deviations of the spectral index field,
-        spectral_amplitude: Optional[Union[MaternAmplitude,
-            NonParametricAmplitude]]
-            An optional amplitude model for the spectral correlations of the
-            spectral_index field.
-            If `None` the `spatial_amplitude` is used for the spectral
-            correlations.
-        spectral_index_deviations: Optional[jft.Model]
-            A model capturing deviations from the spectral behavior of the
-            spectral index model.
-        log_ref_freq_mean_model: Optional[jft.Model]
-            Optional mean model applied spatially to the spatial reference in
-            `nonlinearity` units. This can be used to tapper the spatial
-            reference model.
-        nonlinearity: Optional[jnp.callable]
-            The nonlinearity to be applied to the multifrequency correlated
-            field.
-        dtype: type
-            The dtype of the model output. Needed for compilation.
-        """
 
         # The amplitudes supplied need to be normalized, as both the spatial
         # and the spectral fluctuations are applied directly in the call to
@@ -109,7 +105,6 @@ class CorrelatedMultiFrequencySkyNew(Model):
                 )
 
         grid = spatial_amplitude.grid
-        self._prefix = prefix
         self._hdvol = 1.0 / grid.total_volume
         self._pd = grid.harmonic_grid.power_distributor
         self._ht = partial(hartley, axes=tuple(range(len(grid.shape))))
@@ -181,7 +176,7 @@ class CorrelatedMultiFrequencySkyNew(Model):
             """
             spectral_index_mean = self.spectral_behavior.mean(p)
 
-            if self.spectral_amplitude is not None:
+            if self.spectral_amplitude is None:
                 spec_amplitude = spat_amplitude
             else:
                 spec_amplitude = self.spectral_amplitude(p)
@@ -196,7 +191,6 @@ class CorrelatedMultiFrequencySkyNew(Model):
                 return self._nonlinearity(
                     correlated_spatial_reference +
                     (correlated_spectral_index + spectral_index_mean) *
-                    # NOTE :  Is this slow because of getting the log_freqs?
                     self.spectral_behavior.relative_log_frequencies +
                     zm)
             else:
@@ -204,7 +198,6 @@ class CorrelatedMultiFrequencySkyNew(Model):
                     self.log_ref_freq_mean_model(p) +
                     correlated_spatial_reference +
                     (correlated_spectral_index + spectral_index_mean) *
-                    # NOTE :  Is this slow because of getting the log_freqs?
                     self.spectral_behavior.relative_log_frequencies +
                     zm)
 
@@ -427,7 +420,7 @@ def _build_fluctuations_model(
         domain=spatial_fluctuations.domain | spatial_xi.domain)
 
 
-def build_default_mf_model_new(
+def build_default_mf_model(
     prefix: str,
     shape: tuple[int],
     distances: tuple[float],
@@ -445,7 +438,7 @@ def build_default_mf_model_new(
     spectral_amplitude_model: str = "non_parametric",
     harmonic_type: str = 'fourier',
     dtype: type = jnp.float64,
-) -> CorrelatedMultiFrequencySkyNew:
+) -> CorrelatedMultiFrequencySky:
     """
     Builds a multi-frequency sky model parametrized as
 
@@ -593,7 +586,7 @@ def build_default_mf_model_new(
                     "be ignored. The `spectral_index` fluctuations will be "
                     "used instead.")
 
-    deviations_model = build_frequency_deviations_model(
+    deviations_model = build_frequency_deviations_model_with_degeneracies(
         shape, log_frequencies, reference_frequency_index, deviations_settings,
         prefix=f'{prefix}_spectral')
 
@@ -603,8 +596,7 @@ def build_default_mf_model_new(
         normal_prior
     )
 
-    return CorrelatedMultiFrequencySkyNew(
-        prefix=prefix,
+    return CorrelatedMultiFrequencySky(
         zero_mode=zero_mode,
         spatial_fluctuations=spatial_fluctuations,
         spatial_amplitude=spatial_amplitude,
