@@ -1,7 +1,8 @@
 from dataclasses import field
-from typing import Union
+from typing import Callable, Union
 
 import jax.numpy as jnp
+from jax import eval_shape
 from jax.tree_util import Partial
 from numpy import typing as npt
 
@@ -12,10 +13,10 @@ from .grid import Grid
 from .kernel import ICRKernel, Kernel, apply_kernel
 
 
-class ICRCorrelatedField(Model):
+class ICRField(Model):
     grid: Grid
     kernel: Kernel
-    covariance: Union[Model, callable] = field(metadata=dict(static=False))
+    covariance: Union[Model, Callable] = field(metadata=dict(static=False))
     offset: Model = field(metadata=dict(static=False))
     compress: bool
     fixed_kernel: bool
@@ -24,9 +25,9 @@ class ICRCorrelatedField(Model):
         self,
         grid: Grid,
         *,
-        kernel: Union[dict, Model, callable[[npt.array, npt.array], npt.array]] = dict(
-            kind="matern"
-        ),
+        kernel: Union[
+            dict, Model, Callable[[npt.NDArray, npt.NDArray], npt.NDArray]
+        ] = dict(kind="matern"),
         offset=0.0,
         window_size=None,
         compress: Union[bool, dict] = dict(

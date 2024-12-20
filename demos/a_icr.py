@@ -23,7 +23,7 @@ key = random.PRNGKey(seed)
 shape = (32, 32)
 
 grid = jft.SimpleOpenGrid(min_shape=shape)
-cf = jft.ICRCorrelatedField(
+cf = jft.ICRField(
     grid,
     kernel=dict(
         kind="matern",
