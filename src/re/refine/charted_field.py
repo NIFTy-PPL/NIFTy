@@ -8,6 +8,7 @@ from typing import Callable, Iterable, Optional, Tuple, Union
 from jax import numpy as jnp
 from jax import vmap
 
+from ..misc import deprecated
 from ..model import LazyModel
 from ..tree_math import Vector
 from .chart import CoordinateChart
@@ -132,6 +133,7 @@ def _coordinate_refinement_matrices(
 
 
 class ChartedField(LazyModel):
+    @deprecated("`ChartedField` is deprecated in favor of `ICRField`")
     def __init__(
         self,
         *args,
@@ -148,6 +150,10 @@ class ChartedField(LazyModel):
         all arguments of `CoordinateChart` also to this method and it will
         instantiate the `CoordinateChart` for you and use it in the same way as
         if directly specified.
+
+        Notes
+        -----
+        This method is deprecated, please use the new `ICRField` method.
 
         Parameters
         ----------
