@@ -6,11 +6,14 @@
 import jax.random as random
 import pytest
 from numpy.testing import assert_allclose
+import numpy as np
 
 import nifty8.re as jft
-from nifty8.re.correlated_field import (make_grid, NonParametricAmplitude,
-MaternAmplitude)
-from nifty8.re.library.frequency_deviations import build_frequency_deviations_model
+from nifty8.re.correlated_field import (
+    make_grid, NonParametricAmplitude, MaternAmplitude)
+from nifty8.re.library.frequency_deviations import build_frequency_deviations_model_with_degeneracies
+from nifty8.re.library.spectral_behaviour import SpectralIndex
+from nifty8.re.library.mf_spectral_fun import _build_fluctuations_model
 
 pmp = pytest.mark.parametrize
 
@@ -58,50 +61,46 @@ pmp = pytest.mark.parametrize
 
 @pmp("shape", [(10,), (10, 10)])
 @pmp("distances", [0.1])
-@pmp("log_relative_frequencies", [(0.1,)])
+@pmp("log_frequencies", [np.array((0.1,))])
+@pmp("reference_frequency_index", [0])
 @pmp("zero_mode", [jft.Model(lambda p: 0., domain={"zero_mode": None})])
-@pmp("spectral_index_mean", [jft.NormalPrior(0., 1.,
-                                            name="spectral_index_mean")]
-     )
-@pmp("spectral_index_fluctuations", [jft.LogNormalPrior(0.1, 1.,
-                                                       name="spectral_index_fluctuations")]
-     )
-@pmp("deviations_settings", [dict(
-        process='wiener',
-        sigma=(1., 0.1),
-    ), None])
-def test_correlated_multi_frequency_sky_init(shape,
-                                             distances,
-                                             log_relative_frequencies,
-                                             zero_mode,
-                                             spectral_index_mean,
-                                             spectral_index_fluctuations,
-                                             deviations_settings,
-                                             ):
+@pmp("spectral_index_mean", [jft.NormalPrior(0., 1., name="spectral_index_mean")])
+@pmp("spectral_index_fluctuations", [jft.LogNormalPrior(0.1, 1., name="spectral_index_fluctuations")])
+@pmp("deviations_settings", [dict(process='wiener', sigma=(1., 0.1),), None])
+def test_correlated_multi_frequency_sky_init(
+    shape,
+    distances,
+    log_frequencies,
+    reference_frequency_index,
+    zero_mode,
+    spectral_index_mean,
+    spectral_index_fluctuations,
+    deviations_settings,
+):
     grid = make_grid(shape, distances, "fourier")
-    amp = NonParametricAmplitude(grid,
-                                 jft.lognormal_prior(.1, .01),
-                                 None,
-                                 )
+    spatial_amplitude = NonParametricAmplitude(
+        grid, jft.lognormal_prior(.1, .01), None)
 
-    spatial_fluctuations = jft.LogNormalPrior(0.1, 10.,
-                                              name="spatial_fluctuations")
+    spatial_fluctuations = jft.LogNormalPrior(
+        0.1, 10., name="spatial_fluctuations")
 
-    deviations_model = build_frequency_deviations_model(
-        shape,
-        log_relative_frequencies,
-        0,
-        deviations_settings)
+    spectral_behavior = SpectralIndex(
+        log_frequencies=log_frequencies,
+        mean=spectral_index_mean,
+        fluctuations=spectral_index_fluctuations,
+        reference_frequency_index=reference_frequency_index,
+    )
 
-    mf_sky = jft.CorrelatedMultiFrequencySky("test",
-                                             log_relative_frequencies,
-                                             zero_mode,
-                                             spatial_fluctuations,
-                                             amp,
-                                             spectral_index_mean,
-                                             spectral_index_fluctuations,
-                                             spectral_index_deviations=deviations_model,
-                                             )
+    deviations_model = build_frequency_deviations_model_with_degeneracies(
+        shape, log_frequencies, reference_frequency_index, deviations_settings)
+
+    mf_sky = jft.CorrelatedMultiFrequencySky(
+        zero_mode,
+        spatial_fluctuations,
+        spatial_amplitude,
+        spectral_behavior,
+        spectral_index_deviations=deviations_model,
+    )
 
     assert mf_sky
     assert mf_sky.domain
@@ -112,13 +111,8 @@ def test_correlated_multi_frequency_sky_init(shape,
 @pmp("distances", [0.1])
 @pmp("zero_mode", [jft.Model(lambda p: 0.1, domain={"test_zero_mode": None})])
 @pmp("zero_mode_offset", [0.])
-@pmp("spectral_index_mean", [jft.NormalPrior(0., 1.,
-                                            name="spectral_index_mean")]
-     )
-@pmp("spectral_index_fluctuations", [jft.LogNormalPrior(
-    0.1, 1.,
-    name="spectral_index_fluctuations")]
-     )
+@pmp("spectral_index_mean", [jft.NormalPrior(0., 1., name="spectral_index_mean")])
+@pmp("spectral_index_fluctuations", [jft.LogNormalPrior(0.1, 1., name="spectral_index_fluctuations")])
 def test_spatial_convolution(
     seed,
     shape,
@@ -133,26 +127,27 @@ def test_spatial_convolution(
     fluct = (1, 0.01)
     avgsl = (-4., .1)
 
-    amp = NonParametricAmplitude(
-        grid,
-        jft.normal_prior(*avgsl),
-        None,
-        prefix=f"{prefix}_",
+    spatial_amplitude = NonParametricAmplitude(
+        grid, jft.normal_prior(*avgsl), None, prefix=f"{prefix}_")
+
+    spatial_fluctuations = _build_fluctuations_model(
+        prefix=f'{prefix}_spatial',
+        fluctuation_settings=fluct,
+        shape=shape,
     )
 
-    spatial_fluctuations = jft.LogNormalPrior(
-        *fluct,
-        name=f"{prefix}_spatial_fluctuations"
+    spectral_behavior = SpectralIndex(
+        log_frequencies=np.array((0.,)),
+        mean=spectral_index_mean,
+        fluctuations=spectral_index_fluctuations,
+        reference_frequency_index=0,
     )
 
     mf_sky = jft.CorrelatedMultiFrequencySky(
-        prefix,
-        (0.,),
         zero_mode,
         spatial_fluctuations,
-        amp,
-        spectral_index_mean,
-        spectral_index_fluctuations,
+        spatial_amplitude,
+        spectral_behavior,
         nonlinearity=lambda x: x,
     )
 
@@ -183,11 +178,9 @@ def test_spatial_convolution(
 @pmp("zero_mode", [jft.Model(lambda p: 0.1, domain={"zero_mode": None})])
 @pmp("zero_mode_offset", [0.])
 @pmp("spectral_index_mean", [jft.NormalPrior(0., 1.,
-                                            name="spectral_index_mean")]
+                                             name="spectral_index_mean")]
      )
-@pmp("spectral_index_fluctuations", [
-    jft.LogNormalPrior(0.1, 1., name="spectral_index_fluctuations")]
-     )
+@pmp("spectral_index_fluctuations", [(0.1, 1.)])
 def test_apply_with_and_without_frequency_deviations(
     seed,
     shape,
@@ -203,28 +196,37 @@ def test_apply_with_and_without_frequency_deviations(
     prefix = "test"
     fluct = (0.1, 0.01)
     avgsl = (-4., .1)
-    amp = NonParametricAmplitude(grid,
-                                 jft.normal_prior(*avgsl),
-                                 None,
-                                 prefix=f"{prefix}_",
-                                 )
+    spatial_amplitude = NonParametricAmplitude(grid,
+                                               jft.normal_prior(*avgsl),
+                                               None,
+                                               prefix=f"{prefix}_",
+                                               )
 
-    rel_frequencies = tuple(i - log_frequencies[reference_freq_idx]
-                            for i in log_frequencies)
+    log_frequencies = np.array(log_frequencies)
 
-    spatial_fluctuations = jft.LogNormalPrior(
-        *fluct,
-        name=f"{prefix}_spatial_fluctuations"
+    spatial_fluctuations = _build_fluctuations_model(
+        prefix=f'{prefix}_spatial',
+        fluctuation_settings=fluct,
+        shape=shape,
+    )
+    spectral_fluctuations = _build_fluctuations_model(
+        prefix=f'{prefix}_spatial',
+        fluctuation_settings=spectral_index_fluctuations,
+        shape=shape,
+    )
+
+    spectral_behavior = SpectralIndex(
+        log_frequencies=log_frequencies,
+        mean=spectral_index_mean,
+        fluctuations=spectral_fluctuations,
+        reference_frequency_index=reference_freq_idx,
     )
 
     mf_sky_wo_deviations = jft.CorrelatedMultiFrequencySky(
-        prefix,
-        rel_frequencies,
         zero_mode,
         spatial_fluctuations,
-        amp,
-        spectral_index_mean,
-        spectral_index_fluctuations,
+        spatial_amplitude,
+        spectral_behavior,
     )
 
     deviations_settings = dict(
@@ -232,19 +234,14 @@ def test_apply_with_and_without_frequency_deviations(
         sigma=(1.e-15, 1.e-18),
     )
 
-    deviations_model = build_frequency_deviations_model(shape,
-                                                        log_frequencies,
-                                                        0,
-                                                        deviations_settings)
+    deviations_model = build_frequency_deviations_model_with_degeneracies(
+        shape, log_frequencies, 0, deviations_settings)
 
     mf_sky = jft.CorrelatedMultiFrequencySky(
-        "test",
-        rel_frequencies,
         zero_mode,
         spatial_fluctuations,
-        amp,
-        spectral_index_mean,
-        spectral_index_fluctuations,
+        spatial_amplitude,
+        spectral_behavior,
         spectral_index_deviations=deviations_model
     )
 
