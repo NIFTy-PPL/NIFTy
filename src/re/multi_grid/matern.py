@@ -346,7 +346,9 @@ class MaternHarmonicCovariance(Model):
         )
 
         super().__init__(
-            domain=self.scale.domain | self.loglogslope.domain | self.cutoff.domain
+            domain=getattr(self.scale, "domain", {})
+            | getattr(self.loglogslope, "domain", {})
+            | getattr(self.cutoff, "domain", {})
         )
 
     @staticmethod
