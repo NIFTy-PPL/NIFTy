@@ -1,6 +1,8 @@
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 
-from typing import Any, Callable, Dict, Hashable, Mapping, TypeVar
+import warnings
+from functools import wraps
+from typing import Any, Callable, Dict, Hashable, Mapping, ParamSpec, TypeVar
 
 import jax
 from jax import numpy as jnp
@@ -123,6 +125,7 @@ def conditional_raise(condition: bool, exception):
         Exception that will be raised if `condition` is True
     """
     from jax.debug import callback
+
     from .tree_math import hide_strings
 
     # Register as few host-callbacks as possible by implicitly hashing the
@@ -156,3 +159,23 @@ def conditional_call(condition, fn, *args, **kwargs):
     from jax.debug import callback
 
     callback(_maybe_call, condition, Partial(fn), args, kwargs)
+
+
+_ReturnType = TypeVar("rT")  # return type
+_ParameterType = ParamSpec("pT")  # parameters type
+
+
+def deprecated(message: str):
+    def _deprecate(
+        func: Callable[_ParameterType, _ReturnType],
+    ) -> Callable[_ParameterType, _ReturnType]:
+        @wraps(func)
+        def wrapped_func(*args: _ParameterType.args, **kwargs: _ParameterType.kwargs):
+            warnings.simplefilter("always", DeprecationWarning)  # turn off filter
+            warnings.warn(message, category=DeprecationWarning, stacklevel=2)
+            warnings.simplefilter("default", DeprecationWarning)  # reset filter
+            return func(*args, **kwargs)
+
+        return wrapped_func
+
+    return _deprecate
