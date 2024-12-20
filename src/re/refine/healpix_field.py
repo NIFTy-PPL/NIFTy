@@ -9,10 +9,11 @@ import jax
 import numpy as np
 from jax import numpy as jnp
 
-from ..tree_math import ShapeWithDtype
 from ..logger import logger
 from ..model import LazyModel
+from ..multi_grid.kernel import refinement_matrices
 from ..num import amend_unique_
+from ..tree_math import ShapeWithDtype
 from .chart import HEALPixChart
 from .healpix_refine import cov_sqrt as cov_sqrt_hp
 from .healpix_refine import refine as refine_hp
@@ -20,7 +21,6 @@ from .util import (
     RefinementMatrices,
     get_cov_from_loc,
     get_refinement_shapewithdtype,
-    refinement_matrices,
 )
 
 

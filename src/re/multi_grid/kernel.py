@@ -15,9 +15,9 @@ from jax.lax import scan
 from numpy import typing as npt
 
 from ..num import amend_unique_
-from ..refine.util import refinement_matrices
 from .grid import FlatGrid, Grid, OpenGridAtLevel
 from .grid_impl import HEALPixGridAtLevel
+from .util import solve, sqrtm
 
 
 def apply_kernel(x, *, kernel):
@@ -236,6 +236,15 @@ def _default_window_size(grid_at_level, default=3) -> Tuple[int]:
     return tuple(wsz)
 
 
+def refinement_matrices(cov, n_fsz: int):
+    cov_ff = cov[-n_fsz:, -n_fsz:]
+    cov_fc = cov[-n_fsz:, :-n_fsz]
+    cov_cc = cov[:-n_fsz, :-n_fsz]
+
+    olf = solve(cov_cc, cov_fc.T)
+    return olf.T, sqrtm(cov_ff - cov_fc @ olf)
+
+
 class ICRKernel(Kernel):
     """Full ICR implementation taking an arbitrary grid and a covariance function."""
 
@@ -286,8 +295,6 @@ class ICRKernel(Kernel):
         return (gout, level + 1), ((gc, level), (gf, level + 1))
 
     def compute_matrices(self, index, level):
-        from ..refine.util import sqrtm
-
         if level is None:
             _, ((ids, _),) = self.get_output_input_indices(index, None)
             gc = self.grid.at(0).index2coord(ids)
