@@ -2,7 +2,9 @@
 
 # Author: Philipp Frank, Laurin Soeding, Gordian Edenhofer
 
+from collections import namedtuple
 from dataclasses import field
+from numpy import typing as npt
 from typing import Callable, Union
 
 import jax
@@ -121,73 +123,80 @@ def j1(x):
     )
 
 
-def dists(r_min, r_max, num):
-    dists = np.geomspace(r_min, r_max, num, endpoint=False)
-    return np.insert(dists, 0, 0.0)
+FourierIntegralGrid = namedtuple(
+    "FourierIntegralGrid",
+    (
+        "mode_lengths",
+        "mode_binbounds",
+        "min_dist",
+        "max_dist",
+        "num",
+        "ndim",
+        "weights",
+    ),
+)
 
 
-def k_lengths(r_min, r_max, num):
-    ks = np.geomspace(1.0 / r_max, 1.0 / r_min, num, endpoint=False)
-    return np.insert(ks, 0, 0.0)
-
-
-def k_binbounds(r_min, r_max, num):
-    lk = np.log(k_lengths(r_min, r_max, num)[1:])
-    dlk = (np.log(r_max) - np.log(r_min)) / num
+def make_integral_grid(
+    min_dist: float, max_dist: float, num: int, ndim: int, normalize: bool = True
+) -> FourierIntegralGrid:
+    mode_lengths = np.geomspace(1.0 / max_dist, 1.0 / min_dist, num, endpoint=False)
+    mode_lengths = np.insert(mode_lengths, 0, 0.0)
+    # Binbounds
+    lk = np.log(mode_lengths[1:])
+    dlk = (np.log(max_dist) - np.log(min_dist)) / num
     lk = np.append(lk - 0.5 * dlk, lk[-1] + 0.5 * dlk)
-    return np.insert(np.exp(lk), 0, 0.0)
-
-
-def norm_weights(r_min, r_max, num, ndim):
-    k_bin = k_binbounds(r_min, r_max, num)
-    if ndim == 1:
-        fkr = sici(k_bin * r_max)[0]
-    elif ndim == 2:
-        fkr = 1.0 - j0(k_bin * r_max)
-    elif ndim == 3:
-        fkr = sici(k_bin * r_max)[0] - np.sin(k_bin * r_max)
-    else:
-        raise NotImplementedError
-    res = fkr[1:] - fkr[:-1]
-    if (ndim == 1) or (ndim == 3):
-        res *= 2.0 / np.pi
-    return res
-
-
-def spectrum2covariance_converter(r_min, r_max, num, ndim, normalize=True):
-    k_bin = k_binbounds(r_min, r_max, num)
-    fct = [np.pi, 2.0 * np.pi, 2.0 * np.pi**2]
-    weights = None
+    mode_binbounds = np.insert(np.exp(lk), 0, 0.0)
+    # norm_weights
+    wgt = None
     if normalize:
-        weights = norm_weights(r_min, r_max, num, ndim)
+        if ndim == 1:
+            fkr = sici(mode_binbounds * max_dist)[0]
+        elif ndim == 2:
+            fkr = 1.0 - j0(mode_binbounds * max_dist)
+        elif ndim == 3:
+            fkr = sici(mode_binbounds * max_dist)[0] - np.sin(mode_binbounds * max_dist)
+        else:
+            raise NotImplementedError
+        wgt = fkr[1:] - fkr[:-1]
+        if (ndim == 1) or (ndim == 3):
+            wgt *= 2.0 / np.pi
+    return FourierIntegralGrid(
+        min_dist=min_dist,
+        max_dist=max_dist,
+        num=num,
+        ndim=ndim,
+        mode_lengths=mode_lengths,
+        mode_binbounds=mode_binbounds,
+        weights=wgt,
+    )
 
-    def spectrum2covariance(spec):
-        if spec.size != num + 1:
-            raise ValueError
 
-        def cov(r):
-            k = jnp.expand_dims(k_bin, tuple(i for i in range(len(r.shape))))
-            r = r[..., jnp.newaxis]
-            kr = r * k
-            if ndim == 1:
-                fkr = jnp.sin(kr)
-            elif ndim == 2:
-                fkr = kr * j1(kr)
-            elif ndim == 3:
-                fkr = jnp.sin(kr) - kr * jnp.cos(kr)
-            else:
-                raise NotImplementedError
-            res0 = (k[..., 1:] ** ndim - k[..., :-1] ** ndim) / ndim
-            resn0 = (fkr[..., 1:] - fkr[..., :-1]) / r**ndim
-            res = jnp.where(r < 1e-10, res0, resn0) / fct[ndim - 1]
-            res = jnp.tensordot(res, spec, axes=(-1, 0))
-            if normalize:
-                res /= (weights * spec).sum()
-            return res
+def spectrum2covariance(fig: FourierIntegralGrid, spec: npt.NDArray, *, normalize=True):
+    fct = [np.pi, 2.0 * np.pi, 2.0 * np.pi**2]
+    assert spec.size == fig.num + 1
 
-        return cov
+    def cov(r: npt.NDArray) -> npt.NDArray:
+        k = jnp.expand_dims(fig.mode_binbounds, tuple(i for i in range(len(r.shape))))
+        r = r[..., jnp.newaxis]
+        kr = r * k
+        if fig.ndim == 1:
+            fkr = jnp.sin(kr)
+        elif fig.ndim == 2:
+            fkr = kr * j1(kr)
+        elif fig.ndim == 3:
+            fkr = jnp.sin(kr) - kr * jnp.cos(kr)
+        else:
+            raise NotImplementedError
+        res0 = (k[..., 1:] ** fig.ndim - k[..., :-1] ** fig.ndim) / fig.ndim
+        resn0 = (fkr[..., 1:] - fkr[..., :-1]) / r**fig.ndim
+        res = jnp.where(r < 1e-10, res0, resn0) / fct[fig.ndim - 1]
+        res = jnp.tensordot(res, spec, axes=(-1, 0))
+        if normalize:
+            res /= (fig.weights * spec).sum()
+        return res
 
-    return spectrum2covariance
+    return cov
 
 
 class MaternHarmonicCovariance(Model):
@@ -195,7 +204,7 @@ class MaternHarmonicCovariance(Model):
     cutoff: Union[Model, float] = field(metadata=dict(static=False))
     loglogslope: Union[Model, float] = field(metadata=dict(static=False))
     _interp_dists: jnp.ndarray = field(metadata=dict(static=False))
-    _mode_lengths: jnp.ndarray = field(metadata=dict(static=False))
+    _fig: FourierIntegralGrid = field(metadata=dict(static=False))
 
     def __init__(
         self,
@@ -206,8 +215,8 @@ class MaternHarmonicCovariance(Model):
         ndim: int,
         n_integrate=2_000,
         n_interpolate=512,
-        interpolation_dists_min_max=(1e-3, 1e2),
         integration_dists_min_max=(1e-3, 1e4),
+        interpolation_dists_min_max=(1e-3, 1e2),
         kind: str = "amplitude",
         prefix: str = "",
     ):
@@ -241,10 +250,9 @@ class MaternHarmonicCovariance(Model):
         self.ndim = ndim
 
         self._interp_dists = jnp.geomspace(*interpolation_dists_min_max, n_interpolate)
-        r_min, r_max = integration_dists_min_max
-        self._mode_lengths = k_lengths(r_min / r_max, 1.0, n_integrate)
-        self._spec2cov = spectrum2covariance_converter(
-            r_min / r_max, 1.0, n_integrate, self.ndim, normalize=False
+        min_dist, max_dist = integration_dists_min_max
+        self._fig = make_integral_grid(
+            min_dist / max_dist, 1.0, n_integrate, ndim=self.ndim, normalize=False
         )
 
         super().__init__(
@@ -253,15 +261,22 @@ class MaternHarmonicCovariance(Model):
             | getattr(self.cutoff, "domain", {})
         )
 
-    def _spectrum(self, *, cutoff, loglogslope, kind):
-        ln_spectrum = 0.25 * loglogslope * jnp.log1p((self._mode_lengths / cutoff) ** 2)
+    def normalized_spectrum(self, x):
+        cutoff = self.cutoff(x) if callable(self.cutoff) else self.cutoff
+        loglogslope = (
+            self.loglogslope(x) if callable(self.loglogslope) else self.loglogslope
+        )
+
+        ln_spectrum = (
+            0.25 * loglogslope * jnp.log1p((self._fig.mode_lengths / cutoff) ** 2)
+        )
 
         spectrum = jnp.exp(ln_spectrum)
         spectrum = spectrum.at[0].set(spectrum[1])
-        if kind.lower() == "amplitude":
+        if self.kind.lower() == "amplitude":
             spectrum = spectrum**2
-        elif kind.lower() != "power":
-            raise ValueError(f"invalid kind specified {kind!r}")
+        elif self.kind.lower() != "power":
+            raise ValueError(f"invalid kind specified {self.kind!r}")
         return spectrum
 
     @staticmethod
@@ -275,13 +290,8 @@ class MaternHarmonicCovariance(Model):
 
     def __call__(self, x):
         scale = self.scale(x) if callable(self.scale) else self.scale
-        cutoff = self.cutoff(x) if callable(self.cutoff) else self.cutoff
-        loglogslope = (
-            self.loglogslope(x) if callable(self.loglogslope) else self.loglogslope
-        )
-
-        spec = self._spectrum(cutoff=cutoff, loglogslope=loglogslope, kind=self.kind)
-        corr_func = self._spec2cov(spec)
+        spec = self.normalized_spectrum(x)
+        corr_func = spectrum2covariance(self._fig, spec, normalize=False)
 
         corr = jax.vmap(corr_func)(self._interp_dists) / corr_func(jnp.array([0.0]))
         # This could perhaps go even lower, but the accuaracy is already quite
