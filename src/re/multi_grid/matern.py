@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Author: Laurin Soeding
+# Author: Philipp Frank, Laurin Soeding, Gordian Edenhofer
 
 from dataclasses import field
 from typing import Callable, Union
@@ -9,303 +9,193 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 from jax.tree_util import Partial
+from scipy.special import j0, sici
 
 from ..model import Model
 from ..prior import LogNormalPrior, NormalPrior
+from ..tree_math import zeros_like
+
+_RP1 = jnp.array(
+    [
+        -8.99971225705559398224e8,
+        4.52228297998194034323e11,
+        -7.27494245221818276015e13,
+        3.68295732863852883286e15,
+    ]
+)
+_RQ1 = jnp.array(
+    [
+        1.0,
+        6.20836478118054335476e2,
+        2.56987256757748830383e5,
+        8.35146791431949253037e7,
+        2.21511595479792499675e10,
+        4.74914122079991414898e12,
+        7.84369607876235854894e14,
+        8.95222336184627338078e16,
+        5.32278620332680085395e18,
+    ]
+)
+
+_PP1 = jnp.array(
+    [
+        7.62125616208173112003e-4,
+        7.31397056940917570436e-2,
+        1.12719608129684925192e0,
+        5.11207951146807644818e0,
+        8.42404590141772420927e0,
+        5.21451598682361504063e0,
+        1.00000000000000000254e0,
+    ]
+)
+_PQ1 = jnp.array(
+    [
+        5.71323128072548699714e-4,
+        6.88455908754495404082e-2,
+        1.10514232634061696926e0,
+        5.07386386128601488557e0,
+        8.39985554327604159757e0,
+        5.20982848682361821619e0,
+        9.99999999999999997461e-1,
+    ]
+)
+
+_QP1 = jnp.array(
+    [
+        5.10862594750176621635e-2,
+        4.98213872951233449420e0,
+        7.58238284132545283818e1,
+        3.66779609360150777800e2,
+        7.10856304998926107277e2,
+        5.97489612400613639965e2,
+        2.11688757100572135698e2,
+        2.52070205858023719784e1,
+    ]
+)
+_QQ1 = jnp.array(
+    [
+        1.0,
+        7.42373277035675149943e1,
+        1.05644886038262816351e3,
+        4.98641058337653607651e3,
+        9.56231892404756170795e3,
+        7.99704160447350683650e3,
+        2.82619278517639096600e3,
+        3.36093607810698293419e2,
+    ]
+)
+
+_Z1 = 1.46819706421238932572e1
+_Z2 = 4.92184563216946036703e1
+_THPIO4 = 2.35619449019234492885  # 3*pi/4
+_SQ2OPI = 0.79788456080286535588  # sqrt(2/pi)
 
 
-def si(x):
-    """Calculates the integral of sin(t)/t from 0 to x.
+def _j1_small(x):
+    z = x * x
+    w = jnp.polyval(_RP1, z) / jnp.polyval(_RQ1, z)
+    w = w * x * (z - _Z1) * (z - _Z2)
+    return w
 
-    Following https://en.wikipedia.org/wiki/Trigonometric_integral#Efficient_evaluation
-    and https://github.com/GalSim-developers/GalSim/blob/releases/2.6/src/math/Sinc.cpp
-    this functions implements formulae by Rowe et al. (2015).
+
+def _j1_large_c(x):
+    w = 5.0 / x
+    z = w * w
+    p = jnp.polyval(_PP1, z) / jnp.polyval(_PQ1, z)
+    q = jnp.polyval(_QP1, z) / jnp.polyval(_QQ1, z)
+    xn = x - _THPIO4
+    p = p * jnp.cos(xn) - w * q * jnp.sin(xn)
+    return p * _SQ2OPI / jnp.sqrt(x)
+
+
+def j1(x):
     """
-    x2 = x * x
+    Bessel function of order one - using the implementation from CEPHES,
+    translated to Jax.
 
-    def g(_x):
-        """
-        Chebyshev-Pade approximation of 1/y g(1/sqrt(y)) from 0..1/4^2
-        leads to the following formula for g(x),
-        which is also accurate to better than 1.e-16 for x > 4.
-        """
-        _y = 1.0 / (_x * _x)
-        return (
-            _y
-            * (
-                1.0
-                + _y
-                * (
-                    8.1359520115168615e2
-                    + _y
-                    * (
-                        2.35239181626478200e5
-                        + _y
-                        * (
-                            3.12557570795778731e7
-                            + _y
-                            * (
-                                2.06297595146763354e9
-                                + _y
-                                * (
-                                    6.83052205423625007e10
-                                    + _y
-                                    * (
-                                        1.09049528450362786e12
-                                        + _y
-                                        * (
-                                            7.57664583257834349e12
-                                            + _y
-                                            * (
-                                                1.81004487464664575e13
-                                                + _y
-                                                * (
-                                                    6.43291613143049485e12
-                                                    + _y * (-1.36517137670871689e12)
-                                                )
-                                            )
-                                        )
-                                    )
-                                )
-                            )
-                        )
-                    )
-                )
-            )
-            / (
-                1.0
-                + _y
-                * (
-                    8.19595201151451564e2
-                    + _y
-                    * (
-                        2.40036752835578777e5
-                        + _y
-                        * (
-                            3.26026661647090822e7
-                            + _y
-                            * (
-                                2.23355543278099360e9
-                                + _y
-                                * (
-                                    7.87465017341829930e10
-                                    + _y
-                                    * (
-                                        1.39866710696414565e12
-                                        + _y
-                                        * (
-                                            1.17164723371736605e13
-                                            + _y
-                                            * (
-                                                4.01839087307656620e13
-                                                + _y * (3.99653257887490811e13)
-                                            )
-                                        )
-                                    )
-                                )
-                            )
-                        )
-                    )
-                )
-            )
-        )
-
-    def f(_x):
-        """
-        Chebyshev-Pade approximation of 1/sqrt(y) f(1/sqrt(y)) from 0..1/4^2
-        leads to the following formula for g(x),
-        which is also accurate to better than 1.e-16 for x > 4.
-        """
-        _y = 1.0 / (_x * _x)
-        return (
-            1.0
-            + _y
-            * (
-                7.44437068161936700618e2
-                + _y
-                * (
-                    1.96396372895146869801e5
-                    + _y
-                    * (
-                        2.37750310125431834034e7
-                        + _y
-                        * (
-                            1.43073403821274636888e9
-                            + _y
-                            * (
-                                4.33736238870432522765e10
-                                + _y
-                                * (
-                                    6.40533830574022022911e11
-                                    + _y
-                                    * (
-                                        4.20968180571076940208e12
-                                        + _y
-                                        * (
-                                            1.00795182980368574617e13
-                                            + _y
-                                            * (
-                                                4.94816688199951963482e12
-                                                + _y * (-4.94701168645415959931e11)
-                                            )
-                                        )
-                                    )
-                                )
-                            )
-                        )
-                    )
-                )
-            )
-        ) / (
-            _x
-            * (
-                1.0
-                + _y
-                * (
-                    7.46437068161927678031e2
-                    + _y
-                    * (
-                        1.97865247031583951450e5
-                        + _y
-                        * (
-                            2.41535670165126845144e7
-                            + _y
-                            * (
-                                1.47478952192985464958e9
-                                + _y
-                                * (
-                                    4.58595115847765779830e10
-                                    + _y
-                                    * (
-                                        7.08501308149515401563e11
-                                        + _y
-                                        * (
-                                            5.06084464593475076774e12
-                                            + _y
-                                            * (
-                                                1.43468549171581016479e13
-                                                + _y * (1.11535493509914254097e13)
-                                            )
-                                        )
-                                    )
-                                )
-                            )
-                        )
-                    )
-                )
-            )
-        )
-
-    def large_x2_approx(_x):
-        """
-        For |x| > 4, we use the asymptotic formula:
-        si(x) = pi/2 - f(x) cos(x) - g(x) sin(x)
-        where f(x) = int(sin(t)/(x+t),t=0..inf)
-              g(x) = int(cos(t)/(x+t),t=0..inf)
-        (asymptotic: f and g approach 1/x and 1/x^2 respectively as x -> inf. The formula as given is exact.)
-        """
-        fx = f(_x)
-        gx = g(_x)
-
-        sinx = jnp.sin(_x)
-        cosx = jnp.cos(_x)
-        return jnp.where(_x > 0.0, jnp.pi / 2.0, -jnp.pi / 2.0) - fx * cosx - gx * sinx
-
-    def small_x2_approx(_x):
-        """
-        Here, Maple was used to calculate the Pade approximation for si(x), which is accurate
-        to better than 1.e-16 for x < 4.
-        """
-        _x2 = _x * _x
-        return (
-            _x
-            * (
-                1.0
-                + _x2
-                * (
-                    -4.54393409816329991e-2
-                    + _x2
-                    * (
-                        1.15457225751016682e-3
-                        + _x2
-                        * (
-                            -1.41018536821330254e-5
-                            + _x2
-                            * (
-                                9.43280809438713025e-8
-                                + _x2
-                                * (
-                                    -3.53201978997168357e-10
-                                    + _x2
-                                    * (
-                                        7.08240282274875911e-13
-                                        + _x2 * (-6.05338212010422477e-16)
-                                    )
-                                )
-                            )
-                        )
-                    )
-                )
-            )
-            / (
-                1.0
-                + _x2
-                * (
-                    1.01162145739225565e-2
-                    + _x2
-                    * (
-                        4.99175116169755106e-5
-                        + _x2
-                        * (
-                            1.55654986308745614e-7
-                            + _x2
-                            * (
-                                3.28067571055789734e-10
-                                + _x2
-                                * (
-                                    4.5049097575386581e-13
-                                    + _x2 * (3.21107051193712168e-16)
-                                )
-                            )
-                        )
-                    )
-                )
-            )
-        )
-
-    return jnp.where(x2 > 16.0, large_x2_approx(x), small_x2_approx(x))
-
-
-def sin_integral_antilinearly_exact(f, xs, k):
-    """Compute integral of $f(x) \\cdot sin(kx)$ using antilinearly exact evaluation.
-
-    That is, $f(x) \\approx c_1 + \\frac{c_2}{x}$ piecewise approximated and then
-    analytically integrated.
+    Pure JAX implementation for Bessel function from
+    https://github.com/benjaminpope/sibylla/blob/main/notebooks/bessel_test.ipynb .
     """
-    x = xs
-    kx = k * x
-    f_values = f(x)
+    return jnp.sign(x) * jnp.where(
+        jnp.abs(x) < 5.0, _j1_small(jnp.abs(x)), _j1_large_c(jnp.abs(x))
+    )
 
-    dxinv = jnp.diff(1.0 / x)
-    df = jnp.diff(f_values)
 
-    si_kx = si(kx)
-    cos_kx = jnp.cos(kx)
-    c2 = df / dxinv
-    c1 = f_values[:-1] - c2 / x[:-1]
+def dists(r_min, r_max, num):
+    dists = np.geomspace(r_min, r_max, num, endpoint=False)
+    return np.insert(dists, 0, 0.0)
 
-    int_1 = c1 / k * (-jnp.diff(cos_kx))
-    int_2 = c2 * jnp.diff(si_kx)
-    result = jnp.sum(int_1 + int_2)
-    return result
+
+def k_lengths(r_min, r_max, num):
+    ks = np.geomspace(1.0 / r_max, 1.0 / r_min, num, endpoint=False)
+    return np.insert(ks, 0, 0.0)
+
+
+def k_binbounds(r_min, r_max, num):
+    lk = np.log(k_lengths(r_min, r_max, num)[1:])
+    dlk = (np.log(r_max) - np.log(r_min)) / num
+    lk = np.append(lk - 0.5 * dlk, lk[-1] + 0.5 * dlk)
+    return np.insert(np.exp(lk), 0, 0.0)
+
+
+def norm_weights(r_min, r_max, num, ndim):
+    k_bin = k_binbounds(r_min, r_max, num)
+    if ndim == 1:
+        fkr = sici(k_bin * r_max)[0]
+    elif ndim == 2:
+        fkr = 1.0 - j0(k_bin * r_max)
+    elif ndim == 3:
+        fkr = sici(k_bin * r_max)[0] - np.sin(k_bin * r_max)
+    else:
+        raise NotImplementedError
+    res = fkr[1:] - fkr[:-1]
+    if (ndim == 1) or (ndim == 3):
+        res *= 2.0 / np.pi
+    return res
+
+
+def spectrum2covariance_converter(r_min, r_max, num, ndim, normalize=True):
+    k_bin = k_binbounds(r_min, r_max, num)
+    fct = [np.pi, 2.0 * np.pi, 2.0 * np.pi**2]
+    weights = None
+    if normalize:
+        weights = norm_weights(r_min, r_max, num, ndim)
+
+    def spectrum2covariance(spec):
+        if spec.size != num + 1:
+            raise ValueError
+
+        def cov(r):
+            k = jnp.expand_dims(k_bin, tuple(i for i in range(len(r.shape))))
+            r = r[..., jnp.newaxis]
+            kr = r * k
+            if ndim == 1:
+                fkr = jnp.sin(kr)
+            elif ndim == 2:
+                fkr = kr * j1(kr)
+            elif ndim == 3:
+                fkr = jnp.sin(kr) - kr * jnp.cos(kr)
+            else:
+                raise NotImplementedError
+            res0 = (k[..., 1:] ** ndim - k[..., :-1] ** ndim) / ndim
+            resn0 = (fkr[..., 1:] - fkr[..., :-1]) / r**ndim
+            res = jnp.where(r < 1e-10, res0, resn0) / fct[ndim - 1]
+            res = jnp.tensordot(res, spec, axes=(-1, 0))
+            if normalize:
+                res /= (weights * spec).sum()
+            return res
+
+        return cov
+
+    return spectrum2covariance
 
 
 class MaternHarmonicCovariance(Model):
     scale: Union[Model, float] = field(metadata=dict(static=False))
     cutoff: Union[Model, float] = field(metadata=dict(static=False))
     loglogslope: Union[Model, float] = field(metadata=dict(static=False))
-    _interpolation_log_dists: jnp.ndarray = field(metadata=dict(static=False))
-    _integration_log_dists: jnp.ndarray = field(metadata=dict(static=False))
+    _interp_dists: jnp.ndarray = field(metadata=dict(static=False))
+    _mode_lengths: jnp.ndarray = field(metadata=dict(static=False))
 
     def __init__(
         self,
@@ -315,11 +205,22 @@ class MaternHarmonicCovariance(Model):
         *,
         ndim: int,
         n_integrate=2_000,
-        n_interpolate=128,
+        n_interpolate=512,
         interpolation_dists_min_max=(1e-3, 1e2),
         integration_dists_min_max=(1e-3, 1e4),
+        kind: str = "amplitude",
         prefix: str = "",
     ):
+        """Compute the Matérn-kernel using its harmonic representation.
+
+        See also
+        --------
+        `Causal, Bayesian, & non-parametric modeling of the SARS-CoV-2 viral
+        load vs. patient's age`, Guardiani, Matteo and Frank, Philipp and Kostić,
+        Andrija and Edenhofer, Gordian and Roth, Jakob and Uhlmann, Berit and
+        Enßlin, Torsten, `<https://arxiv.org/abs/2105.13483>`_
+        `<https://doi.org/10.1371/journal.pone.0275011>`_
+        """
         if isinstance(cutoff, (tuple, list)):
             cutoff = LogNormalPrior(*cutoff, name=prefix + "cutoff")
         elif not (callable(cutoff) or isinstance(cutoff, float)):
@@ -336,13 +237,14 @@ class MaternHarmonicCovariance(Model):
             raise TypeError(f"invalid `scale` specified; got '{scale!r}'")
         self.scale = scale
 
+        self.kind = kind
         self.ndim = ndim
 
-        self._interpolation_log_dists = jnp.geomspace(
-            *interpolation_dists_min_max, n_interpolate
-        )
-        self._integration_log_dists = jnp.geomspace(
-            *integration_dists_min_max, n_integrate
+        self._interp_dists = jnp.geomspace(*interpolation_dists_min_max, n_interpolate)
+        r_min, r_max = integration_dists_min_max
+        self._mode_lengths = k_lengths(r_min / r_max, 1.0, n_integrate)
+        self._spec2cov = spectrum2covariance_converter(
+            r_min / r_max, 1.0, n_integrate, self.ndim, normalize=False
         )
 
         super().__init__(
@@ -351,8 +253,19 @@ class MaternHarmonicCovariance(Model):
             | getattr(self.cutoff, "domain", {})
         )
 
+    def _spectrum(self, *, cutoff, loglogslope, kind):
+        ln_spectrum = 0.25 * loglogslope * jnp.log1p((self._mode_lengths / cutoff) ** 2)
+
+        spectrum = jnp.exp(ln_spectrum)
+        spectrum = spectrum.at[0].set(spectrum[1])
+        if kind.lower() == "amplitude":
+            spectrum = spectrum**2
+        elif kind.lower() != "power":
+            raise ValueError(f"invalid kind specified {kind!r}")
+        return spectrum
+
     @staticmethod
-    def _cov(x, y, *, scale, distances, logcorr):
+    def _interp_cov(x, y, *, scale, distances, logcorr):
         r = jnp.linalg.norm(x - y, axis=0, ord=2)
         cov = jnp.exp(
             jnp.interp(r, distances, logcorr, left="extrapolate", right="extrapolate")
@@ -366,45 +279,33 @@ class MaternHarmonicCovariance(Model):
         loglogslope = (
             self.loglogslope(x) if callable(self.loglogslope) else self.loglogslope
         )
-        # NOTE, emulate an ndim-harmonic transform by decrementing the slope. This
-        # is technically not the same but at least for the Matern kernel it is similar.
-        loglogslope = loglogslope - self.ndim
 
-        def integral(r):
-            r = jnp.abs(r) + 1.0e-5  # avoid numerical nonsense
+        spec = self._spectrum(cutoff=cutoff, loglogslope=loglogslope, kind=self.kind)
+        corr_func = self._spec2cov(spec)
 
-            def f(k):
-                power = 1.0 / (1.0 + (k * cutoff) ** 2) ** (-loglogslope / 2.0)
-                return 1.0 / (2.0 * jnp.pi**2) * k / r * power
-
-            return sin_integral_antilinearly_exact(f, self._integration_log_dists, r)
-
-        correlations = jax.vmap(integral)(self._interpolation_log_dists) / integral(0.0)
-
+        corr = jax.vmap(corr_func)(self._interp_dists) / corr_func(jnp.array([0.0]))
         # This could perhaps go even lower, but the accuaracy is already quite
         # good and this is definitely numerically stable.
         # Restrict domain to ensure good numerics
-        mask = correlations < 1.0e-5
+        ref_scale = 1e-5
+        mask = corr < ref_scale
         maxidx = jnp.argmax(mask) - 1
-        # take abs to ensure good logarithm
-        correlations = jnp.abs(correlations)
-        logcorr = jnp.log(correlations)
+        # Take abs to ensure good logarithm
+        ln_corr = jnp.log(jnp.abs(corr))
         # DIY interpolation that keeps the shapes static
-        slope_at_maxidx = (logcorr[maxidx - 1] - logcorr[maxidx]) / (
-            self._interpolation_log_dists[maxidx - 1]
-            - self._interpolation_log_dists[maxidx]
+        slope_at_maxidx = (ln_corr[maxidx - 1] - ln_corr[maxidx]) / (
+            self._interp_dists[maxidx - 1] - self._interp_dists[maxidx]
         )
-        logcorr = jnp.where(
+        ln_corr = jnp.where(
             ~mask,
-            logcorr,
-            logcorr[maxidx]
-            + slope_at_maxidx
-            * (self._interpolation_log_dists - self._interpolation_log_dists[maxidx]),
+            ln_corr,
+            ln_corr[maxidx]
+            + slope_at_maxidx * (self._interp_dists - self._interp_dists[maxidx]),
         )
 
         return Partial(
-            self.__class__._cov,
+            self.__class__._interp_cov,
             scale=scale,
-            distances=self._interpolation_log_dists,
-            logcorr=logcorr,
+            distances=self._interp_dists,
+            logcorr=ln_corr,
         )
