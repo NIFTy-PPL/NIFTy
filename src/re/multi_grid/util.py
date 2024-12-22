@@ -24,8 +24,7 @@ def solve(A, X):
 @solve.defjvp
 def solve_jvp(primals, tangents):
     # Note: Makes use of `stable_inverse` directly to enable stable higher order
-    # derivatives. Note that this is a tradeoff agains saving compute for first
-    # order.
+    # derivatives. This is a tradeoff against saving compute for first order.
     (A, X), (dA, dX) = primals, tangents
     res = solve(A, X)
     return res, solve(A, dX - dA @ res)
