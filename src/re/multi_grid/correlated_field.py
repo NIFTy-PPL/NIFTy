@@ -49,9 +49,9 @@ class ICRField(Model):
             - cutoff: tuple or Model or float -- Prior cutoff of the covariance kernel.
             - loglogslope: tuple or Model or float -- Prior power-law slope of the covariance kernel correlating modes.
             - n_integrate = 2_000 -- Number of integration points for the harmonic transformation.
-            - n_interpolate = 128 -- Number of interpolation points for interpolating the kernel.
-            - interpolation_dists_min_max = (1e-3, 1e2) -- Interpolation range.
-            - integration_dists_min_max = (1e-3, 1e4) -- Integration range for the harmonic transform.
+            - n_interpolate = 512 -- Number of interpolation points for interpolating the kernel.
+            - interpolation_dists_min_max -- Interpolation range. Automatically chosen based on cutoff if left unspecified.
+            - integration_dists_min_max -- Integration range for the harmonic transform. Automatically chosen based on cutoff if left unspecified.
 
             alternatively, `kernel` can be a NIFTy `Model` which yields a callable
             covariance function (`kernel(xi: dict) -> callable[[x, y], z]`), or a
