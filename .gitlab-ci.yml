@@ -156,6 +156,14 @@ run_getting_started_niftyre_wiener_filter:
     paths:
       - '*.png'
 
+run_getting_started_niftyre_icr:
+  stage: demo_runs
+  script:
+    - python3 demos/a_icr.py
+  artifacts:
+    paths:
+      - '*.png'
+
 run_getting_started_7:
   stage: demo_runs
   script:
