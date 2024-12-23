@@ -252,7 +252,7 @@ class MaternHarmonicCovariance(Model):
         self._interp_dists = jnp.geomspace(*interpolation_dists_min_max, n_interpolate)
         min_dist, max_dist = integration_dists_min_max
         self._fig = make_integral_grid(
-            min_dist / max_dist, 1.0, n_integrate, ndim=self.ndim, normalize=False
+            min_dist, max_dist, n_integrate, ndim=self.ndim, normalize=False
         )
 
         super().__init__(
