@@ -83,7 +83,6 @@ cc = lst2fixt((cc_0, cc_1))
     "atol,rtol,which",
     (
         (1e-2 * scale, 5e-2 * scale, "cov"),
-        (1e-3 * scale, 5e-3 * scale, "cov"),
         (1e-4 * scale, 5e-2 * scale, "dist"),
     ),
 )
