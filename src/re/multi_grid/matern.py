@@ -2,15 +2,14 @@
 
 # Author: Philipp Frank, Laurin Soeding, Gordian Edenhofer
 
-from collections import namedtuple
-from dataclasses import field
-from numpy import typing as npt
+from dataclasses import dataclass, field
 from typing import Callable, Union
 
 import jax
 import jax.numpy as jnp
 import numpy as np
-from jax.tree_util import Partial
+from jax.tree_util import Partial, register_dataclass
+from numpy import typing as npt
 from scipy.special import j0, sici
 
 from ..model import Model
@@ -123,17 +122,21 @@ def j1(x):
     )
 
 
-FourierIntegralGrid = namedtuple(
-    "FourierIntegralGrid",
-    (
-        "mode_lengths",
-        "mode_binbounds",
-        "min_dist",
-        "max_dist",
-        "num",
-        "ndim",
-        "weights",
-    ),
+@dataclass
+class FourierIntegralGrid:
+    mode_lengths: jax.Array
+    mode_binbounds: jax.Array
+    min_dist: float
+    max_dist: float
+    num: int
+    ndim: int
+    weights: jax.Array
+
+
+register_dataclass(
+    FourierIntegralGrid,
+    data_fields=["mode_lengths", "mode_binbounds", "weights"],
+    meta_fields=["num", "min_dist", "max_dist", "ndim"],
 )
 
 
@@ -176,7 +179,6 @@ def spectrum2covariance(
     fig: FourierIntegralGrid, spec: npt.NDArray, *, ref_distance=1.0, normalize=True
 ):
     fct = [np.pi, 2.0 * np.pi, 2.0 * np.pi**2]
-    assert spec.size == fig.num + 1
 
     def cov(r: npt.NDArray) -> npt.NDArray:
         k = jnp.expand_dims(fig.mode_binbounds, tuple(i for i in range(len(r.shape))))
