@@ -172,7 +172,9 @@ def make_integral_grid(
     )
 
 
-def spectrum2covariance(fig: FourierIntegralGrid, spec: npt.NDArray, *, normalize=True):
+def spectrum2covariance(
+    fig: FourierIntegralGrid, spec: npt.NDArray, *, ref_distance=1.0, normalize=True
+):
     fct = [np.pi, 2.0 * np.pi, 2.0 * np.pi**2]
     assert spec.size == fig.num + 1
 
@@ -190,7 +192,7 @@ def spectrum2covariance(fig: FourierIntegralGrid, spec: npt.NDArray, *, normaliz
             raise NotImplementedError
         res0 = (k[..., 1:] ** fig.ndim - k[..., :-1] ** fig.ndim) / fig.ndim
         resn0 = (fkr[..., 1:] - fkr[..., :-1]) / r**fig.ndim
-        res = jnp.where(r < 1e-10, res0, resn0) / fct[fig.ndim - 1]
+        res = jnp.where(r < ref_distance * 1e-10, res0, resn0) / fct[fig.ndim - 1]
         res = jnp.tensordot(res, spec, axes=(-1, 0))
         if normalize:
             res /= (fig.weights * spec).sum()
@@ -209,14 +211,14 @@ class MaternHarmonicCovariance(Model):
     def __init__(
         self,
         scale: Union[tuple, Callable, float],
-        cutoff: Union[tuple, Callable, float],
+        cutoff: Union[tuple, Model, float],
         loglogslope: Union[tuple, Callable, float],
         *,
         ndim: int,
         n_integrate=2_000,
         n_interpolate=512,
-        integration_dists_min_max=(1e-3, 1e4),
-        interpolation_dists_min_max=(1e-3, 1e2),
+        integration_dists_min_max=None,
+        interpolation_dists_min_max=None,
         kind: str = "amplitude",
         prefix: str = "",
     ):
@@ -230,11 +232,18 @@ class MaternHarmonicCovariance(Model):
         Enßlin, Torsten, `<https://arxiv.org/abs/2105.13483>`_
         `<https://doi.org/10.1371/journal.pone.0275011>`_
         """
+        ref_distance = 1.0
         if isinstance(cutoff, (tuple, list)):
+            ref_distance *= cutoff[0]
             cutoff = LogNormalPrior(*cutoff, name=prefix + "cutoff")
-        elif not (callable(cutoff) or isinstance(cutoff, float)):
+        elif isinstance(cutoff, Model):
+            ref_distance *= cutoff(zeros_like(cutoff.domain))
+        elif isinstance(cutoff, float):
+            ref_distance *= cutoff
+        else:
             raise TypeError(f"invalid `cutoff` specified; got '{cutoff!r}'")
         self.cutoff = cutoff
+        self._ref_distance = ref_distance
         if isinstance(loglogslope, (tuple, list)):
             loglogslope = NormalPrior(*loglogslope, name=prefix + "loglogslope")
         elif not (callable(loglogslope) or isinstance(loglogslope, float)):
@@ -249,6 +258,14 @@ class MaternHarmonicCovariance(Model):
         self.kind = kind
         self.ndim = ndim
 
+        if integration_dists_min_max is None:
+            integration_dists_min_max = tuple(
+                self._ref_distance * np.array([1e-3, 1e4])
+            )
+        if interpolation_dists_min_max is None:
+            interpolation_dists_min_max = tuple(
+                self._ref_distance * np.array([1e-3, 1e2])
+            )
         self._interp_dists = jnp.geomspace(*interpolation_dists_min_max, n_interpolate)
         min_dist, max_dist = integration_dists_min_max
         self._fig = make_integral_grid(
@@ -291,7 +308,9 @@ class MaternHarmonicCovariance(Model):
     def __call__(self, x):
         scale = self.scale(x) if callable(self.scale) else self.scale
         spec = self.normalized_spectrum(x)
-        corr_func = spectrum2covariance(self._fig, spec, normalize=False)
+        corr_func = spectrum2covariance(
+            self._fig, spec, ref_distance=self._ref_distance, normalize=False
+        )
 
         corr = jax.vmap(corr_func)(self._interp_dists) / corr_func(jnp.array([0.0]))
         # This could perhaps go even lower, but the accuaracy is already quite
