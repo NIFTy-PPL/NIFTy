@@ -29,7 +29,7 @@ cf = jft.ICRField(
         kind="experimental_matern",
         scale=(1.0, 0.2),
         cutoff=(1e-1, 1e-2),
-        loglogslope=(-6.0, 0.5),
+        loglogslope=(-3.0, 0.5),
     ),
 )
 
@@ -114,3 +114,5 @@ for ax in axs.flat[len(to_plot) :]:
 fig.tight_layout()
 fig.savefig("results_icr_full_reconstruction.png", dpi=400)
 plt.show()
+
+# %%
