@@ -10,6 +10,7 @@ import numpy as np
 from jax import numpy as jnp
 
 from ..logger import logger
+from ..misc import deprecated
 from ..model import LazyModel
 from ..multi_grid.kernel import refinement_matrices
 from ..num import amend_unique_
@@ -158,6 +159,7 @@ def _matrices_tol(
 
 
 class ChartedHPField(LazyModel):
+    @deprecated("`ChartedHPField` is deprecated in favor of `ICRField`")
     def __init__(
         self,
         chart: HEALPixChart,
