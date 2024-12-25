@@ -49,11 +49,8 @@ class CorrelatedMultiFrequencySky(Model):
         Multiplicative factor on the spatial xis at reference frequency.
     spatial_amplitude: Union[MaternAmplitude, NonParametricAmplitude]
         Amplitude model for the spatial correlations.
-    spectral_index_mean: jft.Model
-        This is the mean of the spectral index. This is one number, which
-        gets modified by the `spectral_index_fluctuations` field.
-    spectral_index_fluctuations: jft.Model
-        This is the strength of the deviations of the spectral index field,
+    spectral_behavior: LogSpectralBehavior
+        The log spectral behavior of the model. See, e.g. `SpectralIndex`.
     spectral_amplitude: Optional[Union[MaternAmplitude,
         NonParametricAmplitude]]
         An optional amplitude model for the spectral correlations of the
@@ -64,9 +61,9 @@ class CorrelatedMultiFrequencySky(Model):
         A model capturing deviations from the spectral behavior of the
         spectral index model.
     log_ref_freq_mean_model: Optional[jft.Model]
-        Optional mean model applied spatially to the spatial reference in
-        `nonlinearity` units. This can be used to tapper the spatial
-        reference model.
+        Optional model applied to the spatial part of the model in
+        `nonlinearity` units. This can, for example, be used to tapper the
+        spatial reference model.
     nonlinearity: Optional[jnp.callable]
         The nonlinearity to be applied to the multifrequency correlated
         field.
@@ -80,8 +77,8 @@ class CorrelatedMultiFrequencySky(Model):
         spatial_fluctuations: Model,
         spatial_amplitude: Union[MaternAmplitude, NonParametricAmplitude],
         spectral_behaviour: LogSpectralBehavior,
-        spectral_amplitude: Optional[Union[MaternAmplitude,
-                                           NonParametricAmplitude]] = None,
+        spectral_amplitude: Optional[
+            Union[MaternAmplitude, NonParametricAmplitude]] = None,
         spectral_index_deviations: Optional[Model] = None,
         log_ref_freq_mean_model: Optional[Model] = None,
         nonlinearity: Optional[Callable] = jnp.exp,
@@ -166,8 +163,8 @@ class CorrelatedMultiFrequencySky(Model):
             .. math::
                     sky = \\nonlinearity(
                     HT[A_spatial * io(k, \\mu_0)] +
-                    (HT[A_spectral * spectral_fluctuations(k)] + spectral_mean) *
-                      (\\mu-\\mu_0)
+                    (HT[A_spectral * spectral_fluctuations(k)] + spectral_mean)
+                    * (\\mu-\\mu_0)
                     + zero_mode)
             where :math:`F` is the Fourier transform,
             :math:`k` is the spatial frequency index,
@@ -268,6 +265,15 @@ class CorrelatedMultiFrequencySky(Model):
 
     def spectral_index_distribution(self, p):
         """Convenience function to retrieve the model's spectral index."""
+
+        # FIXME : This function does only work for `SingleLogSpectralBehavior`,
+        # e.g., the `SpectralIndex `model. Maybe needs to be moved to the
+        # `LogSpectralBehavior`.
+        # NOTE : This would also remove the necessity to implement the mean and
+        # fluctuations methods in `LogSpectralBehavior`. Furthermore, these two
+        # methods need only to be implemented for `SingleLogSpectralBehavior`
+        # instances.
+
         if self.spectral_amplitude is None:
             amplitude = self.spatial_amplitude(p)
         else:
