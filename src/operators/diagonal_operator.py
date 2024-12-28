@@ -95,8 +95,6 @@ class DiagonalOperator(EndomorphicOperator):
             self._ldiag = diagonal.val
         self._fill_rest()
 
-        self._jax_expr = partial(mul, self._ldiag)
-
     def _fill_rest(self):
         self._ldiag.flags.writeable = False
         self._complex = utilities.iscomplextype(self._ldiag.dtype)
@@ -114,9 +112,6 @@ class DiagonalOperator(EndomorphicOperator):
             res._spaces = tuple(set(self._spaces) | set(spc))
         res._ldiag = np.array(ldiag)
         res._fill_rest()
-
-        res._jax_expr = partial(mul, res._ldiag)
-
         return res
 
     def _scale(self, fct):

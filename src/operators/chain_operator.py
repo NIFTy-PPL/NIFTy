@@ -40,17 +40,6 @@ class ChainOperator(LinearOperator):
         self._domain = self._ops[-1].domain
         self._target = self._ops[0].target
 
-        if all(callable(op.jax_expr) for op in ops):
-
-            def joined_jax_op(x):
-                for op in reversed(ops):
-                    x = op.jax_expr(x)
-                return x
-
-            self._jax_expr = joined_jax_op
-        else:
-            self._jax_expr = None
-
     @staticmethod
     def simplify(ops):
         # verify domains
