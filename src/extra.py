@@ -144,13 +144,13 @@ def assert_allclose(f1, f2, atol=0, rtol=1e-7):
         assert_allclose(val, f2[key], atol=atol, rtol=rtol)
 
 
-def assert_equal(f1, f2):
+def assert_equal(f1, f2, *, atol=0.0, rtol=0.0):
     if isinstance(f1, Field):
-        return np.testing.assert_equal(f1.val, f2.val)
+        return np.testing.assert_allclose(f1.val, f2.val, atol=atol, rtol=rtol)
     if f1.domain is not f2.domain:
         raise AssertionError
     for key, val in f1.items():
-        assert_equal(val, f2[key])
+        assert_equal(val, f2[key], atol=atol, rtol=rtol)
 
 
 def _adjoint_implementation(op, domain_dtype, target_dtype, atol, rtol,
@@ -364,7 +364,7 @@ def _check_nontrivial_constant(op, loc, tol, ntries, only_r_differentiable,
         _, op0 = op.simplify_for_constant_input(cstloc)
         myassert(op0.domain is varloc.domain)
         val1 = op0(varloc)
-        assert_equal(val0, val1)
+        assert_equal(val0, val1, rtol=tol)
 
         lin = Linearization.make_partial_var(loc, cstkeys, want_metric=True)
         lin0 = Linearization.make_var(varloc, want_metric=True)
@@ -376,7 +376,7 @@ def _check_nontrivial_constant(op, loc, tol, ntries, only_r_differentiable,
         assert_allclose(oplin.jac.adjoint(rndinp).extract(varloc.domain),
                         oplin0.jac.adjoint(rndinp), 1e-13, 1e-13)
         foo = oplin.jac.adjoint(rndinp).extract(cstloc.domain)
-        assert_equal(foo, 0*foo)
+        assert_equal(foo, 0*foo, rtol=tol)
 
         if isinstance(op, EnergyOperator) and metric_sampling:
             oplin.metric.draw_sample()
