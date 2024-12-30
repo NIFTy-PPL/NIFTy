@@ -133,38 +133,4 @@ def SimpleCorrelatedField(
     op.amplitude = a
     op.power_spectrum = a**2
 
-    try:
-        from .. import RGSpace
-        from .. import re as jft
-
-        if not all(isinstance(dom, RGSpace) for dom in op.target):
-            # warn(f"unable to add JAX operator for {op.target!r}")
-            raise ImportError("short-circuit JAX init")
-
-        dists = tuple(e for di in op.target for e in di.distances)
-        cfm = jft.CorrelatedFieldMaker(prefix=prefix)
-        cfm.add_fluctuations(
-            shape=op.target.shape,
-            distances=dists,
-            fluctuations=fluctuations,
-            loglogavgslope=loglogavgslope,
-            flexibility=flexibility,
-            asperity=asperity,
-            prefix="",
-            harmonic_type="fourier",
-            non_parametric_kind="power",
-        )
-        cfm.set_amplitude_total_offset(
-            offset_mean=offset_mean, offset_std=offset_std
-        )
-        cf = cfm.finalize()
-
-        op._jax_expr = cf
-        op.amplitude._jax_expr = cfm.amplitude
-        op.power_spectrum._jax_expr = cfm.power_spectrum
-    except (ImportError, TypeError) as e:
-        pass
-        # if isinstance(e, TypeError):
-        #     warn(f"no JAX operator for this configuration;\n{e}")
-
     return op

@@ -44,25 +44,6 @@ class Adder(Operator):
         self._domain = self._target = dom
         self._neg = bool(neg)
 
-        try:
-            from jax.tree_util import tree_map
-
-            from ..re import Vector as ReField
-
-            a_j = ReField(a.val) if isinstance(a, (Field, MultiField)) else a
-
-            def jax_expr(x):
-                # Preserve the input type
-                if not isinstance(x, ReField):
-                    a_astype_x = a_j.tree if isinstance(a_j, ReField) else a_j
-                else:
-                    a_astype_x = a_j
-                return tree_map(sub if neg else add, x, a_astype_x)
-
-            self._jax_expr = jax_expr
-        except ImportError:
-            self._jax_expr = None
-
     def apply(self, x):
         self._check_input(x)
         if self._neg:

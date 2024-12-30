@@ -53,36 +53,6 @@ class ContractionOperator(LinearOperator):
         self._power = power
         self._capability = self.TIMES | self.ADJOINT_TIMES
 
-        try:
-            from jax import numpy as jnp
-            from jax.tree_util import tree_map
-
-            from ..nifty2jax import spaces_to_axes
-
-            fct = jnp.array(1.)
-            wgt = jnp.array(1.)
-            if self._power != 0:
-                for ind in self._spaces:
-                    wgt_spc = self._domain[ind].dvol
-                    if np.isscalar(wgt_spc):
-                        fct *= wgt_spc
-                    else:
-                        new_shape = np.ones(len(self._domain.shape), dtype=np.int64)
-                        new_shape[self._domain.axes[ind][0]:
-                                  self._domain.axes[ind][-1]+1] = wgt_spc.shape
-                        wgt *= wgt_spc.reshape(new_shape)**power
-                fct = fct**power
-
-            def weighted_space_sum(x):
-                if self._power != 0:
-                    x = fct * wgt * x
-                axes = spaces_to_axes(self._domain, self._spaces)
-                return tree_map(partial(jnp.sum, axis=axes), x)
-
-            self._jax_expr = weighted_space_sum
-        except ImportError:
-            self._jax_expr = None
-
     def apply(self, x, mode):
         self._check_input(x, mode)
         if mode == self.ADJOINT_TIMES:

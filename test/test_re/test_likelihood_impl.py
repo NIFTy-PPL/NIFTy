@@ -332,8 +332,28 @@ def test_nifty_vcgaussian_vs_niftyre_vcgaussian_consistency(seed, iscomplex):
 
     varcov_jft = jft.VariableCovarianceGaussian(data.val, iscomplex).amend(op_jft)
 
+    def shapewithdtype_from_domain(domain, dtype=float):
+        if isinstance(dtype, dict):
+            dtp_fallback = float  # Fallback to `float` for unspecified keys
+            k2dtp = dtype
+        else:
+            dtp_fallback = dtype
+            k2dtp = {}
+
+        if isinstance(domain, ift.MultiDomain):
+            parameter_tree = {}
+            for k, dom in domain.items():
+                parameter_tree[k] = jft.ShapeWithDtype(
+                    dom.shape, k2dtp.get(k, dtp_fallback)
+                )
+        elif isinstance(domain, ift.DomainTuple):
+            parameter_tree = jft.ShapeWithDtype(domain.shape, dtype)
+        else:
+            raise TypeError(f"incompatible domain {domain!r}")
+        return parameter_tree
+
     def random_jft_ift_field(key):
-        inp = jft.random_like(key, ift.nifty2jax.convert(op.domain))
+        inp = jft.random_like(key, shapewithdtype_from_domain(op.domain))
         inp_nft = ift.MultiField(
             op.domain, tree_map(ift.Field, op.domain.values(), tuple(inp.values()))
         )

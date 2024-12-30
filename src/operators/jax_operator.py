@@ -24,12 +24,8 @@ from .energy_operators import LikelihoodEnergyOperator
 from .linear_operator import LinearOperator
 from .operator import Operator
 
-try:
-    import jax
-    jax.config.update("jax_enable_x64", True)
-    __all__ = ["JaxOperator", "JaxLikelihoodEnergyOperator", "JaxLinearOperator"]
-except ImportError:
-    __all__ = []
+
+__all__ = ["JaxOperator", "JaxLikelihoodEnergyOperator", "JaxLinearOperator"]
 
 
 def _jax2np(obj):
@@ -56,14 +52,13 @@ class JaxOperator(Operator):
         target.
     """
     def __init__(self, domain, target, func):
+        import jax
         from ..sugar import makeDomain
         self._domain = makeDomain(domain)
         self._target = makeDomain(target)
         self._func = jax.jit(func)
         self._bwd = jax.jit(lambda x, y: jax.vjp(func, x)[1](y)[0])
         self._fwd = jax.jit(lambda x, y: jax.jvp(self._func, (x,), (y,))[1])
-
-        self._jax_expr = func
 
     def apply(self, x):
         from ..multi_domain import MultiDomain
@@ -144,6 +139,7 @@ class JaxLinearOperator(LinearOperator):
     `nifty8.extra.check_linear_operator`.
     """
     def __init__(self, domain, target, func, domain_dtype=None, func_T=None):
+        import jax
         from ..domain_tuple import DomainTuple
         from ..sugar import makeDomain
         domain = makeDomain(domain)
@@ -163,8 +159,6 @@ class JaxLinearOperator(LinearOperator):
         self._func = func
         self._func_T = func_T
         self._capability = self.TIMES | self.ADJOINT_TIMES
-
-        self._jax_expr = func
 
     def apply(self, x, mode):
         from ..sugar import makeField
@@ -198,6 +192,7 @@ class JaxLikelihoodEnergyOperator(LikelihoodEnergyOperator):
         likelihood.
     """
     def __init__(self, domain, func, transformation=None, sampling_dtype=None):
+        import jax
         from ..sugar import makeDomain
         self._domain = makeDomain(domain)
         self._func = jax.jit(func)
