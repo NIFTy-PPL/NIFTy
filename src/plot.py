@@ -463,10 +463,13 @@ def _plot2D(f, ax, **kwargs):
                 rgb, extent=[0, nx*dx, 0, ny*dy], origin="lower", **norm,
                 **aspect)
         else:
+            alpha = kwargs.get("alpha", None)
+            if isinstance(alpha, Field):
+                alpha = alpha.val.T
             im = ax.imshow(
                 f.val.T, extent=[0, nx*dx, 0, ny*dy],
                 vmin=kwargs.get("vmin"), vmax=kwargs.get("vmax"),
-                cmap=cmap, origin="lower", **norm, **aspect)
+                cmap=cmap, origin="lower", alpha=alpha, **norm, **aspect)
             cax = make_axes_locatable(ax).append_axes("right", size="5%", pad=0.05)
             plt.colorbar(im, cax=cax)
         _limit_xy(**kwargs)
@@ -631,6 +634,10 @@ class Plot:
                         arr = f[ifield].val[tuple(multi_index)]
                         myassert(arr.ndim == 2)
                         self._plots.append([makeField(dom[twod_index], arr)])
+                        if isinstance(kwargs.get("alpha", None), Field) and len(kwargs["alpha"].shape) > 2:
+                            arr = kwargs["alpha"].val[tuple(multi_index)]
+                            myassert(arr.ndim == 2)
+                            kwargs["alpha"] = makeField(dom[twod_index], arr)
                         self._kwargs.append(kwargs)
                 return
         self._plots.append(f)
