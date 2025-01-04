@@ -127,7 +127,7 @@ def SimpleCorrelatedField(
     ht = HarmonicTransformOperator(harmonic_partner, target)
     pd = PowerDistributor(harmonic_partner, pspace)
     xi = ducktape(harmonic_partner, None, prefix + 'xi')
-    op = ht(pd(a)*xi)
+    op = ht(pd(a).real*xi)
     if offset_mean is not None:
         op = Adder(full(op.target, float(offset_mean))) @ op
     op.amplitude = a

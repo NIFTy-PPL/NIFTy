@@ -750,11 +750,11 @@ class CorrelatedFieldMaker:
         corr = reduce(mul, a)
         xi = ducktape(hspace, None, self._prefix + 'xi')
         if np.isscalar(self.azm):
-            op = ht(corr * xi)
+            op = ht(corr.real * xi)
         else:
             expander = ContractionOperator(hspace, spaces=spaces).adjoint
             azm = expander @ self.azm
-            op = ht(azm * corr * xi)
+            op = ht((azm * corr).real * xi)
 
         if self._offset_mean is not None:
             offset = self._offset_mean
