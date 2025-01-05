@@ -54,7 +54,7 @@ def test_times_inverse(space, dtype, dtype_inp):
     diag = ift.Field.from_random(domain=space, random_type='normal', dtype=dtype)
     D = ift.DiagonalOperator(diag)
     tt1 = D.times(D.inverse_times(rand1))
-    assert_allclose(rand1.val, tt1.val)
+    assert_allclose(rand1.asnumpy(), tt1.asnumpy())
 
 
 def test_times(space):
@@ -93,4 +93,4 @@ def test_diagonal(space):
     diag = ift.Field.from_random(domain=space, random_type='normal')
     D = ift.DiagonalOperator(diag)
     diag_op = D(ift.Field.full(space, 1.))
-    assert_allclose(diag.val, diag_op.val)
+    assert_allclose(diag.asnumpy(), diag_op.asnumpy())

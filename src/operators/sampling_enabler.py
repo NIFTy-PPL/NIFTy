@@ -61,19 +61,19 @@ class SamplingEnabler(EndomorphicOperator):
         self._capability = self._op.capability
         self.apply = self._op.apply
 
-    def special_draw_sample(self, from_inverse=False):
+    def special_draw_sample(self, from_inverse=False, device_id=-1):
         try:
-            res = self._op.draw_sample(from_inverse)
+            res = self._op.draw_sample(from_inverse, device_id)
             return self._op(res), res
         except NotImplementedError:
             if not from_inverse:
                 raise ValueError("from_inverse must be True here")
             if self._start_from_zero:
-                b = self._op.draw_sample()
+                b = self._op.draw_sample(device_id=device_id)
                 energy = QuadraticEnergy(0*b, self._op, b)
             else:
-                s = self._prior.draw_sample(from_inverse=True)
-                nj = self._likelihood.draw_sample()
+                s = self._prior.draw_sample(from_inverse=True, device_id=device_id)
+                nj = self._likelihood.draw_sample(device_id=device_id)
                 b = self._prior(s) + nj
                 energy = QuadraticEnergy(s, self._op, b,
                                          _grad=self._likelihood(s) - nj)
@@ -85,8 +85,8 @@ class SamplingEnabler(EndomorphicOperator):
                 energy, convergence = inverter(energy)
             return b, energy.position
 
-    def draw_sample(self, from_inverse=False):
-        return self.special_draw_sample(from_inverse=from_inverse)[1]
+    def draw_sample(self, from_inverse=False, device_id=-1):
+        return self.special_draw_sample(from_inverse, device_id)[1]
 
     def __repr__(self):
         from ..utilities import indent

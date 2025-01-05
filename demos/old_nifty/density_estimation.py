@@ -47,7 +47,7 @@ if __name__ == "__main__":
     # Generate mock signal and data
     rng = ift.random.current_rng()
     mock_position = ift.from_random(signal.domain, "normal")
-    data = ift.Field.from_raw(data_space, rng.poisson(signal(mock_position).val))
+    data = ift.Field.from_raw(data_space, rng.poisson(signal(mock_position).asnumpy()))
 
     # Rejoin domains for plotting
     plotting_domain = ift.DomainTuple.make(ift.RGSpace((npix1, npix2)))
@@ -56,15 +56,15 @@ if __name__ == "__main__":
     plot = ift.Plot()
     plot.add(
         ift.Field.from_raw(
-            plotting_domain_expanded, ift.exp(correlated_field(mock_position)).val
+            plotting_domain_expanded, ift.exp(correlated_field(mock_position)).asnumpy()
         ),
         title="Pre-Slicing Truth",
     )
     plot.add(
-        ift.Field.from_raw(plotting_domain, signal(mock_position).val),
+        ift.Field.from_raw(plotting_domain, signal(mock_position).asnumpy()),
         title="Ground Truth",
     )
-    plot.add(ift.Field.from_raw(plotting_domain, data.val), title="Data")
+    plot.add(ift.Field.from_raw(plotting_domain, data.asnumpy()), title="Data")
     plot.output(ny=1, nx=3, xsize=10, ysize=3, name=filename.format("setup"))
     print("Setup saved as", filename.format("setup"))
 
@@ -100,16 +100,16 @@ if __name__ == "__main__":
         plot = ift.Plot()
         plot.add(
             ift.Field.from_raw(
-                plotting_domain_expanded, ift.exp(correlated_field(mock_position)).val
+                plotting_domain_expanded, ift.exp(correlated_field(mock_position)).asnumpy()
             ),
             title="Ground truth",
         )
         plot.add(
-            ift.Field.from_raw(plotting_domain, signal(mock_position).val),
+            ift.Field.from_raw(plotting_domain, signal(mock_position).asnumpy()),
             title="Ground truth",
         )
         plot.add(
-            ift.Field.from_raw(plotting_domain, kl.samples.average(signal).val),
+            ift.Field.from_raw(plotting_domain, kl.samples.average(signal).asnumpy()),
             title="Reconstruction",
         )
         plot.add(
@@ -129,17 +129,17 @@ if __name__ == "__main__":
 
     # Plotting
     plot = ift.Plot()
-    plot.add(ift.Field.from_raw(plotting_domain, mean.val), title="Posterior Mean")
+    plot.add(ift.Field.from_raw(plotting_domain, mean.asnumpy()), title="Posterior Mean")
     plot.add(
-        ift.Field.from_raw(plotting_domain, ift.sqrt(var).val),
+        ift.Field.from_raw(plotting_domain, ift.sqrt(var).asnumpy()),
         title="Posterior Standard Deviation",
     )
     plot.add(
-        ift.Field.from_raw(plotting_domain_expanded, mean_unsliced.val),
+        ift.Field.from_raw(plotting_domain_expanded, mean_unsliced.asnumpy()),
         title="Posterior Unsliced Mean",
     )
     plot.add(
-        ift.Field.from_raw(plotting_domain_expanded, ift.sqrt(var_unsliced).val),
+        ift.Field.from_raw(plotting_domain_expanded, ift.sqrt(var_unsliced).asnumpy()),
         title="Posterior Unsliced Standard Deviation",
     )
     plot.output(xsize=15, ysize=15, name=filename.format("results"))

@@ -53,25 +53,25 @@ def plot(fields, spectra, title=None):
     fig = plt.figure(tight_layout=True, figsize=(10, 3))
     if title is not None:
         fig.suptitle(title, fontsize=14)
-    
+
     # Field
     ax1 = fig.add_subplot(1, 2, 1)
     ax1.axhline(y=0., color='k', linestyle='--', alpha=0.25)
     for field in fields:
         dom = field.domain[0]
         xcoord = np.arange(dom.shape[0]) * dom.distances[0]
-        ax1.plot(xcoord, field.val)
+        ax1.plot(xcoord, field.asnumpy())
     ax1.set_xlim(xcoord[0], xcoord[-1])
     ax1.set_ylim(-5., 5.)
     ax1.set_xlabel('x')
     ax1.set_ylabel('f(x)')
     ax1.set_title('Field realizations')
-    
+
     # Spectrum
     ax2 = fig.add_subplot(1, 2, 2)
     for spectrum in spectra:
         xcoord = spectrum.domain[0].k_lengths
-        ycoord = spectrum.val_rw()
+        ycoord = spectrum.asnumpy_rw()
         ycoord[0] = ycoord[1]
         ax2.plot(xcoord, ycoord)
     ax2.set_ylim(1e-6, 10.)
@@ -80,7 +80,7 @@ def plot(fields, spectra, title=None):
     ax2.set_xlabel('k')
     ax2.set_ylabel('p(k)')
     ax2.set_title('Power Spectrum')
-    
+
     fig.align_labels()
     plt.show()
 
@@ -94,7 +94,7 @@ def init_model(m_pars, fl_pars, matern=False):
     field = cf.finalize(prior_info=0)
     main_sample = ift.from_random(field.domain)
     print("model domain keys:", field.domain.keys())
-    
+
 # Helper: field and spectrum from parameter dictionaries + plotting
 def eval_model(m_pars, fl_pars, title=None, samples=None, matern=False):
     cf = ift.CorrelatedFieldMaker(m_pars["prefix"])
@@ -119,7 +119,7 @@ def gen_samples(key_to_vary):
         d[key_to_vary] = ift.from_random(subdom_to_vary)
         samples.append(ift.MultiField.from_dict(d))
     return samples
-        
+
 def vary_parameter(parameter_key, values, samples_vary_in=None, matern=False):
     s = gen_samples(samples_vary_in)
     for v in values:
@@ -150,7 +150,7 @@ for i in range(3):
     op = ift.LognormalTransform(mean=mean, sigma=sigmas[i],
                                 key='foo', N_copies=0)
     op_samples = np.array(
-        [op(s).val for s in [ift.from_random(op.domain) for i in range(10000)]])
+        [op(s).asnumpy() for s in [ift.from_random(op.domain) for i in range(10000)]])
 
     ax = fig.add_subplot(1, 3, i + 1)
     ax.hist(op_samples, bins=50)
@@ -336,7 +336,7 @@ eval_model(cf_make_pars, cf_x_fluct_pars, "Neutral Field", matern=True)
 #
 # The scaling factor is modelled as being log-normally distributed,
 # see `The Moment-Matched Log-Normal Distribution` above for details.
-# 
+#
 # #### `scale` mean:
 
 vary_parameter('scale', [(0.01, 1e-16), (0.1, 1e-16), (1.0, 1e-16)], samples_vary_in='xi', matern=True)

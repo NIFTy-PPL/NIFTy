@@ -12,8 +12,11 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Copyright(C) 2013-2021 Max-Planck-Society
+# Copyright(C) 2025 Philipp Arras
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
+
+from collections import defaultdict
 
 import numpy as np
 
@@ -56,7 +59,7 @@ class MultiField(Operator):
                                     'defined on DomainTuples.')
             domain = MultiDomain.make({key: v._domain
                                        for key, v in dct.items()})
-        res = tuple(dct[key] if key in dct else Field(dom, 0.)
+        res = tuple(dct[key] if key in dct else Field.full(dom, 0.)
                     for key, dom in zip(domain.keys(), domain.domains()))
         return MultiField(domain, res)
 
@@ -104,7 +107,8 @@ class MultiField(Operator):
         return self._transform(lambda x: x.imag)
 
     @staticmethod
-    def from_random(domain, random_type='normal', dtype=np.float64, **kwargs):
+    def from_random(domain, random_type='normal', dtype=np.float64, device_id=-1,
+                    **kwargs):
         """Draws a random multi-field with the given parameters.
 
         Parameters
@@ -117,6 +121,11 @@ class MultiField(Operator):
             The datatype of the output random Field.
             If the datatype is complex, each real an imaginary part have
             variance 1.
+        device_id : int or dict
+            Device id of the output. If it is an `int`, all `Field`s of the
+            `MultiField` reside on the same device. If it is a `dict`, the
+            `Field` associated with a `key` of the `dict` will the reside on the
+            decvice as indicated by the `dict`.
 
         Returns
         -------
@@ -136,7 +145,10 @@ class MultiField(Operator):
         else:
             dtype = np.dtype(dtype)
             dtype = {kk: dtype for kk in domain.keys()}
-        dct = {kk: Field.from_random(domain[kk], random_type, dtype[kk], **kwargs)
+        if not isinstance(device_id, dict):
+            _device_id = defaultdict(lambda: device_id)
+        dct = {kk: Field.from_random(domain[kk], random_type, dtype[kk],
+                                     device_id=_device_id[kk], **kwargs)
                for kk in domain.keys()}
         return MultiField.from_dict(dct)
 
@@ -159,10 +171,15 @@ class MultiField(Operator):
 #        return {key: dtype for key in domain.keys()}
 
     @staticmethod
-    def full(domain, val):
+    def full(domain, val, device_id=-1):
         domain = MultiDomain.make(domain)
-        return MultiField(domain, tuple(Field(dom, val)
-                          for dom in domain._domains))
+        if isinstance(device_id, dict):
+            _device_id = device_id
+        else:
+            _device_id = defaultdict(lambda: device_id)
+        return MultiField(
+            domain, tuple((Field.full(dom, val, _device_id[kk]) for kk, dom in domain.items()))
+        )
 
     @property
     def val(self):
@@ -173,10 +190,28 @@ class MultiField(Operator):
         return {key: val.val_rw()
                 for key, val in zip(self._domain.keys(), self._val)}
 
+    def asnumpy(self):
+        return {key: val.asnumpy()
+                for key, val in zip(self._domain.keys(), self._val)}
+
+    def asnumpy_rw(self):
+        return {key: val.asnumpy_rw()
+                for key, val in zip(self._domain.keys(), self._val)}
+
+    def at(self, device_id=-1):
+        _device_id = device_id if isinstance(device_id, dict) else defaultdict(lambda: device_id)
+        val = tuple(val.at(_device_id[key]) for key, val in zip(self._domain.keys(), self._val))
+        return MultiField(self._domain, val)
+
+    @property
+    def device_id(self):
+        return {key: val.device_id for key, val in zip(self._domain.keys(),
+                                                       self._val)}
+
     @staticmethod
     def from_raw(domain, arr):
         return MultiField(
-            domain, tuple(Field(domain[key], arr[key])
+            domain, tuple(Field.from_raw(domain[key], arr[key])
                           for key in domain.keys()))
 
     def norm(self, ord=2):

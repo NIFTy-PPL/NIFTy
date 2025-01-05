@@ -25,7 +25,7 @@
 # a stochastic estimate of the KL-Divergence
 #
 # Note that the fullcovariance approximation scales quadratically with the
-# number of parameters. 
+# number of parameters.
 ###############################################################################
 
 import numpy as np
@@ -59,7 +59,7 @@ if __name__ == "__main__":
 
     # Generate simulated signal and data and build likelihood energy
     mock_position = ift.from_random(sky.domain, "normal")
-    data = ift.random.current_rng().poisson(lamb(mock_position).val)
+    data = ift.random.current_rng().poisson(lamb(mock_position).asnumpy())
     data = ift.makeField(d_space, data)
     likelihood_energy = ift.PoissonianEnergy(data) @ lamb
     H = ift.StandardHamiltonian(likelihood_energy)
@@ -70,7 +70,7 @@ if __name__ == "__main__":
     minimizer_fc = ift.ADVIOptimizer(IC, eta=0.1)
     minimizer_mf = ift.ADVIOptimizer(IC)
 
-    # Initial positions 
+    # Initial positions
     position_fc = ift.from_random(H.domain)*0.1
     position_mf = ift.from_random(H.domain)*0.1
 
@@ -82,15 +82,15 @@ if __name__ == "__main__":
     niter = 10
     for ii in range(niter):
         # Plotting
-        plt.plot(sky(fc.mean).val, "b-", label="Full covariance")
-        plt.plot(sky(mf.mean).val, "r-", label="Mean field")
+        plt.plot(sky(fc.mean).asnumpy(), "b-", label="Full covariance")
+        plt.plot(sky(mf.mean).asnumpy(), "r-", label="Mean field")
         for _ in range(5):
-            plt.plot(sky(fc.draw_sample()).val, "b-", alpha=0.3)
-            plt.plot(sky(mf.draw_sample()).val, "r-", alpha=0.3)
-        plt.plot(R.adjoint(data).val, "kx")
-        plt.plot(sky(mock_position).val, "k-", label="Ground truth")
+            plt.plot(sky(fc.draw_sample()).asnumpy(), "b-", alpha=0.3)
+            plt.plot(sky(mf.draw_sample()).asnumpy(), "r-", alpha=0.3)
+        plt.plot(R.adjoint(data).asnumpy(), "kx")
+        plt.plot(sky(mock_position).asnumpy(), "k-", label="Ground truth")
         plt.legend()
-        plt.ylim(0.1, data.val.max() + 10)
+        plt.ylim(0.1, data.asnumpy().max() + 10)
         fname = f"meanfield_{ii:03d}.png"
         plt.savefig(fname)
         print(f"Saved results as '{fname}' ({ii}/{niter-1}).")

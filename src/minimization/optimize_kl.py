@@ -12,7 +12,8 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Copyright(C) 2021 Max-Planck-Society
-# Copyright(C) 2022 Max-Planck-Society, Philipp Arras
+# Copyright(C) 2022-2025 Max-Planck-Society, Philipp Arras
+#
 # Author: Philipp Arras
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
@@ -52,7 +53,8 @@ def optimize_kl(likelihood_energy,
                 n_samples,
                 kl_minimizer,
                 sampling_iteration_controller,
-                nonlinear_sampling_minimizer,
+                *,
+                nonlinear_sampling_minimizer=None,
                 constants=[],
                 point_estimates=[],
                 transitions=None,
@@ -70,7 +72,9 @@ def optimize_kl(likelihood_energy,
                 resume=False,
                 sanity_checks=True,
                 dry_run=False,
-                fresh_stochasticity=True):
+                fresh_stochasticity=True,
+                device_id=-1,
+                ):
     """Provide potentially useful interface for standard KL minimization.
 
     The parameters `likelihood_energy`, `kl_minimizer`,
@@ -137,7 +141,8 @@ def optimize_kl(likelihood_energy,
     initial_position : :class:`nifty8.field.Field`, :class:`nifty8.multi_field.MultiField` or None
         Position in the definition space of `likelihood_energy` from which the
         optimization is started. If `None`, it starts at a random, normal
-        distributed position with standard deviation 0.1. Default: None.
+        distributed position with standard deviation 0.1. The `initial_position`
+        is always moved to the device according to `device_id`. Default: None.
     initial_index : int
         Initial index that is used to enumerate the output files. May be used
         if `optimize_kl` is called multiple times. Default: 0.
@@ -194,6 +199,10 @@ def optimize_kl(likelihood_energy,
         choose to set `fresh_stochasticity` to False toward the end of an
         `optimize_kl` run to reduce stochastic fluctuations and artificially
         increase convergence. Default: True.
+    device_id : int or dict of int
+        Device_id on which the optimization shall be initialized. If
+        initial_position is not None, the `initial_position` will be transferred
+        to `device_id`. Default: -1 (cpu).
 
     Returns
     -------
@@ -245,7 +254,7 @@ def optimize_kl(likelihood_energy,
     if initial_position is None:
         mean = full(makeDomain({}), 0.)
     else:
-        mean = initial_position
+        mean = initial_position.at(device_id)
         del(initial_position)
     sl = _single_value_sample_list(mean, comm=comm(initial_index))
     energy_history = EnergyHistory()
@@ -353,7 +362,7 @@ def optimize_kl(likelihood_energy,
         # Transform mean
         t = transitions(iglobal)
         mean = mean if t is None else t(sl)
-        mean = _normal_initialize(mean, lh.domain)
+        mean = _normal_initialize(mean, lh.domain, device_id=device_id)
         # /Transform mean
 
         count = CountingOperator(lh.domain)
@@ -403,7 +412,8 @@ def optimize_kl(likelihood_energy,
                 nonlinear_sampling_minimizer(iglobal),
                 comm=comm(iglobal),
                 constants=constants(iglobal),
-                point_estimates=point_estimates(iglobal))
+                point_estimates=point_estimates(iglobal),
+                device_id=device_id)
             e, _ = minimizer(e)
             mean = MultiField.union([mean, e.position])
             sl = e.samples.at(mean)
@@ -753,7 +763,7 @@ def _is_subdomain(sub_domain, total_domain):
                for kk, vv in sub_domain.items())
 
 
-def _normal_initialize(mf, domain, std=0.1):
+def _normal_initialize(mf, domain, std=0.1, device_id=-1):
     from ..sugar import makeDomain
     from ..utilities import myassert
 
@@ -763,7 +773,7 @@ def _normal_initialize(mf, domain, std=0.1):
                            f"Final domain:\n{domain}")
     diff_keys = set(domain.keys()) - set(mf.domain.keys())
     diff_domain = makeDomain({kk: domain[kk] for kk in diff_keys})
-    diff_fld = from_random(diff_domain, std=std)
+    diff_fld = from_random(diff_domain, std=std, device_id=device_id)
     res = mf.unite(diff_fld)
     myassert(res.domain is domain)
     return res

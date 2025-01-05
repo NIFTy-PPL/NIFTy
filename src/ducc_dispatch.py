@@ -12,11 +12,13 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Copyright(C) 2013-2021 Max-Planck-Society
+# Copyright(C) 2025 Philipp Arras
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 
 import operator
+from warnings import warn
 
 import numpy as np
 import scipy.fft
@@ -35,18 +37,57 @@ def set_nthreads(nthr):
     _nthreads = int(nthr)
 
 
+try:
+    from pyvkfft.fft import fftn as vkfftn
+    from pyvkfft.fft import ifftn as vkifftn
+    def _force_complex(a):
+        # Vkfft only works on complex inputs
+        if a.dtype == np.float32:
+            return a.astype(np.complex64)
+        if a.dtype == np.float64:
+            return a.astype(np.complex128)
+        return a
+    def cufftn(a, *args, **kwargs):
+        return vkfftn(_force_complex(a), *args, **kwargs)
+    def cuifftn(a, *args, **kwargs):
+        return vkifftn(_force_complex(a), *args, **kwargs)
+
+except ImportError:
+    try:
+        import cupy
+
+        warn("Using cupy FFT. Consider to install the significantly faster pyvkfft")
+        cufftn = cupy.fft.fftn
+        cuifftn = cupy.fft.ifftn
+    except ImportError:
+        pass
+
 def _scipy_fftn(a, axes=None):
-    return scipy.fft.fftn(a, axes=axes, workers=_nthreads)
+    from .any_array import AnyArray
+    if a.device_id > -1:
+        return AnyArray(cufftn(a._val, axes=axes))
+    return AnyArray(scipy.fft.fftn(a._val, axes=axes, workers=_nthreads))
 
 
 def _scipy_ifftn(a, axes=None):
-    return scipy.fft.ifftn(a, axes=axes, workers=_nthreads)
+    from .any_array import AnyArray
+    if a.device_id > -1:
+        return AnyArray(cuifftn(a._val, axes=axes))
+    return AnyArray(scipy.fft.ifftn(a._val, axes=axes, workers=_nthreads))
 
 
 def _scipy_hartley(a, axes=None):
-    tmp = scipy.fft.fftn(a, axes=axes, workers=_nthreads)
+    from .any_array import AnyArray
+    if a.device_id > -1:
+        tmp = AnyArray(cufftn(a._val, axes=axes))
+    else:
+        tmp = AnyArray(scipy.fft.fftn(a._val, axes=axes, workers=_nthreads))
+    assert isinstance(tmp, AnyArray)
     c = _config.get("hartley_convention")
     add_or_sub = operator.add if c == "non_canonical_hartley" else operator.sub
+    assert isinstance(tmp.real, AnyArray)
+    assert isinstance(tmp.imag, AnyArray)
+    assert isinstance(add_or_sub(tmp.real, tmp.imag), AnyArray)
     return add_or_sub(tmp.real, tmp.imag)
 
 
@@ -64,18 +105,32 @@ try:
 
 
     def fftn(a, axes=None):
-        return my_fft.c2c(a, axes=axes, nthreads=max(_nthreads, 0))
+        from .any_array import AnyArray
+        if a.device_id > -1:
+            a = cufftn(a._val, axes=axes)
+        else:
+            a = my_fft.c2c(a._val, axes=axes, nthreads=max(_nthreads, 0))
+        return AnyArray(a)
 
 
     def ifftn(a, axes=None):
-        return my_fft.c2c(a, axes=axes, inorm=2, forward=False,
-                          nthreads=max(_nthreads, 0))
+        from .any_array import AnyArray
+        if a.device_id > -1:
+            a = cuifftn(a._val, axes=axes)
+        else:
+            a = my_fft.c2c(a._val, axes=axes, inorm=2, forward=False,
+                           nthreads=max(_nthreads, 0))
+        return AnyArray(a)
 
 
     def hartley(a, axes=None):
+        from .any_array import AnyArray
+        if a.device_id > -1:
+            return _scipy_hartley(a, axes)
         c = _config.get("hartley_convention")
         ht = my_fft.genuine_hartley if c == "non_canonical_hartley" else my_fft.genuine_fht
-        return ht(a, axes=axes, nthreads=max(_nthreads, 0))
+        a = ht(a._val, axes=axes, nthreads=max(_nthreads, 0))
+        return AnyArray(a)
 
 
     def vdot(a, b):

@@ -86,4 +86,4 @@ def test_dvol():
 
 @pmp('lmax, expected', get_k_length_array_configs())
 def test_k_length_array(lmax, expected):
-    assert_allclose(ift.LMSpace(lmax).get_k_length_array().val, expected)
+    assert_allclose(ift.LMSpace(lmax).get_k_length_array().asnumpy(), expected)

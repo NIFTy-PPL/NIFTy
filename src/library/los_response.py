@@ -12,12 +12,12 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Copyright(C) 2013-2019 Max-Planck-Society
+# Copyright(C) 2025 Philipp Arras
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 import numpy as np
 from scipy.sparse import coo_matrix
-from scipy.sparse.linalg import aslinearoperator
 from scipy.special import erfc
 
 from ..domain_tuple import DomainTuple
@@ -217,17 +217,37 @@ class LOSResponse(LinearOperator):
         ilos = ilos[xtmp]
         iarr = iarr[xtmp]
         xwgt = xwgt[xtmp]
-        self._smat = aslinearoperator(
-            coo_matrix((xwgt, (ilos, iarr)),
-                       shape=(nlos, np.prod(self.domain[0].shape))))
-
+        self._smat = coo_matrix((xwgt, (ilos, iarr)), shape=(nlos, np.prod(self.domain[0].shape)))
         self._target = DomainTuple.make(UnstructuredDomain(nlos))
+        self._finalize_init()
+
+    def _finalize_init(self):
+        if isinstance(self._smat, coo_matrix):
+            from scipy.sparse.linalg import aslinearoperator
+            self._device_id = -1
+        else:
+            from cupyx.scipy.sparse.linalg import aslinearoperator
+            self._device_id = self._smat.data.device.id
+        self._sop = aslinearoperator(self._smat)
+
+    def _device_preparation(self, x, mode):
+        if x.device_id == self._device_id:
+            return
+        if self._device_id > -1:  # need gpu->cpu copy
+            self._smat = self._smat.get()
+        elif self._device_id == -1:  # need cpu->gpu copy
+            from cupyx.scipy.sparse import coo_matrix
+            self._smat = coo_matrix(self._smat)
+        else:
+            raise RuntimeError()
+        self._finalize_init()
 
     def apply(self, x, mode):
         self._check_input(x, mode)
+        self._device_preparation(x, mode)
+        x = x.raw
         if mode == self.TIMES:
-            result_arr = self._smat.matvec(x.val.reshape(-1))
-            return Field(self._target, result_arr)
-        input_data = x.val.reshape(-1)
-        res = self._smat.rmatvec(input_data).reshape(self.domain[0].shape)
-        return Field(self._domain, res)
+            res = self._sop.matvec(x.reshape(-1))
+        else:
+            res = self._sop.rmatvec(x).reshape(self.domain[0].shape)
+        return Field(self._tgt(mode), res)

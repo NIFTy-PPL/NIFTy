@@ -1,0 +1,75 @@
+FROM nvidia/cuda:12.4.1-devel-ubuntu22.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install -y \
+    # Needed for setup
+    git python3-pip \
+    # Documentation build dependencies
+    dvipng texlive-latex-base texlive-latex-extra pandoc \
+    # Dependency of mpi4py
+    libopenmpi-dev \
+    # Useful for development
+    vim less \
+    && rm -rf /var/lib/apt/lists/*
+RUN pip install --upgrade pip
+RUN pip3 install --break-system-packages \
+    # Packages needed for NIFTy
+    scipy \
+    # Optional nifty dependencies
+    matplotlib h5py astropy ducc0 mpi4py \
+    # Testing dependencies
+    pytest pytest-cov pytest-xdist \
+    # Documentation build dependencies
+    jupyter nbconvert jupytext sphinx pydata-sphinx-theme myst-parser \
+    # Cuda dependencies
+    cupy-cuda12x
+
+RUN apt-get update && apt-get install -y opencl-headers ocl-icd-opencl-dev && rm -rf /var/lib/apt/lists/*
+RUN pip install pyvkfft siphash24
+
+# NVIDIA nsight-systems
+ARG MODE=basic
+RUN if [ "$MODE" = "with-X" ]; then \
+    apt-get update -y && \
+    apt-get install -y --no-install-recommends \
+        apt-transport-https \
+        ca-certificates \
+        dbus \
+        fontconfig \
+        gnupg \
+        libasound2 \
+        libfreetype6 \
+        libglib2.0-0 \
+        libnss3 \
+        libsqlite3-0 \
+        libx11-xcb1 \
+        libxcb-glx0 \
+        libxcb-xkb1 \
+        libxcomposite1 \
+        libxcursor1 \
+        libxdamage1 \
+        libxi6 \
+        libxml2 \
+        libxrandr2 \
+        libxrender1 \
+        libxtst6 \
+        libgl1-mesa-glx \
+        libxkbfile-dev \
+        openssh-client \
+        wget \
+        xcb \
+        xkb-data && \
+    apt-get clean; \
+    fi
+RUN if [ "$MODE" = "with-X" ]; then \
+    cd /tmp && \
+    wget https://developer.nvidia.com/downloads/assets/tools/secure/nsight-systems/2023_4_1_97/nsight-systems-2023.4.1_2023.4.1.97-1_amd64.deb && \
+    apt-get install -y ./nsight-systems-2023.4.1_2023.4.1.97-1_amd64.deb && \
+    rm -rf /tmp/*; \
+    fi
+
+# Create user (openmpi does not like to be run as root)
+RUN useradd -ms /bin/bash runner
+USER runner
+WORKDIR /mnt

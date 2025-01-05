@@ -20,13 +20,15 @@ import numpy as np
 import pytest
 from numpy.testing import assert_allclose
 
-from .common import setup_function, teardown_function
+from .common import list2fixture, setup_function, teardown_function
 
 pmp = pytest.mark.parametrize
 
+device_id = list2fixture([-1, 0] if ift.device_available() else [-1])
+
 
 def _lin2grad(lin):
-    return lin.jac(ift.full(lin.domain, 1.)).val
+    return lin.jac(ift.full(lin.domain, 1.)).asnumpy()
 
 
 def jt(lin, check):
@@ -37,7 +39,7 @@ def test_special_gradients():
     dom = ift.UnstructuredDomain((1,))
     f = ift.full(dom, 2.4)
     var = ift.Linearization.make_var(f)
-    s = f.val
+    s = f.asnumpy()
 
     jt(var.clip(0, 10), np.ones_like(s))
     jt(var.clip(-1, 0), np.zeros_like(s))
@@ -61,14 +63,14 @@ def test_special_gradients():
 @pmp('cplxpos', [True, False])
 @pmp('cplxdir', [True, False])
 @pmp('holomorphic', [True, False])
-def test_actual_gradients(f, cplxpos, cplxdir, holomorphic):
+def test_actual_gradients(f, cplxpos, cplxdir, holomorphic, device_id):
     if (cplxpos or cplxdir) and f in ['absolute']:
         return
     if holomorphic and f in ['absolute']:
         # These function are not holomorphic
         return
     dom = ift.UnstructuredDomain((1,))
-    fld = ift.full(dom, 2.4)
+    fld = ift.full(dom, 2.4, device_id)
     if cplxpos:
         fld = fld + 0.21j
     eps = 1e-7
@@ -80,8 +82,8 @@ def test_actual_gradients(f, cplxpos, cplxdir, holomorphic):
     var1 = ift.Linearization.make_var(fld + eps)
     if not isinstance(f, tuple):
         f = (f,)
-    f0 = var0.ptw(*f).val.val
-    f1 = var1.ptw(*f).val.val
+    f0 = var0.ptw(*f).val.asnumpy()
+    f1 = var1.ptw(*f).val.asnumpy()
     df1 = _lin2grad(var0.ptw(*f))
     df0 = (f1 - f0)/eps
     assert_allclose(df0, df1, rtol=100*np.abs(eps))

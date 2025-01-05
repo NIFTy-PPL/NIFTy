@@ -68,4 +68,4 @@ def test_normalisation(space, tp):
     out = fft.times(inp)
     zero_idx = tuple([0]*len(space.shape))
     assert_allclose(
-        inp.val[zero_idx], out.s_integrate(), rtol=tol, atol=tol)
+        inp.asnumpy()[zero_idx], out.s_integrate(), rtol=tol, atol=tol)

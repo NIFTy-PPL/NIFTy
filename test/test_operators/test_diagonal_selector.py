@@ -32,8 +32,8 @@ def test_diagonal_selector(N):
     linear_space = ift.RGSpace(N)
     myField = ift.from_random(square_space)
     myDiagonalSelector = DiagonalSelector(square_space)
-    selected = myDiagonalSelector(myField).val
-    np_selected = np.diag(myField.val)
+    selected = myDiagonalSelector(myField).asnumpy()
+    np_selected = np.diag(myField.asnumpy())
     assert_allclose(np_selected, selected)
 
 

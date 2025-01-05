@@ -71,8 +71,9 @@ def test_gaussian_energy(space, nonlinearity, noise, seed):
             N = None
 
         energy = ift.GaussianEnergy(d, N, sampling_dtype=float) @ d_model()
-        ift.extra.check_operator(
-            energy, xi0, ntries=ntries, tol=1e-6)
+        ift.extra.check_operator(energy, xi0, ntries=ntries, tol=1e-6,
+                                 assert_fixed_device=True,
+                                 no_device_copies=not isinstance(space, ift.GLSpace))
 
 
 @pmp('space', [ift.GLSpace(5),
@@ -88,8 +89,8 @@ def test_gaussian_value(space, seed, dtype, with_data):
         d = ift.from_random(space, dtype=dtype) if with_data else None
         op = ift.GaussianEnergy(d, N)
         inp = ift.from_random(op.domain, dtype=dtype)
-        diff = d.val-inp.val if with_data else inp.val
-        ref = 0.5*ducc0.misc.vdot(diff, invvar.val*diff)
+        diff = d.asnumpy()-inp.asnumpy() if with_data else inp.asnumpy()
+        ref = 0.5*ducc0.misc.vdot(diff, invvar.asnumpy()*diff)
         ift.extra.assert_allclose(op(inp), ift.Field.scalar(ref))
 
 
@@ -104,4 +105,4 @@ def testgaussianenergy_compatibility(cplx):
     loc0 = ift.MultiField.from_dict({'resi': resi})
     loc1 = ift.MultiField.from_dict({'icov': ift.from_random(dom).exp()})
     loc = loc0.unite(loc1)
-    ift.extra.check_operator(e, loc, ntries=20)
+    ift.extra.check_operator(e, loc, ntries=20, no_device_copies=False)  # TODO

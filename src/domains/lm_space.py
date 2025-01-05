@@ -131,9 +131,9 @@ class LMSpace(StructuredDomain):
         kernel_sphere = kernel_sphere * (4 * np.pi / kernel_sphere.s_integrate())
         # compute the spherical harmonic coefficients of the kernel
         op = HarmonicTransformOperator(lm0, gl)
-        kernel_lm = op.adjoint_times(kernel_sphere.weight(1)).val
+        kernel_lm = op.adjoint_times(kernel_sphere.weight(1)).asnumpy()
         # evaluate the k lengths of the harmonic space
-        k_lengths = self.get_k_length_array().val.astype(np.int64)
+        k_lengths = self.get_k_length_array().asnumpy().astype(np.int64)
         return Field.from_raw(self, kernel_lm[k_lengths])
 
     @property

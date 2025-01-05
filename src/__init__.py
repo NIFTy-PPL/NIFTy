@@ -9,6 +9,7 @@ from .domains import *
 
 from .domain_tuple import DomainTuple
 from .multi_domain import MultiDomain
+from .any_array import AnyArray
 from .field import Field
 from .multi_field import MultiField
 
@@ -100,7 +101,7 @@ from .library.variational_models import MeanFieldVI, FullCovarianceVI
 
 from . import extra
 
-from .utilities import memo, frozendict, myassert
+from .utilities import memo, frozendict, myassert, device_available
 
 from .logger import logger, logger_init
 

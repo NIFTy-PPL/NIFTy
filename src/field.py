@@ -12,6 +12,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Copyright(C) 2013-2020 Max-Planck-Society
+# Copyright(C) 2025 Philipp Arras
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -20,8 +21,8 @@ from functools import reduce
 import numpy as np
 
 from . import utilities
+from .any_array import AnyArray
 from .domain_tuple import DomainTuple
-from .ducc_dispatch import vdot
 from .operators.operator import Operator
 
 
@@ -35,7 +36,7 @@ class Field(Operator):
     ----------
     domain : DomainTuple
         The domain of the new Field.
-    val : numpy.ndarray
+    val : AnyArray and all allowed wrappees of AnyArray (e.g. np.ndarray, cupy.ndarray, scalars)
         This object's shape must match the domain shape
         After construction, the object will no longer be writeable!
 
@@ -50,24 +51,16 @@ class Field(Operator):
     def __init__(self, domain, val):
         if not isinstance(domain, DomainTuple):
             raise TypeError("domain must be of type DomainTuple")
-        if not isinstance(val, np.ndarray):
-            if np.isscalar(val):
-                val = np.broadcast_to(val, domain.shape)
-            elif np.shape(val) == domain.shape:
-                # If NumPy thinks the shapes are equal, attempt to convert to
-                # NumPy. This is especially helpful for JAX DeviceArrays.
-                val = np.asarray(val)
-            else:
-                raise TypeError("val must be of type numpy.ndarray")
+        val = AnyArray(val)
+        val.lock()
         if domain.shape != val.shape:
             raise ValueError(f"shape mismatch between val and domain\n{domain.shape}\n{val.shape}")
         self._domain = domain
         self._val = val
-        self._val.flags.writeable = False
 
     @staticmethod
-    def scalar(val):
-        return Field(Field._scalar_dom, val)
+    def scalar(val, device_id=-1):
+        return Field(Field._scalar_dom, AnyArray(val).at(device_id))
 
     # prevent implicit conversion to bool
     def __nonzero__(self):
@@ -77,7 +70,7 @@ class Field(Operator):
         raise TypeError("Field does not support implicit conversion to bool")
 
     @staticmethod
-    def full(domain, val):
+    def full(domain, val, device_id=-1):
         """Creates a Field with a given domain, filled with a constant value.
 
         Parameters
@@ -86,18 +79,18 @@ class Field(Operator):
             Domain of the new Field.
         val : float/complex/int scalar
             Fill value. Data type of the field is inferred from val.
+        device_id : int
+            The device on which the Field shall be allocated. -1 corresponds to
+            host (cpu), 0 is the first device (gpu), 1 the second and so on.
+            Default: -1.
 
         Returns
         -------
         Field
             The newly created Field.
         """
-        if not np.isscalar(val):
-            raise TypeError("val must be a scalar")
-        if not (np.isreal(val) or np.iscomplex(val)):
-            raise TypeError("need arithmetic scalar")
         domain = DomainTuple.make(domain)
-        return Field(domain, val)
+        return Field(domain, AnyArray.full(domain.shape, val, device_id))
 
     @staticmethod
     def from_raw(domain, arr):
@@ -107,11 +100,14 @@ class Field(Operator):
         ----------
         domain : DomainTuple, tuple of Domain, or Domain
             The domain of the new Field.
-        arr : numpy.ndarray
+        arr : AnyArray
             The data content to be used for the new Field.
             Its shape must match the shape of `domain`.
         """
-        return Field(DomainTuple.make(domain), arr)
+        domain = DomainTuple.make(domain)
+        if np.isscalar(arr):
+            arr = np.broadcast_to(arr, domain.shape)
+        return Field(domain, AnyArray(arr))
 
     def cast_domain(self, new_domain):
         """Returns a field with the same data, but a different domain
@@ -130,7 +126,7 @@ class Field(Operator):
         return Field(DomainTuple.make(new_domain), self._val)
 
     @staticmethod
-    def from_random(domain, random_type='normal', dtype=np.float64, **kwargs):
+    def from_random(domain, random_type='normal', dtype=np.float64, device_id=-1, **kwargs):
         """Draws a random field with the given parameters.
 
         Parameters
@@ -143,6 +139,10 @@ class Field(Operator):
             The datatype of the output random Field.
             If the datatype is complex, each real and imaginary part
             have variance 1
+        device_id : int
+            Device id on which the Field shall be located. Note that Fields are
+            always generated on the host and then potentially transferred to
+            device. Default: -1
 
         Returns
         -------
@@ -153,11 +153,11 @@ class Field(Operator):
         domain = DomainTuple.make(domain)
         generator_function = getattr(Random, random_type)
         arr = generator_function(dtype=dtype, shape=domain.shape, **kwargs)
-        return Field(domain, arr)
+        return Field(domain, AnyArray(arr).at(device_id, check_fail=False))
 
     @property
     def val(self):
-        """numpy.ndarray : the array storing the field's entries.
+        """AnyArray : the array storing the field's entries.
 
         Notes
         -----
@@ -166,9 +166,51 @@ class Field(Operator):
         return self._val
 
     def val_rw(self):
-        """numpy.ndarray : a copy of the array storing the field's entries.
+        """AnyArray : a copy of the array storing the field's entries.
         """
         return self._val.copy()
+
+    @property
+    def raw(self):
+        """ndarray : the raw array (numpy.ndarray or cupy.ndarray) storing the field's entries.
+
+        Notes
+        -----
+        The returned array is read-only.
+        """
+        return self._val._val
+
+    def asnumpy(self):
+        """np.ndarray : the array storing the field's entries.
+
+        Notes
+        -----
+        The returned array is read-only.
+        """
+        return self._val.asnumpy()
+
+    def asnumpy_rw(self):
+        """np.ndarray : a copy of the array storing the field's entries.
+        """
+        return self._val.asnumpy().copy()
+
+    def at(self, device_id, *, check_fail=True):
+        """Field : a Field stored on a potentially different devicethe array storing the field's entries.
+
+        Parameters
+        ----------
+        device_id : int or dict
+            The device on which the Field shall be allocated. -1 corresponds to
+            host (cpu), 0 is the first device (gpu), 1 the second and so on.
+            Default: -1.
+        """
+        if self._val.device_id == device_id:
+            return self
+        return Field(self._domain, self._val.at(device_id, check_fail=check_fail))
+
+    @property
+    def device_id(self):
+        return self._val.device_id
 
     @property
     def dtype(self):
@@ -176,7 +218,7 @@ class Field(Operator):
         return self._val.dtype
 
     def astype(self, dtype):
-        return Field(self._domain, np.astype(self._val, dtype))
+        return Field(self._domain, self._val.astype(dtype))
 
     @property
     def domain(self):
@@ -255,9 +297,9 @@ class Field(Operator):
         Returns
         -------
         Field
-            The weighted field.
+            The weighted field on the same device as `self`.
         """
-        aout = self.val_rw()
+        aout = self.val.copy()
 
         spaces = utilities.parse_spaces(spaces, len(self._domain))
 
@@ -267,6 +309,7 @@ class Field(Operator):
             if np.isscalar(wgt):
                 fct *= wgt
             else:
+                wgt = AnyArray(wgt).at(self.device_id, check_fail=False)
                 new_shape = np.ones(len(self.shape), dtype=np.int64)
                 new_shape[self._domain.axes[ind][0]:
                           self._domain.axes[ind][-1]+1] = wgt.shape
@@ -276,7 +319,7 @@ class Field(Operator):
         if fct != 1.:
             aout *= fct
 
-        return Field(self._domain, aout)
+        return Field(self._domain, AnyArray(aout).at(self._val.device_id))
 
     def outer(self, x):
         """Computes the outer product of 'self' with x.
@@ -323,7 +366,7 @@ class Field(Operator):
         spaces = utilities.parse_spaces(spaces, ndom)
 
         if len(spaces) == ndom:
-            return Field.scalar(np.array(vdot(self._val, x._val)))
+            return Field.scalar(self._val.vdot(x._val), device_id=self.device_id)
         # If we arrive here, we have to do a partial dot product.
         # For the moment, do this the explicit, non-optimized way
         return (self.conjugate()*x).sum(spaces=spaces)
@@ -347,7 +390,7 @@ class Field(Operator):
 
         utilities.check_object_identity(x._domain, self._domain)
 
-        return vdot(self._val, x._val)
+        return self._val.vdot(x._val)
 
     def norm(self, ord=2):
         """Computes the L2-norm of the field values.
@@ -362,7 +405,7 @@ class Field(Operator):
         float
             The L2-norm of the field values.
         """
-        return np.linalg.norm(self._val.reshape(-1), ord=ord)
+        return self._val.norm(ord=ord)
 
     def conjugate(self):
         """Returns the complex conjugate of the field.
@@ -389,7 +432,8 @@ class Field(Operator):
 
     def _contraction_helper(self, op, spaces):
         if spaces is None:
-            return Field.scalar(getattr(self._val, op)())
+            res = Field.scalar(getattr(self._val, op)())
+            return res.at(self.device_id, check_fail=False)
 
         spaces = utilities.parse_spaces(spaces, len(self._domain))
 
@@ -403,13 +447,15 @@ class Field(Operator):
 
         # check if the result is scalar or if a result_field must be constr.
         if np.isscalar(data):
-            return Field.scalar(data)
+            return Field.scalar(data).at(self.device_id, check_fail=False)
         else:
             return_domain = tuple(dom
                                   for i, dom in enumerate(self._domain)
                                   if i not in spaces)
 
-            return Field(DomainTuple.make(return_domain), data)
+            res = Field(DomainTuple.make(return_domain), data)
+            assert res.device_id == self.device_id
+            return res
 
     def scale(self, factor):
         if factor == 1:
@@ -700,26 +746,12 @@ class Field(Operator):
             return Field(self._domain, f(other))
         return NotImplemented
 
-    def _prep_args(self, args, kwargs):
-        for arg in args + tuple(kwargs.values()):
-            if not (arg is None or np.isscalar(arg) or arg.jac is None):
-                raise TypeError("bad argument")
-        argstmp = tuple(arg if arg is None or np.isscalar(arg) else arg._val
-                        for arg in args)
-        kwargstmp = {key: val if val is None or np.isscalar(val) else val._val
-                     for key, val in kwargs.items()}
-        return argstmp, kwargstmp
-
     def ptw(self, op, *args, **kwargs):
-        from .pointwise import ptw_dict
-        argstmp, kwargstmp = self._prep_args(args, kwargs)
-        return Field(self._domain, ptw_dict[op][0](self._val, *argstmp, **kwargstmp))
+        return Field(self._domain, self._val.ptw(op, *args, **kwargs))
 
     def ptw_with_deriv(self, op, *args, **kwargs):
-        from .pointwise import ptw_dict
-        argstmp, kwargstmp = self._prep_args(args, kwargs)
-        tmp = ptw_dict[op][1](self._val, *argstmp, **kwargstmp)
-        return (Field(self._domain, tmp[0]), Field(self._domain, tmp[1]))
+        val, deriv = self._val.ptw_with_deriv(op, *args, **kwargs)
+        return Field(self._domain, val), Field(self._domain, deriv)
 
 
 for op in ["__add__", "__radd__",

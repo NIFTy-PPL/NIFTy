@@ -33,8 +33,8 @@ def test_GaussianEnergy():
     sp = ift.UnstructuredDomain(Nsamp)
     S = ift.ScalingOperator(sp, 1., complex)
     samp = S.draw_sample()
-    real_std = np.std(samp.val.real)
-    imag_std = np.std(samp.val.imag)
+    real_std = np.std(samp.asnumpy().real)
+    imag_std = np.std(samp.asnumpy().imag)
     np.testing.assert_allclose(real_std, imag_std,
                                atol=5./np.sqrt(Nsamp))
     sp1 = ift.UnstructuredDomain(1)
@@ -46,7 +46,7 @@ def test_GaussianEnergy():
     icov = ift.ScalingOperator(sp1, 1.)
     complex_energy = ift.GaussianEnergy(mean+0.j, inverse_covariance=icov)
     for i in range(min(10, Nsamp)):
-        fld = ift.full(sp1, samp.val[i])
-        val1 = (real_energy(fld.real) + imag_energy(fld.imag)).val
-        val2 = complex_energy(fld).val
+        fld = ift.full(sp1, samp.asnumpy()[i])
+        val1 = (real_energy(fld.real) + imag_energy(fld.imag)).asnumpy()
+        val2 = complex_energy(fld).asnumpy()
         np.testing.assert_allclose(val1, val2, atol=10./np.sqrt(Nsamp))

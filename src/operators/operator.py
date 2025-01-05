@@ -437,8 +437,22 @@ class _FunctionApplier(Operator):
         self._args = args
         self._kwargs = kwargs
 
+    def _device_preparation(self, x):
+        from ..field import Field
+        from ..multi_field import MultiField
+        from ..any_array import AnyArray
+        args = list(self._args)
+        for i, a in enumerate(args):
+            if isinstance(a, (AnyArray, Field, MultiField)):
+                args[i] = a.at(x.device_id)
+        self._args = tuple(args)
+        for k, a in self._kwargs.items():
+            if isinstance(a, (AnyArray, Field, MultiField)):
+                self._kwargs[k] = a.at(x.device_id)
+
     def apply(self, x):
         self._check_input(x)
+        self._device_preparation(x)
         return x.ptw(self._funcname, *self._args, **self._kwargs)
 
     def __repr__(self):

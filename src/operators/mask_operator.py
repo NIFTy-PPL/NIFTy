@@ -42,13 +42,17 @@ class MaskOperator(LinearOperator):
         self._target = DomainTuple.make(UnstructuredDomain(self._flags.sum()))
         self._capability = self.TIMES | self.ADJOINT_TIMES
 
+    def _device_preparation(self, x, mode):
+        self._flags = self._flags.at(x.device_id)
+
     def apply(self, x, mode):
         self._check_input(x, mode)
+        self._device_preparation(x, mode)
         x = x.val
         if mode == self.TIMES:
             res = x[self._flags]
             return Field(self.target, res)
-        res = np.empty(self.domain.shape, x.dtype)
+        res = np.empty_like(x, shape=self.domain.shape, dtype=x.dtype)
         res[self._flags] = x
         res[~self._flags] = 0
         return Field(self.domain, res)

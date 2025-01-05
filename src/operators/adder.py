@@ -15,13 +15,11 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-from operator import add, sub
-
 import numpy as np
 
 from ..field import Field
 from ..multi_field import MultiField
-from ..sugar import makeDomain
+from ..sugar import makeField
 from .operator import Operator
 
 
@@ -34,18 +32,21 @@ class Adder(Operator):
         The field by which the input is shifted.
     """
     def __init__(self, a, neg=False, domain=None):
-        self._a = a
         if isinstance(a, (Field, MultiField)):
-            dom = a.domain
+            self._a = a
         elif np.isscalar(a):
-            dom = makeDomain(domain)
+            self._a = makeField(domain, a)
         else:
             raise TypeError
-        self._domain = self._target = dom
+        self._domain = self._target = self._a.domain
         self._neg = bool(neg)
+
+    def _device_preparation(self, x):
+        self._a = self._a.at(x.device_id)
 
     def apply(self, x):
         self._check_input(x)
+        self._device_preparation(x)
         if self._neg:
             return x - self._a
         return x + self._a

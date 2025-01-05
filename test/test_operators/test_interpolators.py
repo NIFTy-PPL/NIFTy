@@ -37,5 +37,5 @@ def test_grid_points():
 
     ift.extra.check_linear_operator(R, atol=1e-7, rtol=1e-7)
     inp = ift.from_random(R.domain)
-    out = R(inp).val
-    np.testing.assert_allclose(out, inp.val.reshape(-1), rtol=1e-7)
+    out = R(inp).asnumpy()
+    np.testing.assert_allclose(out, inp.asnumpy().reshape(-1), rtol=1e-7)

@@ -67,7 +67,7 @@ def test_beta_operator(a, b):
     ift.extra.check_operator(op, ift.from_random(op.domain), ntries=5)
 
     # Value
-    samples = op(ift.from_random(op.domain)).val
+    samples = op(ift.from_random(op.domain)).asnumpy()
     assert np.min(samples) >= 0
     assert np.max(samples) <= 1
 

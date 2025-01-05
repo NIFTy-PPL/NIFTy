@@ -42,7 +42,7 @@ def make_random_mask(domain):
     # Random mask for spherical mode
     mask = ift.from_random(domain, 'pm1')
     mask = (mask + 1)/2
-    return mask.val
+    return mask.asnumpy()
 
 
 def main():

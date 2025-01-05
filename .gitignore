@@ -30,6 +30,7 @@ setup.cfg
 *.csv
 .pytest_cache/
 *.png
+*.prof
 
 # from https://github.com/github/gitignore/blob/master/Python.gitignore
 

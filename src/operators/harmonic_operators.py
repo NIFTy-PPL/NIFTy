@@ -185,6 +185,11 @@ class SHTOperator(LinearOperator):
         The index of the domain on which the operator should act
         If None, it is set to 0 if domain contains exactly one subdomain.
         domain[space] must be a LMSpace.
+
+    Note
+    ----
+    If this operator is called on inputs stored on device, it will copy them to
+    host, perform the operations with the CPU and copy back.
     """
 
     def __init__(self, domain, target=None, space=None):
@@ -222,10 +227,11 @@ class SHTOperator(LinearOperator):
     def apply(self, x, mode):
         self._check_input(x, mode)
         if utilities.iscomplextype(x.dtype):
-            return (self._apply_spherical(x.real, mode) +
-                    1j*self._apply_spherical(x.imag, mode))
+            res = (self._apply_spherical(x.real, mode) +
+                   1j*self._apply_spherical(x.imag, mode))
         else:
-            return self._apply_spherical(x, mode)
+            res = self._apply_spherical(x, mode)
+        return res.at(x.device_id)
 
     def _slice_p2h(self, inp):
         rr = self.sjob.alm2map_adjoint(inp)
@@ -251,7 +257,7 @@ class SHTOperator(LinearOperator):
 
     def _apply_spherical(self, x, mode):
         axes = x.domain.axes[self._space]
-        v = x.val
+        v = x.asnumpy()
 
         p2h = not x.domain[self._space].harmonic
         tdom = self._tgt(mode)
@@ -276,6 +282,9 @@ class HarmonicTransformOperator(LinearOperator):
 
     The supported operations are times() and adjoint_times().
     If inverse_times() on RGSpaces is needed the HartleyOperator should be used instead.
+
+    The harmonic transform on spheres (via `LMSpace`) is always computed on the
+    cpu with an implicit copy to the host if the input resides on device.
 
     Parameters
     ----------

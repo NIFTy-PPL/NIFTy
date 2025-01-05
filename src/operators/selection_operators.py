@@ -12,6 +12,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Copyright(C) 2013-2021 Max-Planck-Society
+#
 # Authors: Gordian Edenhofer
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
@@ -104,7 +105,7 @@ class SliceOperator(LinearOperator):
 
     def apply(self, x, mode):
         self._check_input(x, mode)
-        x = x.val
+        x = x.asnumpy()
         if mode == self.TIMES:
             res = x[self._slc_by_ax]
             return Field.from_raw(self.target, res)
@@ -196,23 +197,21 @@ class SplitOperator(LinearOperator):
 
     def apply(self, x, mode):
         self._check_input(x, mode)
-        x = x.val
         if mode == self.TIMES:
             res = dict()
             for k, slc in self._k_slc.items():
-                res[k] = x[slc]
+                res[k] = x.val[slc]
             return MultiField.from_raw(self.target, res)
 
-        # Note, not-selected parts must be zero. Hence, using the quicker
-        # `np.empty` method is unfortunately not possible
-        res = np.zeros(self.domain.shape, tuple(x.values())[0].dtype)
+        refarr = next(iter(x.val.values()))
+        res = np.zeros_like(refarr, shape=self._tgt(mode).shape, dtype=refarr.dtype)
         if self._intersec_slc:
             for k, slc in self._k_slc.items():
                 # Mind the `+` here for coping with intersections
-                res[slc] += x[k]
+                res[slc] += x.val[k]
             return Field.from_raw(self.domain, res)
         for k, slc in self._k_slc.items():
-            res[slc] = x[k]
+            res[slc] = x.val[k]
         return Field.from_raw(self.domain, res)
 
     def __str__(self):

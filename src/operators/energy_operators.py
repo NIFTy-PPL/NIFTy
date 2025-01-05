@@ -427,7 +427,7 @@ class VariableCovarianceGaussianEnergy(LikelihoodEnergyOperator):
         else:
             icov = makeOp(cst, sampling_dtype=self._dt[self._kr])
             res = GaussianEnergy(data=None, inverse_covariance=icov).ducktape(self._kr)
-            trlog = cst.log().sum().val_rw()
+            trlog = cst.log().sum().asnumpy_rw()
             if not self._cplx:
                 trlog /= 2
             res = res + ConstantLikelihoodEnergyOperator(-trlog)
@@ -462,8 +462,12 @@ class _SpecialGammaEnergy(LikelihoodEnergyOperator):
                 ConstantOperator(self._resi, domain=self._domain),
                 lambda x: self.get_metric_at(x).get_sqrt())
 
+    def _device_preparation(self, x):
+        self._resi = self._resi.at(x.device_id)
+
     def apply(self, x):
         self._check_input(x)
+        self._device_preparation(x)
         r = self._resi
         if self._cplx:
             res = 0.5*(r*x.real).vdot(r).real - x.log().sum()
@@ -521,6 +525,8 @@ class GaussianEnergy(LikelihoodEnergyOperator):
             raise TypeError("data needs to be a (Multi)Field or None, "
                             f"got: {data}")
 
+        # TODO: Potentially memory-wasteful when transferred to device (a
+        # diagonal inverse covariance would be stored multiple times)
         self._icov = inverse_covariance
         if inverse_covariance is None:
             self._op = Squared2NormOperator(self._domain).scale(0.5)
@@ -548,7 +554,6 @@ class GaussianEnergy(LikelihoodEnergyOperator):
                                f"- icov.sampling_dtype: {icovdtype}\n"
                                f"- data.dtype: {data.dtype}")
 
-
     @staticmethod
     def _checkEquivalence(olddom, newdom):
         newdom = makeDomain(newdom)
@@ -569,8 +574,13 @@ class GaussianEnergy(LikelihoodEnergyOperator):
             raise ValueError("no domain given")
         return dom
 
+    def _device_preparation(self, x):
+        if self._data is not None:
+            self._data = self._data.at(x.device_id)
+
     def apply(self, x):
         self._check_input(x)
+        self._device_preparation(x)
         residual = x if self._data is None else x - self._data
         res = self._op(residual).real
         if x.want_metric:
@@ -615,8 +625,12 @@ class PoissonianEnergy(LikelihoodEnergyOperator):
         super(PoissonianEnergy, self).__init__(Adder(d, neg=True),
                                                lambda x: self.get_metric_at(x).get_sqrt())
 
+    def _device_preparation(self, x):
+        self._d = self._d.at(x.device_id)
+
     def apply(self, x):
         self._check_input(x)
+        self._device_preparation(x)
         res = x.sum() - x.log().vdot(self._d)
         if not x.want_metric:
             return res
@@ -668,8 +682,14 @@ class InverseGammaEnergy(LikelihoodEnergyOperator):
                 2*ConstantOperator(self._beta, domain=self._domain),
                 lambda x: makeOp(x.reciprocal().sqrt()))
 
+    def _device_preparation(self, x):
+        if isinstance(self._alphap1, Field):
+            self._alphap1 = self._alphap1.at(x.device_id)
+        self._beta = self._beta.at(x.device_id)
+
     def apply(self, x):
         self._check_input(x)
+        self._device_preparation(x)
         res = x.log().vdot(self._alphap1) + x.reciprocal().vdot(self._beta)
         if not x.want_metric:
             return res
@@ -705,8 +725,13 @@ class StudentTEnergy(LikelihoodEnergyOperator):
         inp = Operator.identity_operator(self._domain)
         super(StudentTEnergy, self).__init__(inp, lambda x: self.get_metric_at(x).get_sqrt())
 
+    def _device_preparation(self, x):
+        if isinstance(self._theta, Field):
+            self._theta = self._theta.at(x.device_id)
+
     def apply(self, x):
         self._check_input(x)
+        self._device_preparation(x)
         res = (((self._theta+1)/2)*(x**2/self._theta).log1p()).sum()
         if not x.want_metric:
             return res
@@ -742,7 +767,7 @@ class BernoulliEnergy(LikelihoodEnergyOperator):
         if not isinstance(d, Field) or not np.issubdtype(d.dtype, np.integer):
             raise TypeError("d needs to be a Field with integer values. Got:\n"
                             f"{d}")
-        actualvals = set(np.unique(d.val))
+        actualvals = set(np.unique(d.asnumpy()))
         if (actualvals | set([0, 1])) != set([0, 1]):
             raise ValueError(f"d can only contain 0 and 1. Got: {actualvals}")
         self._d = d
@@ -750,8 +775,12 @@ class BernoulliEnergy(LikelihoodEnergyOperator):
         super(BernoulliEnergy, self).__init__(Adder(d, neg=True),
                                               lambda x: self.get_metric_at(x).get_sqrt())
 
+    def _device_preparation(self, x):
+        self._d = self._d.at(x.device_id)
+
     def apply(self, x):
         self._check_input(x)
+        self._device_preparation(x)
         res = -x.log().vdot(self._d) + (1.-x).log().vdot(self._d-1.)
         if not x.want_metric:
             return res
@@ -861,8 +890,12 @@ class AveragedEnergy(EnergyOperator):
         self._domain = h.domain
         self._res_samples = tuple(res_samples)
 
+    def _device_preparation(self, x):
+        self._res_samples = tuple(s.at(x.device_id) for s in self._res_samples)
+
     def apply(self, x):
         self._check_input(x)
+        self._device_preparation(x)
         mymap = map(lambda v: self._h(x+v), self._res_samples)
         return utilities.my_sum(mymap)/len(self._res_samples)
 

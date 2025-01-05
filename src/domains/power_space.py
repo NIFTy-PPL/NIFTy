@@ -175,7 +175,7 @@ class PowerSpace(StructuredDomain):
                 tbb = 0.5*(tmp[:-1]+tmp[1:])
             else:
                 tbb = binbounds
-            temp_pindex = np.searchsorted(tbb, k_length_array.val)
+            temp_pindex = np.searchsorted(tbb, k_length_array.asnumpy())
             nbin = len(tbb)+1
             temp_rho = np.bincount(temp_pindex.ravel(), minlength=nbin)
             if (temp_rho == 0).any():
@@ -184,7 +184,7 @@ class PowerSpace(StructuredDomain):
             # sometimes returns its result as an integer array, even when
             # floating-point weights are present ...
             temp_k_lengths = np.bincount(temp_pindex.ravel(),
-                weights=k_length_array.val.ravel(),
+                weights=k_length_array.asnumpy().ravel(),
                 minlength=nbin).astype(np.float64, copy=False)
             temp_k_lengths = temp_k_lengths / temp_rho
             temp_k_lengths.flags.writeable = False

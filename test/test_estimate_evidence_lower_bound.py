@@ -32,7 +32,7 @@ def _explicify(operator):
     identity = np.identity(operator.domain.size, dtype=np.float64)
     res = []
     for v in identity:
-        res.append(operator(ift.makeField(operator.domain, v)).val)
+        res.append(operator(ift.makeField(operator.domain, v)).asnumpy())
     return np.vstack(res).T
 
 
@@ -65,11 +65,11 @@ class LinearResponse(ift.LinearOperator):
         self._check_input(x, mode)
 
         if mode == self.TIMES:
-            intercept = x.val[self.intercept_key]
-            slope = x.val[self.slope_key]
+            intercept = x.asnumpy()[self.intercept_key]
+            slope = x.asnumpy()[self.slope_key]
             return ift.makeField(self._tgt(mode), intercept + slope * self.sampling_points)
 
-        res = np.vstack((np.ones(self.sampling_points.shape[0]), self.sampling_points)).dot(x.val)
+        res = np.vstack((np.ones(self.sampling_points.shape[0]), self.sampling_points)).dot(x.asnumpy())
         return ift.makeField(self._tgt(mode), {'intercept': res[0], 'slope': res[1]})
 
 
@@ -108,7 +108,7 @@ def test_estimate_evidence_lower_bound():
     D_inv = R.T @ N_inv @ R + S_inv
     D = np.linalg.inv(D_inv)
 
-    j = R.T @ (N_inv @ data.val)
+    j = R.T @ (N_inv @ data.asnumpy())
     m = D @ j
     m_dag_j = np.dot(m, j)
 
@@ -132,8 +132,9 @@ def test_estimate_evidence_lower_bound():
     n_iterations = 2
     n_samples = 3
 
-    samples = ift.optimize_kl(likelihood_energy, n_iterations, n_samples, minimizer, ic_sampling, minimizer_sampling)
+    samples = ift.optimize_kl(likelihood_energy, n_iterations, n_samples, minimizer, ic_sampling,
+                              nonlinear_sampling_minimizer=minimizer_sampling)
 
     # Estimate the ELBO
     elbo, stats = ift.estimate_evidence_lower_bound(ift.StandardHamiltonian(lh=likelihood_energy), samples, 2)
-    assert (stats['elbo_lw'].val <= nifty_adjusted_evidence <= stats['elbo_up'].val)
+    assert (stats['elbo_lw'].asnumpy() <= nifty_adjusted_evidence <= stats['elbo_up'].asnumpy())

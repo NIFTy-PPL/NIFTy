@@ -136,7 +136,7 @@ def testHarmonic(sp, dtype):
 @pmp('sp', _p_spaces)
 def testMask(sp, dtype):
     # Create mask
-    f = ift.from_random(sp, 'normal').val
+    f = ift.from_random(sp, 'normal').asnumpy()
     mask = np.zeros_like(f)
     mask[f > 0] = 1
     mask = ift.Field.from_raw(sp, mask)

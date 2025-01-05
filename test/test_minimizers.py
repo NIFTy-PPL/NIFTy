@@ -67,8 +67,8 @@ def test_quadratic_minimization(minimizer, space):
 
         assert_equal(convergence, IC.CONVERGED)
         assert_allclose(
-            energy.position.val,
-            1./covariance_diagonal.val,
+            energy.position.asnumpy(),
+            1./covariance_diagonal.asnumpy(),
             rtol=1e-3,
             atol=1e-3)
 
@@ -92,8 +92,8 @@ def test_WF_curvature(space):
 
     m = curv.inverse(required_result)
     assert_allclose(
-        m.val,
-        1./all_diag.val,
+        m.asnumpy(),
+        1./all_diag.asnumpy(),
         rtol=1e-3,
         atol=1e-3)
     curv.draw_sample()
@@ -109,8 +109,8 @@ def test_WF_curvature(space):
                                          iteration_controller_sampling=IC)
         m = curv.inverse(required_result)
         assert_allclose(
-            m.val,
-            1./all_diag.val,
+            m.asnumpy(),
+            1./all_diag.asnumpy(),
             rtol=1e-3,
             atol=1e-3)
         curv.draw_sample()
@@ -132,11 +132,11 @@ def test_rosenbrock(minimizer):
 
         @property
         def value(self):
-            return rosen(self._position.val_rw())
+            return rosen(self._position.asnumpy_rw())
 
         @property
         def gradient(self):
-            inp = self._position.val_rw()
+            inp = self._position.asnumpy_rw()
             out = ift.Field(space, rosen_der(inp))
             return out
 
@@ -144,13 +144,13 @@ def test_rosenbrock(minimizer):
         def metric(self):
             class RBCurv(ift.EndomorphicOperator):
                 def __init__(self, loc):
-                    self._loc = loc.val_rw()
+                    self._loc = loc.asnumpy_rw()
                     self._capability = self.TIMES
                     self._domain = space
 
                 def apply(self, x, mode):
                     self._check_input(x, mode)
-                    inp = x.val_rw()
+                    inp = x.asnumpy_rw()
                     out = ift.Field(
                         space, rosen_hess_prod(self._loc.copy(), inp))
                     return out
@@ -160,8 +160,8 @@ def test_rosenbrock(minimizer):
             return ift.InversionEnabler(RBCurv(self._position), t1)
 
         def apply_metric(self, x):
-            inp = x.val_rw()
-            pos = self._position.val_rw()
+            inp = x.asnumpy_rw()
+            pos = self._position.asnumpy_rw()
             return ift.Field(space, rosen_hess_prod(pos, inp))
 
     try:
@@ -173,7 +173,7 @@ def test_rosenbrock(minimizer):
         pytest.skip()
 
     assert_equal(convergence, IC.CONVERGED)
-    assert_allclose(energy.position.val, 1., rtol=1e-3, atol=1e-3)
+    assert_allclose(energy.position.asnumpy(), 1., rtol=1e-3, atol=1e-3)
 
 
 @pmp('minimizer', minimizers + slow_minimizers)
@@ -187,16 +187,16 @@ def test_gauss(minimizer):
 
         @property
         def value(self):
-            x = self.position.val[0]
+            x = self.position.asnumpy()[0]
             return -np.exp(-(x**2))
 
         @property
         def gradient(self):
-            x = self.position.val[0]
+            x = self.position.asnumpy()[0]
             return ift.Field.full(self.position.domain, 2*x*np.exp(-(x**2)))
 
         def apply_metric(self, x):
-            p = self.position.val[0]
+            p = self.position.asnumpy()[0]
             v = (2 - 4*p*p)*np.exp(-p**2)
             return ift.DiagonalOperator(
                 ift.Field.full(self.position.domain, v))(x)
@@ -210,7 +210,7 @@ def test_gauss(minimizer):
         pytest.skip()
 
     assert_equal(convergence, IC.CONVERGED)
-    assert_allclose(energy.position.val, 0., atol=1e-3)
+    assert_allclose(energy.position.asnumpy(), 0., atol=1e-3)
 
 
 @pmp('minimizer', minimizers + newton_minimizers + slow_minimizers)
@@ -224,23 +224,23 @@ def test_cosh(minimizer):
 
         @property
         def value(self):
-            x = self.position.val[0]
+            x = self.position.asnumpy()[0]
             return np.cosh(x)
 
         @property
         def gradient(self):
-            x = self.position.val[0]
+            x = self.position.asnumpy()[0]
             return ift.Field.full(self.position.domain, np.sinh(x))
 
         @property
         def metric(self):
-            x = self.position.val[0]
+            x = self.position.asnumpy()[0]
             v = np.cosh(x)
             return ift.DiagonalOperator(
                 ift.Field.full(self.position.domain, v))
 
         def apply_metric(self, x):
-            p = self.position.val[0]
+            p = self.position.asnumpy()[0]
             v = np.cosh(p)
             return ift.DiagonalOperator(
                 ift.Field.full(self.position.domain, v))(x)
@@ -254,7 +254,7 @@ def test_cosh(minimizer):
         pytest.skip()
 
     assert_equal(convergence, IC.CONVERGED)
-    assert_allclose(energy.position.val, 0., atol=1e-3)
+    assert_allclose(energy.position.asnumpy(), 0., atol=1e-3)
 
 
 @pmp('space', spaces)
@@ -273,4 +273,4 @@ def test_scipy_respect_bounds(space):
 
     (energy, convergence) = minimizer(energy)
 
-    assert_allclose(energy.position.val, best_possible_result.val)
+    assert_allclose(energy.position.asnumpy(), best_possible_result.asnumpy())

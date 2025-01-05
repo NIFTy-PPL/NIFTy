@@ -35,20 +35,20 @@ def testInterpolationAccuracy(space, seed):
     ift.random.push_sseq_from_seed(seed)
     pos = ift.from_random(space, 'normal')
     alpha = 1.5
-    qs = [0.73, pos.ptw("exp").val]
+    qs = [0.73, pos.ptw("exp").asnumpy()]
     for q in qs:
         qfld = q
         if not np.isscalar(q):
             qfld = ift.makeField(space, q)
         op = ift.InverseGammaOperator(space, alpha, qfld)
         op1 = ift.LogInverseGammaOperator(space, alpha, qfld).exp()
-        arr1 = op(pos).val
-        arr2 = op1(pos).val
-        arr0 = invgamma.ppf(norm.cdf(pos.val), alpha, scale=q)
+        arr1 = op(pos).asnumpy()
+        arr2 = op1(pos).asnumpy()
+        arr0 = invgamma.ppf(norm.cdf(pos.asnumpy()), alpha, scale=q)
         assert_allclose(arr0, arr1)
         assert_allclose(arr0, arr2)
 
         op2 = ift.GammaOperator(space, alpha=alpha, theta=qfld)
-        arr1 = op2(pos).val
-        arr0 = gamma.ppf(norm.cdf(pos.val), alpha, scale=q)
+        arr1 = op2(pos).asnumpy()
+        arr0 = gamma.ppf(norm.cdf(pos.asnumpy()), alpha, scale=q)
         assert_allclose(arr0, arr1)

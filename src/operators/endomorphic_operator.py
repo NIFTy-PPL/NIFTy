@@ -30,7 +30,7 @@ class EndomorphicOperator(LinearOperator):
         for endomorphic operators."""
         return self._domain
 
-    def draw_sample(self, from_inverse=False):
+    def draw_sample(self, from_inverse=False, device_id=-1):
         """Generates a sample from a Gaussian distribution with zero mean and
         covariance given by the operator.
 
@@ -40,6 +40,9 @@ class EndomorphicOperator(LinearOperator):
         ----------
         from_inverse : bool (default : False)
             if True, the sample is drawn from the inverse of the operator
+
+        device_id : int
+            Device id on which the Field shall be located. Default: -1
 
         Returns
         -------

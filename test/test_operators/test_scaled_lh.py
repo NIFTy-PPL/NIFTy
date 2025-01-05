@@ -29,7 +29,7 @@ pmp = pytest.mark.parametrize
 @pmp("scale", [1, 0.5, 0.23, 0.98])
 def test_scaled_lh(scale):
     dom = ift.UnstructuredDomain(10)
-    d = ift.makeField(dom, (5*ift.from_random(dom)).abs().val.astype(int))
+    d = ift.makeField(dom, (5*ift.from_random(dom)).abs().asnumpy().astype(int))
     lh0 = ift.PoissonianEnergy(d) @ ift.Operator.identity_operator(dom).exp()
     lh1 = scale*lh0 + (1-scale)*lh0
 

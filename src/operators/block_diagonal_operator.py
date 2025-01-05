@@ -67,7 +67,7 @@ class BlockDiagonalOperator(EndomorphicOperator):
                     for op, v in zip(self._ops, x.values()))
         return MultiField(self._domain, val)
 
-    def draw_sample(self, from_inverse=False):
+    def draw_sample(self, from_inverse=False, device_id=-1):
         from ..sugar import from_random
         val = []
         for op, key in zip(self._ops, self._domain.keys()):
@@ -75,9 +75,10 @@ class BlockDiagonalOperator(EndomorphicOperator):
                 if self._dtype is None or key not in self._dtype:
                     raise RuntimeError("Need to specify dtype for all operators "
                                        f"that are set to None (key: {key}).")
-                a = from_random(self._domain[key], 'normal', dtype=self.sampling_dtype[key])
+                a = from_random(self._domain[key], 'normal', dtype=self.sampling_dtype[key],
+                                device_id=device_id)
             else:
-                a = op.draw_sample(from_inverse)
+                a = op.draw_sample(from_inverse, device_id)
             val.append(a)
         return MultiField(self._domain, tuple(val))
 

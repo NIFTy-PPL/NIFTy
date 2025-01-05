@@ -90,25 +90,57 @@ def test_optimize_kl(constants, point_estimates, kl_minimizer, n_samples,
         transitions = None
         export_operator_outputs = {}
         rand_state = ift.random.getState()
-        sl = ift.optimize_kl(likelihood_energy, final_index, n_samples, kl_minimizer,
-                            sampling_iteration_controller, nonlinear_sampling_minimizer, constants,
-                            point_estimates, transitions, export_operator_outputs, direc0, initial_position,
-                            initial_index, comm, inspect_callback,
-                            terminate_callback, save_strategy="all", plot_energy_history=False,
-                            plot_minisanity_history=False, dry_run=dry_run)
-
+        sl = ift.optimize_kl(
+            likelihood_energy,
+            final_index,
+            n_samples,
+            kl_minimizer,
+            sampling_iteration_controller,
+            nonlinear_sampling_minimizer=nonlinear_sampling_minimizer,
+            constants=constants,
+            point_estimates=point_estimates,
+            transitions=transitions,
+            export_operator_outputs=export_operator_outputs,
+            output_directory=direc0,
+            initial_position=initial_position,
+            initial_index=initial_index,
+            comm=comm,
+            inspect_callback=inspect_callback,
+            terminate_callback=terminate_callback,
+            save_strategy="all",
+            plot_energy_history=False,
+            plot_minisanity_history=False,
+            dry_run=dry_run,
+        )
         ift.random.setState(rand_state)
 
         def terminate_callback(iglobal):
             return iglobal in [0, 3]
 
         for _ in range(5):
-            sl1 = ift.optimize_kl(likelihood_energy, final_index, n_samples, kl_minimizer,
-                                sampling_iteration_controller, nonlinear_sampling_minimizer, constants,
-                                point_estimates, transitions, export_operator_outputs, direc1, initial_position,
-                                initial_index, comm, inspect_callback,
-                                terminate_callback, resume=True, save_strategy="last",
-                                plot_energy_history=False, plot_minisanity_history=False, dry_run=dry_run)
+            sl1 = ift.optimize_kl(
+                likelihood_energy,
+                final_index,
+                n_samples,
+                kl_minimizer,
+                sampling_iteration_controller,
+                nonlinear_sampling_minimizer=nonlinear_sampling_minimizer,
+                constants=constants,
+                point_estimates=point_estimates,
+                transitions=transitions,
+                export_operator_outputs=export_operator_outputs,
+                output_directory=direc1,
+                initial_position=initial_position,
+                initial_index=initial_index,
+                comm=comm,
+                inspect_callback=inspect_callback,
+                terminate_callback=terminate_callback,
+                resume=True,
+                save_strategy="last",
+                plot_energy_history=False,
+                plot_minisanity_history=False,
+                dry_run=dry_run,
+            )
 
         for aa, bb in zip(sl.iterator(), sl1.iterator()):
             ift.extra.assert_allclose(aa, bb)
@@ -165,12 +197,27 @@ def test_transitions():
     export_operator_outputs = {}
 
     with MPISafeTempdir(comm) as output_directory:
-        sl = ift.optimize_kl(likelihood_energy, final_index, n_samples, kl_minimizer,
-                             sampling_iteration_controller, nonlinear_sampling_minimizer, constants,
-                             point_estimates, transitions, export_operator_outputs, output_directory,
-                             initial_position, initial_index, comm, inspect_callback,
-                             terminate_callback, save_strategy="all", plot_energy_history=False,
-                             plot_minisanity_history=False)
+        sl = ift.optimize_kl(
+            likelihood_energy,
+            final_index,
+            n_samples,
+            kl_minimizer,
+            sampling_iteration_controller,
+            nonlinear_sampling_minimizer=nonlinear_sampling_minimizer,
+            constants=constants,
+            point_estimates=point_estimates,
+            transitions=transitions,
+            export_operator_outputs=export_operator_outputs,
+            output_directory=output_directory,
+            initial_position=initial_position,
+            initial_index=initial_index,
+            comm=comm,
+            inspect_callback=inspect_callback,
+            terminate_callback=terminate_callback,
+            save_strategy="all",
+            plot_energy_history=False,
+            plot_minisanity_history=False,
+        )
         assert sl.domain is mdom2
 
 
@@ -213,7 +260,7 @@ def test_optimize_kl_fresh_stochasticity():
             n_samples,
             kl_minimizer,
             sampling_iteration_controller,
-            nonlinear_sampling_minimizer,
+            nonlinear_sampling_minimizer=nonlinear_sampling_minimizer,
             output_directory=direc0,
             comm=comm,
             inspect_callback=inspect_callback,

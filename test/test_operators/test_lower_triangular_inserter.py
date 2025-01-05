@@ -36,5 +36,5 @@ def test_lower_triangular_inserter(N):
     mat = op(ift.from_random(flat_space))
     for i in range(0,N):
         for j in range(i+1, N):
-            assert mat.val[i, j] == 0.
-    assert_allclose((mat.val == 0).sum(), (N-1)*N//2)
+            assert mat.asnumpy()[i, j] == 0.
+    assert_allclose((mat.asnumpy() == 0).sum(), (N-1)*N//2)

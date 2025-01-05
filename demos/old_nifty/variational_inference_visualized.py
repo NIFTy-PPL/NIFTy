@@ -102,10 +102,10 @@ def main():
                 samples = (kl.draw_sample() for _ in range(n_samples))
             mx, my = 0., 0.
             for samp in samples:
-                a = samp.val['a']
+                a = samp.asnumpy()['a']
                 xs.append(a)
                 mx += a
-                b = samp.val['b']
+                b = samp.asnumpy()['b']
                 ys.append(b)
                 my += b
             mx /= n_samples

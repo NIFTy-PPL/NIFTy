@@ -257,7 +257,7 @@ class SampleListBase:
         h["CTYPE2"] = "DEC---SIN"
         h["EQUINOX"] = 2000
 
-        hdu = pyfits.PrimaryHDU(fld.val[:, :].T, header=h)
+        hdu = pyfits.PrimaryHDU(fld.asnumpy()[:, :].T, header=h)
         hdulist = pyfits.HDUList([hdu])
         if self.MPI_master:
             hdulist.writeto(file_name, overwrite=overwrite)
@@ -717,7 +717,7 @@ def _field2hdf5(file_handle, obj, name):
         return
     if not isinstance(obj, Field):
         raise TypeError
-    file_handle.create_dataset(name, data=obj.val)
+    file_handle.create_dataset(name, data=obj.asnumpy())
 
 
 def _barrier(comm):
