@@ -13,6 +13,7 @@
 #
 # Copyright(C) 2019-2021 Max-Planck-Society
 # Copyright(C) 2022 Max-Planck-Society, Philipp Arras
+# Copyright(C) 2025 Philipp Arras
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -38,6 +39,11 @@ class Gridder(LinearOperator):
         Coordinates of the data-points, shape (n, 2).
     eps : float
         Requested precision, defaults to 2e-10.
+
+    Note
+    ----
+    If this operator is called on inputs stored on device, it will copy them to
+    host, perform the operations with the CPU and copy back.
     """
     def __init__(self, target, uv, eps=2e-10):
         self._capability = self.TIMES | self.ADJOINT_TIMES
@@ -63,18 +69,17 @@ class Gridder(LinearOperator):
         from ducc0.wgridder import dirty2ms, ms2dirty
         self._check_input(x, mode)
         freq = np.array([speed_of_light])
-        x = x.val
         nxdirty, nydirty = self._target[0].shape
         dstx, dsty = self._target[0].distances
         if mode == self.TIMES:
-            res = ms2dirty(self._uvw, freq, x.reshape((-1,1)), None, nxdirty,
+            res = ms2dirty(self._uvw, freq, x.asnumpy().reshape((-1,1)), None, nxdirty,
                            nydirty, dstx, dsty, 0, 0,
                            self._eps, False, nthreads(), 0)
         else:
-            res = dirty2ms(self._uvw, freq, x, None, dstx, dsty, 0, 0,
+            res = dirty2ms(self._uvw, freq, x.asnumpy(), None, dstx, dsty, 0, 0,
                            self._eps, False, nthreads(), 0)
             res = res.reshape((-1,))
-        return makeField(self._tgt(mode), res)
+        return makeField(self._tgt(mode), res).at(x.device_id)
 
 
 class Nufft(LinearOperator):
@@ -88,6 +93,11 @@ class Nufft(LinearOperator):
         Coordinates of the data-points, shape (n, ndim).
     eps: float
         Requested precision, defaults to 2e-10.
+
+    Note
+    ----
+    If this operator is called on inputs stored on device, it will copy them to
+    host, perform the operations with the CPU and copy back.
     """
     def __init__(self, target, pos, eps=2e-10):
         try:
@@ -113,13 +123,13 @@ class Nufft(LinearOperator):
         self._check_input(x, mode)
         if mode == self.TIMES:
             res = np.empty(self.target.shape, dtype=x.dtype)
-            nu2u(points=x.val, out=res, forward=False, **self._args)
+            nu2u(points=x.asnumpy(), out=res, forward=False, **self._args)
             res = res.real
         else:
-            res = u2nu(grid=x.val.astype('complex128'), forward=True, **self._args)
+            res = u2nu(grid=x.asnumpy().astype('complex128'), forward=True, **self._args)
             #if res.ndim == 0:
                 #res = np.array([res])
-        return makeField(self._tgt(mode), res)
+        return makeField(self._tgt(mode), res).at(x.device_id)
 
 
 def FinuFFT(*args, **kwargs):

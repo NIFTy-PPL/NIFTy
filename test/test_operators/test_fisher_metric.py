@@ -55,10 +55,10 @@ def test_complex2real():
     sp = ift.UnstructuredDomain(3)
     op = _complex2real(ift.makeDomain(sp))
     f = ift.from_random(op.domain, 'normal', dtype=np.complex128)
-    assert np.all((f == op.adjoint_times(op(f))).val)
+    assert np.all((f == op.adjoint_times(op(f))).asnumpy())
     assert op(f).dtype == np.float64
     f = ift.from_random(op.target, 'normal')
-    assert np.all((f == op(op.adjoint_times(f))).val)
+    assert np.all((f == op(op.adjoint_times(f))).asnumpy())
 
 
 def energy_tester(pos, get_noisy_data, energy_initializer, assume_diagonal=False):
@@ -90,18 +90,18 @@ def energy_tester(pos, get_noisy_data, energy_initializer, assume_diagonal=False
         energy = energy_initializer(data) @ op.adjoint
         grad = energy(lin).gradient
         if assume_diagonal:
-            results.append(_to_array((grad*grad.conjugate()).val))
+            results.append(_to_array((grad*grad.conjugate()).asnumpy()))
         else:
-            results.append(_to_array((grad*grad.s_vdot(test_vec)).val))
+            results.append(_to_array((grad*grad.s_vdot(test_vec)).asnumpy()))
     if assume_diagonal:
-        res = np.mean(np.array(results), axis=0)*_to_array(test_vec.val)
-        std = np.std(np.array(results), axis=0)/np.sqrt(Nsamp)*np.abs(_to_array(test_vec.val))
+        res = np.mean(np.array(results), axis=0)*_to_array(test_vec.asnumpy())
+        std = np.std(np.array(results), axis=0)/np.sqrt(Nsamp)*np.abs(_to_array(test_vec.asnumpy()))
     else:
         res = np.mean(np.array(results), axis=0)
         std = np.std(np.array(results), axis=0)/np.sqrt(Nsamp)
     energy = energy_initializer(data) @ op.adjoint
     lin = ift.Linearization.make_var(pos, want_metric=True)
-    res2 = _to_array(energy(lin).metric(test_vec).val)
+    res2 = _to_array(energy(lin).metric(test_vec).asnumpy())
     np.testing.assert_allclose(res/std, res2/std, atol=5)
     # Test whether one would detect a factor of 2 in the Fisher metric
     for factor in [0.5, 2]:
@@ -120,9 +120,9 @@ def test_GaussianEnergy(field):
 def test_PoissonEnergy(field):
     if not isinstance(field, ift.Field):
         pytest.skip("MultiField Poisson energy  not supported")
-    if np.iscomplexobj(field.val):
+    if np.iscomplexobj(field.asnumpy()):
         pytest.skip("Poisson energy not defined for complex flux")
-    get_noisy_data = lambda mean: ift.makeField(mean.domain, np.random.poisson(mean.val))
+    get_noisy_data = lambda mean: ift.makeField(mean.domain, np.random.poisson(mean.asnumpy()))
     # Make rate positive and high enough to avoid bad statistic
     lam = 10*(field**2).clip(0.1, None)
     E_init = lambda data: ift.PoissonianEnergy(data)
@@ -152,9 +152,9 @@ def test_BernoulliEnergy(field):
         pytest.skip("Bernoulli energy not defined for complex flux")
     def get_noisy_data(mean):
         x = ift.random.current_rng().uniform(size=mean.shape)
+        x = ift.AnyArray(x)
         x = (x<mean.val).astype(int)
-        x = ift.makeField(mean.domain, x)
-        return x
+        return ift.makeField(mean.domain, x)
     E_init = lambda data: ift.BernoulliEnergy(data)
     loc = field.sigmoid()
     energy_tester(loc, get_noisy_data, E_init, assume_diagonal=True)

@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+
+set -ex
+
+export DOCKER_VOLUME_NAME=nifty
+
+
+if [[ "$1" == "--with-X" || "$1" == "--with-profile" ]]; then
+  sudo docker build --build-arg MODE=with-X -t ${DOCKER_VOLUME_NAME} -f DockerfileCuda .
+else
+  sudo docker build -t ${DOCKER_VOLUME_NAME} -f DockerfileCuda .
+fi
+
+if [[ "$1" == "--with-X" ]]; then
+  xhost +
+  sudo docker run                                                              \
+    --rm                                                                       \
+    --gpus=all                                                                 \
+    -e DISPLAY=$DISPLAY                                                        \
+    -v /tmp/.X11-unix:/tmp/.X11-unix                                           \
+    --cap-add=SYS_ADMIN                                                        \
+    --security-opt seccomp=unconfined                                          \
+    --network=host                                                             \
+    -v $(pwd):/mnt                                                             \
+    -it -t ${DOCKER_VOLUME_NAME}
+  xhost -
+else
+  # SYS_ADMIN necessary to access GPU performance counters
+  sudo docker run                                                              \
+    --gpus=all                                                                 \
+    --cap-add=SYS_ADMIN                                                        \
+    -v $(pwd):/mnt                                                             \
+    -it -t ${DOCKER_VOLUME_NAME}
+fi

@@ -92,11 +92,11 @@ def test_kl(constants, point_estimates, mirror_samples, mf, geo):
         return
 
     for kk in kl.position.domain.keys():
-        res1 = kl.gradient[kk].val
+        res1 = kl.gradient[kk].asnumpy()
         if kk in constants:
             res0 = 0*res1
         else:
-            res0 = klpure.gradient[kk].val
+            res0 = klpure.gradient[kk].asnumpy()
         assert_allclose(res0, res1)
 
 
@@ -126,7 +126,7 @@ def test_ParametricVI(mirror_samples, fc):
         samp = ift.MultiField.from_dict(samp)
         true_val.append(model.KL._op(samp))
     true_val = sum(true_val)/expected_nsamps
-    assert_allclose(true_val.val, kl.value, rtol=0.1)
+    assert_allclose(true_val.asnumpy(), kl.value, rtol=0.1)
 
     samples = model.KL.samples()
     ift.random.current_rng().integers(0, 100)

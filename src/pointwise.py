@@ -18,6 +18,8 @@
 
 import numpy as np
 
+from .any_array import ALLOWED_WRAPPEES
+
 
 def _sqrt_helper(v):
     tmp = np.sqrt(v)
@@ -26,7 +28,7 @@ def _sqrt_helper(v):
 
 def _sinc_helper(v):
     fv = np.sinc(v)
-    df = np.empty(v.shape, dtype=v.dtype)
+    df = np.empty_like(v)
     sel = v != 0.
     v = v[sel]
     df[sel] = (np.cos(np.pi*v)-fv[sel])/v
@@ -74,8 +76,11 @@ def _power_helper(v, expo):
 def _clip_helper(v, a_min, a_max):
     if np.issubdtype(v.dtype, np.complexfloating):
         raise TypeError("Argument must not be complex")
+    if not isinstance(a_min, (float, int) + ALLOWED_WRAPPEES):
+        raise TypeError("a_min, a_max need to be float or int or ndarray, "
+                        f"got: {type(a_min)}, {type(a_max)}")
     tmp = np.clip(v, a_min, a_max)
-    tmp2 = np.ones(v.shape)
+    tmp2 = np.ones_like(v)
     if a_min is not None:
         tmp2 = np.where(tmp == a_min, 0., tmp2)
     if a_max is not None:
@@ -85,14 +90,14 @@ def _clip_helper(v, a_min, a_max):
 def _step_helper(v, grad):
     if np.issubdtype(v.dtype, np.complexfloating):
         raise TypeError("Argument must not be complex")
-    r = np.zeros(v.shape)
+    r = np.zeros_like(v)
     r[v>=0.] = 1.
     if grad:
-        return (r, np.zeros(v.shape))
+        return (r, np.zeros_like(v))
     return r
 
 def softplus(v):
-    fv = np.empty(v.shape, dtype=np.float64 if np.isrealobj(v) else np.complex128)
+    fv = np.empty_like(v)
     selp = v > 33
     selm = v < -33
     sel0 = ~np.logical_or(selp, selm)
@@ -103,9 +108,8 @@ def softplus(v):
 
 
 def _softplus_helper(v):
-    dtype = np.float64 if np.isrealobj(v) else np.complex128
-    fv = np.empty(v.shape, dtype=dtype)
-    dfv = np.empty(v.shape, dtype=dtype)
+    fv = np.empty_like(v)
+    dfv = np.empty_like(v)
     selp = 33 < v
     selm = v < -33
     sel0 = ~np.logical_or(selp, selm)

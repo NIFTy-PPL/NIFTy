@@ -55,6 +55,7 @@ class ContractionOperator(LinearOperator):
 
     def apply(self, x, mode):
         self._check_input(x, mode)
+        dev0 = x.device_id
         if mode == self.ADJOINT_TIMES:
             ldat = x.val
             shp = []
@@ -65,12 +66,17 @@ class ContractionOperator(LinearOperator):
             res = Field(self._domain, ldat)
             if self._power != 0:
                 res = res.weight(self._power, spaces=self._spaces)
-            return res
+            assert res.device_id == dev0
         else:
             if self._power != 0:
                 x = x.weight(self._power, spaces=self._spaces)
+            assert x.device_id == dev0
             res = x.sum(self._spaces)
-            return res if isinstance(res, Field) else Field.scalar(res)
+            assert res.device_id == dev0
+            if np.isscalar(res):
+                res = Field.scalar(res).at(dev0, check_fail=False)
+            assert res.device_id == dev0
+        return res
 
 
 def IntegrationOperator(domain, spaces):

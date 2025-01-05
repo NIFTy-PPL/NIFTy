@@ -164,12 +164,14 @@ def testHartley(sp, dtype):
 @pmp('sp', _h_spaces)
 def testHarmonic(sp, dtype):
     op = ift.HarmonicTransformOperator(sp)
-    ift.extra.check_linear_operator(op, dtype, dtype)
+    # Spherical harmonic transforms are always computed on CPU for now
+    ift.extra.check_linear_operator(op, dtype, dtype,
+                                    no_device_copies=isinstance(sp, ift.RGSpace))
 
 
 @pmp('sp', _p_spaces)
 def testMask(sp, dtype):
-    f = ift.from_random(sp).val
+    f = ift.from_random(sp).asnumpy()
     mask = np.zeros_like(f)
     mask[f > 0] = 1
     mask = ift.Field.from_raw(sp, mask)
@@ -183,9 +185,10 @@ def testScaling(sp, dtype, multi):
     dom = sp
     if multi:
         dom = {"foo": dom}
-    fct = ift.from_random(ift.DomainTuple.scalar_domain()).val[()]
-    op = ift.ScalingOperator(dom, fct)
-    ift.extra.check_linear_operator(op, dtype, dtype)
+    # TODO: Add 0 as test case as well
+    for fct in (1, ift.from_random(ift.DomainTuple.scalar_domain()).val[()]):
+        op = ift.ScalingOperator(dom, fct)
+        ift.extra.check_linear_operator(op, dtype, dtype)
 
 
 @pmp('sp', _h_spaces + _p_spaces)
@@ -205,7 +208,7 @@ def testExtractAtIndices(sp, dtype):
     n_ax = len(sp.shape)
     inds = (list(range(min_ax//2))+list(range(min_ax//3)), )*n_ax
     op = ift.ExtractAtIndices(sp, inds)
-    ift.extra.check_linear_operator(op, dtype, dtype)
+    ift.extra.check_linear_operator(op, dtype, dtype, no_device_copies=False)
 
 
 @pmp('spaces', [0, 1, 2, 3, (0, 1), (0, 2), (0, 1, 2), (0, 2, 3), (1, 3)])
@@ -213,7 +216,7 @@ def testExtractAtIndices(sp, dtype):
 def testContractionOperator(spaces, wgt, dtype):
     dom = (ift.RGSpace(1), ift.RGSpace(2), ift.GLSpace(3), ift.HPSpace(2))
     op = ift.ContractionOperator(dom, spaces, wgt)
-    ift.extra.check_linear_operator(op, dtype, dtype)
+    ift.extra.check_linear_operator(op, dtype, dtype, atol=1e-13, rtol=1e-13)
 
 
 def testDomainTupleFieldInserter():
@@ -370,3 +373,13 @@ def test_Multifield2Vector(seed):
     dom = ift.MultiDomain.make(dom)
     op = ift.Multifield2Vector(dom)
     ift.extra.check_linear_operator(op)
+
+@pmp("domain", _h_RG_spaces + _p_spaces + _pow_spaces)
+@pmp("mf", [False, True])
+@pmp("cplx", [False, True])
+def test_VdotOperator(domain, mf, cplx):
+    if mf:
+        domain = {"a": domain, "b": ift.UnstructuredDomain((1, 4))}
+    dtype = np.complex128 if cplx else np.float64
+    fld = ift.from_random(domain, dtype=dtype)
+    ift.extra.check_linear_operator(ift.VdotOperator(fld), dtype, dtype)

@@ -81,7 +81,7 @@ synthetic_signal_realization = signal(r)
 # Retrieve synthetic noisy data
 rng = ift.random.current_rng()  # numpy random number generator
 synthetic_data = rng.poisson(
-    lam=synthetic_signal_realization.val, size=position_space.shape
+    lam=synthetic_signal_realization.asnumpy(), size=position_space.shape
 )
 synthetic_data = ift.makeField(position_space, synthetic_data)
 
@@ -115,14 +115,7 @@ n_vi_iterations = 5
 # Increase this number if you believe you got stuck in a weird local minimum
 n_samples = 4
 
-state = ift.optimize_kl(
-    forward,
-    n_vi_iterations,
-    n_samples=n_samples,
-    kl_minimizer=minimizer,
-    sampling_iteration_controller=ic_sampling,
-    nonlinear_sampling_minimizer=None
-)
+state = ift.optimize_kl(forward, n_vi_iterations, n_samples, minimizer, ic_sampling)
 
 # %%
 posterior_signal_samples = [

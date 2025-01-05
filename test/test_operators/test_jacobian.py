@@ -93,21 +93,21 @@ def testInverseGamma(space, seed):
         alpha = 1.5
         q = 0.73
         model = ift.InverseGammaOperator(space, alpha, q)
-        ift.extra.check_operator(model, pos, ntries=20)
+        ift.extra.check_operator(model, pos, ntries=20, no_device_copies=False)
         model = ift.LogInverseGammaOperator(space, alpha, q)
-        ift.extra.check_operator(model, pos, ntries=20)
+        ift.extra.check_operator(model, pos, ntries=20, no_device_copies=False)
         model = ift.GammaOperator(space, alpha=alpha, theta=q)
-        ift.extra.check_operator(model, pos, ntries=20)
+        ift.extra.check_operator(model, pos, ntries=20, no_device_copies=False)
 
 
 @pmp("loc", [0, 13.2])
 @pmp("scale", [1, 551.09])
-@pmp("op", [ift.UniformOperator, ift.LaplaceOperator])
+@pmp("op", [(ift.UniformOperator, True), (ift.LaplaceOperator, False)])
 def testSpecialDistributionOps(space, seed, loc, scale, op):
     with ift.random.Context(seed):
         pos = ift.from_random(space, 'normal')
-        model = op(space, loc, scale)
-        ift.extra.check_operator(model, pos, ntries=20)
+        model = op[0](space, loc, scale)
+        ift.extra.check_operator(model, pos, ntries=20, no_device_copies=op[1])
 
 
 @pmp('neg', [True, False])
@@ -117,7 +117,7 @@ def testAdder(space, seed, neg):
         f1 = ift.from_random(space, 'normal')
         op = ift.Adder(f1, neg)
         ift.extra.check_operator(op, f, ntries=ntries)
-        op = ift.Adder(f1.val.ravel()[0], neg=neg, domain=space)
+        op = ift.Adder(f1.asnumpy().ravel()[0], neg=neg, domain=space)
         ift.extra.check_operator(op, f, ntries=ntries)
 
 
@@ -162,7 +162,8 @@ def testDynamicModel(target, causal, minimum_phase, seed):
             dct['quant'] = 5
             model, _ = ift.dynamic_lightcone_operator(**dct)
             pos = ift.from_random(model.domain, 'normal')
-            ift.extra.check_operator(model, pos, ntries=ntries)
+            ift.extra.check_operator(model, pos, ntries=ntries,
+                                     no_device_copies=False)
 
 
 @pmp('h_space', _h_spaces)
@@ -178,7 +179,7 @@ def testNormalization(h_space, specialbinbounds, logarithmic, nbin):
     dom = ift.PowerSpace(h_space, binbounds)
     op = ift.library.correlated_fields._Normalization(dom)
     pos = 0.1 * ift.from_random(op.domain, 'normal')
-    ift.extra.check_operator(op, pos, ntries=10)
+    ift.extra.check_operator(op, pos, ntries=10, assert_fixed_device=True)
 
 
 @pmp('N', [1, 20])

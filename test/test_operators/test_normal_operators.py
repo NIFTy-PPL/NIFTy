@@ -35,8 +35,8 @@ def test_normal_transform(mean, std, seed):
 
     with ift.random.Context(seed):
         res = op(ift.from_random(op.domain))
-        assert_allclose(res.val.mean(), mean, rtol=0.1)
-        assert_allclose(res.val.std(), std, rtol=0.1)
+        assert_allclose(res.asnumpy().mean(), mean, rtol=0.1)
+        assert_allclose(res.asnumpy().std(), std, rtol=0.1)
 
         loc = ift.from_random(op.domain)
         ift.extra.check_operator(op, loc)
@@ -51,8 +51,8 @@ def test_lognormal_transform(mean, std_fct, seed):
 
     with ift.random.Context(seed):
         res = op(ift.from_random(op.domain))
-        assert_allclose(res.val.mean(), mean, rtol=0.1)
-        assert_allclose(res.val.std(), std, rtol=0.1)
+        assert_allclose(res.asnumpy().mean(), mean, rtol=0.1)
+        assert_allclose(res.asnumpy().std(), std, rtol=0.1)
 
         loc = ift.from_random(op.domain)
         ift.extra.check_operator(op, loc)

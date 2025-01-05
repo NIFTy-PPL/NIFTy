@@ -60,4 +60,4 @@ def test_purity_check(dtype):
     dom = ift.RGSpace(2)
     op = NonPureOperator(dom)
     with pytest.raises(AssertionError):
-        ift.extra.check_operator(op, dtype)
+        ift.extra.check_operator(op, ift.from_random(op.domain, dtype=dtype))

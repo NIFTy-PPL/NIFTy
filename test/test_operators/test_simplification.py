@@ -26,7 +26,7 @@ def test_simplification():
     op = ift.FFTOperator(f1.domain["a"]).ducktape("a")
     _, op2 = op.simplify_for_constant_input(f1)
     ift.myassert(isinstance(op2, ConstantOperator))
-    assert_allclose(op(f1).val, op2.force(f1).val)
+    assert_allclose(op(f1).asnumpy(), op2.force(f1).asnumpy())
 
     dom = {"a": ift.RGSpace(10), "b": ift.RGSpace(5)}
     f1 = ift.full(dom, 2.)
@@ -37,6 +37,6 @@ def test_simplification():
     op = (o1.ducktape("a").ducktape_left("a") +
           o2.ducktape("b").ducktape_left("b"))
     _, op2 = op.simplify_for_constant_input(f2)
-    assert_allclose(op(f1)["a"].val, op2.force(f1)["a"].val)
-    assert_allclose(op(f1)["b"].val, op2.force(f1)["b"].val)
+    assert_allclose(op(f1)["a"].asnumpy(), op2.force(f1)["a"].asnumpy())
+    assert_allclose(op(f1)["b"].asnumpy(), op2.force(f1)["b"].asnumpy())
     # FIXME Add test for ChainOperator._simplify_for_constant_input_nontrivial()

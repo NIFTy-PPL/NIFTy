@@ -147,12 +147,12 @@ def main():
     # Minimize KL
     n_iterations = 6
     n_samples = lambda iiter: 10 if iiter < 5 else 20
-    samples_1 = ift.optimize_kl(likelihood_energy_1, n_iterations, n_samples,
-                                minimizer, ic_sampling, minimizer_sampling,
+    samples_1 = ift.optimize_kl(likelihood_energy_1, n_iterations, n_samples, minimizer, ic_sampling,
+                                nonlinear_sampling_minimizer=minimizer_sampling,
                                 export_operator_outputs={"signal": signal_1},
                                 output_directory="getting_started_model_comparison_results/model_1")
-    samples_2 = ift.optimize_kl(likelihood_energy_2, n_iterations, n_samples,
-                                minimizer, ic_sampling, minimizer_sampling,
+    samples_2 = ift.optimize_kl(likelihood_energy_2, n_iterations, n_samples, minimizer, ic_sampling,
+                                nonlinear_sampling_minimizer=minimizer_sampling,
                                 export_operator_outputs={"signal": signal_2},
                                 output_directory="getting_started_model_comparison_results/model_2")
 
@@ -192,7 +192,7 @@ def main():
     evidence_2, _ = ift.estimate_evidence_lower_bound(ift.StandardHamiltonian(likelihood_energy_2), samples_2, 99,
                                                       min_lh_eval=1e-3)
 
-    log_elbo_difference = evidence_1.average().val - evidence_2.average().val
+    log_elbo_difference = evidence_1.average().asnumpy() - evidence_2.average().asnumpy()
     ift.logger.info("\n")
     elbo_ratio = np.exp(log_elbo_difference)
     if log_elbo_difference > 0:

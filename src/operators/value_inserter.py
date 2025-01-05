@@ -53,8 +53,8 @@ class ValueInserter(LinearOperator):
         self._check_input(x, mode)
         x = x.val
         if mode == self.TIMES:
-            res = np.zeros(self.target.shape, dtype=x.dtype)
+            res = np.zeros_like(x, shape=self.target.shape, dtype=x.dtype)
             res[self._index] = x
             return Field(self._tgt(mode), res)
         else:
-            return Field.scalar(x[self._index])
+            return Field.scalar(x[self._index], x.device_id)

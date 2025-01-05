@@ -54,7 +54,7 @@ def test_transpose_operator(index_pairs):
     ift.extra.check_linear_operator(op)
     fld = ift.from_random(op.domain)
     res0 = op(fld)
-    res1 = ift.makeField(op.target, np.transpose(fld.val, np_indices))
+    res1 = ift.makeField(op.target, np.transpose(fld.asnumpy(), np_indices))
     ift.extra.assert_equal(res0, res1)
 
 

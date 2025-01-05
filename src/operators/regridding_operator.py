@@ -17,6 +17,7 @@
 
 import numpy as np
 
+from ..any_array import AnyArray
 from ..domain_tuple import DomainTuple
 from ..domains.rg_space import RGSpace
 from ..field import Field
@@ -68,9 +69,16 @@ class RegriddingOperator(LinearOperator):
             tmp = np.arange(new_shape[d])*(newdist[d]/dom.distances[d])
             self._bindex[d] = np.minimum(dom.shape[d]-2, tmp.astype(np.int64))
             self._frac[d] = tmp-self._bindex[d]
+        self._bindex = [AnyArray(x) for x in self._bindex]
+        self._frac = [AnyArray(x) for x in self._frac]
+
+    def _device_preparation(self, x, mode):
+        self._bindex = [elem.at(x.device_id) for elem in self._bindex]
+        self._frac = [elem.at(x.device_id) for elem in self._frac]
 
     def apply(self, x, mode):
         self._check_input(x, mode)
+        self._device_preparation(x, mode)
         v = x.val
         ndim = len(self.target.shape)
         curshp = list(self._dom(mode).shape)
@@ -83,7 +91,7 @@ class RegriddingOperator(LinearOperator):
             if mode == self.ADJOINT_TIMES:
                 shp = list(v.shape)
                 shp[d] = tgtshp[d]
-                xnew = np.zeros(shp, dtype=v.dtype)
+                xnew = np.zeros_like(v, shape=shp, dtype=v.dtype)
                 xnew = special_add_at(xnew, d, self._bindex[d-d0], v*(1.-wgt))
                 xnew = special_add_at(xnew, d, self._bindex[d-d0]+1, v*wgt)
             else:  # TIMES

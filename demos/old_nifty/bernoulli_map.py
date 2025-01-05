@@ -60,7 +60,7 @@ def main():
     # Generate mock data
     p = R(sky)
     mock_position = ift.from_random(harmonic_space, 'normal')
-    tmp = p(mock_position).val.astype(np.float64)
+    tmp = p(mock_position).asnumpy().astype(np.float64)
     data = ift.random.current_rng().binomial(1, tmp)
     data = ift.Field.from_raw(R.target, data)
 

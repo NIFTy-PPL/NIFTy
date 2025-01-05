@@ -65,7 +65,7 @@ class EnergyAdapter(Energy):
         self._want_metric = want_metric
         lin = Linearization.make_var(position, want_metric)
         tmp = self._op(lin)
-        self._val = tmp.val.val[()]
+        self._val = tmp.val.asnumpy()[()]
         self._grad = tmp.gradient
         self._metric = tmp._metric
         self._nanisinf = bool(nanisinf)
@@ -122,7 +122,7 @@ class StochasticEnergyAdapter(Energy):
         v, g = [], []
         for lop in self._local_ops:
             tmp = lop(lin)
-            v.append(tmp.val.val)
+            v.append(tmp.val.asnumpy())
             g.append(tmp.gradient)
         self._val = allreduce_sum(v, self._comm)[()]/self._n_samples
         if np.isnan(self._val) and self._nanisinf:

@@ -50,7 +50,7 @@ dom = ift.UnstructuredDomain(10)
 fld = ift.from_random(dom)
 fld = ift.full(dom, 2.)
 a = fld.ptw("myptw")
-b = ift.makeField(dom, func(fld.val))
+b = ift.makeField(dom, func(fld.asnumpy()))
 ift.extra.assert_allclose(a, b)
 
 # `MultiField`s, ...
@@ -58,18 +58,18 @@ ift.extra.assert_allclose(a, b)
 mdom = ift.makeDomain({"bar": ift.UnstructuredDomain(10)})
 mfld = ift.from_random(mdom)
 a = mfld.ptw("myptw")
-b = ift.makeField(mdom, {"bar": func(mfld["bar"].val)})
+b = ift.makeField(mdom, {"bar": func(mfld["bar"].asnumpy())})
 ift.extra.assert_allclose(a, b)
 
 # `Linearization`s (including the Jacobian), ...
 
 lin = ift.Linearization.make_var(fld)
-a = lin.ptw("myptw").val
-b = ift.makeField(dom, func(fld.val))
+a = lin.ptw("myptw").asnumpy()
+b = ift.makeField(dom, func(fld.asnumpy()))
 ift.extra.assert_allclose(a, b)
 
 op_a = lin.ptw("myptw").jac
-op_b = ift.makeOp(ift.makeField(dom, func_and_derv(fld.val)[1]))
+op_b = ift.makeOp(ift.makeField(dom, func_and_derv(fld.asnumpy())[1]))
 testing_vector = ift.from_random(dom)
 ift.extra.assert_allclose(op_a(testing_vector),
                           op_b(testing_vector))
@@ -86,7 +86,7 @@ def check(func_name, eps=1e-7):
     pos = ift.from_random(ift.UnstructuredDomain(10))
     var0 = ift.Linearization.make_var(pos)
     var1 = ift.Linearization.make_var(pos+eps)
-    df0 = (var1.ptw(func_name).val - var0.ptw(func_name).val)/eps
+    df0 = (var1.ptw(func_name).asnumpy() - var0.ptw(func_name).asnumpy())/eps
     df1 = var0.ptw(func_name).jac(ift.full(lin.domain, 1.))
     # rtol depends on how nonlinear the function is
     ift.extra.assert_allclose(df0, df1, rtol=100*eps)

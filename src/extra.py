@@ -12,6 +12,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Copyright(C) 2013-2022 Max-Planck-Society
+# Copyright(C) 2025 Philipp Arras
 # Author: Philipp Arras
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
@@ -20,6 +21,7 @@ from itertools import combinations
 
 import numpy as np
 
+from .any_array import assert_no_device_copies
 from .domain_tuple import DomainTuple
 from .field import Field
 from .linearization import Linearization
@@ -32,18 +34,24 @@ from .operators.linear_operator import LinearOperator
 from .operators.operator import Operator
 from .probing import StatCalculator
 from .sugar import from_random
-from .utilities import issingleprec, myassert
+from .utilities import issingleprec, myassert, device_available
 
 __all__ = ["check_linear_operator", "check_operator", "assert_allclose", "minisanity"]
 
 
 def check_linear_operator(op, domain_dtype=np.float64, target_dtype=np.float64,
-                          atol=1e-14, rtol=1e-14, only_r_linear=False):
+                          atol=1e-14, rtol=1e-14, only_r_linear=False,
+                          force_device_ids=[-1], assert_fixed_device=True,
+                          no_device_copies=True, _device_ids=None):
     """Checks an operator for algebraic consistency of its capabilities.
 
     Checks whether times(), adjoint_times(), inverse_times() and
     adjoint_inverse_times() (if in capability list) is implemented
     consistently. Additionally, it checks whether the operator is linear.
+
+    By default, tests are performed on the CPU and if available on the GPU with
+    device_id=0. Any device_ids that are passed through `force_device_ids` are
+    added to that list.
 
     Parameters
     ----------
@@ -66,42 +74,72 @@ def check_linear_operator(op, domain_dtype=np.float64, target_dtype=np.float64,
     only_r_linear: bool
         set to True if the operator is only R-linear, not C-linear.
         This will relax the adjointness test accordingly.
+    force_device_ids: list of int
+        List of device ids on which the operator definitely shall be tested.
+        Default: -1 (cpu).
+    assert_fixed_device : bool
+        Determines if the test shall fail if input and output of the operator
+        are on different devices. This tests only works if the domain and target
+        of the operator are the same or if the whole input is stored on one
+        device and the whole output is stored on one device. Default: True
     """
     if not isinstance(op, LinearOperator):
         raise TypeError('This test tests only linear operators.')
-    _domain_check_linear(op, domain_dtype)
-    _domain_check_linear(op.adjoint, target_dtype)
-    _domain_check_linear(op.inverse, target_dtype)
-    _domain_check_linear(op.adjoint.inverse, domain_dtype)
-    _purity_check(op, from_random(op.domain, dtype=domain_dtype))
-    _purity_check(op.adjoint.inverse, from_random(op.domain, dtype=domain_dtype))
-    _purity_check(op.adjoint, from_random(op.target, dtype=target_dtype))
-    _purity_check(op.inverse, from_random(op.target, dtype=target_dtype))
-    _check_linearity(op, domain_dtype, atol, rtol)
-    _check_linearity(op.adjoint, target_dtype, atol, rtol)
-    _check_linearity(op.inverse, target_dtype, atol, rtol)
-    _check_linearity(op.adjoint.inverse, domain_dtype, atol, rtol)
-    _full_implementation(op, domain_dtype, target_dtype, atol, rtol,
-                         only_r_linear)
-    _full_implementation(op.adjoint, target_dtype, domain_dtype, atol, rtol,
-                         only_r_linear)
-    _full_implementation(op.inverse, target_dtype, domain_dtype, atol, rtol,
-                         only_r_linear)
-    _full_implementation(op.adjoint.inverse, domain_dtype, target_dtype, atol,
-                         rtol, only_r_linear)
-    _check_sqrt(op, domain_dtype, atol, rtol)
-    _check_sqrt(op.adjoint, target_dtype, atol, rtol)
-    _check_sqrt(op.inverse, target_dtype, atol, rtol)
-    _check_sqrt(op.adjoint.inverse, domain_dtype, atol, rtol)
+    device_ids = _prepare_device_ids(force_device_ids, _device_ids)
+    f = lambda x, y, z: _device_equality_check(x, from_random(y, dtype=z),
+                                               device_ids, assert_fixed_device)
+    f(op, op.domain, domain_dtype)
+    f(op.adjoint.inverse, op.domain, domain_dtype)
+    f(op.inverse, op.target, target_dtype)
+    f(op.adjoint, op.target, target_dtype)
+    for device_id in device_ids:
+        _domain_check_linear(op, domain_dtype, device_id)
+        _domain_check_linear(op.adjoint, target_dtype, device_id)
+        _domain_check_linear(op.inverse, target_dtype, device_id)
+        _domain_check_linear(op.adjoint.inverse, domain_dtype, device_id)
+        _purity_check(op,
+                      from_random(op.domain, dtype=domain_dtype, device_id=device_id),
+                      no_device_copies)
+        _purity_check(op.adjoint.inverse,
+                      from_random(op.domain, dtype=domain_dtype, device_id=device_id),
+                      no_device_copies)
+        _purity_check(op.adjoint,
+                      from_random(op.target, dtype=target_dtype, device_id=device_id),
+                      no_device_copies)
+        _purity_check(op.inverse,
+                      from_random(op.target, dtype=target_dtype, device_id=device_id),
+                      no_device_copies)
+        _check_linearity(op, domain_dtype, atol, rtol, device_id)
+        _check_linearity(op.adjoint, target_dtype, atol, rtol, device_id)
+        _check_linearity(op.inverse, target_dtype, atol, rtol, device_id)
+        _check_linearity(op.adjoint.inverse, domain_dtype, atol, rtol, device_id)
+        _full_implementation(op, domain_dtype, target_dtype, atol, rtol,
+                             only_r_linear, device_id)
+        _full_implementation(op.adjoint, target_dtype, domain_dtype, atol, rtol,
+                             only_r_linear, device_id)
+        _full_implementation(op.inverse, target_dtype, domain_dtype, atol, rtol,
+                             only_r_linear, device_id)
+        _full_implementation(op.adjoint.inverse, domain_dtype, target_dtype,
+                             atol, rtol, only_r_linear, device_id)
+        _check_sqrt(op, domain_dtype, device_id, atol, rtol)
+        _check_sqrt(op.adjoint, target_dtype, device_id, atol, rtol)
+        _check_sqrt(op.inverse, target_dtype, device_id, atol, rtol)
+        _check_sqrt(op.adjoint.inverse, domain_dtype, device_id, atol, rtol)
 
 
 def check_operator(op, loc, tol=1e-12, ntries=100, perf_check=True,
-                   only_r_differentiable=True, metric_sampling=True):
+                   only_r_differentiable=True, metric_sampling=True,
+                   force_device_ids=[-1], assert_fixed_device=True,
+                   no_device_copies=True):
     """Performs various checks of the implementation of linear and nonlinear
     operators.
 
     Computes the Jacobian with finite differences and compares it to the
     implemented Jacobian.
+
+    By default, tests are performed on the CPU and if available on the GPU with
+    device_id=0. Any device_ids that are passed through `force_device_ids` are
+    added to that list.
 
     Parameters
     ----------
@@ -120,23 +158,36 @@ def check_operator(op, loc, tol=1e-12, ntries=100, perf_check=True,
     metric_sampling: Boolean
         If op is an EnergyOperator, metric_sampling determines whether the
         test shall try to sample from the metric or not.
+    force_device_ids: list of int
+        List of device ids on which the operator definitely shall be tested.
+        Default: -1 (cpu).
+    assert_fixed_device : bool
+        Determines if the test shall fail if input and output of the operator
+        are on different devices. This tests only works if the domain and target
+        of the operator are the same or if the whole input is stored on one
+        device and the whole output is stored on one device. Default: True
     """
     if not isinstance(op, Operator):
         raise TypeError('This test tests only (nonlinear) operators.')
-    _domain_check_nonlinear(op, loc)
-    _purity_check(op, loc)
-    _performance_check(op, loc, bool(perf_check))
-    _linearization_value_consistency(op, loc)
-    _jac_vs_finite_differences(op, loc, np.sqrt(tol), ntries,
-                               only_r_differentiable)
-    _check_nontrivial_constant(op, loc, tol, ntries, only_r_differentiable,
-                               metric_sampling)
-    _check_likelihood_energy(op, loc)
+    device_ids = _prepare_device_ids(force_device_ids)
+    _device_equality_check(op, loc, device_ids, assert_fixed_device)
+    for device_id in device_ids:
+        myloc = loc.at(device_id)
+        _domain_check_nonlinear(op, loc)
+        _purity_check(op, loc.at(device_id), no_device_copies)
+        _performance_check(op, myloc, bool(perf_check))
+        _linearization_value_consistency(op, myloc)
+        _jac_vs_finite_differences(op, myloc, np.sqrt(tol), ntries,
+                                   only_r_differentiable, device_id,
+                                   assert_fixed_device, no_device_copies)
+        _check_nontrivial_constant(op, myloc, tol, ntries, only_r_differentiable,
+                                   metric_sampling, device_id)
+        _check_likelihood_energy(op, myloc)
 
 
 def assert_allclose(f1, f2, atol=0, rtol=1e-7):
     if isinstance(f1, Field):
-        return np.testing.assert_allclose(f1.val, f2.val, atol=atol, rtol=rtol)
+        return np.testing.assert_allclose(f1.asnumpy(), f2.asnumpy(), atol=atol, rtol=rtol)
     if f1.domain is not f2.domain:
         raise AssertionError
     for key, val in f1.items():
@@ -145,20 +196,33 @@ def assert_allclose(f1, f2, atol=0, rtol=1e-7):
 
 def assert_equal(f1, f2, *, atol=0.0, rtol=0.0):
     if isinstance(f1, Field):
-        return np.testing.assert_allclose(f1.val, f2.val, atol=atol, rtol=rtol)
+        return np.testing.assert_allclose(f1.asnumpy(), f2.asnumpy(), atol=atol, rtol=rtol)
     if f1.domain is not f2.domain:
         raise AssertionError
     for key, val in f1.items():
         assert_equal(val, f2[key], atol=atol, rtol=rtol)
 
 
+def _prepare_device_ids(force_device_ids, device_ids=None):
+    if device_ids is not None:
+        return device_ids
+    device_ids = [-1] + force_device_ids
+    if not all(map(lambda x: isinstance(x, int) and x >= -1, device_ids)):
+        raise TypeError('Device ids need to be int and >= -1')
+    if device_available():
+        device_ids += [0]
+    device_ids = list(set(device_ids))
+    device_ids.sort()
+    return device_ids
+
+
 def _adjoint_implementation(op, domain_dtype, target_dtype, atol, rtol,
-                            only_r_linear):
+                            only_r_linear, device_id):
     needed_cap = op.TIMES | op.ADJOINT_TIMES
     if (op.capability & needed_cap) != needed_cap:
         return
-    f1 = from_random(op.domain, "normal", dtype=domain_dtype)
-    f2 = from_random(op.target, "normal", dtype=target_dtype)
+    f1 = from_random(op.domain, "normal", dtype=domain_dtype, device_id=device_id)
+    f2 = from_random(op.target, "normal", dtype=target_dtype, device_id=device_id)
     res1 = f1.s_vdot(op.adjoint_times(f2))
     res2 = op.times(f1).s_vdot(f2)
     if only_r_linear:
@@ -166,52 +230,53 @@ def _adjoint_implementation(op, domain_dtype, target_dtype, atol, rtol,
     np.testing.assert_allclose(res1, res2, atol=atol, rtol=rtol)
 
 
-def _inverse_implementation(op, domain_dtype, target_dtype, atol, rtol):
+def _inverse_implementation(op, domain_dtype, target_dtype, atol, rtol, device_id):
     needed_cap = op.TIMES | op.INVERSE_TIMES
     if (op.capability & needed_cap) != needed_cap:
         return
-    foo = from_random(op.target, "normal", dtype=target_dtype)
+    foo = from_random(op.target, "normal", dtype=target_dtype, device_id=device_id)
     res = op(op.inverse_times(foo))
     assert_allclose(res, foo, atol=atol, rtol=rtol)
 
-    foo = from_random(op.domain, "normal", dtype=domain_dtype)
+    foo = from_random(op.domain, "normal", dtype=domain_dtype, device_id=device_id)
     res = op.inverse_times(op(foo))
     assert_allclose(res, foo, atol=atol, rtol=rtol)
 
 
 def _full_implementation(op, domain_dtype, target_dtype, atol, rtol,
-                         only_r_linear):
+                         only_r_linear, device_id):
     _adjoint_implementation(op, domain_dtype, target_dtype, atol, rtol,
-                            only_r_linear)
-    _inverse_implementation(op, domain_dtype, target_dtype, atol, rtol)
+                            only_r_linear, device_id)
+    _inverse_implementation(op, domain_dtype, target_dtype, atol, rtol, device_id)
 
 
-def _check_linearity(op, domain_dtype, atol, rtol):
+def _check_linearity(op, domain_dtype, atol, rtol, device_id):
     needed_cap = op.TIMES
     if (op.capability & needed_cap) != needed_cap:
         return
-    fld1 = from_random(op.domain, "normal", dtype=domain_dtype)
-    fld2 = from_random(op.domain, "normal", dtype=domain_dtype)
+    fld1 = from_random(op.domain, "normal", dtype=domain_dtype, device_id=device_id)
+    fld2 = from_random(op.domain, "normal", dtype=domain_dtype, device_id=device_id)
     alpha = 0.42
     val1 = op(alpha*fld1+fld2)
     val2 = alpha*op(fld1)+op(fld2)
     assert_allclose(val1, val2, atol=atol, rtol=rtol)
 
 
-def _domain_check_linear(op, domain_dtype=None, inp=None):
+def _domain_check_linear(op, domain_dtype=None, inp=None, device_id=-1):
     _domain_check(op)
     needed_cap = op.TIMES
     if (op.capability & needed_cap) != needed_cap:
         return
     if domain_dtype is not None:
-        inp = from_random(op.domain, "normal", dtype=domain_dtype)
+        inp = from_random(op.domain, "normal", dtype=domain_dtype,
+                          device_id=device_id)
     elif inp is None:
         raise ValueError('Need to specify either dtype or inp')
     myassert(inp.domain is op.domain)
     myassert(op(inp).domain is op.target)
 
 
-def _check_sqrt(op, domain_dtype, atol, rtol):
+def _check_sqrt(op, domain_dtype, device_id, atol, rtol):
     if not isinstance(op, EndomorphicOperator):
         try:
             op.get_sqrt()
@@ -222,7 +287,7 @@ def _check_sqrt(op, domain_dtype, atol, rtol):
         sqop = op.get_sqrt()
     except (NotImplementedError, ValueError):
         return
-    fld = from_random(op.domain, dtype=domain_dtype)
+    fld = from_random(op.domain, dtype=domain_dtype, device_id=device_id)
     a = op(fld)
     b = (sqop.adjoint @ sqop)(fld)
     return assert_allclose(a, b, atol=atol, rtol=rtol)
@@ -299,18 +364,26 @@ def _performance_check(op, pos, raise_on_fail):
                 raise RuntimeError(s)
 
 
-def _purity_check(op, pos):
+def _purity_check(op, pos, no_device_copies):
     if isinstance(op, LinearOperator) and (op.capability & op.TIMES) != op.TIMES:
         return
     res0 = op(pos)
-    res1 = op(pos)
-    assert_equal(res0, res1)
+    if no_device_copies:
+        with assert_no_device_copies():
+            res1 = op(pos)
+    else:
+        res1 = op(pos)
+    if res0.device_id == -1:
+        assert_equal(res0, res1)
+    else:
+        assert_allclose(res0, res1)
 
 
-def _get_acceptable_location(op, loc, lin):
+
+def _get_acceptable_location(op, loc, lin, device_id):
     if not np.isfinite(lin.val.s_sum()):
         raise ValueError('Initial value must be finite')
-    direction = from_random(loc.domain, dtype=loc.dtype)
+    direction = from_random(loc.domain, dtype=loc.dtype, device_id=device_id)
     dirder = lin.jac(direction)
     fac = 1e-3 if issingleprec(loc.dtype) else 1e-6
     if dirder.norm() == 0:
@@ -345,7 +418,7 @@ def _linearization_value_consistency(op, loc):
 
 
 def _check_nontrivial_constant(op, loc, tol, ntries, only_r_differentiable,
-                               metric_sampling):
+                               metric_sampling, device_id):
     if isinstance(op.domain, DomainTuple):
         return
     keys = op.domain.keys()
@@ -375,23 +448,24 @@ def _check_nontrivial_constant(op, loc, tol, ntries, only_r_differentiable,
         oplin = op(lin)
 
         myassert(oplin.jac.target is oplin0.jac.target)
-        rndinp = from_random(oplin.jac.target, dtype=oplin.val.dtype)
+        rndinp = from_random(oplin.jac.target, dtype=oplin.val.dtype, device_id=device_id)
         assert_allclose(oplin.jac.adjoint(rndinp).extract(varloc.domain),
                         oplin0.jac.adjoint(rndinp), 1e-13, 1e-13)
         foo = oplin.jac.adjoint(rndinp).extract(cstloc.domain)
         assert_equal(foo, 0*foo, rtol=tol)
 
         if isinstance(op, EnergyOperator) and metric_sampling:
-            oplin.metric.draw_sample()
+            oplin.metric.draw_sample(device_id=device_id)
 
         # _jac_vs_finite_differences(op0, varloc, np.sqrt(tol), ntries,
         #                            only_r_differentiable)
 
 
-def _jac_vs_finite_differences(op, loc, tol, ntries, only_r_differentiable):
+def _jac_vs_finite_differences(op, loc, tol, ntries, only_r_differentiable, device_id,
+                               assert_fixed_device, no_device_copies):
     for _ in range(ntries):
         lin = op(Linearization.make_var(loc))
-        loc2, lin2 = _get_acceptable_location(op, loc, lin)
+        loc2, lin2 = _get_acceptable_location(op, loc, lin, device_id)
         direction = loc2 - loc
         locnext = loc2
         dirnorm = direction.norm()
@@ -416,7 +490,10 @@ def _jac_vs_finite_differences(op, loc, tol, ntries, only_r_differentiable):
         check_linear_operator(linmid.jac, domain_dtype=loc.dtype,
                               target_dtype=dirder.dtype,
                               only_r_linear=only_r_differentiable,
-                              atol=tol**2, rtol=tol**2)
+                              atol=tol**2, rtol=tol**2,
+                              assert_fixed_device=assert_fixed_device,
+                              no_device_copies=no_device_copies,
+                              _device_ids=[device_id])
 
 
 def _check_likelihood_energy(op, loc):
@@ -436,6 +513,39 @@ def _check_likelihood_energy(op, loc):
                             "this LikelihoodEnergyOperator")
     if len(res) != 2:
         raise RuntimeError("`get_transformation` has to return a dtype and the transformation")
+
+
+def _device_equality_check(op, loc, device_ids, assert_fixed_device):
+    if isinstance(op, LinearOperator):
+        needed_cap = op.TIMES
+        if (op.capability & needed_cap) != needed_cap:
+            return
+
+    ref = None
+    for device_id in device_ids:
+        myloc = loc.at(device_id)
+        res = op(myloc)
+        dev0, dev1 = myloc.device_id, res.device_id
+        if ref is None:
+            ref = res
+        assert_allclose(ref, res)
+
+        # Analyze domain and target device
+        if not assert_fixed_device:
+            continue
+        if DomainTuple.scalar_domain() in [op.domain, op.target]:
+            continue
+
+        # If target and domain are equal, operator operate on device
+        if op.domain == op.target:
+            myassert(dev0 == dev1)
+
+        # If Domain is pure on one device, target should also be pure on one device
+        dev0 = set([dev0]) if isinstance(dev0, int) else set(dev0.values())
+        dev1 = set([dev1]) if isinstance(dev1, int) else set(dev1.values())
+        if len(dev0) == 1 and len(dev1) == 1:
+            if dev0 != dev1:
+                raise RuntimeError(f"Domain device_id={dev0} not equals target device_id={dev1}")
 
 
 def minisanity(likelihood_energy, samples, terminal_colors=True, return_values=False):
@@ -542,11 +652,12 @@ def minisanity(likelihood_energy, samples, terminal_colors=True, return_values=F
             myassert(ss2.domain == samples.domain)
         for ii, ss in enumerate((ss1, ss2)):
             for kk in ss.domain.keys():
-                n_isnan = np.sum(np.isnan(ss[kk].val))
-                n_iszero = np.sum(ss[kk].val == 0)
-                lsize = ss[kk].size - n_isnan - n_iszero
-                xredchisq[ii][kk].add(np.nansum(abs(ss[kk].val) ** 2) / lsize)
-                xscmean[ii][kk].add(np.nansum(ss[kk].val) / lsize)
+                sskk = ss[kk].asnumpy()
+                n_isnan = np.sum(np.isnan(sskk))
+                n_iszero = np.sum(sskk == 0)
+                lsize = sskk.size - n_isnan - n_iszero
+                xredchisq[ii][kk].add(np.nansum(abs(sskk) ** 2) / lsize)
+                xscmean[ii][kk].add(np.nansum(sskk) / lsize)
                 xndof[ii][kk] = lsize
                 xnigndof[ii][kk] = n_isnan + n_iszero
 

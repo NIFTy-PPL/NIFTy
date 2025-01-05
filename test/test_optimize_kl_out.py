@@ -49,8 +49,8 @@ def test_optimize_kl_operator_output():
                          overwrite=True)
 
     mean, var = samples.sample_stat()
-    mean = mean.val
-    std = var.sqrt().val
+    mean = mean.asnumpy()
+    std = var.sqrt().asnumpy()
 
     with ast.open(fname+"_mean.fits") as f:
         mean_fits = f[0].data
@@ -84,7 +84,6 @@ def test_optimize_kl_domain_expansion():
         n_samples=0,
         kl_minimizer=ift.NewtonCG(ift.AbsDeltaEnergyController(0.5, iteration_limit=1, name='Newton')),
         sampling_iteration_controller=None,
-        nonlinear_sampling_minimizer=None,
         output_directory=TemporaryDirectory().name,
         plot_minisanity_history=True,
     )

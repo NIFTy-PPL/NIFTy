@@ -179,10 +179,10 @@ m = D(j)
 # ### Results
 
 # + slideshow={"slide_type": "-"}
-# `.val` retrieves the underlying numpy array from a NIFTy Field.
-plt.plot(s.val, 'r', label="signal ground truth", linewidth=2)
-plt.plot(d.val, 'k.', label="noisy data")
-plt.plot(m.val, 'k', label="posterior mean",linewidth=2)
+# `.asnumpy()` retrieves the underlying numpy array from a NIFTy Field.
+plt.plot(s.asnumpy(), 'r', label="signal ground truth", linewidth=2)
+plt.plot(d.asnumpy(), 'k.', label="noisy data")
+plt.plot(m.asnumpy(), 'k', label="posterior mean",linewidth=2)
 plt.title("Reconstruction")
 plt.legend()
 plt.show()
@@ -191,9 +191,9 @@ plt.show()
 # To show the deviations with respect to the true signal (or ground truth), we  plot the residuals as follows:
 
 # + slideshow={"slide_type": "subslide"}
-plt.plot(s.val - s.val, 'r', label="ground truth ref [$s-s$]", linewidth=2)
-plt.plot(d.val - s.val, 'k.', label="noise [$d-Rs$]")
-plt.plot(m.val - s.val, 'k', label="posterior mean - ground truth",linewidth=2)
+plt.plot(s.asnumpy() - s.asnumpy(), 'r', label="ground truth ref [$s-s$]", linewidth=2)
+plt.plot(d.asnumpy() - s.asnumpy(), 'k.', label="noise [$d-Rs$]")
+plt.plot(m.asnumpy() - s.asnumpy(), 'k', label="posterior mean - ground truth",linewidth=2)
 plt.axhspan(-noise_amplitude,noise_amplitude, facecolor='0.9', alpha=.5)
 plt.title("Residuals")
 plt.legend()
@@ -280,14 +280,14 @@ samples_mean = sc.mean
 # + slideshow={"slide_type": "skip"}
 plt.axvspan(l, h, facecolor='0.8',alpha=0.3, label="masked area") # Shading the masked interval
 
-plt.plot(s.val, '#f28109', label="Signal (ground truth)", alpha=1, linewidth=2) #
-plt.plot(m.val, 'k', label="Posterior mean (reconstruction)", linewidth=2)
-plt.fill_between(range(m.size), (m - samples_std).val, (m + samples_std).val,
+plt.plot(s.asnumpy(), '#f28109', label="Signal (ground truth)", alpha=1, linewidth=2) #
+plt.plot(m.asnumpy(), 'k', label="Posterior mean (reconstruction)", linewidth=2)
+plt.fill_between(range(m.size), (m - samples_std).asnumpy(), (m + samples_std).asnumpy(),
                  facecolor='#8592ff', alpha=0.8, label="Posterior std (samples)")
-plt.plot(samples_mean.val, 'k--', label="Posterior mean (samples)")
+plt.plot(samples_mean.asnumpy(), 'k--', label="Posterior mean (samples)")
 
-#.val would return a read only-array. `.val_rw()` returns a writeable copy
-data_s_space = R.adjoint(d).val_rw()
+#.asnumpy() would return a read only-array. `.asnumpy_rw()` returns a writeable copy
+data_s_space = R.adjoint(d).asnumpy_rw()
 # Remove the "0" data points in the masked array
 data_s_space[l:h] = np.nan
 plt.plot(data_s_space, 'k.', label="Data")
@@ -317,13 +317,13 @@ standardized_D = standardized_Dinv.inverse
 standardized_m = standardized_D(standardized_j)
 # -
 
-# We can see that we get to the same result. 
+# We can see that we get to the same result.
 
 posterior_mean_s_space = coord_trafo(standardized_m)
 plt.axvspan(l, h, facecolor='0.8',alpha=0.5)
-plt.plot(s.val, 'r', label="Signal", alpha=1, linewidth=2)
+plt.plot(s.asnumpy(), 'r', label="Signal", alpha=1, linewidth=2)
 plt.plot(data_s_space, 'k.', label="Data")
-plt.plot(posterior_mean_s_space.val, 'k', label="Reconstruction", linewidth=2)
+plt.plot(posterior_mean_s_space.asnumpy(), 'k', label="Reconstruction", linewidth=2)
 plt.title("Reconstruction of incomplete data in normalized coordinates")
 plt.legend()
 plt.show()

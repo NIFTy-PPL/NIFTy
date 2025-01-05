@@ -16,7 +16,7 @@ def test_slice_operator(dim, new_shape):
 
     field = ift.Field.from_random(domain=domain, random_type="normal", std=1, mean=0)
     sliced_field = slice_op(field)
-    assert sliced_field.val.shape == new_shape[0]
+    assert sliced_field.asnumpy().shape == new_shape[0]
     assert_array_equal(
-        field.val[tuple(slice(0, ns) for ns in new_shape[0])], sliced_field.val
+        field.asnumpy()[tuple(slice(0, ns) for ns in new_shape[0])], sliced_field.asnumpy()
     )

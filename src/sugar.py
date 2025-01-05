@@ -12,7 +12,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Copyright(C) 2013-2021 Max-Planck-Society
-# Copyright(C) 2022 Philipp Arras
+# Copyright(C) 2022-2025 Philipp Arras
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -25,6 +25,7 @@ from time import time
 import numpy as np
 
 from . import pointwise, utilities
+from .any_array import AnyArray
 from .domain_tuple import DomainTuple
 from .domains.power_space import PowerSpace
 from .field import Field
@@ -48,7 +49,7 @@ __all__ = ['PS_field', 'power_analyze', 'create_power_operator',
            'calculate_position', 'plot_priorsamples'] + list(pointwise.ptw_dict.keys())
 
 
-def PS_field(pspace, function):
+def PS_field(pspace, function, device_id=-1):
     """Convenience function sampling a power spectrum
 
     Parameters
@@ -57,6 +58,7 @@ def PS_field(pspace, function):
         space at whose `k_lengths` the power spectrum function is evaluated
     function : function taking and returning a numpy.ndarray(float)
         the power spectrum function
+    device_id : int
 
     Returns
     -------
@@ -66,7 +68,7 @@ def PS_field(pspace, function):
     if not isinstance(pspace, PowerSpace):
         raise TypeError
     data = function(pspace.k_lengths)
-    return Field(DomainTuple.make(pspace), data)
+    return Field(DomainTuple.make(pspace), AnyArray(data).at(device_id))
 
 
 def get_signal_variance(spec, space):
@@ -306,7 +308,7 @@ def create_harmonic_smoothing_operator(domain, space, sigma):
                             space)
 
 
-def full(domain, val):
+def full(domain, val, device_id=-1):
     """Convenience function creating Fields/MultiFields with uniform values.
 
     Parameters
@@ -322,8 +324,8 @@ def full(domain, val):
         The newly created uniform field
     """
     if isinstance(domain, (dict, MultiDomain)):
-        return MultiField.full(domain, val)
-    return Field.full(domain, val)
+        return MultiField.full(domain, val, device_id)
+    return Field.full(domain, val, device_id)
 
 
 def from_random(domain, random_type='normal', dtype=np.float64, **kwargs):
@@ -379,6 +381,9 @@ def makeField(domain, arr):
         if not isinstance(arr, dict):
             raise TypeError("If `domain` is an instance of `MultiDomain`, `arr` must be a dict of Numpy arrays.")
         return MultiField.from_raw(domain, arr)
+    if np.isscalar(arr):
+        domain = makeDomain(domain)
+        arr = np.broadcast_to(arr, domain.shape)
     return Field.from_raw(domain, arr)
 
 
@@ -436,7 +441,7 @@ def makeOp(inp, dom=None, sampling_dtype=None):
     if dom is not None:
         utilities.check_object_identity(dom, inp.domain)
     if inp.domain is DomainTuple.scalar_domain():
-        return ScalingOperator(inp.domain, inp.val[()], sampling_dtype=sampling_dtype)
+        return ScalingOperator(inp.domain, inp.val, sampling_dtype=sampling_dtype)
     if isinstance(inp, Field):
         return DiagonalOperator(inp, sampling_dtype=sampling_dtype)
     if isinstance(inp, MultiField):
@@ -540,8 +545,8 @@ def plot_priorsamples(op, n_samples=5, common_colorbar=True, **kwargs):
     p = Plot()
     samples = list(op(from_random(op.domain)) for _ in range(n_samples))
     if common_colorbar:
-        vmin = min(np.min(samples[i].val) for i in range(n_samples))
-        vmax = max(np.max(samples[i].val) for i in range(n_samples))
+        vmin = min(np.min(samples[i].asnumpy()) for i in range(n_samples))
+        vmax = max(np.max(samples[i].asnumpy()) for i in range(n_samples))
     else:
         vmin = vmax = None
     if plottable2D(samples[0]):
@@ -554,7 +559,8 @@ def plot_priorsamples(op, n_samples=5, common_colorbar=True, **kwargs):
     p.output(**kwargs)
 
 
-def exec_time(obj, want_metric=True, verbose=False, domain_dtype=np.float64, ntries=1):
+def exec_time(obj, want_metric=True, verbose=False, domain_dtype=np.float64, ntries=1,
+              device_id=-1, dump_prefix=None):
     """Times the execution time of an operator or an energy.
 
     Parameters
@@ -571,52 +577,81 @@ def exec_time(obj, want_metric=True, verbose=False, domain_dtype=np.float64, ntr
 
     ntries : int
         Number of times the operator shall be called. Default: 1.
-
+    device_id : int or dict
+        Device id of the input. If it is an `int`, all `Field`s of the
+        `MultiField` reside on the same device. If it is a `dict`, the `Field`
+        associated with a `key` of the `dict` will the reside on the decvice as
+        indicated by the `dict`.
+    dump_prefix : str or None
+        If not None, profile files are written to disk with the respective
+        prefix as defined by `dump_prefix` that, e.g., can be analyzed further
+        with other tools. Default: None.
     """
     from .linearization import Linearization
     from .minimization.energy import Energy
+    if device_id > -1:
+        import cupy
+        synchronize = cupy.cuda.Device(device_id).synchronize
+    else:
+        synchronize = lambda : None
 
-    def _profile_func(func, inp, what):
+    timing_results = {}
+
+    def _profile_func(func, inp, what, save_key):
+        # Warmup
+        for _ in range(3):
+            res = func(inp)
+        # Profiling
         t0 = time()
         with cProfile.Profile() as pr:
             for _ in range(ntries):
                 res = func(inp)
-        logger.info(f'{what}: {(time() - t0)*1000/ntries:>8.3f} ms')
+                synchronize()
+        # TODO: Report both median and mean
+        duration = (time() - t0)/ntries
+        logger.info(f'{what}: {duration*1000:>8.3f} ms')
         if verbose:
             s = io.StringIO()
             pstats.Stats(pr, stream=s).sort_stats(pstats.SortKey.TIME).print_stats(5)
             logger.info(s.getvalue())
+        if dump_prefix is not None:
+            pr.dump_stats(f"{dump_prefix}_{save_key}.prof")
+        timing_results[save_key] = duration
         return res
 
-    def _profile_get_attr(obj, attr, what):
-        return _profile_func(lambda x: getattr(obj, x), attr, what)
+    def _profile_get_attr(obj, attr, what, save_key):
+        return _profile_func(lambda x: getattr(obj, x), attr, what, save_key)
 
     if isinstance(obj, Energy):
         newpos = 0.99*obj.position
-        _profile_func(lambda x: x.at(newpos), obj, "Energy.at()\t\t\t\t")
-        _profile_get_attr(obj, "value", "Energy.value\t\t\t\t")
-        _profile_get_attr(obj, "gradient", "Energy.gradient\t\t\t\t")
-        _profile_get_attr(obj, "metric", "Energy.metric\t\t\t\t")
+        _profile_func(lambda x: x.at(newpos), obj, "Energy.at()\t\t\t\t", "energy.at")
+        _profile_get_attr(obj, "value", "Energy.value\t\t\t\t", "value")
+        _profile_get_attr(obj, "gradient", "Energy.gradient\t\t\t\t", "gradient")
+        _profile_get_attr(obj, "metric", "Energy.metric\t\t\t\t", "metric")
         if obj.metric is not None:
-            _profile_func(lambda x: x.apply_metric(x.position), obj, "Energy.apply_metric\t\t\t")
-            _profile_func(lambda x: x.metric(x.position), obj, "Energy.metric(position)\t\t\t")
+            _profile_func(lambda x: x.apply_metric(x.position), obj, "Energy.apply_metric\t\t\t", "apply_metric")
+            _profile_func(lambda x: x.metric(x.position), obj, "Energy.metric(position)\t\t\t", "metric()")
 
     elif isinstance(obj, Operator):
         want_metric = bool(want_metric)
 
-        pos = from_random(obj.domain, 'normal', dtype=domain_dtype)
+        pos = from_random(obj.domain, 'normal', dtype=domain_dtype, device_id=device_id)
+        pos2 = from_random(obj.domain, 'normal', dtype=domain_dtype, device_id=device_id)
         lin = Linearization.make_var(pos, want_metric=want_metric)
-        _profile_func(lambda x: x(pos), obj, "Operator call with field\t\t")
-        res = _profile_func(lambda x: x(lin), obj, "Operator call with linearization\t")
-        _profile_func(lambda x: res.jac(x), pos, "Apply linearization\t\t\t")
-        _profile_func(lambda x: res.jac.adjoint(x), res.val, "Apply linearization (adjoint)\t\t")
+        lin2 = Linearization.make_var(pos, want_metric=want_metric)
+        _profile_func(lambda x: x(pos), obj, "Operator call with field\t\t", "apply")
+        res = _profile_func(lambda x: x(lin), obj, "Operator call with linearization\t", "apply_lin")
+        _profile_func(lambda x: res.jac(x), pos, "Apply linearization\t\t\t", "jac")
+        _profile_func(lambda x: res.jac.adjoint(x), res.val, "Apply linearization (adjoint)\t\t", "jac.adjoint")
 
         if obj.target is DomainTuple.scalar_domain():
-            _profile_get_attr(res, "gradient", "Gradient evaluation\t\t\t")
+            _profile_get_attr(res, "gradient", "Gradient evaluation\t\t\t", "gradient")
             if want_metric:
-                _profile_func(lambda x: res.metric(x), pos, "Metric apply\t\t\t\t")
+                _profile_func(lambda x: res.metric(x), pos, "Metric apply\t\t\t\t", "metric_apply")
     else:
         raise TypeError
+
+    return timing_results
 
 
 def calculate_position(operator, output):
@@ -631,14 +666,14 @@ def calculate_position(operator, output):
     if output.domain != operator.target:
         raise TypeError
     if isinstance(output, MultiField):
-        cov = 1e-3*max([np.max(np.abs(vv)) for vv in output.val.values()])**2
+        cov = 1e-3*max([np.max(np.abs(vv)) for vv in output.asnumpy().values()])**2
         invcov = ScalingOperator(output.domain, cov).inverse
         dtype = list(set([ff.dtype for ff in output.values()]))
         if len(dtype) != 1:
             raise ValueError('Only MultiFields with one dtype supported.')
         dtype = dtype[0]
     else:
-        cov = 1e-3*np.max(np.abs(output.val))**2
+        cov = 1e-3*np.max(np.abs(output.asnumpy()))**2
         dtype = output.dtype
     invcov = ScalingOperator(output.domain, cov, output.dtype).inverse
     d = output + invcov.draw_sample(from_inverse=True)

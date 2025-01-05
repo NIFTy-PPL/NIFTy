@@ -54,10 +54,14 @@ class _LightConeDerivative(LinearOperator):
         self._derivatives = derivatives
         self._capability = self.TIMES | self.ADJOINT_TIMES
 
+    def _device_preparation(self, x, mode):
+        self._derivatives = self._derivatives.at(x.device_id)
+
     def apply(self, x, mode):
         self._check_input(x, mode)
+        self._device_preparation(x, mode)
         x = x.val
-        res = np.zeros(self._tgt(mode).shape, dtype=self._derivatives.dtype)
+        res = np.zeros_like(x, shape=self._tgt(mode).shape, dtype=self._derivatives.dtype)
         for i in range(self.domain.shape[0]):
             if mode == self.TIMES:
                 res += self._derivatives[i]*x[i]
@@ -68,9 +72,11 @@ class _LightConeDerivative(LinearOperator):
 
 def _cone_arrays(c, domain, sigx, want_gradient):
     x = _make_coords(domain)
-    a = np.zeros(domain.shape, dtype=np.complex128)
+    from ..any_array import AnyArray
+    x = AnyArray(x).at(c.device_id)  # TEMP
+    a = np.zeros_like(c, shape=domain.shape, dtype=np.complex128)
     if want_gradient:
-        derivs = np.zeros((c.size,) + domain.shape, dtype=np.complex128)
+        derivs = np.zeros_like(c, shape=(c.size,) + domain.shape, dtype=np.complex128)
     else:
         derivs = None
     a -= (x[0]/(sigx*domain[0].distances[0]))**2

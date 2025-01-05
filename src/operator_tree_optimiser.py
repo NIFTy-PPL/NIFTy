@@ -313,7 +313,7 @@ def optimise_operator(op):
     test_field = from_random(op.domain)
     if isinstance(op(test_field), MultiField):
         for key in op(test_field).keys():
-            myassert(allclose(op(test_field).val[key], op_optimised(test_field).val[key], 1e-10))
+            myassert(allclose(op(test_field).asnumpy()[key], op_optimised(test_field).asnumpy()[key], 1e-10))
     else:
-        myassert(allclose(op(test_field).val, op_optimised(test_field).val, 1e-10))
+        myassert(allclose(op(test_field).asnumpy(), op_optimised(test_field).asnumpy(), 1e-10))
     return op_optimised

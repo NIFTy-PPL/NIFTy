@@ -56,11 +56,11 @@ def test_split_operator_first_axes_without_intersections(
     split_r = split(r)
     # This relies on the keys of the target domain either being in the order of
     # insertion or being alphabetically sorted
-    for idx, v in zip(split_idx, split_r.val.values()):
-        assert_array_equal(r.val[idx], v)
+    for idx, v in zip(split_idx, split_r.asnumpy().values()):
+        assert_array_equal(r.asnumpy()[idx], v)
     # Here, the adjoint must be the inverse as the field is split fully among
     # the generated indices and without intersections.
-    assert_array_equal(split.adjoint(split_r).val, r.val)
+    assert_array_equal(split.adjoint(split_r).asnumpy(), r.asnumpy())
 
 
 def test_split_operator_first_axes_with_intersections(
@@ -85,13 +85,13 @@ def test_split_operator_first_axes_with_intersections(
     split_r = split(r)
     # This relies on the keys of the target domain either being in the order of
     # insertion or being alphabetically sorted
-    for idx, v in zip(split_idx, split_r.val.values()):
-        assert_array_equal(r.val[idx], v)
+    for idx, v in zip(split_idx, split_r.asnumpy().values()):
+        assert_array_equal(r.asnumpy()[idx], v)
 
-    r_diy = np.copy(r.val)
+    r_diy = np.copy(r.asnumpy())
     unique_freq = np.unique(np.concatenate(split_idx), return_counts=True)
     # Null values that were not selected
     r_diy[list(set(unique_freq[0]) ^ set(range(space1.shape[0])))] = 0.
     for idx, freq in zip(*unique_freq):
         r_diy[idx] *= freq
-    assert_allclose(split.adjoint(split_r).val, r_diy)
+    assert_allclose(split.adjoint(split_r).asnumpy(), r_diy)

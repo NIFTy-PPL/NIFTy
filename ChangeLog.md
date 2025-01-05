@@ -29,6 +29,50 @@ ift.estimate_evidence_lower_bound
 Renamed `batch_size` to `n_batches` for clarity. Improved batch logic.
 
 
+ift.AnyArray: Add general GPU backend numpy-based nifty
+-------------------------------------------------------
+
+The old numpy-based nifty is now GPU-compatible. In the best case, you can
+specify `device_id=0` for `optimize_kl` and your optimization runs on the GPU.
+
+The basic idea is that `ift.Field.val` is not a numpy array anymore, but rather
+a so-called `ift.AnyArray`. It provides an abstraction layer around, e.g., a
+`np.ndarray` but it can also hold an ndarray of the GPU (`cupy.ndarray`).
+
+`ift.Field`, `ift.MultiField` and `ift.AnyArray` provide the method
+`.at(device_id)` which returns an instance of the respective class on the
+specified device. `device_id=-1` corresponds to the host, `device_id=0` is the
+first GPU, and so on. If you need the underlying `np.ndarray` of a `Field`,
+irrespective of where it is stored, use `.asnumpy()`.
+
+In practice this means that you may need to replace many `.val` calls, e.g., in
+plotting routines with `.asnumpy()`. This breaks the interface but is intended
+to avoid silent failures.
+
+
+ift.logger: Set default logging level to INFO
+---------------------------------------------
+
+The default debugging level for output to `stdout` has been increased from
+`DEBUG` to `INFO`. It can be changed back by the user by running, e.g.,
+
+```
+import logging
+import nifty8 as ift
+
+ch = logging.StreamHandler()
+ch.setLevel(logging.DEBUG)
+ift.logger.addHandler(ch)
+```
+
+
+ift.optimize_kl
+---------------
+Since `optimize_kl` takes so many arguments, we force the user now to pass them
+by name except for the first five (`likelihood_enery`, `total_iterations`,
+`n_samples`, `kl_minimizer`, `sampling_iteration_controller`).
+
+
 ift.re: Stabilize ICR at the cost of disallowing using old ICR reconstructions
 ------------------------------------------------------------------------------
 ICR's refinement now uses `eigsh` based matrix inversions and square roots,
