@@ -147,6 +147,26 @@ class Linearization(Operator):
     def imag(self):
         return self.new(self._val.imag, self._jac.imag)
 
+    def at(self, device_id):
+        """Linearization : a Linearization whose val is stored on a different device
+
+        Parameters
+        ----------
+        device_id : int or dict
+            The device on which the Field shall be allocated. -1 corresponds to
+            host (cpu), 0 is the first device (gpu), 1 the second and so on.
+            Default: -1.
+
+        Note
+        ----
+        The Jacobian is not changed.
+        """
+        return self.new(self._val.at(device_id), self._jac)
+
+    @property
+    def device_id(self):
+        return self._val.device_id
+
     def _myadd(self, other, neg):
         if np.isscalar(other) or other.jac is None:
             return self.new(self._val-other if neg else self._val+other,

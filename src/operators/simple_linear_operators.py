@@ -44,11 +44,16 @@ class VdotOperator(LinearOperator):
         self._target = DomainTuple.scalar_domain()
         self._capability = self.TIMES | self.ADJOINT_TIMES
 
+    def _device_preparation(self, x):
+        self._field = self._field.at(x.device_id)
+
     def apply(self, x, mode):
         self._check_mode(mode)
         if mode == self.TIMES:
+            # device_preparation only here since scalars are always on host
+            self._device_preparation(x)
             return self._field.vdot(x)
-        return self._field*x.val[()]
+        return self._field*x.asnumpy()[()]
 
 
 class ConjugationOperator(EndomorphicOperator):
@@ -351,24 +356,60 @@ class NullOperator(LinearOperator):
         input domain
     target : DomainTuple or MultiDomain
         output domain
+    default_domain_device_id : int or dict of int
+        Fallback device_id for output of adjoint if it cannot be determined
+        otherwise.
+    default_target_device_id : int or dict of int
+        Fallback device_id for output if it cannot be determined otherwise.
     """
 
-    def __init__(self, domain, target):
+    def __init__(self, domain, target,
+                 default_domain_device_id=-1, default_target_device_id=-1):
         from ..sugar import makeDomain
         self._domain = makeDomain(domain)
         self._target = makeDomain(target)
         self._capability = self.TIMES | self.ADJOINT_TIMES
+        self._domain_did = default_domain_device_id
+        self._target_did = default_target_device_id
+        self._check_device_id(self._domain, self._domain_did)
+        self._check_device_id(self._target, self._target_did)
 
     @staticmethod
-    def _nullfield(dom):
-        if isinstance(dom, DomainTuple):
-            return Field(dom, 0.)
+    def _check_device_id(domain, device_id):
+        if isinstance(domain, DomainTuple):
+            assert isinstance(device_id, int) and device_id >= -1
         else:
-            return MultiField.full(dom, 0.)
+            assert isinstance(device_id, (dict, int))
+            if isinstance(device_id, dict):
+                assert all(isinstance(vv, int) for vv in device_id.values())
+                assert set(device_id.keys()) == set(domain.keys())
+
+    @staticmethod
+    def _nullfield(dom, device_id):
+        if isinstance(dom, DomainTuple):
+            return Field.full(dom, 0., device_id=device_id)
+        else:
+            return MultiField.full(dom, 0., device_id=device_id)
 
     def apply(self, x, mode):
         self._check_input(x, mode)
-        return self._nullfield(self._tgt(mode))
+        if self.domain is self.target or \
+           (isinstance(self.domain, DomainTuple) and isinstance(self.target, DomainTuple)):
+            # Domain and target are the same or Domain and target are both DomainTuple
+            device_id = x.device_id
+        elif isinstance(x.domain, DomainTuple):
+            # Input is Field and trivially on a single device
+            device_id = x.device_id
+        elif len(set(x.device_id.values())) == 1:
+            # Input is MultiField and on single device
+            device_id = list(set(x.device_id.values()))[0]
+        else:
+            # Fallback
+            if mode in [self.TIMES, self.ADJOINT_INVERSE_TIMES]:
+                device_id = self._target_did
+            else:
+                device_id = self._domain_did
+        return self._nullfield(self._tgt(mode), device_id)
 
     def __repr__(self):
         dom = self.domain.keys() if isinstance(self.domain, MultiDomain) else '()'
@@ -460,9 +501,8 @@ class DomainChangerAndReshaper(LinearOperator):
         from ..sugar import makeField
 
         self._check_input(x, mode)
-        x = x.val
         tgt = self._tgt(mode)
-        return makeField(tgt, x.reshape(tgt.shape))
+        return makeField(tgt, x.val.reshape(tgt.shape))
 
     def __repr__(self):
         return f"Reshape {self._shapes(self.target)} <- {self._shapes(self.domain)}"
@@ -517,11 +557,19 @@ class ExtractAtIndices(LinearOperator):
 
     def apply(self, x, mode):
         self._check_input(x, mode)
+        x = x.val
         if mode == self.TIMES:
-            res = x.val[self._inds]
+            res = x[self._inds]
         else:
-            res = np.zeros(self._domain.shape, dtype=x.dtype)
-            np.add.at(res, self._inds, x.val)
+            res = np.zeros_like(x, shape=self._domain.shape, dtype=x.dtype)
+            if x.device_id == -1:
+                np.add.at(res, self._inds, x)
+            else:
+                # FIXME: Understand how np.add.at works for GPUs, then enable device copy test
+                device_id = x.device_id
+                res, x = res.at(-1), x.at(-1)
+                np.add.at(res, self._inds, x)
+                res = res.at(x.device_id).at(device_id)
         return Field.from_raw(self._tgt(mode), res)
 
 

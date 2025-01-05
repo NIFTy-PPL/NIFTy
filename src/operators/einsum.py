@@ -278,8 +278,12 @@ class LinearEinsum(LinearOperator):
             self._adj_sscr = "->".join((adj_iss, iss_spl[-1]))
         self._capability = self.TIMES | self.ADJOINT_TIMES
 
+    def _device_preparation(self, x, mode):
+        self._mf = self._mf.at(x.device_id)
+
     def apply(self, x, mode):
         self._check_input(x, mode)
+        self._device_preparation(x, mode)
         if mode == self.TIMES:
             dom, ss, mf = self.target, self._sscr, self._mf
         else:

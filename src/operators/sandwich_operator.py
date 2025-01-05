@@ -78,12 +78,12 @@ class SandwichOperator(EndomorphicOperator):
     def apply(self, x, mode):
         return self._op.apply(x, mode)
 
-    def draw_sample(self, from_inverse=False):
+    def draw_sample(self, from_inverse=False, device_id=-1):
         # Inverse samples from general sandwiches are not possible
         if from_inverse:
             if self._bun.capability & self._bun.INVERSE_TIMES:
                 try:
-                    s = self._cheese.draw_sample(from_inverse)
+                    s = self._cheese.draw_sample(from_inverse, device_id)
                     return self._bun.inverse_times(s)
                 except NotImplementedError:
                     pass
@@ -92,7 +92,7 @@ class SandwichOperator(EndomorphicOperator):
 
         # Samples from general sandwiches
         return self._bun.adjoint_times(
-            self._cheese.draw_sample(from_inverse))
+            self._cheese.draw_sample(from_inverse, device_id))
 
     def get_sqrt(self):
         if self._cheese is None:

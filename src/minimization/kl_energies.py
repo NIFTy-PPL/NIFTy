@@ -21,6 +21,7 @@ from functools import reduce
 import numpy as np
 
 from .. import random, utilities
+from ..any_array import _make_scalar_if_scalar
 from ..linearization import Linearization
 from ..multi_domain import MultiDomain
 from ..multi_field import MultiField
@@ -88,7 +89,7 @@ class _SelfAdjointOperatorWrapper(EndomorphicOperator):
 
 
 def draw_samples(position, H, minimizer, n_samples, mirror_samples, napprox=0,
-                 want_error=False, comm=None):
+                 want_error=False, comm=None, device_id=-1):
     if not isinstance(n_samples, int):
         raise TypeError
     if not isinstance(mirror_samples, bool):
@@ -142,7 +143,7 @@ def draw_samples(position, H, minimizer, n_samples, mirror_samples, napprox=0,
         with random.Context(sseq[i]):
             neg = mirror_samples and (i % 2 != 0)
             if not neg or y is None:  # we really need to draw a sample
-                y, yi = met.special_draw_sample(True)
+                y, yi = met.special_draw_sample(True, device_id=device_id)
 
             if geometric:
                 m = transformation_mean - y if neg else transformation_mean + y
@@ -160,7 +161,7 @@ def draw_samples(position, H, minimizer, n_samples, mirror_samples, napprox=0,
 
 def SampledKLEnergy(position, hamiltonian, n_samples, minimizer_sampling,
                     mirror_samples=True, constants=[], point_estimates=[],
-                    napprox=0, comm=None, nanisinf=True):
+                    napprox=0, comm=None, nanisinf=True, device_id=-1):
     """Provides the sampled Kullback-Leibler used for Variational Inference,
     specifically for geometric Variational Inference (geoVI) and Metric
     Gaussian VI (MGVI).
@@ -290,7 +291,8 @@ def SampledKLEnergy(position, hamiltonian, n_samples, minimizer_sampling,
 
     _, ham_sampling = _reduce_by_keys(position, hamiltonian, point_estimates)
     sample_list = draw_samples(position, ham_sampling, minimizer_sampling, n_samples,
-                               mirror_samples, napprox=napprox, comm=comm)
+                               mirror_samples, napprox=napprox, comm=comm,
+                               device_id=device_id)
     return SampledKLEnergyClass(sample_list, hamiltonian, constants, inv_pos, nanisinf)
 
 
@@ -320,7 +322,7 @@ class SampledKLEnergyClass(Energy):
         def _func(inp):
             inp, tmp = _reduce_by_keys(inp, hamiltonian, constants)
             tmp = tmp(Linearization.make_var(inp))
-            return tmp.val.val[()], tmp.gradient
+            return _make_scalar_if_scalar(tmp.val.val.val), tmp.gradient
 
         self._val, self._grad = sample_list._average_2tuple(_func)
         if np.isnan(self._val) and self._nanisinf:

@@ -39,6 +39,10 @@ re = [
 native = [
     "ducc0>=0.27.0",
 ]
+gpu = [
+    "cupy",
+    "pyvkfft"
+]
 parallel = [
     "mpi4py",
 ]

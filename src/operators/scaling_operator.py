@@ -57,7 +57,10 @@ class ScalingOperator(EndomorphicOperator):
 
     def __init__(self, domain, factor, sampling_dtype=None):
         from ..sugar import makeDomain
+        from ..any_array import AnyArray
 
+        if isinstance(factor, AnyArray) and factor.shape == tuple():
+            factor = factor.at(-1, check_fail=False).val[()]
         if not np.isscalar(factor):
             raise TypeError("Scalar required")
         self._domain = makeDomain(domain)
@@ -77,7 +80,7 @@ class ScalingOperator(EndomorphicOperator):
         if fct == 1.:
             return x
         if fct == 0.:
-            return full(x.domain, 0.)
+            return full(x.domain, 0., x.device_id)
 
         MODES_WITH_ADJOINT = self.ADJOINT_TIMES | self.ADJOINT_INVERSE_TIMES
         MODES_WITH_INVERSE = self.INVERSE_TIMES | self.ADJOINT_INVERSE_TIMES
@@ -102,13 +105,13 @@ class ScalingOperator(EndomorphicOperator):
             raise ValueError("operator not positive definite")
         return 1./np.sqrt(fct) if from_inverse else np.sqrt(fct)
 
-    def draw_sample(self, from_inverse=False):
+    def draw_sample(self, from_inverse=False, device_id=-1):
         from ..sugar import from_random
         if self._dtype is None:
             s = "Need to specify dtype to be able to sample from this operator:\n"
             s += self.__repr__()
             raise RuntimeError(s)
-        return from_random(domain=self._domain, random_type="normal",
+        return from_random(domain=self._domain, random_type="normal", device_id=device_id,
                            dtype=self._dtype, std=self._get_fct(from_inverse))
 
     def get_sqrt(self):

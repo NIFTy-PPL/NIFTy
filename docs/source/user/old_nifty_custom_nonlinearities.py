@@ -50,7 +50,7 @@ dom = ift.UnstructuredDomain(10)
 fld = ift.from_random(dom)
 fld = ift.full(dom, 2.)
 a = fld.ptw("myptw")
-b = ift.makeField(dom, func(fld.val))
+b = ift.makeField(dom, func(fld.asnumpy()))
 ift.extra.assert_allclose(a, b)
 
 # `MultiField`s, ...
@@ -58,18 +58,18 @@ ift.extra.assert_allclose(a, b)
 mdom = ift.makeDomain({"bar": ift.UnstructuredDomain(10)})
 mfld = ift.from_random(mdom)
 a = mfld.ptw("myptw")
-b = ift.makeField(mdom, {"bar": func(mfld["bar"].val)})
+b = ift.makeField(mdom, {"bar": func(mfld["bar"].asnumpy())})
 ift.extra.assert_allclose(a, b)
 
 # `Linearization`s (including the Jacobian), ...
 
 lin = ift.Linearization.make_var(fld)
 a = lin.ptw("myptw").val
-b = ift.makeField(dom, func(fld.val))
+b = ift.makeField(dom, func(fld.asnumpy()))
 ift.extra.assert_allclose(a, b)
 
 op_a = lin.ptw("myptw").jac
-op_b = ift.makeOp(ift.makeField(dom, func_and_derv(fld.val)[1]))
+op_b = ift.makeOp(ift.makeField(dom, func_and_derv(fld.asnumpy())[1]))
 testing_vector = ift.from_random(dom)
 ift.extra.assert_allclose(op_a(testing_vector),
                           op_b(testing_vector))

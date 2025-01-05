@@ -34,8 +34,8 @@ def test_multifield2vector(dom0, dom1):
     op = ift.Multifield2Vector(fld.domain)
     ift.extra.assert_allclose(fld, op.adjoint(op(fld)))
     assert op.target.size == fld.size
-    
+
     arr = np.empty(fld.size)
-    arr[:dom0.size] = fld['a'].val.flatten()
-    arr[dom0.size:] = fld['b'].val.flatten()
-    assert_allclose(arr, op(fld).val)
+    arr[:dom0.size] = fld['a'].asnumpy().flatten()
+    arr[dom0.size:] = fld['b'].asnumpy().flatten()
+    assert_allclose(arr, op(fld).asnumpy())

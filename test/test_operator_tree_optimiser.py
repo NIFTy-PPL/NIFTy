@@ -56,7 +56,7 @@ def test_operator_tree_optimiser():
     fld = ift.from_random(op.domain, 'normal', np.float64)
     op_orig = deepcopy(op)
     op = ift.operator_tree_optimiser._optimise_operator(op)
-    assert_allclose(op(fld).val, op_orig(fld).val, rtol=np.finfo(np.float64).eps)
+    assert_allclose(op(fld).asnumpy(), op_orig(fld).asnumpy(), rtol=np.finfo(np.float64).eps)
     ift.myassert(1 == ((cop4.count-1) * cop3.count * cop2.count * cop1.count))
     # test testing
     ift.optimise_operator(op_orig)

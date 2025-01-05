@@ -12,6 +12,8 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Copyright(C) 2021-2022 Max-Planck-Society
+# Copyright(C) 2025 Philipp Arras
+#
 # Author: Philipp Arras
 
 from functools import partial
@@ -20,18 +22,34 @@ from warnings import warn
 
 import numpy as np
 
+from ..any_array import AnyArray, device_available
 from .energy_operators import LikelihoodEnergyOperator
 from .linear_operator import LinearOperator
 from .operator import Operator
 
-
 __all__ = ["JaxOperator", "JaxLikelihoodEnergyOperator", "JaxLinearOperator"]
 
 
-def _jax2np(obj):
+def _jax2anyarray(obj):
     if isinstance(obj, dict):
-        return {kk: np.array(vv) for kk, vv in obj.items()}
-    return np.array(obj)
+        return {kk: _jax2anyarray(vv) for kk, vv in obj.items()}
+    elif device_available():
+        import cupy
+        cu = cupy.from_dlpack(obj)
+        return AnyArray(cu)
+    else:
+        return AnyArray(np.array(obj))
+
+
+def _anyarray2jax(obj):
+    import jax
+    if isinstance(obj, AnyArray):
+        if obj.device_id == -1:
+            return jax.numpy.array(obj._val)
+        else:
+            return jax.dlpack.from_dlpack(obj._val)
+    elif isinstance(obj, dict):
+        return {kk: _anyarray2jax(vv) for kk, vv in obj.items()}
 
 
 class JaxOperator(Operator):
@@ -50,9 +68,16 @@ class JaxOperator(Operator):
         implemented in terms of `jax.numpy` calls. If `domain` is a
         `MultiDomain`, `func` takes a `dict` as argument and like-wise for the
         target.
+
+    Note
+    ----
+    Contrary to the convention in the rest of nifty, this operator returns
+    Fields on device if a device is available. Normally, nifty operators return
+    on the same device_id as their input has been.
     """
     def __init__(self, domain, target, func):
         import jax
+
         from ..sugar import makeDomain
         self._domain = makeDomain(domain)
         self._target = makeDomain(target)
@@ -68,12 +93,12 @@ class JaxOperator(Operator):
             # TODO: Adapt the Linearization class to handle value_and_grad
             # calls. Computing the pass through the function thrice (once now
             # and twice when differentiating) is redundant and inefficient.
-            res = self._func(x.val.val)
-            bwd = partial(self._bwd, x.val.val)
-            fwd = partial(self._fwd, x.val.val)
+            res = self._func(x.val.asnumpy())
+            bwd = partial(self._bwd, _anyarray2jax(x.val.val))
+            fwd = partial(self._fwd, _anyarray2jax(x.val.val))
             jac = JaxLinearOperator(self._domain, self._target, fwd, func_T=bwd)
-            return x.new(makeField(self._target, _jax2np(res)), jac)
-        res = _jax2np(self._func(x.val))
+            return x.new(makeField(self._target, _jax2anyarray(res)), jac)
+        res = _jax2anyarray(self._func(_anyarray2jax(x.val)))
         if isinstance(res, dict):
             if not isinstance(self._target, MultiDomain):
                 raise TypeError(("Jax function returns a dictionary although the "
@@ -100,7 +125,7 @@ class JaxOperator(Operator):
                               f"Jax function returns\t{shp_jax}"))
 
     def _simplify_for_constant_input_nontrivial(self, c_inp):
-        func2 = lambda x: self._func({**x, **c_inp.val})
+        func2 = lambda x: self._func({**x, **c_inp.asnumpy()})
         dom = {kk: vv for kk, vv in self._domain.items() if kk not in c_inp.keys()}
         return None, JaxOperator(dom, self._target, func2)
 
@@ -140,6 +165,7 @@ class JaxLinearOperator(LinearOperator):
     """
     def __init__(self, domain, target, func, domain_dtype=None, func_T=None):
         import jax
+
         from ..domain_tuple import DomainTuple
         from ..sugar import makeDomain
         domain = makeDomain(domain)
@@ -164,10 +190,11 @@ class JaxLinearOperator(LinearOperator):
         from ..sugar import makeField
         self._check_input(x, mode)
         if mode == self.TIMES:
-            fx = self._func(x.val)
-            return makeField(self._target, _jax2np(fx))
-        fx = self._func_T(x.conjugate().val)
-        return makeField(self._domain, _jax2np(fx)).conjugate()
+            fx = self._func(_anyarray2jax(x.val))
+            return makeField(self._target, _jax2anyarray(fx))
+        # TODO: make conjugate part of the jax operation
+        fx = self._func_T(_anyarray2jax(x.conjugate().val))
+        return makeField(self._domain, _jax2anyarray(fx)).conjugate()
 
 
 class JaxLikelihoodEnergyOperator(LikelihoodEnergyOperator):
@@ -193,6 +220,7 @@ class JaxLikelihoodEnergyOperator(LikelihoodEnergyOperator):
     """
     def __init__(self, domain, func, transformation=None, sampling_dtype=None):
         import jax
+
         from ..sugar import makeDomain
         self._domain = makeDomain(domain)
         self._func = jax.jit(func)
@@ -213,20 +241,22 @@ class JaxLikelihoodEnergyOperator(LikelihoodEnergyOperator):
     def apply(self, x):
         from ..sugar import is_linearization, makeField
         from .simple_linear_operators import VdotOperator
+
         self._check_input(x)
         lin = is_linearization(x)
         val = x.val.val if lin else x.val
         if not lin:
-            return makeField(self._target, _jax2np(self._func(val)))
-        res, grad = self._val_and_grad(val)
-        jac = VdotOperator(makeField(self._domain, _jax2np(grad)))
-        res = x.new(makeField(self._target, _jax2np(res)), jac)
+            return makeField(self._target, _jax2anyarray(self._func(_anyarray2jax(val))))
+        res, grad = self._val_and_grad(_anyarray2jax(val))
+        jac = VdotOperator(makeField(self._domain, _jax2anyarray(grad)))
+        res = x.new(makeField(self._target, _jax2anyarray(res)), jac)
         if not x.want_metric:
             return res
+        # TODO: Add jax version of metric
         return res.add_metric(self.get_metric_at(x.val))
 
     def _simplify_for_constant_input_nontrivial(self, c_inp):
-        func2 = lambda x: self._func({**x, **c_inp.val})
+        func2 = lambda x: self._func({**x, **_anyarray2jax(c_inp.val)})
         dom = {kk: vv for kk, vv in self._domain.items() if kk not in c_inp.keys()}
         _, trafo = self._trafo.simplify_for_constant_input(c_inp)
         if isinstance(self._dt, dict):

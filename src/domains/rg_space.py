@@ -152,7 +152,7 @@ class RGSpace(StructuredDomain):
             tmp[t2] = True
             return np.sqrt(np.nonzero(tmp)[0])*self.distances[0]
         else:  # do it the hard way
-            tmp = self.get_k_length_array().val
+            tmp = self.get_k_length_array().asnumpy()
             tmp = np.unique(tmp)
             tol = 1e-12*tmp[-1]
             # remove all points that are closer than tol to their right
@@ -188,7 +188,7 @@ class RGSpace(StructuredDomain):
             raise NotImplementedError
         op = HarmonicTransformOperator(self, self.get_default_codomain())
         dist = op.target[0]._get_dist_array()
-        kernel = Field(op.target, func(dist.val))
+        kernel = Field(op.target, func(dist.asnumpy()))
         kernel = kernel / kernel.s_integrate()
         return op.adjoint_times(kernel.weight(1))
 

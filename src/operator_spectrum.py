@@ -56,7 +56,7 @@ class _DomRemover(LinearOperator):
     def apply(self, x, mode):
         self._check_input(x, mode)
         self._check_float_dtype(x)
-        x = x.val
+        x = x.asnumpy()
         if isinstance(self._domain, DomainTuple):
             res = x.ravel() if mode == self.TIMES else x.reshape(
                 self._domain.shape)
@@ -139,7 +139,7 @@ def operator_spectrum(A, k, hermitian, which='LM', tol=0, return_eigenvectors=Fa
     Ar = SandwichOperator.make(_DomRemover(A.domain).adjoint, A)
     M = ssl.LinearOperator(
         shape=2*(size,),
-        matvec=lambda x: Ar(makeField(Ar.domain, x)).val)
+        matvec=lambda x: Ar(makeField(Ar.domain, x)).asnumpy())
     f = ssl.eigsh if hermitian else ssl.eigs
     eigs = f(M, k=k, tol=tol, return_eigenvectors=return_eigenvectors, which=which)
     if return_eigenvectors:

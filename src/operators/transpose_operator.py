@@ -33,6 +33,7 @@ class TransposeOperator(LinearOperator):
             raise ValueError("List of indices not complete")
         self._capability = self._all_ops
         self._np_indices = _niftyspace_to_np_indices(self._domain, indices)
+        self._np_indices_inv = tuple(np.argsort(self._np_indices))
         self._indices = indices
 
     def apply(self, x, mode):
@@ -41,7 +42,7 @@ class TransposeOperator(LinearOperator):
         if mode in (self.TIMES, self.ADJOINT_INVERSE_TIMES):
             x = np.transpose(x, self._np_indices)
         else:
-            x = np.transpose(x, np.argsort(self._np_indices))
+            x = np.transpose(x, self._np_indices_inv)
         return makeField(self._tgt(mode), x)
 
     def __repr__(self):
@@ -56,4 +57,3 @@ def _niftyspace_to_np_indices(domain, indices):
     res = tuple(np_indices)
     myassert(len(res) == len(domain.shape))
     return res
-

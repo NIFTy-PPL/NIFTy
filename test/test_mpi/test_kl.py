@@ -107,11 +107,11 @@ def test_kl(constants, point_estimates, mirror_samples, mf, geo, nsamps):
     # Test gradient
     if mf:
         for kk in kl0.gradient.domain.keys():
-            res0 = kl0.gradient[kk].val
-            res1 = kl1.gradient[kk].val
+            res0 = kl0.gradient[kk].asnumpy()
+            res1 = kl1.gradient[kk].asnumpy()
             assert_equal(res0, res1)
     else:
-        assert_equal(kl0.gradient.val, kl1.gradient.val)
+        assert_equal(kl0.gradient.asnumpy(), kl1.gradient.asnumpy())
 
 
 @pmp('seed', (42, 123))

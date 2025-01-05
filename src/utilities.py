@@ -222,6 +222,10 @@ class frozendict(collections.abc.Mapping):
 def special_add_at(a, axis, index, b):
     if a.dtype != b.dtype:
         raise TypeError("data type mismatch")
+    if index.device_id != a.device_id:
+        raise RuntimeError("`index` needs to be on same device as `a`")
+    if b.device_id != a.device_id:
+        raise RuntimeError("`b` needs to be on same device as `a`")
     sz1 = int(np.prod(a.shape[:axis]))
     sz3 = int(np.prod(a.shape[axis+1:]))
     a2 = a.reshape([sz1, -1, sz3])
@@ -235,10 +239,10 @@ def special_add_at(a, axis, index, b):
         for i3 in range(sz3):
             a2[i1, :, i3] += np.bincount(index, b2[i1, :, i3],
                                          minlength=a2.shape[1])
-
     if iscomplextype(a.dtype):
         a2 = a2.view(a.dtype)
     return a2.reshape(a.shape)
+
 
 
 def iscomplextype(dtype):
@@ -620,3 +624,17 @@ def strtobool(val):
         return False
     else:
         raise ValueError(f"invalid truth value {val!r}")
+
+
+try:
+    import cupy
+    _device_available = cupy.cuda.runtime.getDeviceCount() > 0
+except ImportError:
+    _device_available = False
+def device_available():
+    return _device_available
+
+
+def assert_device_available():
+    if not device_available():
+        raise RuntimeError("Cupy not installed or cuda device not available")

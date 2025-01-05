@@ -48,12 +48,12 @@ class Multifield2Vector(LinearOperator):
 
     def apply(self, x, mode):
         self._check_input(x, mode)
-        x = x.val
         ii = 0
         if mode == self.TIMES:
-            res = np.empty(self.target.shape, _unique_dtype([vv.dtype for vv in x.values()]))
+            dtype = _unique_dtype([vv.dtype for vv in x.values()])
+            res = np.empty_like(next(iter(x.val.values())), shape=self.target.shape, dtype=dtype)
             for key in self.domain.keys():
-                arr = x[key].flatten()
+                arr = x.val[key].flatten()
                 res[ii:ii + arr.size] = arr
                 ii += arr.size
         else:
@@ -61,7 +61,7 @@ class Multifield2Vector(LinearOperator):
             for key in self.domain.keys():
                 n = self.domain[key].size
                 shp = self.domain[key].shape
-                res[key] = x[ii:ii + n].reshape(shp)
+                res[key] = x.val[ii:ii + n].reshape(shp)
                 ii += n
         return makeField(self._tgt(mode), res)
 

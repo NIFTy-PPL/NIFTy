@@ -83,7 +83,8 @@ def test_variablecovariancegaussian(field):
     dc = {'a': field, 'b': field.ptw("exp")}
     mf = ift.MultiField.from_dict(dc)
     energy = ift.VariableCovarianceGaussianEnergy(field.domain, 'a', 'b', np.float64)
-    ift.extra.check_operator(energy, mf, ntries=ntries)
+    # TODO: make sure that VariableCovarianceGaussianEnergy does not have unnecessary device copies (see also in test_gaussian_energy.py)
+    ift.extra.check_operator(energy, mf, ntries=ntries, no_device_copies=False)
     energy(ift.Linearization.make_var(mf, want_metric=True)).metric.draw_sample()
 
 

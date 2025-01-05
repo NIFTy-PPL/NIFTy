@@ -35,7 +35,7 @@ def _stats(op, samples):
     sc = ift.StatCalculator()
     for s in samples:
         sc.add(op(s.extract(op.domain)))
-    return sc.mean.val, sc.var.ptw("sqrt").val
+    return sc.mean.asnumpy(), sc.var.ptw("sqrt").asnumpy()
 
 
 def _rand():
@@ -109,7 +109,7 @@ def test_unit_zero_mode(sspace, asperity, flexibility, matern):
     cf = cfm.finalize(prior_info=0)
 
     r = ift.from_random(cf.domain).to_dict()
-    r_xi = np.copy(r["xi"].val)
+    r_xi = np.copy(r["xi"].asnumpy())
     r_xi[0] = 1.
     r["xi"] = ift.Field(r["xi"].domain, r_xi)
     r = ift.MultiField.from_dict(r)
@@ -211,8 +211,11 @@ def testAmplitudesInvariants(sspace, N):
 
     for ampl in fa.get_normalized_amplitudes():
         ift.extra.check_operator(ampl, 0.1*ift.from_random(ampl.domain), ntries=10)
-    ift.extra.check_operator(op, 0.1*ift.from_random(op.domain), ntries=10)
-    ift.extra.check_operator(op, _make_complex(ift.from_random(op.domain), "xi"), ntries=2)
+    no_device_copies = type(sspace) not in [ift.HPSpace, ift.GLSpace]
+    ift.extra.check_operator(op, 0.1*ift.from_random(op.domain), ntries=10,
+                             no_device_copies=no_device_copies)
+    ift.extra.check_operator(op, _make_complex(ift.from_random(op.domain), "xi"),
+                             ntries=2, no_device_copies=no_device_copies)
 
 
 @pmp('seed', [42, 31])
@@ -270,16 +273,21 @@ def test_complicated_vs_simple(seed, domain, without):
         op1 = cfm.finalize(prior_info=0)
         assert scf.domain is op1.domain
 
+        no_device_copies = type(domain) not in [ift.HPSpace, ift.GLSpace]
+
         # real
         inp = ift.from_random(scf.domain)
         ift.extra.assert_allclose(scf(inp), op1(inp))
-        ift.extra.check_operator(scf, inp, ntries=10)
+        ift.extra.check_operator(scf, inp, ntries=10,
+                                 no_device_copies=no_device_copies)
 
         # complex
         inp2 = _make_complex(ift.from_random(scf.domain), "foobarxi")
         ift.extra.assert_allclose(scf(inp2), op1(inp2))
-        ift.extra.check_operator(scf, inp2, ntries=2)
-        ift.extra.check_operator(op1, inp2, ntries=2)
+        ift.extra.check_operator(scf, inp2, ntries=2,
+                                 no_device_copies=no_device_copies)
+        ift.extra.check_operator(op1, inp2, ntries=2,
+                                 no_device_copies=no_device_copies)
 
         op1 = cfm.amplitude
         op0 = scf.amplitude

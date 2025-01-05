@@ -12,6 +12,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Copyright(C) 2013-2019 Max-Planck-Society
+# Copyright(C) 2025 Philipp Arras
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -346,14 +347,14 @@ def _plot1D(f, ax, **kwargs):
         dist = dom.distances[0]
         xcoord = np.arange(npoints, dtype=np.float64)*dist
         for i, fld in enumerate(f):
-            ycoord = fld.val
+            ycoord = fld.asnumpy()
             plt.plot(xcoord, ycoord, **add_kwargs[i])
     elif isinstance(dom, PowerSpace):
         plt.xscale(kwargs.pop("xscale", "log"))
         plt.yscale(kwargs.pop("yscale", "log"))
         xcoord = dom.k_lengths
         for i, fld in enumerate(f):
-            ycoord = fld.val_rw()
+            ycoord = fld.asnumpy_rw()
             ycoord[0] = ycoord[1]
             plt.plot(xcoord, ycoord, **add_kwargs[i])
     else:
@@ -405,9 +406,9 @@ def _plotting_args_2D(fld, f_space=1):
         x_space = 1 - f_space
         # Only one frequency?
         if dom[f_space].shape[0] == 1:
-            fld = makeField(fld.domain[x_space], fld.val.squeeze(axis=dom.axes[f_space]))
+            fld = makeField(fld.domain[x_space], fld.asnumpy().squeeze(axis=dom.axes[f_space]))
         else:
-            val = fld.val
+            val = fld.asnumpy()
             if f_space == 0:
                 val = np.moveaxis(val, 0, -1)
             rgb = _rgb_data(val)
@@ -446,9 +447,9 @@ def _plot2D(f, ax, **kwargs):
         else:
             alpha = kwargs.get("alpha", None)
             if isinstance(alpha, Field):
-                alpha = alpha.val.T
+                alpha = alpha.asnumpy().T
             im = ax.imshow(
-                f.val.T, extent=[0, nx*dx, 0, ny*dy],
+                f.asnumpy().T, extent=[0, nx*dx, 0, ny*dy],
                 vmin=kwargs.get("vmin"), vmax=kwargs.get("vmax"),
                 cmap=cmap, origin="lower", alpha=alpha, **norm, **aspect)
             cax = make_axes_locatable(ax).append_axes("right", size="5%", pad=0.05)
@@ -473,7 +474,7 @@ def _plot2D(f, ax, **kwargs):
             if have_rgb:
                 res[mask] = rgb[base.ang2pix(ptg)]
             else:
-                res[mask] = f.val[base.ang2pix(ptg)]
+                res[mask] = f.asnumpy()[base.ang2pix(ptg)]
         else:
             ra = np.linspace(0, 2*np.pi, dom.nlon+1)
             dec = GL_thetas(dom.nlat)
@@ -483,7 +484,7 @@ def _plot2D(f, ax, **kwargs):
             if have_rgb:
                 res[mask] = rgb[ilat*dom[0].nlon + ilon]
             else:
-                res[mask] = f.val[ilat*dom.nlon + ilon]
+                res[mask] = f.asnumpy()[ilat*dom.nlon + ilon]
         plt.axis('off')
         if have_rgb:
             plt.imshow(res, origin="lower")
@@ -504,7 +505,7 @@ def _plotHist(f, ax, **kwargs):
         "bins": kwargs.pop("bins", 50)
     }
     for i, fld in enumerate(f):
-        ax.hist(fld.val.ravel(), **add_kwargs[i], **add_kwargs2)
+        ax.hist(fld.asnumpy().ravel(), **add_kwargs[i], **add_kwargs2)
     if with_legend:
         ax.legend(loc="upper right")
 
@@ -612,11 +613,11 @@ class Plot:
                     multi_index.insert(twod_index, slice(None))
                     multi_index.insert(twod_index, slice(None))
                     for ifield in range(len(f)):
-                        arr = f[ifield].val[tuple(multi_index)]
+                        arr = f[ifield].asnumpy()[tuple(multi_index)]
                         myassert(arr.ndim == 2)
                         self._plots.append([makeField(dom[twod_index], arr)])
                         if isinstance(kwargs.get("alpha", None), Field) and len(kwargs["alpha"].shape) > 2:
-                            arr = kwargs["alpha"].val[tuple(multi_index)]
+                            arr = kwargs["alpha"].asnumpy()[tuple(multi_index)]
                             myassert(arr.ndim == 2)
                             kwargs["alpha"] = makeField(dom[twod_index], arr)
                         self._kwargs.append(kwargs)

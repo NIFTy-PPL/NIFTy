@@ -12,12 +12,14 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Copyright(C) 2013-2019 Max-Planck-Society
+# Copyright(C) 2025 Philipp Arras
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 import numpy as np
 
 from .. import utilities
+from ..any_array import ALLOWED_WRAPPEES, AnyArray
 from ..domain_tuple import DomainTuple
 from ..field import Field
 from .endomorphic_operator import EndomorphicOperator
@@ -68,6 +70,7 @@ class MatrixProductOperator(EndomorphicOperator):
     def __init__(self, domain, matrix, spaces=None, flatten=False):
         self._capability = self.TIMES | self.ADJOINT_TIMES
         self._domain = DomainTuple.make(domain)
+        self._flatten = flatten
 
         mat_dim = len(matrix.shape)
 
@@ -105,7 +108,7 @@ class MatrixProductOperator(EndomorphicOperator):
             self._active_axes = tuple(active_axes)
 
             self._mat_last_n = tuple([-appl_dim + i for i in range(appl_dim)])
-            self._mat_first_n = np.arange(appl_dim)
+            self._mat_first_n = tuple(range(appl_dim))
 
         # Test if the matrix and the array it will be applied to fit
         if matrix.shape[:appl_dim] != appl_space_shape:
@@ -115,24 +118,34 @@ class MatrixProductOperator(EndomorphicOperator):
                 f"Matrix appl shape: {matrix.shape[:appl_dim]}, " +
                 f"appl_space_shape: {appl_space_shape}.")
 
-        self._mat = matrix
-        self._mat_tr = matrix.transpose().conjugate()
-        self._flatten = flatten
+        self._mat = AnyArray(matrix)
+        self._finalize_init()
+
+    def _finalize_init(self):
+        self._mat_tr = np.transpose(self._mat).conjugate()
+
+    def _device_preparation(self, x, mode):
+        self._mat = self._mat.at(x.device_id)
+        self._finalize_init()
 
     def apply(self, x, mode):
         self._check_input(x, mode)
+        self._device_preparation(x, mode)
         times = (mode == self.TIMES)
         m = self._mat if times else self._mat_tr
+        if isinstance(m, AnyArray):
+            print(times)
+            assert m.device_id == x.device_id
 
         if self._spaces is None:
             if not self._flatten:
-                res = m.dot(x.val)
+                res = np.dot(m, x.val)
             else:
-                res = m.dot(x.val.flatten()).reshape(self._domain.shape)
+                res = np.dot(m, x.val.flatten()).reshape(self._domain.shape)
             return Field(self._domain, res)
 
-        mat_axes = self._mat_last_n if times else np.flip(self._mat_last_n)
-        move_axes = self._mat_first_n if times else np.flip(self._mat_first_n)
+        mat_axes = self._mat_last_n if times else tuple(reversed(self._mat_last_n))
+        move_axes = self._mat_first_n if times else tuple(reversed(self._mat_first_n))
         res = np.tensordot(m, x.val, axes=(mat_axes, self._active_axes))
         res = np.moveaxis(res, move_axes, self._active_axes)
         return Field(self._domain, res)

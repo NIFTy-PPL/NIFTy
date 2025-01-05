@@ -12,6 +12,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Copyright(C) 2013-2021 Max-Planck-Society
+# Copyright(C) 2025 Philipp Arras
 # Authors: Philipp Frank, Philipp Arras, Philipp Haim;
 #          Matern Kernel by Matteo Guardiani, Jakob Roth and
 #          Gordian Edenhofer
@@ -24,6 +25,7 @@ from warnings import warn
 
 import numpy as np
 
+from ..any_array import AnyArray
 from ..domain_tuple import DomainTuple
 from ..domains.power_space import PowerSpace
 from ..domains.unstructured_domain import UnstructuredDomain
@@ -66,7 +68,7 @@ def _log_vol(power_space):
     power_space = makeDomain(power_space)
     myassert(isinstance(power_space[0], PowerSpace))
     logk_lengths = _log_k_lengths(power_space[0])
-    return logk_lengths[1:] - logk_lengths[:-1]
+    return AnyArray(logk_lengths[1:] - logk_lengths[:-1])
 
 
 def _structured_spaces(domain):
@@ -83,7 +85,7 @@ def _total_fluctuation_realized(samples):
     for s in samples:
         res = res + (s - co.adjoint(co(s)/size))**2
     res = res.mean(spaces)/len(samples)
-    return np.sqrt(res if np.isscalar(res) else res.val)
+    return np.sqrt(res if np.isscalar(res) else res.asnumpy())
 
 
 class _SlopeRemover(EndomorphicOperator):
@@ -97,17 +99,22 @@ class _SlopeRemover(EndomorphicOperator):
         axis = self._domain.axes[space][0]
         self._last = (slice(None),)*axis + (-1,) + (None,)
         extender = (None,)*(axis) + (slice(None),) + (None,)*(self._domain.axes[-1][-1]-axis)
-        self._sc = sc[extender]
+        self._sc = AnyArray(sc[extender])
         self._capability = self.TIMES | self.ADJOINT_TIMES
+
+    def _device_preparation(self, x, mode):
+        self._sc = self._sc.at(x.device_id)
 
     def apply(self, x, mode):
         self._check_input(x, mode)
+        self._device_preparation(x, mode)
         if mode == self.TIMES:
             x = x.val
             res = x - x[self._last]*self._sc
         else:
             res = x.val_rw()
-            res[self._last] -= (res*self._sc).sum(axis=self._space, keepdims=True)
+            sub = (res*self._sc).sum(axis=self._space, keepdims=True)
+            res[self._last] = res[self._last] - sub
         return makeField(self._tgt(mode), res)
 
 
@@ -122,8 +129,12 @@ class _TwoLogIntegrations(LinearOperator):
         self._log_vol = _log_vol(self._target[space])
         self._capability = self.TIMES | self.ADJOINT_TIMES
 
+    def _device_preparation(self, x, mode):
+        self._log_vol = self._log_vol.at(x.device_id)
+
     def apply(self, x, mode):
         self._check_input(x, mode)
+        self._device_preparation(x, mode)
 
         # Maybe make class properties
         axis = self._target.axes[self._space][0]
@@ -137,14 +148,14 @@ class _TwoLogIntegrations(LinearOperator):
 
         if mode == self.TIMES:
             x = x.val
-            res = np.empty(self._target.shape)
+            res = np.empty_like(x, shape=self._target.shape)
             res[first] = res[second] = 0
             res[from_third] = np.cumsum(x[second], axis=axis)
             res[from_third] = (res[from_third] + res[no_border])/2*self._log_vol[extender_sl] + x[first]
             res[from_third] = np.cumsum(res[from_third], axis=axis)
         else:
             x = x.val_rw()
-            res = np.zeros(self._domain.shape)
+            res = np.zeros_like(x, shape=self._domain.shape)
             x[from_third] = np.cumsum(x[from_third][reverse], axis=axis)[reverse]
             res[first] += x[from_third]
             x[from_third] *= (self._log_vol/2.)[extender_sl]
@@ -180,7 +191,7 @@ class _Normalization(Operator):
         pd = PowerDistributor(hspace,
                               power_space=self._domain[space],
                               space=space)
-        mode_multiplicity = pd.adjoint(full(pd.target, 1.)).val_rw()
+        mode_multiplicity = pd.adjoint(full(pd.target, 1.)).asnumpy_rw()
         zero_mode = (slice(None),)*self._domain.axes[space][0] + (0,)
         mode_multiplicity[zero_mode] = 0
         multipl = makeOp(makeField(self._domain, mode_multiplicity))
@@ -212,18 +223,22 @@ class _SpecialSum(EndomorphicOperator):
 
 class _Distributor(LinearOperator):
     def __init__(self, dofdex, domain, target):
-        self._dofdex = np.array(dofdex)
+        self._dofdex = AnyArray(np.array(dofdex))
         self._target = DomainTuple.make(target)
         self._domain = DomainTuple.make(domain)
         self._capability = self.TIMES | self.ADJOINT_TIMES
 
+    def _device_preparation(self, x, mode):
+        self._dofdex = self._dofdex.at(x.device_id)
+
     def apply(self, x, mode):
         self._check_input(x, mode)
+        self._device_preparation(x, mode)
         x = x.val
         if mode == self.TIMES:
             res = x[self._dofdex]
         else:
-            res = np.zeros(self._tgt(mode).shape, dtype=x.dtype)
+            res = np.zeros_like(x, shape=self._tgt(mode).shape, dtype=x.dtype)
             np.add.at(res, self._dofdex, x)
         return makeField(self._tgt(mode), res)
 
@@ -310,15 +325,15 @@ class _Amplitude(Operator):
         ps_expander = ContractionOperator(twolog.target, spaces=space).adjoint
 
         # Prepare constant fields
-        vflex = np.zeros(shp)
+        vflex = AnyArray(np.zeros(shp))
         vflex[0] = vflex[1] = np.sqrt(_log_vol(target[space]))
         vflex = DiagonalOperator(makeField(dom[space], vflex), dom, space)
 
-        vasp = np.zeros(shp, dtype=np.float64)
+        vasp = AnyArray(np.zeros(shp, dtype=np.float64))
         vasp[0] += 1
         vasp = DiagonalOperator(makeField(dom[space], vasp), dom, space)
 
-        shift = np.ones(shp)
+        shift = AnyArray(np.ones(shp))
         shift[0] = _log_vol(target[space])**2 / 12.
         shift = DiagonalOperator(makeField(dom[space], shift), dom, space)
         shift = shift(full(shift.domain, 1))
@@ -803,8 +818,8 @@ class CorrelatedFieldMaker:
             sc = StatCalculator()
             for _ in range(prior_info):
                 sc.add(op(from_random(op.domain, 'normal')))
-            mean = sc.mean.val
-            stddev = sc.var.ptw("sqrt").val
+            mean = sc.mean.asnumpy()
+            stddev = sc.var.ptw("sqrt").asnumpy()
             for m, s in zip(mean.flatten(), stddev.flatten()):
                 logger.info('{}: {:.02E} ± {:.02E}'.format(kk, m, s))
 
@@ -957,7 +972,7 @@ class CorrelatedFieldMaker:
         scm = 1.
         for a in self._a:
             op = a.fluctuation_amplitude * self.azm.ptw("reciprocal")
-            res = np.array([op(from_random(op.domain, 'normal')).val
+            res = np.array([op(from_random(op.domain, 'normal')).asnumpy()
                             for _ in range(nsamples)])
             scm *= res**2 + 1.
         return fluctuations_slice_mean / np.mean(np.sqrt(scm))
@@ -1009,7 +1024,7 @@ class CorrelatedFieldMaker:
         for s in samples:
             res = res + s.mean(spaces)**2
         res = res/len(samples)
-        return np.sqrt(res if np.isscalar(res) else res.val)
+        return np.sqrt(res if np.isscalar(res) else res.asnumpy())
 
     @staticmethod
     def total_fluctuation_realized(samples):
@@ -1032,7 +1047,7 @@ class CorrelatedFieldMaker:
         res1 = res1/len(samples)
         res2 = res2/len(samples)
         res = res1.mean(spaces) - res2.mean(spaces[:-1])
-        return np.sqrt(res if np.isscalar(res) else res.val)
+        return np.sqrt(res if np.isscalar(res) else res.asnumpy())
 
     @staticmethod
     def average_fluctuation_realized(samples, space):
@@ -1056,7 +1071,7 @@ class CorrelatedFieldMaker:
             r = s.mean(sub_spaces)
             res = res + (r - co.adjoint(co(r)/size))**2
         res = res.mean(spaces[0])/len(samples)
-        return np.sqrt(res if np.isscalar(res) else res.val)
+        return np.sqrt(res if np.isscalar(res) else res.asnumpy())
 
 
 def _check_dofdex(dofdex, total_N):

@@ -33,21 +33,21 @@ def test_vdot():
 def test_func():
     f1 = ift.from_random(domain=dom, random_type="normal", dtype=np.complex128)
     assert_allclose(
-        f1.ptw("exp").ptw("log")["d1"].val, f1["d1"].val)
+        f1.ptw("exp").ptw("log")["d1"].asnumpy(), f1["d1"].asnumpy())
 
 
 def test_multifield_field_consistency():
     f1 = ift.full(dom, 27)
-    f2 = ift.makeField(dom['d1'], f1['d1'].val)
+    f2 = ift.makeField(dom['d1'], f1['d1'].asnumpy())
     assert_equal(f1.s_sum(), f2.s_sum())
     assert_equal(f1.size, f2.size)
 
 
 def test_dataconv():
     f1 = ift.full(dom, 27)
-    f2 = ift.makeField(dom, f1.val)
+    f2 = ift.makeField(dom, f1.asnumpy())
     for key, val in f1.items():
-        assert_equal(val.val, f2[key].val)
+        assert_equal(val.asnumpy(), f2[key].asnumpy())
     if "d1" not in f2:
         raise KeyError()
     assert_equal({"d1": f1}, f2.to_dict())

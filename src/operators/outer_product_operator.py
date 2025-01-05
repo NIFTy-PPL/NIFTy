@@ -38,12 +38,15 @@ class OuterProduct(LinearOperator):
             tuple(sub_d for sub_d in field.domain._dom + self._domain._dom))
         self._capability = self.TIMES | self.ADJOINT_TIMES
 
+    def _device_preparation(self, x, mode):
+        self._field = self._field.at(x.device_id)
+
     def apply(self, x, mode):
         self._check_input(x, mode)
+        self._device_preparation(x, mode)
         if mode == self.TIMES:
-            return Field(
-                self._target, np.multiply.outer(
-                    self._field.val, x.val))
-        axes = len(self._field.shape)
-        return Field(
-            self._domain, np.tensordot(self._field.val, x.val, axes))
+            res = np.multiply.outer(self._field.val, x.val)
+        else:
+            axes = len(self._field.shape)
+            res = np.tensordot(self._field.val, x.val, axes)
+        return Field(self._tgt(mode), res)

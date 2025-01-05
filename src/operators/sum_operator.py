@@ -201,7 +201,7 @@ class SumOperator(LinearOperator):
                 res = res.flexible_addsub(tmp, neg)
         return res
 
-    def draw_sample(self, from_inverse=False):
+    def draw_sample(self, from_inverse=False, device_id=-1):
         if from_inverse:
             raise NotImplementedError(
                 "cannot draw from inverse of this operator")
@@ -210,7 +210,7 @@ class SumOperator(LinearOperator):
             from .simple_linear_operators import NullOperator
             if isinstance(op, NullOperator):
                 continue
-            tmp = op.draw_sample(from_inverse)
+            tmp = op.draw_sample(from_inverse, device_id)
             res = tmp if res is None else res.unite(tmp)
         return res
 

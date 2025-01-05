@@ -113,9 +113,9 @@ class MeanFieldVI:
     def KL(self):
         return self._KL
 
-    def draw_sample(self):
+    def draw_sample(self, device_id=-1):
         _, op = self._generator.simplify_for_constant_input(
-                from_random(self._samdom))
+                from_random(self._samdom, device_id=device_id))
         return op(self._KL.position)
 
     def minimize(self, minimizer):
@@ -209,9 +209,9 @@ class FullCovarianceVI:
     def KL(self):
         return self._KL
 
-    def draw_sample(self):
+    def draw_sample(self, device_id=-1):
         _, op = self._generator.simplify_for_constant_input(
-                from_random(self._samdom))
+                from_random(self._samdom, device_id=device_id))
         return op(self._KL.position)
 
     def minimize(self, minimizer):
@@ -273,7 +273,7 @@ class LowerTriangularInserter(LinearOperator):
         self._check_input(x, mode)
         x = x.val
         if mode == self.TIMES:
-            res = np.zeros(self._target.shape)
+            res = np.zeros_like(x, shape=self._target.shape)
             res[self._indices] = x
         else:
             res = x[self._indices].reshape(self._domain.shape)

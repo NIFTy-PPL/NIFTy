@@ -27,12 +27,12 @@ def test_conjugation_operator():
     dom = ift.makeDomain(sp)
     f = ift.from_random(dom, dtype=np.complex128)
     op = ift.ScalingOperator(sp, 1).conjugate()
-    arr = f.val
+    arr = f.asnumpy()
     res1 = f.conjugate()
     res2 = op(f)
     res3 = arr.conjugate()
-    assert_allclose(res1.val, res2.val)
-    assert_allclose(res1.val, res3)
+    assert_allclose(res1.asnumpy(), res2.asnumpy())
+    assert_allclose(res1.asnumpy(), res3)
     ift.extra.check_linear_operator(op, domain_dtype=np.float64,
                                     target_dtype=np.float64)
     ift.extra.check_linear_operator(op, domain_dtype=np.complex128,

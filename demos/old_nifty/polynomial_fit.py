@@ -36,7 +36,7 @@ def polynomial(coefficients, sampling_points):
     if not (isinstance(coefficients, ift.Field)
             and isinstance(sampling_points, np.ndarray)):
         raise TypeError
-    params = coefficients.val
+    params = coefficients.asnumpy()
     out = np.zeros_like(sampling_points)
     for ii in range(len(params)):
         out += params[ii] * sampling_points**ii
@@ -71,7 +71,7 @@ class PolynomialResponse(ift.LinearOperator):
         self._check_input(x, mode)
         m = self._mat
         f = m if mode == self.TIMES else m.conj().T
-        return ift.makeField(self._tgt(mode), f.dot(x.val))
+        return ift.makeField(self._tgt(mode), f.dot(x.asnumpy()))
 
 
 def mock_fct(x):
@@ -140,8 +140,8 @@ def main():
     plt.close()
 
     # Print parameters
-    mean = sc.mean.val
-    sigma = np.sqrt(sc.var.val)
+    mean = sc.mean.asnumpy()
+    sigma = np.sqrt(sc.var.asnumpy())
     for ii in range(len(mean)):
         print('Coefficient x**{}: {:.2E} +/- {:.2E}'.format(ii, mean[ii], sigma[ii]))
 

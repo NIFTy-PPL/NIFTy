@@ -134,11 +134,10 @@ def main():
     n_iterations = 6
     n_samples = lambda iiter: 10 if iiter < 5 else 20
     # TODO Write callback for nice plots
-    samples = ift.optimize_kl(likelihood_energy, n_iterations, n_samples,
-                              minimizer, ic_sampling, minimizer_sampling,
+    samples = ift.optimize_kl(likelihood_energy, n_iterations, n_samples, minimizer, ic_sampling,
+                              nonlinear_sampling_minimizer=minimizer_sampling,
                               export_operator_outputs={"signal": signal},
-                              output_directory="getting_started_3_results",
-                              comm=comm)
+                              output_directory="getting_started_3_results", comm=comm)
 
     if True:
         # Load result from disk. May be useful for long inference runs, where

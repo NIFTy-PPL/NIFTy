@@ -17,6 +17,7 @@
 
 import numpy as np
 
+from ..any_array import AnyArray
 from ..domain_tuple import DomainTuple
 from ..domains.dof_space import DOFSpace
 from ..domains.power_space import PowerSpace
@@ -64,18 +65,18 @@ class DOFDistributor(LinearOperator):
         if partner != dofdex.domain[0]:
             raise ValueError("incorrect dofdex domain")
 
-        ldat = dofdex.val
+        ldat = dofdex.asnumpy()
         if ldat.size == 0:  # can happen for weird configurations
             nbin = 0
         else:
             nbin = ldat.max()
         nbin = nbin + 1
         if partner.scalar_dvol is not None:
-            wgt = np.bincount(dofdex.val.ravel(), minlength=nbin)
+            wgt = np.bincount(dofdex.asnumpy().ravel(), minlength=nbin)
             wgt = wgt*partner.scalar_dvol
         else:
-            dvol = Field.from_raw(partner, partner.dvol).val
-            wgt = np.bincount(dofdex.val.ravel(),
+            dvol = Field.from_raw(partner, partner.dvol).asnumpy()
+            wgt = np.bincount(dofdex.asnumpy().ravel(),
                               minlength=nbin, weights=dvol)
         # The explicit conversion to float64 is necessary because bincount
         # sometimes returns its result as an integer array, even when
@@ -84,7 +85,7 @@ class DOFDistributor(LinearOperator):
         if (wgt == 0).any():
             raise ValueError("empty bins detected")
 
-        self._init2(dofdex.val, space, DOFSpace(wgt))
+        self._init2(dofdex.asnumpy(), space, DOFSpace(wgt))
 
     def _init2(self, dofdex, space, other_space):
         self._space = space
@@ -93,7 +94,7 @@ class DOFDistributor(LinearOperator):
         self._domain = DomainTuple.make(dom)
         self._capability = self.TIMES | self.ADJOINT_TIMES
 
-        self._dofdex = dofdex.ravel()
+        self._dofdex = AnyArray(dofdex.ravel())
         firstaxis = self._target.axes[self._space][0]
         lastaxis = self._target.axes[self._space][-1]
         arrshape = self._target.shape
@@ -105,21 +106,24 @@ class DOFDistributor(LinearOperator):
     def _adjoint_times(self, x):
         arr = x.val
         arr = arr.reshape(self._pshape)
-        oarr = np.zeros(self._hshape, dtype=x.dtype)
+        oarr = np.zeros_like(arr, shape=self._hshape, dtype=x.dtype)
         oarr = special_add_at(oarr, 1, self._dofdex, arr)
         oarr = oarr.reshape(self._domain.shape)
-        res = Field.from_raw(self._domain, oarr)
-        return res
+        return Field.from_raw(self._domain, oarr)
 
     def _times(self, x):
         arr = x.val
         arr = arr.reshape(self._hshape)
-        oarr = np.empty(self._pshape, dtype=x.dtype)
+        oarr = np.empty_like(arr, shape=self._pshape, dtype=x.dtype)
         oarr[()] = arr[(slice(None), self._dofdex, slice(None))]
         return Field(self._target, oarr.reshape(self._target.shape))
 
+    def _device_preparation(self, x, mode):
+        self._dofdex = self._dofdex.at(x.device_id)
+
     def apply(self, x, mode):
         self._check_input(x, mode)
+        self._device_preparation(x, mode)
         return self._times(x) if mode == self.TIMES else self._adjoint_times(x)
 
 

@@ -69,10 +69,11 @@ class ConstantOperator(Operator):
         self._output = output
 
     def apply(self, x):
-        from .simple_linear_operators import NullOperator
         self._check_input(x)
         if x.jac is not None:
-            return x.new(self._output, NullOperator(self._domain, self._target))
+            jac = NullOperator(self._domain, self._target,
+                               x.device_id, self._output.device_id)
+            return x.new(self._output, jac)
         return self._output
 
     def __repr__(self):
@@ -93,8 +94,12 @@ class ConstantEnergyOperator(EnergyOperator):
         self._check_input(x)
         if x.jac is not None:
             val = self._output
-            jac = NullOperator(self._domain, self._target)
-            met = NullOperator(self._domain, self._domain) if x.want_metric else None
+            jac = NullOperator(self._domain, self._target,
+                               default_domain_device_id=x.device_id)
+            met = None
+            if x.want_metric:
+                met = NullOperator(self._domain, self._domain,
+                                   x.device_id, x.device_id)
             return x.new(val, jac, met)
         return self._output
 
@@ -121,8 +126,11 @@ class InsertionOperator(Operator):
                              if kk not in cst_field.keys()})
         self._domain = vardom
         self._cst = cst_field
-        jac = {kk: ScalingOperator(vv, 1.) for kk, vv in self._domain.items()}
-        self._jac = BlockDiagonalOperator(self._domain, jac) + NullOperator(makeDomain({}), cstdom)
+        jac_var = {kk: ScalingOperator(vv, 1.) for kk, vv in self._domain.items()}
+        jac_var = BlockDiagonalOperator(self._domain, jac_var)
+        jac_cst = NullOperator(makeDomain({}), cstdom,
+                               default_target_device_id=cst_field.device_id)
+        self._jac = jac_var + jac_cst
 
     def apply(self, x):
         myassert(len(set(self._cst.keys()) & set(x.domain.keys())) == 0)

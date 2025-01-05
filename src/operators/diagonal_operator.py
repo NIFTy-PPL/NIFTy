@@ -12,12 +12,14 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Copyright(C) 2013-2025 Max-Planck-Society
+# Copyright(C) 2025 Philipp Arras
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 import numpy as np
 
 from .. import utilities
+from ..any_array import AnyArray
 from ..domain_tuple import DomainTuple
 from ..field import Field
 from .endomorphic_operator import EndomorphicOperator
@@ -26,14 +28,24 @@ from .endomorphic_operator import EndomorphicOperator
 # dependency and remove the try statement below
 try:
     from ducc0.misc.experimental import mul_conj, div_conj
-except ImportError:
-    def mul_conj(a, b, out=None):
-        out = a*b.conj()
-        return out
+    def mul_conj2(a, b):
+        assert a.device_id == b.device_id
+        if a.device_id == -1:
+            return AnyArray(mul_conj(a.val, b.val))
+        return a*b.conj()
 
-    def div_conj(a, b, out=None):
-        out = a/b.conj()
-        return out
+    def div_conj2(a, b):
+        assert a.device_id == b.device_id
+        if a.device_id == -1:
+            return AnyArray(div_conj(a.val, b.val))
+        return a/b.conj()
+
+except ImportError:
+    def mul_conj2(a, b):
+        return a*b.conj()
+
+    def div_conj2(a, b):
+        return a/b.conj()
 
 
 class DiagonalOperator(EndomorphicOperator):
@@ -110,10 +122,11 @@ class DiagonalOperator(EndomorphicOperator):
             self._ldiag = self._ldiag.reshape(self._reshaper)
         else:
             self._ldiag = diagonal.val
+        assert isinstance(self._ldiag, AnyArray)
         self._fill_rest()
 
     def _fill_rest(self):
-        self._ldiag.flags.writeable = False
+        self._ldiag.lock()
         self._complex = utilities.iscomplextype(self._ldiag.dtype)
         self._capability = self._all_ops
         if not self._complex:
@@ -136,8 +149,7 @@ class DiagonalOperator(EndomorphicOperator):
             res._spaces = None
         else:
             res._spaces = tuple(set(self._spaces) | set(spc))
-        utilities.myassert(isinstance(ldiag, np.ndarray))
-        res._ldiag = ldiag
+        res._ldiag = AnyArray(ldiag)
         res._fill_rest()
         return res
 
@@ -176,25 +188,29 @@ class DiagonalOperator(EndomorphicOperator):
         dtype = self._dtype if self._dtype == op._dtype else None
         return self._from_ldiag(op._spaces, tdiag, dtype, 0)
 
+    def _device_preparation(self, x, mode):
+        self._ldiag = self._ldiag.at(x.device_id)
+
     def apply(self, x, mode):
         self._check_input(x, mode)
         # To save both time and memory, we remap the `mode` (via `self._trafo`)
         # and do not compute and store a new `self._ldiag`s for adjoint, inverse
         # or adjoint-inverse DiagonalOperators.
+        self._device_preparation(x, mode)
         trafo = self._ilog[mode] ^ self._trafo
 
         if trafo == 0:  # straight application
             return Field(x.domain, x.val*self._ldiag)
 
         if trafo == 1:  # adjoint
-            return Field(x.domain, mul_conj(x.val, self._ldiag)
+            return Field(x.domain, mul_conj2(x.val, self._ldiag)
                                    if self._complex else x.val*self._ldiag)
 
         if trafo == 2:  # inverse
             return Field(x.domain, x.val/self._ldiag)
 
         # adjoint inverse
-        return Field(x.domain, div_conj(x.val, self._ldiag)
+        return Field(x.domain, div_conj2(x.val, self._ldiag)
             if self._complex else x.val/self._ldiag)
 
     def _flip_modes(self, trafo):
@@ -213,13 +229,13 @@ class DiagonalOperator(EndomorphicOperator):
             res = samp.val*np.sqrt(self._ldiag)
         return Field(self._domain, res)
 
-    def draw_sample(self, from_inverse=False):
+    def draw_sample(self, from_inverse=False, device_id=-1):
         if self._dtype is None:
             s = "Need to specify dtype to be able to sample from this operator:\n"
             s += self.__repr__()
             raise RuntimeError(s)
         res = Field.from_random(domain=self._domain, random_type="normal",
-                                dtype=self._dtype)
+                                dtype=self._dtype, device_id=device_id)
         return self.process_sample(res, from_inverse)
 
     def get_sqrt(self):

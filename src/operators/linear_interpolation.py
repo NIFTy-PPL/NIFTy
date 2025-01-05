@@ -12,6 +12,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Copyright(C) 2013-2019 Max-Planck-Society
+# Copyright(C) 2025 Philipp Arras
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -91,13 +92,35 @@ class LinearInterpolator(LinearOperator):
         self._mat = coo_matrix((data.reshape(-1),
                                 (ii.reshape(-1), jj.reshape(-1))),
                                (N_points, np.prod(self.domain.shape)))
-        self._mat = aslinearoperator(self._mat)
+        self._finalize_init()
+
+    def _finalize_init(self):
+        if isinstance(self._mat, coo_matrix):
+            from scipy.sparse.linalg import aslinearoperator
+            self._device_id = -1
+        else:
+            from cupyx.scipy.sparse.linalg import aslinearoperator
+            self._device_id = self._mat.data.device.id
+        self._sop = aslinearoperator(self._mat)
+
+    def _device_preparation(self, x, mode):
+        if x.device_id == self._device_id:
+            return
+        if self._device_id > -1:  # need gpu->cpu copy
+            self._mat = self._mat.get()
+        elif self._device_id == -1:  # need cpu->gpu copy
+            from cupyx.scipy.sparse import coo_matrix
+            self._mat = coo_matrix(self._mat)
+        else:
+            raise RuntimeError()
+        self._finalize_init()
 
     def apply(self, x, mode):
         self._check_input(x, mode)
-        x_val = x.val
+        self._device_preparation(x, mode)
+        x = x.raw
         if mode == self.TIMES:
-            res = self._mat.matvec(x_val.reshape(-1))
+            res = self._sop.matvec(x.reshape(-1))
         else:
-            res = self._mat.rmatvec(x_val).reshape(self.domain.shape)
+            res = self._sop.rmatvec(x).reshape(self.domain.shape)
         return Field(self._tgt(mode), res)

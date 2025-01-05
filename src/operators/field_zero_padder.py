@@ -79,7 +79,7 @@ class FieldZeroPadder(LinearOperator):
             if mode == self.TIMES:
                 shp = list(v.shape)
                 shp[d] = tgtshp[d]
-                xnew = np.zeros(shp, dtype=v.dtype)
+                xnew = np.zeros_like(v, shape=shp, dtype=v.dtype)
                 if self._central:
                     Nyquist = v.shape[d]//2
                     i1 = idx + (slice(0, Nyquist+1),)
@@ -97,7 +97,7 @@ class FieldZeroPadder(LinearOperator):
                 if self._central:
                     shp = list(v.shape)
                     shp[d] = tgtshp[d]
-                    xnew = np.zeros(shp, dtype=v.dtype)
+                    xnew = np.zeros_like(v, shape=shp, dtype=v.dtype)
                     Nyquist = xnew.shape[d]//2
                     i1 = idx + (slice(0, Nyquist+1),)
                     xnew[i1] = v[i1]

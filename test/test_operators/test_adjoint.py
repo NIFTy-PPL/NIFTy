@@ -164,12 +164,14 @@ def testHartley(sp, dtype):
 @pmp('sp', _h_spaces)
 def testHarmonic(sp, dtype):
     op = ift.HarmonicTransformOperator(sp)
-    ift.extra.check_linear_operator(op, dtype, dtype)
+    # Spherical harmonic transforms are always computed on CPU for now
+    ift.extra.check_linear_operator(op, dtype, dtype,
+                                    no_device_copies=isinstance(sp, ift.RGSpace))
 
 
 @pmp('sp', _p_spaces)
 def testMask(sp, dtype):
-    f = ift.from_random(sp).val
+    f = ift.from_random(sp).asnumpy()
     mask = np.zeros_like(f)
     mask[f > 0] = 1
     mask = ift.Field.from_raw(sp, mask)
@@ -183,9 +185,10 @@ def testScaling(sp, dtype, multi):
     dom = sp
     if multi:
         dom = {"foo": dom}
-    fct = ift.from_random(ift.DomainTuple.scalar_domain()).val[()]
-    op = ift.ScalingOperator(dom, fct)
-    ift.extra.check_linear_operator(op, dtype, dtype)
+    # TODO: Add 0 as test case as well
+    for fct in (1, ift.from_random(ift.DomainTuple.scalar_domain()).val[()]):
+        op = ift.ScalingOperator(dom, fct)
+        ift.extra.check_linear_operator(op, dtype, dtype)
 
 
 @pmp('sp', _h_spaces + _p_spaces)
@@ -205,7 +208,7 @@ def testExtractAtIndices(sp, dtype):
     n_ax = len(sp.shape)
     inds = (list(range(min_ax//2))+list(range(min_ax//3)), )*n_ax
     op = ift.ExtractAtIndices(sp, inds)
-    ift.extra.check_linear_operator(op, dtype, dtype)
+    ift.extra.check_linear_operator(op, dtype, dtype, no_device_copies=False)
 
 
 @pmp('spaces', [0, 1, 2, 3, (0, 1), (0, 2), (0, 1, 2), (0, 2, 3), (1, 3)])
@@ -213,7 +216,7 @@ def testExtractAtIndices(sp, dtype):
 def testContractionOperator(spaces, wgt, dtype):
     dom = (ift.RGSpace(1), ift.RGSpace(2), ift.GLSpace(3), ift.HPSpace(2))
     op = ift.ContractionOperator(dom, spaces, wgt)
-    ift.extra.check_linear_operator(op, dtype, dtype)
+    ift.extra.check_linear_operator(op, dtype, dtype, atol=1e-13, rtol=1e-13)
 
 
 def testDomainTupleFieldInserter():
@@ -399,21 +402,21 @@ def test_SqueezeOperator():
         # Field
         y = op(x)
         if aggressive:
-            np.testing.assert_allclose(x.val.squeeze(), y.val)
+            np.testing.assert_allclose(x.asnumpy().squeeze(), y.asnumpy())
         else:
-            np.testing.assert_allclose(x.val[:, :, :, :, 0], y.val)
-        np.testing.assert_allclose(x.squeeze(aggressive).val, y.val)
+            np.testing.assert_allclose(x.asnumpy()[:, :, :, :, 0], y.asnumpy())
+        np.testing.assert_allclose(x.squeeze(aggressive).asnumpy(), y.asnumpy())
         ift.extra.check_linear_operator(op)
 
         # Operator
         op1 = ift.ScalingOperator(dom, 2.).squeeze(aggressive)
         z = op1(x)*0.5
-        np.testing.assert_allclose(z.val, y.val)
+        np.testing.assert_allclose(z.asnumpy(), y.asnumpy())
         ift.extra.check_linear_operator(op1)
 
         # Linearization
         ylin = op(ift.Linearization.make_var(x))
-        np.testing.assert_allclose(ylin.val.val, y.val)
+        np.testing.assert_allclose(ylin.val.asnumpy(), y.asnumpy())
         ift.extra.check_linear_operator(ylin.jac)
 
         # Errors

@@ -11,13 +11,14 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2020 Max-Planck-Society
+# Copyright(C) 2013-2025 Max-Planck-Society
 # Author: Philipp Arras
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 import numpy as np
 
+from ..any_array import AnyArray
 from ..domain_tuple import DomainTuple
 from ..domains.power_space import PowerSpace
 from ..operators.adder import Adder
@@ -90,13 +91,13 @@ def SimpleCorrelatedField(
     if flexibility is not None:
         flex = LognormalTransform(*flexibility, prefix + 'flexibility', 0)
         dom = twolog.domain[0]
-        vflex = np.empty(dom.shape)
+        vflex = AnyArray(np.empty(dom.shape))
         vflex[0] = vflex[1] = np.sqrt(_log_vol(pspace))
         vflex = makeOp(makeField(dom, vflex))
         sig_flex = vflex @ expander @ flex
         xi = ducktape(dom, None, prefix + 'spectrum')
 
-        shift = np.empty(dom.shape)
+        shift = AnyArray(np.empty(dom.shape))
         shift[0] = _log_vol(pspace)**2 / 12.
         shift[1] = 1
         shift = makeField(dom, shift)

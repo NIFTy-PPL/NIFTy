@@ -49,7 +49,7 @@ def test_gridding(nxdirty, nydirty, N, eps):
     Op = ift.Gridder(dom, uv=uv, eps=eps)
     vis2 = ift.makeField(ift.UnstructuredDomain(vis.shape), vis)
 
-    pynu = Op(vis2).val
+    pynu = Op(vis2).asnumpy()
     # DFT
     x, y = np.meshgrid(
         *[-ss/2 + np.arange(ss) for ss in [nxdirty, nydirty]], indexing='ij')
@@ -74,14 +74,14 @@ def test_cartesian():
     op = ift.Gridder(dom, uv=uv).adjoint
 
     fld = ift.from_random(dom, 'normal')
-    arr = fld.val
+    arr = fld.asnumpy()
 
     fld2 = ift.makeField(dom, np.roll(arr, (nx//2, ny//2), axis=(0, 1)))
-    res = op(fld2).val.reshape(nx, ny)
+    res = op(fld2).asnumpy().reshape(nx, ny)
 
     fft = ift.FFTOperator(dom.get_default_codomain(), target=dom).adjoint
     vol = ift.full(dom, 1.).s_integrate()
-    res1 = fft(fld).val
+    res1 = fft(fld).asnumpy()
 
     np.testing.assert_allclose(res, res1*vol)
 
@@ -101,7 +101,7 @@ def test_build(nxdirty, nydirty, N, eps):
     # We set rtol=eps here, because the gridder operator only guarantees
     # adjointness to this accuracy.
     ift.extra.check_linear_operator(RF, cmplx, flt, only_r_linear=True,
-                                    rtol=eps, atol=eps)
+                                    rtol=eps, atol=eps, no_device_copies=False)
 
 
 @pmp('eps', [1e-2, 1e-4, 1e-7, 1e-10, 1e-11, 1e-12, 2e-13])
@@ -121,7 +121,7 @@ def test_nu1d(nxdirty, N, eps):
     pos = pos / dstx
     Op = ift.Nufft(dom, pos=pos[:, None], eps=eps)
     vis2 = ift.makeField(ift.UnstructuredDomain(vis.shape), vis)
-    pynu = Op(vis2).val
+    pynu = Op(vis2).asnumpy()
     # DFT
     x = -nxdirty/2 + np.arange(nxdirty)
 
@@ -151,7 +151,7 @@ def test_nu2d(nxdirty, nydirty, N, eps):
     Op = ift.Nufft(dom, pos=uv, eps=eps)
     vis2 = ift.makeField(ift.UnstructuredDomain(vis.shape), vis)
 
-    pynu = Op(vis2).val
+    pynu = Op(vis2).asnumpy()
     # DFT
     x, y = np.meshgrid(
         *[-ss/2 + np.arange(ss) for ss in [nxdirty, nydirty]], indexing='ij')
@@ -180,7 +180,7 @@ def test_nu3d(nxdirty, nydirty, nzdirty, N, eps):
     Op = ift.Nufft(dom, pos=pos, eps=eps)
     vis2 = ift.makeField(ift.UnstructuredDomain(vis.shape), vis)
 
-    pynu = Op(vis2).val
+    pynu = Op(vis2).asnumpy()
     # DFT
     x, y, z = np.meshgrid(
         *[-ss/2 + np.arange(ss) for ss in [nxdirty, nydirty, nzdirty]], indexing='ij')
@@ -202,4 +202,4 @@ def test_build_nufft(space, N, eps):
     flt = np.float64
     cmplx = np.complex128
     ift.extra.check_linear_operator(RF, cmplx, flt, only_r_linear=True,
-                                    rtol=eps, atol=eps)
+                                    rtol=eps, atol=eps, no_device_copies=False)

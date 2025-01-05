@@ -12,6 +12,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Copyright(C) 2013-2022 Max-Planck-Society
+# Copyright(C) 2025 Philipp Arras
 # Author: Philipp Arras
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
@@ -31,7 +32,7 @@ from ..sugar import makeOp
 
 def _f_on_np(f, arr):
     fld = Field.from_raw(UnstructuredDomain(arr.shape), arr)
-    return f(fld).val
+    return f(fld).asnumpy()
 
 
 class _InterpolationOperator(Operator):
@@ -74,20 +75,44 @@ class _InterpolationOperator(Operator):
             a1 = _f_on_np(lambda x: inv_table_func(table_func(x)), a)
             np.testing.assert_allclose(a, a1)
             self._table = _f_on_np(table_func, self._table)
-        self._interpolator = CubicSpline(self._xs, self._table)
-        self._deriv = self._interpolator.derivative()
         self._inv_table_func = inv_table_func
+        self._finalize_init()
+
+    def _finalize_init(self):
+        if isinstance(self._xs, np.ndarray) and isinstance(self._table, np.ndarray):
+            self._interpolator = CubicSpline(self._xs, self._table)
+        # elif device_available():
+        #     import cupy
+        #     from cupyx.scipy.interpolate import CubicSpline as CuCubicSpline
+        #     if isinstance(self._xs, cupy.ndarray) and isinstance(self._table, cupy.ndarray):
+        #         self._interpolator = CuCubicSpline(self._xs, self._table)
+        #     else:
+        #         raise RuntimeError
+        else:
+            raise RuntimeError
+        self._deriv = self._interpolator.derivative()
+
+    # def _device_preparation(self, x):
+    #     # Scipy cannot work directly with AnyArrays, therefore store np or cupy arrays
+    #     self._xs = AnyArray(self._xs).at(x.device_id)._val
+    #     self._table = AnyArray(self._table).at(x.device_id)._val
+    #     self._finalize_init()
 
     def apply(self, x):
+        # TODO: Check if new Cupy version with CubicSpline has been released
         self._check_input(x)
+        device_id = x.device_id  # Temporary
+        x = x.at(-1)  # Temporary
+        # self._device_preparation(x)
         lin = x.jac is not None
-        xval = x.val.val if lin else x.val
+        xval = x.val.raw if lin else x.raw
         res = self._interpolator(xval)
         res = Field(self._domain, res)
         if lin:
             res = x.new(res, makeOp(Field(self._domain, self._deriv(xval))))
         if self._inv_table_func is not None:
             res = self._inv_table_func(res)
+        res = res.at(device_id)  # Temporary
         return res
 
 
@@ -347,6 +372,12 @@ class LaplaceOperator(Operator):
     loc : float
 
     scale : float
+
+    Note
+    ----
+    If this operator is called on inputs stored on device, it will copy them to
+    host, perform the operations with the CPU and copy back. This is done since
+    Cupy does not support stats.laplace yet.
     """
     def __init__(self, domain, loc=0, scale=1):
         self._target = self._domain = DomainTuple.make(domain)
@@ -354,18 +385,20 @@ class LaplaceOperator(Operator):
         self._scale = float(scale)
 
     def apply(self, x):
+        # TODO: Check if cupy supports stats.laplace
         self._check_input(x)
         lin = x.jac is not None
-        xval = x.val.val if lin else x.val
+        xval = x.val.asnumpy() if lin else x.asnumpy()
         res = Field(self._target, laplace.ppf(norm._cdf(xval), self._loc, self._scale))
+        res = res.at(x.device_id)
         if not lin:
             return res
         y = norm._cdf(xval)
         y = self._scale * np.where(y > 0.5, 1/(1-y), 1/y)
-        jac = makeOp(Field(self.domain, y*norm._pdf(xval)))
+        jac = makeOp(Field(self.domain, y*norm._pdf(xval)).at(x.device_id))
         return x.new(res, jac)
 
     def inverse(self, x):
-        res = laplace.cdf(x.val, self._loc, self._scale)
+        res = laplace.cdf(x.asnumpy(), self._loc, self._scale)
         res = norm._ppf(res)
-        return Field(x.domain, res)
+        return Field(x.domain, res).at(x.device_id)

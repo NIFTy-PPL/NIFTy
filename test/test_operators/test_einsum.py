@@ -49,9 +49,9 @@ def test_linear_einsum_outer(space1, space2, dtype, n_invocations=10):
 
     for _ in range(n_invocations):
         r = ift.from_random(le.domain, "normal", dtype=dtype)
-        assert_allclose(le(r).val, le_ift(r).val)
+        assert_allclose(le(r).asnumpy(), le_ift(r).asnumpy())
         r_adj = ift.from_random(le.target, "normal", dtype=dtype)
-        assert_allclose(le.adjoint(r_adj).val, le_ift.adjoint(r_adj).val)
+        assert_allclose(le.adjoint(r_adj).asnumpy(), le_ift.adjoint(r_adj).asnumpy())
 
 
 def test_linear_einsum_contraction(space1, space2, dtype, n_invocations=10):
@@ -72,9 +72,9 @@ def test_linear_einsum_contraction(space1, space2, dtype, n_invocations=10):
 
     for _ in range(n_invocations):
         r = ift.from_random(le.domain, "normal", dtype=dtype)
-        assert_allclose(le(r).val, le_ift(r).val)
+        assert_allclose(le(r).asnumpy(), le_ift(r).asnumpy())
         r_adj = ift.from_random(le.target, "normal", dtype=dtype)
-        assert_allclose(le.adjoint(r_adj).val, le_ift.adjoint(r_adj).val)
+        assert_allclose(le.adjoint(r_adj).asnumpy(), le_ift.adjoint(r_adj).asnumpy())
 
 
 class _SwitchSpacesOperator(ift.LinearOperator):
@@ -107,7 +107,7 @@ class _SwitchSpacesOperator(ift.LinearOperator):
         args = self._axes_dom, self._axes_tgt
         if mode == self.ADJOINT_TIMES:
             args = args[::-1]
-        return ift.Field(self._tgt(mode), np.moveaxis(x.val, *args))
+        return ift.Field(self._tgt(mode), np.moveaxis(x.asnumpy(), *args))
 
 
 def test_linear_einsum_transpose(space1, space2, dtype, n_invocations=10):
@@ -122,9 +122,9 @@ def test_linear_einsum_transpose(space1, space2, dtype, n_invocations=10):
 
     for _ in range(n_invocations):
         r = ift.from_random(le.domain, "normal", dtype=dtype)
-        assert_allclose(le(r).val, le_ift(r).val)
+        assert_allclose(le(r).asnumpy(), le_ift(r).asnumpy())
         r_adj = ift.from_random(le.target, "normal", dtype=dtype)
-        assert_allclose(le.adjoint(r_adj).val, le_ift.adjoint(r_adj).val)
+        assert_allclose(le.adjoint(r_adj).asnumpy(), le_ift.adjoint(r_adj).asnumpy())
 
 
 def test_multi_linear_einsum_outer(space1, space2, dtype):
@@ -154,11 +154,11 @@ def test_multi_linear_einsum_outer(space1, space2, dtype):
     for _ in range(n_invocations):
         rl = ift.Linearization.make_var(ift.from_random(mle.domain, "normal", dtype=dtype))
         mle_rl, mle_ift_rl = mle(rl), mle_ift(rl)
-        assert_allclose(mle_rl.val.val, mle_ift_rl.val.val)
-        assert_allclose(mle_rl.jac(rl.val).val, mle_ift_rl.jac(rl.val).val)
+        assert_allclose(mle_rl.val.asnumpy(), mle_ift_rl.val.asnumpy())
+        assert_allclose(mle_rl.jac(rl.val).asnumpy(), mle_ift_rl.jac(rl.val).asnumpy())
 
         rj_adj = ift.from_random(mle_rl.jac.target, "normal", dtype=dtype)
-        mle_j_val = mle_rl.jac.adjoint(rj_adj).val
-        mle_ift_j_val = mle_ift_rl.jac.adjoint(rj_adj).val
+        mle_j_val = mle_rl.jac.adjoint(rj_adj).asnumpy()
+        mle_ift_j_val = mle_ift_rl.jac.adjoint(rj_adj).asnumpy()
         for k in mle_ift.domain.keys():
             assert_allclose(mle_j_val[k], mle_ift_j_val[k])

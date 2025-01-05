@@ -79,7 +79,7 @@ def _eigsh(
     metric_size = metric.domain.size
     M = ssl.LinearOperator(
         shape=2 * (metric_size,),
-        matvec=lambda x: metric(makeField(metric.domain, x)).val,
+        matvec=lambda x: metric(makeField(metric.domain, x)).asnumpy(),
         dtype=dtype,
     )
     eigenvectors = None
@@ -316,7 +316,9 @@ def estimate_evidence_lower_bound(
     if verbose:
         s = (
             f"\nELBO decomposition (in log units)"
-            f"\nELBO mean : {elbo_mean.val:.4e} (upper: {elbo_up.val:.4e}, lower: {elbo_lw.val:.4e})"
+            f"\nELBO mean : {elbo_mean.asnumpy():.4e} "
+            f"(upper: {elbo_up.asnumpy():.4e}, "
+            f"lower: {elbo_lw.asnumpy():.4e})"
         )
         logger.info(s)
 

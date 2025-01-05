@@ -12,6 +12,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Copyright(C) 2013-2019 Max-Planck-Society
+# Copyright(C) 2025 Philipp Arras
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -58,9 +59,10 @@ class DomainTupleFieldInserter(LinearOperator):
 
     def apply(self, x, mode):
         self._check_input(x, mode)
+        x = x.val
         if mode == self.TIMES:
-            res = np.zeros(self.target.shape, dtype=x.dtype)
-            res[self._slc] = x.val
+            res = np.zeros_like(x, shape=self.target.shape, dtype=x.dtype)
+            res[self._slc] = x
             return Field(self.target, res)
         else:
-            return Field(self.domain, x.val[self._slc])
+            return Field(self.domain, x[self._slc])

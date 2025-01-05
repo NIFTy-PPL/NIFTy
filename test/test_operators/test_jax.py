@@ -36,14 +36,14 @@ def test_jax(dom, func):
     pytest.importorskip("jax")
     loc = ift.from_random(dom)
     f, linear = func
-    res0 = np.array(f(loc.val))
+    res0 = np.array(f(loc.asnumpy()))
     op = ift.JaxOperator(dom, dom, f)
-    np.testing.assert_allclose(res0, op(loc).val)
-    ift.extra.check_operator(op, ift.from_random(op.domain))
+    np.testing.assert_allclose(res0, op(loc).asnumpy())
+    ift.extra.check_operator(op, ift.from_random(op.domain), assert_fixed_device=False)
 
     op = ift.JaxLinearOperator(dom, dom, f, np.float64)
     if linear:
-        ift.extra.check_linear_operator(op)
+        ift.extra.check_linear_operator(op, assert_fixed_device=False)
     else:
         with pytest.raises(Exception):
             ift.extra.check_linear_operator(op)
@@ -56,15 +56,15 @@ def test_mf_jax():
     func = lambda x: x["a"]*x["b"][0]
     op = ift.JaxOperator(dom, dom["a"], func)
     loc = ift.from_random(op.domain)
-    np.testing.assert_allclose(np.array(func(loc.val)), op(loc).val)
-    ift.extra.check_operator(op, loc)
+    np.testing.assert_allclose(np.array(func(loc.asnumpy())), op(loc).asnumpy())
+    ift.extra.check_operator(op, loc, assert_fixed_device=False)
 
     func = lambda x: {"a": jnp.full(dom["a"].shape, 2.)*x[0]*x[1], "b": jnp.full(dom["b"].shape, 1.)*jnp.exp(x[0])}
     op = ift.JaxOperator(dom["b"], dom, func)
     loc = ift.from_random(op.domain)
     for kk in dom.keys():
-        np.testing.assert_allclose(np.array(func(loc.val)[kk]), op(loc)[kk].val)
-    ift.extra.check_operator(op, loc)
+        np.testing.assert_allclose(np.array(func(loc.asnumpy())[kk]), op(loc)[kk].asnumpy())
+    ift.extra.check_operator(op, loc, assert_fixed_device=False)
 
 
 @pmp("dom", [ift.RGSpace((10, 8)),
@@ -125,13 +125,15 @@ def test_jax_complex():
     op1 = ift.JaxOperator(op.domain, op.target, lambda x: x["a"] + 1j*x["b"])
     _op_equal(op, op1, ift.from_random(op.domain))
     ift.extra.check_operator(op, ift.from_random(op.domain), ntries=10)
-    ift.extra.check_operator(op1, ift.from_random(op.domain), ntries=10)
+    ift.extra.check_operator(op1, ift.from_random(op.domain), ntries=10,
+                             assert_fixed_device=False)
 
     op = op.imag
     op1 = op1.imag
     _op_equal(op, op1, ift.from_random(op.domain))
     ift.extra.check_operator(op, ift.from_random(op.domain), ntries=10)
-    ift.extra.check_operator(op1, ift.from_random(op.domain), ntries=10)
+    ift.extra.check_operator(op1, ift.from_random(op.domain), ntries=10,
+                             assert_fixed_device=False)
 
     lin = ift.Linearization.make_var(ift.from_random(op.domain))
     test_vec = ift.full(op.target, 1.)
