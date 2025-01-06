@@ -668,9 +668,10 @@ class Field(Operator):
         return "<nifty8.Field>"
 
     def __str__(self):
-        return "nifty8.Field instance\n- domain      = " + \
-               self._domain.__str__() + \
-               "\n- val         = " + repr(self._val)
+        return "\n".join(["nifty8.Field instance",
+                          f"- domain      = {self._domain.__str__()}",
+                          f"- val         = {repr(self._val)}",
+                          f"- nbytes      = {self._val.nbytes*1e-6:.3f} MB"])
 
     def extract(self, dom):
         utilities.check_object_identity(dom, self._domain)
