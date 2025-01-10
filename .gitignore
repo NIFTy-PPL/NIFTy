@@ -1,10 +1,15 @@
 # nix-related
 result
 .nix-nifty-venv
+.direnv
+demos/result*
 
-docs/source/user/getting_started_0.rst
-docs/source/user/custom_nonlinearities.rst
-docs/source/user/getting_started_4_CorrelatedFields.rst
+docs/source/user/0_intro.md
+docs/source/user/old_nifty_custom_nonlinearities.md
+docs/source/user/old_nifty/getting_started_0.md
+docs/source/user/old_nifty/getting_started_4_CorrelatedFields.md
+docs/source/user/results_intro/
+docs/source/user/results_intro_full_reconstruction.png
 docs/source/user/*.ipynb
 
 # custom
@@ -25,7 +30,6 @@ setup.cfg
 *.csv
 .pytest_cache/
 *.png
-!docs/source/user/*.png
 
 # from https://github.com/github/gitignore/blob/master/Python.gitignore
 

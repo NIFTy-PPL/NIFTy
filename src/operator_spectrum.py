@@ -18,6 +18,7 @@ import scipy.sparse.linalg as ssl
 
 from .domain_tuple import DomainTuple
 from .domains.unstructured_domain import UnstructuredDomain
+from .extra import myassert
 from .field import Field
 from .multi_domain import MultiDomain
 from .multi_field import MultiField
@@ -74,13 +75,7 @@ class _DomRemover(LinearOperator):
     def _check_float_dtype(fld):
         if isinstance(fld, MultiField):
             dts = [ff.dtype for ff in fld.values()]
-        elif isinstance(fld, Field):
-            dts = [fld.dtype]
-        else:
-            raise TypeError
-        for dt in dts:
-            if not np.issubdtype(dt, np.float64):
-                raise TypeError('Operator supports only floating point dtypes')
+            myassert(all(map(lambda x: x == dts[0], dts)))
 
 
 def operator_spectrum(A, k, hermitian, which='LM', tol=0, return_eigenvectors=False):
