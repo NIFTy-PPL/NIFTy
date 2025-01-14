@@ -444,6 +444,7 @@ def build_default_mf_model(
     spectral_amplitude_model: str = "non_parametric",
     harmonic_type: str = 'fourier',
     dtype: type = jnp.float64,
+    nonlinearity: callable = jnp.exp,
 ) -> CorrelatedMultiFrequencySky:
     """
     Builds a multi-frequency sky model parametrized as
@@ -540,6 +541,9 @@ def build_default_mf_model(
     dtype: type
         The type of the parameters.
 
+    nonlinearity: callable
+        The nonlinearity of the multifrequency model, exp (default).
+
     Returns
     -------
     model: CorrelatedMultiFrequencySky
@@ -611,4 +615,5 @@ def build_default_mf_model(
         spectral_index_deviations=deviations_model,
         log_ref_freq_mean_model=log_reference_frequency_mean_model,
         dtype=dtype,
+        nonlinearity=nonlinearity,
     )
