@@ -10,10 +10,22 @@ from jax.tree_util import Partial
 
 from . import conjugate_gradient
 from .logger import logger
-from .misc import conditional_call, conditional_raise, doc_from
-from .tree_math import PyTreeString, assert_arithmetics, hide_strings
+from .misc import (
+    conditional_call,
+    conditional_raise,
+    doc_from,
+    safeguard_arguments_against_accidental_calls_into_jax,
+)
+from .tree_math import (
+    PyTreeString,
+    assert_arithmetics,
+    hide_strings,
+    result_type,
+    size,
+    vdot,
+    where,
+)
 from .tree_math import norm as jft_norm
-from .tree_math import result_type, size, vdot, where
 
 
 class OptimizeResults(NamedTuple):
@@ -106,6 +118,7 @@ def static_newton_cg(fun=None, x0=None, *args, **kwargs):
     return _static_newton_cg(fun, x0, *args, **kwargs).x
 
 
+@safeguard_arguments_against_accidental_calls_into_jax
 def _ncg_pretty_print_it(
     name,
     i,
@@ -584,6 +597,7 @@ def _trust_ncg(
         old_fval=old_fval,
     )
 
+    @safeguard_arguments_against_accidental_calls_into_jax
     def pp(arg):
         i = arg["i"]
         msg = (
