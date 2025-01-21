@@ -393,3 +393,172 @@ def HPLogRGrid(
         depth=depth,
     )
     return MGrid(grid_hp, grid_r, atLevel=atLevel)
+
+
+class BrokenLogarithmicGridAtLevel(SimpleOpenGridAtLevel):
+    def __init__(
+        self,
+        *args,
+        alpha,
+        beta,
+        gamma,
+        delta,
+        epsilon,
+        r_min,
+        r_0,
+        r_max,
+        rg_min,
+        rg_0,
+        rg_max,
+        **kwargs,
+    ):
+        self.alpha = alpha
+        self.beta = beta
+        self.gamma = gamma
+        self.delta = delta
+        self.epsilon = epsilon
+        self._r_min = r_min
+        self._r_0 = r_0
+        self._r_max = r_max
+        self.rg_min = rg_min
+        self.rg_0 = rg_0
+        self.rg_max = rg_max
+        super().__init__(*args, **kwargs)
+
+    @property
+    def r_min(self):
+        return self.index2coord(np.array([-0.5]))
+
+    @property
+    def r_max(self):
+        return self.index2coord(np.array([self.shape[0] - 0.5]))
+
+    def index2coord(self, index):
+        # map to in-between 0 and 1
+        coord = super().index2coord(index)
+        # map to in-between r_min and r_max
+        condlist = [
+            coord < self.rg_min,
+            jnp.logical_and(self.rg_min <= coord, coord < self.rg_0),
+            jnp.logical_and(self.rg_0 <= coord, coord < self.rg_max),
+            self.rg_max <= coord,
+        ]
+        funclist = [
+            lambda rg: self.gamma / (rg - self.delta),
+            lambda rg: self._r_min + self.alpha * (rg - self.rg_min),
+            lambda rg: self._r_0 * jnp.exp(self.beta * (rg - self.rg_0)),
+            lambda rg: self._r_max + self.epsilon * (rg - self.rg_max),
+        ]
+        return jnp.piecewise(coord, condlist, funclist)
+
+    def coord2index(self, coord, dtype=np.uint64):
+        # map to in-between 0 and 1
+        condlist = [
+            coord < self._r_min,
+            jnp.logical_and(self._r_min <= coord, coord < self._r_0),
+            jnp.logical_and(self._r_0 <= coord, coord < self._r_max),
+            self._r_max <= coord,
+        ]
+        funclist = [
+            lambda r: self.delta + self.gamma / r,
+            lambda r: self.rg_min + (r - self._r_min) / self.alpha,
+            lambda r: self.rg_0 + jnp.log(r / self._r_0) / self.beta,
+            lambda r: self.rg_max + (r - self._r_max) / self.epsilon,
+        ]
+        coord = jnp.piecewise(coord, condlist, funclist)
+        # transform to index
+        return super().coord2index(self, coord, dtype=dtype)
+
+    def index2volume(self, index):
+        # FIXME: Also LogarithmicGrid
+        a = (slice(None),) + (np.newaxis,) * index.ndim
+        coords = super().index2coord(index + jnp.array([-0.5, 0.5])[a])
+        return jnp.prod(coords[1] - coords[0], axis=0)
+
+
+def BrokenLogarithmicGrid(
+    *,
+    r_min: float,
+    r_0: float,
+    r_max: float,
+    distances=None,
+    **kwargs,
+) -> OpenGrid:
+    """Broken logarithmic grid on top of `SimpleOpenGrid` spanning from `r_min` to `r_max`
+    at the final depth.
+    The grid is parametrised by three radii: r_min, r_0, and r_max.
+    For values below rmin, the (padded) pixels are spaced antilinearly (1/r).
+    Between rmin and r0 they are spaced linearly (r).
+    Between r0 and rmax they are spaced logarithmically (exp(r)).
+    Above rmax they are spaced linearly (r).
+    """
+    if distances is not None:
+        raise ValueError("`distances` are incompatible with a logarithmic grid")
+    if r_min <= 0.0 or r_max <= r_min:  # TODO: fix >= also in LogGrid
+        raise ValueError(f"invalid r_min {r_min!r} or r_max {r_max!r}")
+    if r_0 < r_min or r_max <= r_0:
+        raise ValueError(f"invalid r_0 {r_0!r}")
+
+    # This parametrisation is technically capable of handling a transformation
+    # from arbitrary rg_min and rg_max, but in accordance to the LogarithmicGrid,
+    # we can fix them to 0 and 1 and use the parent class for mapping them there.
+    rg_min = 0.0
+    rg_max = 1.0
+    m = (1.0 - r_min / r_0) / (jnp.log(r_max / r_0))
+    rg_0 = rg_min / (1 + m) + rg_max * m / (1 + m)
+    alpha = r_0 / (rg_max - rg_0) * jnp.log(r_max / r_0)
+    beta = alpha / r_0
+    gamma = -(r_min**2) / alpha
+    delta = rg_min + r_min / alpha
+    epsilon = r_0 * beta * jnp.exp(beta * (rg_max - rg_0))
+
+    return SimpleOpenGrid(
+        **kwargs,
+        atLevel=partial(
+            BrokenLogarithmicGridAtLevel,
+            alpha=alpha,
+            beta=beta,
+            gamma=gamma,
+            delta=delta,
+            epsilon=epsilon,
+            r_min=r_min,
+            r_0=r_0,
+            r_max=r_max,
+            rg_min=rg_min,
+            rg_0=rg_0,
+            rg_max=rg_max,
+        ),
+    )
+
+
+def HPBrokenLogRGrid(
+    min_shape: Optional[Tuple[int, int]] = None,
+    *,
+    nside: Optional[int] = None,
+    r_min_shape: Optional[int] = None,
+    r_min,
+    r_0,
+    r_max,
+    r_window_size=3,
+    nside0=16,
+    atLevel=HPLogRGridAtLevel,
+) -> MGrid:
+    """Meshgrid of a HEALPix grid and a broken logarithmic grid.
+
+    See `HEALPixGrid` and `BrokenLogarithmicGrid`."""
+    if r_min_shape is None and nside is None:
+        hp_size, r_min_shape = min_shape
+        nside = (hp_size / 12) ** 0.5
+    depth = np.log2(nside / nside0)
+    assert depth == int(depth)
+    depth = int(depth)
+    grid_hp = HEALPixGrid(nside0=nside0, depth=depth)
+    grid_r = BrokenLogarithmicGrid(
+        min_shape=r_min_shape,
+        r_min=r_min,
+        r_0=r_0,
+        r_max=r_max,
+        window_size=r_window_size,
+        depth=depth,
+    )
+    return MGrid(grid_hp, grid_r, atLevel=atLevel)
