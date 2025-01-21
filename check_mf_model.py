@@ -122,6 +122,7 @@ if spectral_deviations is not None:
 plt.show()
 
 exit()
+
 polynomial_order = 2
 fluctuations = [
     _build_fluctuations_model(

@@ -6,7 +6,6 @@ from abc import ABC, abstractmethod
 from functools import reduce
 
 import numpy as np
-# from numpy.typing import ArrayLike
 
 import jax
 import jax.numpy as jnp
@@ -51,39 +50,15 @@ class LogSpectralBehavior(Model, ABC):
 
 
 class SingleLogSpectralBehavior(LogSpectralBehavior, ABC):
-    '''Abstract base class for a model with single spectral behavior. 
-    Hence, mean is a single number and fluctations is an Array. '''
-    @property
-    @abstractmethod
-    def relative_log_frequencies(self):
-        '''The spectral axis is fixed to be the first index of the output of
-        the model. The `relative_log_frequencies` cast the output arrays of the
-        models to conform with this convention by following the numpy casting
-        conventions.'''
-        pass
+    '''Abstract base class for a model with single spectral behavior.
+    Hence, mean is a single number and fluctations is an Array.
 
-    @abstractmethod
-    def mean(self, p) -> ArrayLike:
-        pass
-
-    @abstractmethod
-    def fluctuations(self, p) -> ArrayLike:
-        pass
-
-    @abstractmethod
-    def fluctuations_with_frequencies(self, parameters) -> ArrayLike:
-        pass
-
-    @abstractmethod
-    def mean_with_frequencies(self, parameters) -> ArrayLike:
-        pass
-
-    @abstractmethod
-    def remove_degeneracy_of_spectral_deviations(
-        self,
-        deviations: ArrayLike
-    ) -> ArrayLike:
-        pass
+    Note
+    ----
+    This can be used to speed up some calculations in the
+    `CorrelatedMultiFrequencySky` class.
+    '''
+    pass
 
 
 class SpectralIndex(SingleLogSpectralBehavior):
@@ -94,13 +69,13 @@ class SpectralIndex(SingleLogSpectralBehavior):
         fluctuations: Model,
         reference_frequency_index: int,
     ):
-        '''Spectral Index spectral behavior. Special case of the 
+        '''Spectral Index spectral behavior. Special case of the
         `SpectralPolynomial`. However, since it has a single parameter, it can
         be used to speed up evaluations.
 
         .. math::
             \\log F(\\nu, A, ) = A^{spec.}
-            * \\left\{ \\mathrm{fluc.}^A \\xi^A \\nu  \\right\} 
+            * \\left\\{ \\mathrm{fluc.}^A \\xi^A \\nu  \\right\\} 
             + \\mathrm{mean}^A \\nu
 
         Parameters
@@ -158,7 +133,7 @@ class SpectralIndex(SingleLogSpectralBehavior):
         return deviations - dev_slope * self.relative_log_frequencies
 
     def __call__(self, p):
-        # FIXME : only needed for instantiation of the model. However, maybe
+        # NOTE : only needed for instantiation of the model. However, maybe
         # there is a better way !!!
         # Since the apply is not needed
         return None
@@ -177,7 +152,7 @@ class SpectralPolynomial(LogSpectralBehavior):
 
         .. math::
             \\log F(\\nu, A, B, ...) = A^{spec.}
-            * \\left\{ \\mathrm{fluc.}^A \\xi^A \\nu + \\mathrm{fluc.}^B \\xi^B \\nu^2 + ... \\right\} 
+            * \\left\\{ \\mathrm{fluc.}^A \\xi^A \\nu + \\mathrm{fluc.}^B \\xi^B \\nu^2 + ... \\right\\} 
             + \\mathrm{mean}^A \\nu + \\mathrm{mean}^B \\nu^2 + ...
 
         Parameters
@@ -229,12 +204,12 @@ class SpectralPolynomial(LogSpectralBehavior):
         return self._relative_log_frequencies
 
     def mean(self, p) -> ArrayLike:
-        # FIXME : This method might be unnecessary. See comment in
+        # NOTE : This method might be unnecessary. See comment in
         # CorrelatedMultiFrequencySky.spectral_index_distribution
         return self._means[0](p)
 
     def fluctuations(self, p) -> ArrayLike:
-        # FIXME : This method might be unnecessary. See comment in
+        # NOTE : This method might be unnecessary. See comment in
         # CorrelatedMultiFrequencySky.spectral_index_distribution
         return self._fluctuations[0](p)
 
@@ -248,6 +223,9 @@ class SpectralPolynomial(LogSpectralBehavior):
         values = jnp.array([f(p)*self.relative_log_frequencies**(i+1)
                             for i, f in enumerate(self._fluctuations)])
 
+        # NOTE: The 0th-axis contains the polynomial values, hence the sum
+        # over 0th-axis returns the polynomial value at the different log-
+        # frequencies.
         return jnp.sum(values, axis=0)
 
     def mean_with_frequencies(self, p) -> ArrayLike:
@@ -265,6 +243,7 @@ class SpectralPolynomial(LogSpectralBehavior):
     def remove_degeneracy_of_spectral_deviations(
         self, deviations: ArrayLike
     ) -> ArrayLike:
+        # FIXME:: This needs to be implemented !!!
         raise NotImplementedError
 
         dev_slope = (
@@ -273,7 +252,7 @@ class SpectralPolynomial(LogSpectralBehavior):
         return deviations - dev_slope * self.relative_log_frequencies
 
     def __call__(self, p):
-        # FIXME : only needed for instantiation of the model. However, maybe
+        # NOTE : only needed for instantiation of the model. However, maybe
         # there is a better way !!!
         # Since the apply is not needed
         return None

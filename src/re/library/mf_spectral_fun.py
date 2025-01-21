@@ -32,9 +32,9 @@ class CorrelatedMultiFrequencySky(Model):
 
     .. math ::
         sky = \\exp(F[A_spatial *
-              io(k, \\nu_0) + A_spectral *
-              (slope(k) * (\\nu-\\nu_0) +
-              GaussMarkovProcess(k, \\nu-\\nu_0)
+              i_\\mathrm{ref}(k, \\mu_\\mathrm{ref}) + A_spectral *
+              (slope(k) * (\\mu-\\mu_\\mathrm{ref}) +
+              GaussMarkovProcess(k, \\mu-\\mu_\\mathrm{ref})
               - AvgSlope[GaussMarkovProcess]
               )] + zero_mode)
 
@@ -42,7 +42,7 @@ class CorrelatedMultiFrequencySky(Model):
     ----------
     relative_log_frequencies: Union[tuple[float], ArrayLike]
         The log_frequencies relative to the reference frequency:
-        delta log(v) = log(v) - log(v_ref)
+        delta log(v) = log(v) - log(v_ref) = \\mu - \\mu_\\mathrm{ref}
     zero_model: jft.Model
         The model for the zero mode
     spatial_fluctuations: jft.Model
