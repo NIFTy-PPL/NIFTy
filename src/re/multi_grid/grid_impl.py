@@ -109,22 +109,56 @@ class HEALPixGrid(Grid):
     ):
         """HEALPix pixelization grid.
 
-        The grid can be defined either via the final nside, the initial nside
-        (nside0), or the initial shape (shape0).
+        The grid can be defined either via depth and exactly one of (nside0, nside, shape0)
+        or via nside and one of (nside0, shape0).
         """
         self.nest = nest
+
+        assert shape0 is None or isinstance(shape0, (int, tuple, np.ndarray))
         if shape0 is not None:
-            assert nside0 is None
-            assert isinstance(shape0, int) or np.ndim(shape0) == 0
-            shape0 = shape0[0] if np.ndim(shape0) > 0 else shape0
-            nside0 = (shape0 / 12) ** 0.5
-            assert int(nside0) == nside0
-            nside0 = int(nside0)
-        if nside is not None:
-            assert nside0 is None
-            assert depth is not None
-            nside0 = nside / 2**depth
-            assert int(nside0) == nside0
+            shape0 = np.asarray(shape0).flatten()
+            assert shape0.size == 1, "shape0 must be a scalar or a single-element array/tuple"
+            shape0 = shape0[0]
+            assert isinstance(shape0, int)
+            # Check whether the shape is a valid HEALPix shape
+            assert shape0 > 0 and shape0 % 12 == 0
+            _nside0 = (shape0 / 12) ** 0.5
+            nside0_rounded = round(_nside0)
+            assert np.isclose(_nside0, nside0_rounded, atol=1.0e-10) and (
+                (nside0_rounded & (nside0_rounded - 1)) == 0
+            )
+        assert nside is None or (
+            isinstance(nside, int) and nside > 0 and (nside & (nside - 1)) == 0
+        )
+        assert nside0 is None or (
+            isinstance(nside0, int) and nside0 > 0 and (nside0 & (nside0 - 1)) == 0
+        )
+        assert depth is None or (isinstance(depth, int) and depth > 0)
+
+        if depth is not None:
+            if sum([nside0 is not None, nside is not None, shape0 is not None]) != 1:
+                raise ValueError(
+                    "Ambiguous initialisation of HEALPixGrid. If depth is given, please supply exactly one of (nside0, nside, shape0)"
+                )
+            if shape0 is not None:
+                nside0 = nside0_rounded
+            if nside0 is not None:
+                pass
+            if nside is not None:
+                nside0 = nside // 2**depth
+        else:
+            if (nside is not None) and (
+                sum([nside0 is not None, shape0 is not None]) != 1
+            ):
+                raise ValueError(
+                    "Ambiguous initialisation of HEALPixGrid. If depth is not given, please supply nside and exactly one of (nside0, shape0)"
+                )
+            if shape0 is not None:
+                nside0 = nside0_rounded
+            depth = np.log2(nside / nside0)
+            assert np.isclose(depth, round(depth), atol=1.0e-10)
+            depth = round(depth)
+
         self.nside0 = nside0
         assert self.nside0 > 0
         if splits is None:
