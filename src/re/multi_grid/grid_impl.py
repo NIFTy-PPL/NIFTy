@@ -321,12 +321,12 @@ def LogarithmicGrid(
 class HPLogRGridAtLevel(MGridAtLevel):
     def index2coord(self, index, **kwargs):
         coords = super().index2coord(index, **kwargs)
-        return coords[:1] * coords[1:]
+        return coords[:3] * coords[3]
 
     def coord2index(self, coord, **kwargs):
         assert coord.shape[0] == 3
         r = jnp.linalg.norm(coord, axis=0)[jnp.newaxis, ...]
-        coord = jnp.concatenate((r, coord / r), axis=0)
+        coord = jnp.concatenate((coord / r, r), axis=0)
         return super().coord2index(coord, **kwargs)
 
 
