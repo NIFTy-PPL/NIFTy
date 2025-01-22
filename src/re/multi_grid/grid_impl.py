@@ -324,8 +324,8 @@ class LogarithmicGridAtLevel(SimpleOpenGridAtLevel):
 
     def index2volume(self, index):
         a = (slice(None),) + (np.newaxis,) * index.ndim
-        coords = super().index2coord(index + jnp.array([-0.5, 0.5])[a])
-        return jnp.prod(coords[1] - coords[0], axis=0)
+        coords = self.index2coord(index + jnp.array([-0.5, 0.5])[a])
+        return coords[1] - coords[0]
 
 
 def LogarithmicGrid(
@@ -362,6 +362,9 @@ class HPLogRGridAtLevel(MGridAtLevel):
         r = jnp.linalg.norm(coord, axis=0)[jnp.newaxis, ...]
         coord = jnp.concatenate((coord / r, r), axis=0)
         return super().coord2index(coord, **kwargs)
+    
+    def index2volume(self, index):
+        raise NotImplementedError("Volume calculation not implemented for HPLogRGrid")
 
 
 def HPLogRGrid(
