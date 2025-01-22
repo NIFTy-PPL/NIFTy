@@ -133,7 +133,7 @@ class HEALPixGrid(Grid):
         assert nside0 is None or (
             isinstance(nside0, int) and nside0 > 0 and (nside0 & (nside0 - 1)) == 0
         )
-        assert depth is None or (isinstance(depth, int) and depth > 0)
+        assert depth is None or (isinstance(depth, int) and depth >= 0)
 
         if depth is not None:
             if sum([nside0 is not None, nside is not None, shape0 is not None]) != 1:
