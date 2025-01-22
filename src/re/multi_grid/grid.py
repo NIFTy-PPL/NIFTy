@@ -237,7 +237,10 @@ class OpenGridAtLevel(GridAtLevel):
         # TODO type
         index = coord * shp[slc] - self.shifts[slc] - 0.5
         # assert jnp.all(index >= 0)
-        return index.astype(dtype)
+        if np.issubdtype(dtype, np.integer):
+            return np.rint(index).astype(dtype)
+        else:
+            raise ValueError(f"non-integer index dtype: {dtype}")
 
     def index2volume(self, index):
         sz = np.prod(self.shape + 2 * self.shifts)
