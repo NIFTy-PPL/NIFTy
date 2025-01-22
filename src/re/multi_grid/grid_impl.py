@@ -477,10 +477,9 @@ class BrokenLogarithmicGridAtLevel(SimpleOpenGridAtLevel):
         return super().coord2index(coord, dtype=dtype)
 
     def index2volume(self, index):
-        # FIXME: Also LogarithmicGrid
         a = (slice(None),) + (np.newaxis,) * index.ndim
-        coords = super().index2coord(index + jnp.array([-0.5, 0.5])[a])
-        return jnp.prod(coords[1] - coords[0], axis=0)
+        coords = self.index2coord(index + jnp.array([-0.5, 0.5])[a])
+        return coords[1] - coords[0]
 
 
 def BrokenLogarithmicGrid(
