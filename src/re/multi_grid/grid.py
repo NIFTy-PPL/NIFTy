@@ -112,8 +112,11 @@ class GridAtLevel:
 
     def coord2index(self, coord, dtype=np.uint64):
         slc = (slice(None),) + (np.newaxis,) * (coord.ndim - 1)
-        # TODO type casting
-        return (coord * self.shape[slc] - 0.5).astype(dtype)
+        index = (coord * self.shape[slc] - 0.5)
+        if np.issubdtype(dtype, np.integer):
+            return np.rint(index).astype(dtype)
+        else:
+            raise ValueError(f"non-integer index dtype: {dtype}")
 
     def index2volume(self, index):
         return np.array(1.0 / self.size)[(np.newaxis,) * index.ndim]
@@ -234,9 +237,7 @@ class OpenGridAtLevel(GridAtLevel):
     def coord2index(self, coord, dtype=np.uint64):
         slc = (slice(None),) + (np.newaxis,) * (coord.ndim - 1)
         shp = self.shape + 2 * self.shifts
-        # TODO type
         index = coord * shp[slc] - self.shifts[slc] - 0.5
-        # assert jnp.all(index >= 0)
         if np.issubdtype(dtype, np.integer):
             return np.rint(index).astype(dtype)
         else:
