@@ -117,7 +117,9 @@ class HEALPixGrid(Grid):
         assert shape0 is None or isinstance(shape0, (int, tuple, np.ndarray))
         if shape0 is not None:
             shape0 = np.asarray(shape0).flatten()
-            assert shape0.size == 1, "shape0 must be a scalar or a single-element array/tuple"
+            assert (
+                shape0.size == 1
+            ), "shape0 must be a scalar or a single-element array/tuple"
             shape0 = shape0[0]
             assert isinstance(shape0, int)
             # Check whether the shape is a valid HEALPix shape
@@ -362,7 +364,7 @@ class HPRadialGridAtLevel(MGridAtLevel):
         r = jnp.linalg.norm(coord, axis=0)[jnp.newaxis, ...]
         coord = jnp.concatenate((coord / r, r), axis=0)
         return super().coord2index(coord, **kwargs)
-    
+
     def index2volume(self, index):
         ndims_off = tuple(np.cumsum(tuple(g.ndim for g in self.grids)))
         islice = tuple(slice(l, r) for l, r in zip((0,) + ndims_off[:-1], ndims_off))
@@ -370,6 +372,7 @@ class HPRadialGridAtLevel(MGridAtLevel):
         r_lower = self.grids[1].index2coord(index[islice[1]] - 0.5)
         A_unity = self.grids[0].index2volume(index[islice[0]])
         return A_unity * (r_upper**3 - r_lower**3) / 3
+
 
 def HPLogRGrid(
     min_shape: Optional[Tuple[int, int]] = None,
