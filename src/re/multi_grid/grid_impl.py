@@ -340,7 +340,7 @@ def LogarithmicGrid(
     """
     if distances is not None:
         raise ValueError("`distances` are incompatible with a logarithmic grid")
-    if r_min < 0.0 or r_max < r_min:
+    if r_min <= 0.0 or r_max <= r_min:
         raise ValueError(f"invalid r_min {r_min!r} or r_max {r_max!r}")
     coord_offset = np.log(r_min)
     coord_scale = np.log(r_max) - coord_offset
