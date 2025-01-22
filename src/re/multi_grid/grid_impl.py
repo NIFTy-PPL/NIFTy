@@ -211,7 +211,7 @@ class SimpleOpenGridAtLevel(OpenGridAtLevel):
     def coord2index(self, coord, dtype=np.uint64):
         bc = (slice(None),) + (np.newaxis,) * (coord.ndim - 1)
         coord = coord / ((self.shape + 2 * self.shifts) * self.distances)[bc]
-        return super().coord2index(self, coord, dtype=dtype)
+        return super().coord2index(coord, dtype=dtype)
 
     def index2volume(self, index):
         vol = super().index2volume(index)
@@ -320,7 +320,7 @@ class LogarithmicGridAtLevel(SimpleOpenGridAtLevel):
 
     def coord2index(self, coord, dtype=np.uint64):
         coord = (jnp.log(coord) - self.coord_offset) / self.coord_scale
-        return super().coord2index(self, coord, dtype=dtype)
+        return super().coord2index(coord, dtype=dtype)
 
     def index2volume(self, index):
         a = (slice(None),) + (np.newaxis,) * index.ndim
@@ -467,7 +467,7 @@ class BrokenLogarithmicGridAtLevel(SimpleOpenGridAtLevel):
         ]
         coord = jnp.piecewise(coord, condlist, funclist)
         # transform to index
-        return super().coord2index(self, coord, dtype=dtype)
+        return super().coord2index(coord, dtype=dtype)
 
     def index2volume(self, index):
         # FIXME: Also LogarithmicGrid
@@ -494,7 +494,7 @@ def BrokenLogarithmicGrid(
     """
     if distances is not None:
         raise ValueError("`distances` are incompatible with a logarithmic grid")
-    if r_min <= 0.0 or r_max <= r_min:  # TODO: fix >= also in LogGrid
+    if r_min <= 0.0 or r_max <= r_min:
         raise ValueError(f"invalid r_min {r_min!r} or r_max {r_max!r}")
     if r_0 < r_min or r_max <= r_0:
         raise ValueError(f"invalid r_0 {r_0!r}")
