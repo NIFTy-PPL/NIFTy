@@ -352,7 +352,7 @@ def LogarithmicGrid(
     )
 
 
-class HPLogRGridAtLevel(MGridAtLevel):
+class HPRadialGridAtLevel(MGridAtLevel):
     def index2coord(self, index, **kwargs):
         coords = super().index2coord(index, **kwargs)
         return coords[:3] * coords[3]
@@ -380,7 +380,7 @@ def HPLogRGrid(
     r_max,
     r_window_size=3,
     nside0=16,
-    atLevel=HPLogRGridAtLevel,
+    atLevel=HPRadialGridAtLevel,
 ) -> MGrid:
     """Meshgrid of a HEALPix grid and a logarithmic grid.
 
@@ -548,7 +548,7 @@ def HPBrokenLogRGrid(
     r_max,
     r_window_size=3,
     nside0=16,
-    atLevel=HPLogRGridAtLevel,
+    atLevel=HPRadialGridAtLevel,
 ) -> MGrid:
     """Meshgrid of a HEALPix grid and a broken logarithmic grid.
 
