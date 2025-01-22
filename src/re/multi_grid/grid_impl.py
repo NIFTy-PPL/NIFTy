@@ -364,8 +364,12 @@ class HPLogRGridAtLevel(MGridAtLevel):
         return super().coord2index(coord, **kwargs)
     
     def index2volume(self, index):
-        raise NotImplementedError("Volume calculation not implemented for HPLogRGrid")
-
+        ndims_off = tuple(np.cumsum(tuple(g.ndim for g in self.grids)))
+        islice = tuple(slice(l, r) for l, r in zip((0,) + ndims_off[:-1], ndims_off))
+        r_upper = self.grids[1].index2coord(index[islice[1]] + 0.5)
+        r_lower = self.grids[1].index2coord(index[islice[1]] - 0.5)
+        A_unity = self.grids[0].index2volume(index[islice[0]])
+        return A_unity * (r_upper**3 - r_lower**3) / 3
 
 def HPLogRGrid(
     min_shape: Optional[Tuple[int, int]] = None,
