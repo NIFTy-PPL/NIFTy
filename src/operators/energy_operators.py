@@ -345,8 +345,9 @@ class QuadraticFormOperator(EnergyOperator):
         self._check_input(x)
         if x.jac is None:
             return 0.5*x.vdot(self._op(x))
-        res = 0.5*x.val.vdot(self._op(x.val))
-        return x.new(res, VdotOperator(self._op(x.val)))
+        tmp = self._op(x.val)
+        res = 0.5*x.val.vdot(tmp)
+        return x.new(res, VdotOperator(tmp))
 
 
 class VariableCovarianceGaussianEnergy(LikelihoodEnergyOperator):
