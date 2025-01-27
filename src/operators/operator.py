@@ -286,6 +286,9 @@ class Operator(metaclass=NiftyMeta):
         if not isinstance(x, Operator):
             raise TypeError
         if x.jac is not None:
+            from .scaling_operator import ScalingOperator
+            if isinstance(x.jac, ScalingOperator) and x.jac._factor==1:
+                return self.apply(x.trivial_jac())
             return self.apply(x.trivial_jac()).prepend_jac(x.jac)
         elif x.val is not None:
             return self.apply(x)
