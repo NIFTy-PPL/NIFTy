@@ -60,6 +60,7 @@ util = [
 test = [
     "pytest",
     "pytest-cov",
+    "pytest-xdist",
     "ducc0",
     "jaxbind",
 ]
