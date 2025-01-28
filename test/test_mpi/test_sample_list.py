@@ -15,13 +15,13 @@
 # Author: Philipp Arras
 
 import os
-from tempfile import TemporaryDirectory
 
 import nifty8 as ift
 import pytest
 from mpi4py import MPI
 
 from ..common import list2fixture, setup_function, teardown_function
+from .common import MPISafeTempdir
 
 pmp = pytest.mark.parametrize
 comm = [MPI.COMM_WORLD]
@@ -103,60 +103,36 @@ def test_sample_list(comm, cls):
             assert len(samples) <= sl.n_samples
 
 
-def _create_tmp_direc(comm):
-    if master:
-        direc = TemporaryDirectory()
-        direcname = direc.name
-    else:
-        direc = None
-        direcname = None
-    if comm is not None:
-        direcname = comm.bcast(direcname, root=0)
-    assert direcname is not None
-    return direc, direcname
-
-
 @pmp("cls", all_cls)
 def test_load_and_save(comm, cls):
     if comm is None and ift.utilities.get_MPI_params()[1] > 1:
         pytest.skip()
 
     sl, _ = _get_sample_list(comm, cls)
-    foo, direcname = _create_tmp_direc(comm)
+    with MPISafeTempdir(comm) as direc:
+        fname = os.path.join(direc, "sl")
+        sl.save(fname)
+        lcls = cls[14:] if cls[:14] == "PartiallyEmpty" else cls
+        sl1 = getattr(ift, lcls).load(fname, comm)
 
-    fname = os.path.join(direcname, "sl")
-    sl.save(fname)
-    lcls = cls[14:] if cls[:14] == "PartiallyEmpty" else cls
-    sl1 = getattr(ift, lcls).load(fname, comm)
+        for s0, s1 in zip(sl.local_iterator(), sl1.local_iterator()):
+            ift.extra.assert_equal(s0, s1)
 
-    for s0, s1 in zip(sl.local_iterator(), sl1.local_iterator()):
-        ift.extra.assert_equal(s0, s1)
-
-    for s0, s1 in zip(sl.local_iterator(), sl1.local_iterator()):
-        ift.extra.assert_equal(s0, s1)
-
-    # To make sure that the temporary directory is killed only when all tasks
-    # have reached this point.
-    if comm is not None:
-        comm.Barrier()
+        for s0, s1 in zip(sl.local_iterator(), sl1.local_iterator()):
+            ift.extra.assert_equal(s0, s1)
 
 
 def test_load_mean(comm):
     sl, _ = _get_sample_list(comm, "SymmetricalSampleList")
     m0 = sl._m
-    foo, direcname = _create_tmp_direc(comm)
-    fname = os.path.join(direcname, "sl")
-    sl.save(fname)
-    sl1 = ift.ResidualSampleList.load(fname, comm=comm)
-    m1, _ = sl1.sample_stat(None)
-    m2 = ift.ResidualSampleList.load_mean(fname)
-    ift.extra.assert_equal(m0, m2)
-    ift.extra.assert_allclose(m1, m2)
-
-    # To make sure that the temporary directory is killed only when all tasks
-    # have reached this point.
-    if comm is not None:
-        comm.Barrier()
+    with MPISafeTempdir(comm) as direc:
+        fname = os.path.join(direc, "sl")
+        sl.save(fname)
+        sl1 = ift.ResidualSampleList.load(fname, comm=comm)
+        m1, _ = sl1.sample_stat(None)
+        m2 = ift.ResidualSampleList.load_mean(fname)
+        ift.extra.assert_equal(m0, m2)
+        ift.extra.assert_allclose(m1, m2)
 
 
 @pmp("cls", all_cls)
@@ -175,38 +151,33 @@ def test_save_to_hdf5(comm, cls, mean, std, samples):
     if sl.n_samples < 2 and std:
         pytest.skip()
     for op in _get_ops(sl):
-        foo, direcname = _create_tmp_direc(comm)
-        fname = os.path.join(direcname, "test.h5")
-        if not mean and not std and not samples:
-            with pytest.raises(ValueError):
-                sl.save_to_hdf5(fname, op, mean=mean, std=std, samples=samples)
-            continue
-        sl.save_to_hdf5(fname, op, mean=mean, std=std, samples=samples, overwrite=True)
-        if comm is not None:
-            comm.Barrier()
+        with MPISafeTempdir(comm) as direc:
+            fname = os.path.join(direc, "test.h5")
+            if not mean and not std and not samples:
+                with pytest.raises(ValueError):
+                    sl.save_to_hdf5(fname, op, mean=mean, std=std, samples=samples)
+                continue
+            sl.save_to_hdf5(fname, op, mean=mean, std=std, samples=samples, overwrite=True)
+            if comm is not None:
+                comm.Barrier()
 
-        flddom = sl.domain if op is None else op.target
-        mdom = isinstance(flddom, ift.MultiDomain)
+            flddom = sl.domain if op is None else op.target
+            mdom = isinstance(flddom, ift.MultiDomain)
 
-        shps = []
-        with h5py.File(fname, "r") as f:
-            domain_repr = f.attrs["nifty domain"]
-            if mean:
-                shps.append(_get_shape(f["stats"]["mean"], mdom))
-            if std:
-                shps.append(_get_shape(f["stats"]["standard deviation"], mdom))
-            if samples:
-                for ii in range(sl.n_samples):
-                    shps.append(_get_shape(f["samples"][str(ii)], mdom))
-            assert all(elem == shps[0] for elem in shps)
+            shps = []
+            with h5py.File(fname, "r") as f:
+                domain_repr = f.attrs["nifty domain"]
+                if mean:
+                    shps.append(_get_shape(f["stats"]["mean"], mdom))
+                if std:
+                    shps.append(_get_shape(f["stats"]["standard deviation"], mdom))
+                if samples:
+                    for ii in range(sl.n_samples):
+                        shps.append(_get_shape(f["samples"][str(ii)], mdom))
+                assert all(elem == shps[0] for elem in shps)
 
-            dom1 = eval(domain_repr)
-            assert dom1 is flddom
-
-        # To make sure that the temporary directory is killed only when all tasks
-        # have reached this point.
-        if comm is not None:
-            comm.Barrier()
+                dom1 = eval(domain_repr)
+                assert dom1 is flddom
 
 
 def _get_shape(inp, mdom):
