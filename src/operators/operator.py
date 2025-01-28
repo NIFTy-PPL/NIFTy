@@ -114,6 +114,10 @@ class Operator(metaclass=NiftyMeta):
         """
         return None
 
+    def isIdentity(self):
+        from .scaling_operator import ScalingOperator
+        return isinstance(self, ScalingOperator) and self._factor == 1
+
     def scale(self, factor):
         if not isinstance(factor, numbers.Number):
             raise TypeError(".scale() takes a number as input")
@@ -165,6 +169,8 @@ class Operator(metaclass=NiftyMeta):
         if isinstance(x, LikelihoodEnergyOperator):
             return NotImplemented
         if x.target is self.domain:
+            if x.isIdentity():
+                return self
             return _OpChain.make((self, x))
         return self.partial_insert(x)
 
@@ -176,6 +182,9 @@ class Operator(metaclass=NiftyMeta):
         if isinstance(x, LikelihoodEnergyOperator):
             return NotImplemented
         if x.domain is self.target:
+            from .scaling_operator import ScalingOperator
+            if x.isIdenity():
+                return self
             return _OpChain.make((x, self))
         return x.partial_insert(self)
 
@@ -286,8 +295,7 @@ class Operator(metaclass=NiftyMeta):
         if not isinstance(x, Operator):
             raise TypeError
         if x.jac is not None:
-            from .scaling_operator import ScalingOperator
-            if isinstance(x.jac, ScalingOperator) and x.jac._factor==1:
+            if x.jac.isIdentity():
                 return self.apply(x.trivial_jac())
             return self.apply(x.trivial_jac()).prepend_jac(x.jac)
         elif x.val is not None:

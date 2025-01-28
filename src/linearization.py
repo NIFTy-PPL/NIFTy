@@ -65,10 +65,16 @@ class Linearization(Operator):
         return self.make_var(self._val, self._want_metric)
 
     def prepend_jac(self, jac):
+        if jac.isIdentity():
+            return self
         if self._metric is None:
+            if self._jac.isIdentity():
+                return self.new(self._val, jac)
             return self.new(self._val, self._jac @ jac)
         from .operators.sandwich_operator import SandwichOperator
         metric = SandwichOperator.make(jac, self._metric)
+        if self._jac.isIdentity():
+            return self.new(self._val, jac, metric)
         return self.new(self._val, self._jac @ jac, metric)
 
     @property

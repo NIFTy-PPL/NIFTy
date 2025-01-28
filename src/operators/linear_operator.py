@@ -97,6 +97,10 @@ class LinearOperator(Operator):
         return self._flip_modes(self.ADJOINT_BIT)
 
     def __matmul__(self, other):
+        if self.isIdentity():
+            return other
+        if other.isIdentity():
+            return self
         if isinstance(other, LinearOperator):
             from .chain_operator import ChainOperator
             return ChainOperator.make([self, other])
@@ -169,7 +173,11 @@ class LinearOperator(Operator):
 
     def __call__(self, x):
         """Same as :meth:`times`"""
+        if self.isIdentity():
+            return x
         if x.jac is not None:
+            if x.jac.isIdentity():
+                return x.new(self(x._val), self)
             return x.new(self(x._val), self).prepend_jac(x.jac)
         if x.val is not None:
             return self.apply(x, self.TIMES)
