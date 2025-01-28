@@ -16,13 +16,12 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-from tempfile import TemporaryDirectory
-
 import nifty8 as ift
 import numpy as np
 import pytest
 
 from ..common import setup_function, teardown_function
+from .common import MPISafeTempdir
 
 comm = ift.utilities.get_MPI_params()[0]
 master = True if comm is None else comm.Get_rank() == 0
@@ -78,47 +77,43 @@ def test_optimize_kl(constants, point_estimates, kl_minimizer, n_samples,
                      dry_run):
     final_index = 5
 
-    foo, output_directory = _create_temp_outputdir()
-    bar, output_directory1 = _create_temp_outputdir()
+    with MPISafeTempdir(comm) as direc0, MPISafeTempdir(comm) as direc1:
+        initial_position = None
+        initial_index = 0
 
-    initial_position = None
-    initial_index = 0
+        d = sky(mock_pos)
+        likelihood_energy = ift.GaussianEnergy(d) @ sky
+        inspect_callback = None
+        terminate_callback = None
+        transitions = None
+        export_operator_outputs = {}
+        rand_state = ift.random.getState()
+        sl = ift.optimize_kl(likelihood_energy, final_index, n_samples, kl_minimizer,
+                            sampling_iteration_controller, nonlinear_sampling_minimizer, constants,
+                            point_estimates, transitions, export_operator_outputs, direc0, initial_position,
+                            initial_index, comm, inspect_callback,
+                            terminate_callback, save_strategy="all", plot_energy_history=False,
+                            plot_minisanity_history=False, dry_run=dry_run)
 
-    d = sky(mock_pos)
-    likelihood_energy = ift.GaussianEnergy(d) @ sky
-    inspect_callback = None
-    terminate_callback = None
-    transitions = None
-    export_operator_outputs = {}
-    rand_state = ift.random.getState()
-    sl = ift.optimize_kl(likelihood_energy, final_index, n_samples, kl_minimizer,
-                         sampling_iteration_controller, nonlinear_sampling_minimizer, constants,
-                         point_estimates, transitions, export_operator_outputs, output_directory, initial_position,
-                         initial_index, comm, inspect_callback,
-                         terminate_callback, save_strategy="all", plot_energy_history=False,
-                         plot_minisanity_history=False, dry_run=dry_run)
+        ift.random.setState(rand_state)
 
-    ift.random.setState(rand_state)
+        def terminate_callback(iglobal):
+            return iglobal in [0, 3]
 
-    def terminate_callback(iglobal):
-        return iglobal in [0, 3]
+        for _ in range(5):
+            sl1 = ift.optimize_kl(likelihood_energy, final_index, n_samples, kl_minimizer,
+                                sampling_iteration_controller, nonlinear_sampling_minimizer, constants,
+                                point_estimates, transitions, export_operator_outputs, direc1, initial_position,
+                                initial_index, comm, inspect_callback,
+                                terminate_callback, resume=True, save_strategy="last",
+                                plot_energy_history=False, plot_minisanity_history=False, dry_run=dry_run)
 
-    for _ in range(5):
-        sl1 = ift.optimize_kl(likelihood_energy, final_index, n_samples, kl_minimizer,
-                              sampling_iteration_controller, nonlinear_sampling_minimizer, constants,
-                              point_estimates, transitions, export_operator_outputs, output_directory1, initial_position,
-                              initial_index, comm, inspect_callback,
-                              terminate_callback, resume=True, save_strategy="last",
-                              plot_energy_history=False, plot_minisanity_history=False, dry_run=dry_run)
-
-    for aa, bb in zip(sl.iterator(), sl1.iterator()):
-        ift.extra.assert_allclose(aa, bb)
+        for aa, bb in zip(sl.iterator(), sl1.iterator()):
+            ift.extra.assert_allclose(aa, bb)
 
 
 def test_transitions():
     final_index = 3
-
-    foo, output_directory = _create_temp_outputdir()
 
     initial_position = None
     initial_index = 0
@@ -167,20 +162,11 @@ def test_transitions():
     terminate_callback = None
     export_operator_outputs = {}
 
-    sl = ift.optimize_kl(likelihood_energy, final_index, n_samples, kl_minimizer,
-                         sampling_iteration_controller, nonlinear_sampling_minimizer, constants,
-                         point_estimates, transitions, export_operator_outputs, output_directory, initial_position,
-                         initial_index, comm, inspect_callback, terminate_callback, save_strategy="all",
-                         plot_energy_history=False, plot_minisanity_history=False)
-    assert sl.domain is mdom2
-
-
-def _create_temp_outputdir():
-    if master:
-        output_directory = TemporaryDirectory()
-        name = output_directory.name
-    else:
-        name = output_directory = None
-    if comm is not None:
-        name = comm.bcast(name, 0)
-    return output_directory, name
+    with MPISafeTempdir(comm) as output_directory:
+        sl = ift.optimize_kl(likelihood_energy, final_index, n_samples, kl_minimizer,
+                             sampling_iteration_controller, nonlinear_sampling_minimizer, constants,
+                             point_estimates, transitions, export_operator_outputs, output_directory,
+                             initial_position, initial_index, comm, inspect_callback,
+                             terminate_callback, save_strategy="all", plot_energy_history=False,
+                             plot_minisanity_history=False)
+        assert sl.domain is mdom2
