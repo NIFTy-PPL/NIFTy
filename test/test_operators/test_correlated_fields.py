@@ -46,6 +46,12 @@ def _posrand():
     return np.exp(_rand())
 
 
+def _make_complex(inp, key):
+    x = inp.val
+    x[key] = ift.from_random(inp.domain[key], dtype=complex).val
+    return ift.makeField(inp.domain, x)
+
+
 @pmp('dofdex', [[0, 0], [0, 1]])
 @pmp('seed', [12, 3])
 def testDistributor(dofdex, seed):
@@ -129,7 +135,7 @@ def test_constant_zero_mode(sspace, asperity, flexibility, matern):
         fl = (1., 0.5)
         ll = (-4, 1)
         cfm.add_fluctuations(sspace, fl, flexibility, asperity, ll)
-        
+
         cf_simple = ift.SimpleCorrelatedField(sspace, 0, None, fl, flexibility, asperity, ll)
     cfm.set_amplitude_total_offset(0, None)
     cf = cfm.finalize(prior_info=0)
@@ -206,6 +212,7 @@ def testAmplitudesInvariants(sspace, N):
     for ampl in fa.get_normalized_amplitudes():
         ift.extra.check_operator(ampl, 0.1*ift.from_random(ampl.domain), ntries=10)
     ift.extra.check_operator(op, 0.1*ift.from_random(op.domain), ntries=10)
+    ift.extra.check_operator(op, _make_complex(ift.from_random(op.domain), "xi"), ntries=2)
 
 
 @pmp('seed', [42, 31])
@@ -260,13 +267,22 @@ def test_complicated_vs_simple(seed, domain, without):
         cfm.add_fluctuations(*add_fluct_args, prefix='',
                              harmonic_partner=hspace)
         cfm.set_amplitude_total_offset(offset_mean, offset_std)
-        inp = ift.from_random(scf.domain)
         op1 = cfm.finalize(prior_info=0)
         assert scf.domain is op1.domain
+
+        # real
+        inp = ift.from_random(scf.domain)
         ift.extra.assert_allclose(scf(inp), op1(inp))
         ift.extra.check_operator(scf, inp, ntries=10)
+
+        # complex
+        inp2 = _make_complex(ift.from_random(scf.domain), "foobarxi")
+        ift.extra.assert_allclose(scf(inp2), op1(inp2))
+        ift.extra.check_operator(scf, inp2, ntries=2)
+        ift.extra.check_operator(op1, inp2, ntries=2)
 
         op1 = cfm.amplitude
         op0 = scf.amplitude
         assert op0.domain is op1.domain
         ift.extra.assert_allclose(op0.force(inp), op1.force(inp))
+        ift.extra.assert_allclose(op0.force(inp2), op1.force(inp2))
