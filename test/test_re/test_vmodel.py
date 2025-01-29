@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 
+import pytest
+
+pytest.importorskip("jax")
+
 import jax.numpy as jnp
 import jax.random as random
-import pytest
 from jax import vmap
 from jax.tree_util import tree_map
 from numpy.testing import assert_allclose

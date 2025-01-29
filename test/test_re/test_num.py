@@ -2,10 +2,13 @@
 
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 
+import pytest
+
+pytest.importorskip("jax")
+
 from jax import numpy as jnp
 import numpy as np
 from numpy.testing import assert_allclose, assert_array_equal
-import pytest
 
 from nifty8.re.num import amend_unique, amend_unique_, unique
 

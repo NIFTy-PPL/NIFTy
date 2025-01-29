@@ -2,10 +2,13 @@
 
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 
+import pytest
+
+pytest.importorskip("jax")
+
 from functools import partial
 
 import jax
-import pytest
 from jax import numpy as jnp
 from jax import random
 from jax.tree_util import tree_map
