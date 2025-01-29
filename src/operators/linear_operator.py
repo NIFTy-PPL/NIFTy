@@ -97,8 +97,6 @@ class LinearOperator(Operator):
         return self._flip_modes(self.ADJOINT_BIT)
 
     def __matmul__(self, other):
-        if self.isIdentity():
-            return other
         if other.isIdentity():
             return self
         if isinstance(other, LinearOperator):
@@ -107,6 +105,8 @@ class LinearOperator(Operator):
         return Operator.__matmul__(self, other)
 
     def __rmatmul__(self, other):
+        if other.isIdentity():
+            return self
         if isinstance(other, LinearOperator):
             from .chain_operator import ChainOperator
             return ChainOperator.make([other, self])
@@ -176,8 +176,6 @@ class LinearOperator(Operator):
         if self.isIdentity():
             return x
         if x.jac is not None:
-            if x.jac.isIdentity():
-                return x.new(self(x._val), self)
             return x.new(self(x._val), self).prepend_jac(x.jac)
         if x.val is not None:
             return self.apply(x, self.TIMES)

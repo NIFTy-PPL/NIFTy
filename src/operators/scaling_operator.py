@@ -66,6 +66,9 @@ class ScalingOperator(EndomorphicOperator):
         check_dtype_or_none(sampling_dtype, self._domain)
         self._dtype = sampling_dtype
 
+    def isIdentity(self):
+        return self._factor == 1
+
     def apply(self, x, mode):
         from ..sugar import full
 
