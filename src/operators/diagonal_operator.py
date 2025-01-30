@@ -25,6 +25,17 @@ from ..domain_tuple import DomainTuple
 from ..field import Field
 from .endomorphic_operator import EndomorphicOperator
 
+# TODO: Eventually enforce somewhat modern ducc version (>=0.37.0) as nifty
+# dependency and remove the try statement below
+try:
+    from ducc0.misc import mul_conj, div_conj
+except ImportError:
+    def mul_conj(a, b, out):
+        out = a*b.conj()
+
+    def div_conj(a, b, out):
+        out = a/b.conj()
+
 
 class DiagonalOperator(EndomorphicOperator):
     """Represents a :class:`LinearOperator` which is diagonal.
