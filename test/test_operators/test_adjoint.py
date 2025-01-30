@@ -178,6 +178,17 @@ def testMask(sp, dtype):
 
 
 @pmp('sp', _h_spaces + _p_spaces)
+@pmp('multi', (False, True))
+def testScaling(sp, dtype, multi):
+    dom = sp
+    if multi:
+        dom = {"foo": dom}
+    fct = ift.from_random(ift.DomainTuple.scalar_domain()).val[()]
+    op = ift.ScalingOperator(dom, fct)
+    ift.extra.check_linear_operator(op, dtype, dtype)
+
+
+@pmp('sp', _h_spaces + _p_spaces)
 def testDiagonal(sp, dtype):
     op = ift.DiagonalOperator(ift.Field.from_random(sp, dtype=dtype))
     ift.extra.check_linear_operator(op, dtype, dtype)

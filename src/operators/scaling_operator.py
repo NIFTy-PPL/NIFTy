@@ -26,7 +26,7 @@ class ScalingOperator(EndomorphicOperator):
 
     Parameters
     ----------
-    domain : Domain or tuple of Domain or DomainTuple
+    domain : Domain or tuple of Domain or DomainTuple or MultiDomain
         The domain on which the Operator's input Field is defined.
     factor : scalar
         The multiplication factor
