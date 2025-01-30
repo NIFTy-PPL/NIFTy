@@ -131,7 +131,7 @@ class DiagonalOperator(EndomorphicOperator):
         res._fill_rest()
         return res
 
-    def _get_real_diag(self):
+    def _get_actual_diag(self):
         if self._trafo == 0:
             return self._ldiag
         if self._trafo == 1:
@@ -144,24 +144,25 @@ class DiagonalOperator(EndomorphicOperator):
     def _scale(self, fct):
         if not np.isscalar(fct):
             raise TypeError("scalar value required")
-        return self._from_ldiag((), self._get_real_diag()*fct, self._dtype, 0)
+        return self._from_ldiag((), self._get_actual_diag()*fct, self._dtype, 0)
 
     def _add(self, sum_):
         if not np.isscalar(sum_):
             raise TypeError("scalar value required")
-        return self._from_ldiag((), self._get_real_diag()+sum_, self._dtype, 0)
+        return self._from_ldiag((), self._get_actual_diag()+sum_, self._dtype, 0)
 
     def _combine_prod(self, op):
         if not isinstance(op, DiagonalOperator):
             raise TypeError("DiagonalOperator required")
         dtype = self._dtype if self._dtype == op._dtype else None
-        return self._from_ldiag(op._spaces, self._get_real_diag()*op._get_real_diag(), dtype, 0)
+        return self._from_ldiag(op._spaces, self._get_actual_diag()*op._get_actual_diag(),
+                                dtype, 0)
 
     def _combine_sum(self, op, selfneg, opneg):
         if not isinstance(op, DiagonalOperator):
             raise TypeError("DiagonalOperator required")
-        tdiag = (self._get_real_diag() * (-1 if selfneg else 1) +
-                 op._get_real_diag() * (-1 if opneg else 1))
+        tdiag = (self._get_actual_diag() * (-1 if selfneg else 1) +
+                 op._get_actual_diag() * (-1 if opneg else 1))
         dtype = self._dtype if self._dtype == op._dtype else None
         return self._from_ldiag(op._spaces, tdiag, dtype, 0)
 
