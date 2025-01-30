@@ -65,7 +65,7 @@ def test_calc_pos(mf, cplx):
         op = op.ducktape_left('foo')
         dom = ift.makeDomain({'': dom})
     if cplx:
-        op = op + 1j*op
+        op = op.real + 1j*op.real
     fld = op(0.1 * ift.from_random(op.domain, 'normal'))
     pos = ift.calculate_position(op, fld)
     ift.extra.assert_allclose(op(pos), fld, 1e-1, 1e-1)

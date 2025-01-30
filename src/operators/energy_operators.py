@@ -12,6 +12,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Copyright(C) 2013-2022 Max-Planck-Society, Philipp Arras
+# Copyright(C) 2025 Philipp Arras
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -22,6 +23,7 @@ import numpy as np
 
 from .. import utilities
 from ..domain_tuple import DomainTuple
+from ..ducc_dispatch import nthreads
 from ..field import Field
 from ..linearization import Linearization
 from ..multi_domain import MultiDomain
@@ -29,12 +31,25 @@ from ..multi_field import MultiField
 from ..sugar import makeDomain, makeOp
 from ..utilities import iscomplextype, myassert
 from .adder import Adder
+from .block_diagonal_operator import BlockDiagonalOperator
+from .diagonal_operator import DiagonalOperator
 from .linear_operator import LinearOperator
 from .operator import Operator, _OpChain, _OpSum
 from .sampling_enabler import SamplingEnabler
 from .sandwich_operator import SandwichOperator
 from .scaling_operator import ScalingOperator
 from .simple_linear_operators import FieldAdapter, VdotOperator
+
+# TODO: Eventually enforce somewhat modern ducc version (>=0.37.0) as nifty
+# dependency and remove the try statement below
+try:
+    from ducc0.misc.experimental import (
+        LogUnnormalizedGaussProbability,
+        LogUnnormalizedGaussProbabilityWithDeriv,
+    )
+    modern_ducc = True
+except ImportError:
+    modern_ducc = False
 
 
 def _check_sampling_dtype(domain, dtypes):
@@ -478,6 +493,63 @@ class _SpecialGammaEnergy(LikelihoodEnergyOperator):
         return self._dt, Operator.identity_operator(self._domain).log().scale(sc)
 
 
+#---Helper functions for GaussianEnergy---
+def _normalize_icov(domain, icov, dtype, default_val):
+    if isinstance(domain, DomainTuple):
+        if isinstance(icov, DiagonalOperator):
+            return icov._get_actual_diag()
+        elif isinstance(icov, ScalingOperator):
+            return np.broadcast_to(np.array(icov._factor), domain.shape)
+        elif icov is None:
+            return np.broadcast_to(np.array(default_val).astype(dtype), domain.shape)
+    else:  # MultiDomain
+        if isinstance(icov, ScalingOperator):
+            return {kk: np.broadcast_to(np.array(icov._factor), domain[kk].shape) for kk in domain.keys()}
+        elif isinstance(icov, BlockDiagonalOperator):
+            icov2 = {}
+            for kk, op in zip(domain.keys(), icov._ops):
+                icov2[kk] = _normalize_icov(domain[kk], op, dtype[kk], default_val)
+                if icov2[kk] is None:
+                    icov2[kk] = op
+            return icov2
+        elif icov is None:
+            return {kk: _normalize_icov(domain[kk], None, dtype[kk]) for kk in domain.keys()}
+    return None
+
+def _normalize_data(domain, data, dtype, default_val):
+    if data is None and isinstance(domain, DomainTuple):
+        return np.broadcast_to(np.array(default_val).astype(dtype), domain.shape)
+    elif data is None and isinstance(domain, MultiDomain):
+        return {kk: _normalize_data(domain[kk], None, dtype[kk], default_val)
+                for kk in domain.keys()}
+    else:
+        return data.val
+
+def _apply_on_domaintuple(func, funcWithDeriv, x, *args):
+    myassert(isinstance(x.domain, DomainTuple))
+    if isinstance(x, Linearization):
+        res, deriv = LogUnnormalizedGaussProbabilityWithDeriv(x.val.val, *args, nthreads=nthreads())
+        return x.new(Field.scalar(res), VdotOperator(Field(x.domain, deriv)))
+    else:
+        return Field.scalar(LogUnnormalizedGaussProbability(x.val, *args, nthreads=nthreads()))
+
+
+def _apply_on_multidomain(func, funcWithDeriv, x, *args):
+    if isinstance(x, Linearization):
+        val, jac = Field.scalar(0), None
+        for kk in x.domain.keys():
+            tmp = _apply_on_domaintuple(func, funcWithDeriv, x[kk], *[a[kk] for a in args])
+            if tmp.jac is not None:
+                if jac is None:
+                    jac = tmp.jac
+                else:
+                    jac = jac + tmp.jac
+            val = val + tmp.val
+        return x.new(val, jac)
+    else:
+        raise NotImplementedError
+
+
 class GaussianEnergy(LikelihoodEnergyOperator):
     """Computes a negative-log Gaussian.
 
@@ -548,6 +620,29 @@ class GaussianEnergy(LikelihoodEnergyOperator):
                                f"- icov.sampling_dtype: {icovdtype}\n"
                                f"- data.dtype: {data.dtype}")
 
+        if sampling_dtype is None:
+            if data is not None:
+                sampling_dtype = data.dtype
+            else:
+                sampling_dtype = icovdtype
+
+        if isinstance(self._domain, MultiDomain) and not isinstance(sampling_dtype, dict):
+            tmp = sampling_dtype
+            sampling_dtype = {kk: tmp for kk in self._domain.keys()}
+
+        icov_dtype = None
+        if sampling_dtype is not None:
+            icov_dtype = utilities.real_dtype_counterpart(sampling_dtype)
+        elif self._data is not None:
+            icov_dtype = utilities.real_dtype_counterpart(self._data.dtype)
+
+        if icov_dtype is None:
+            print("Cannot use modern ducc", data, inverse_covariance, domain, sampling_dtype)
+            self._data2 = self._icov2 = None
+        else:
+            # Normalize data and invcov for fast application with modern_ducc
+            self._data2 = _normalize_data(self._domain, self._data, sampling_dtype, 0)
+            self._icov2 = _normalize_icov(self._domain, self._icov, icov_dtype, 1)
 
     @staticmethod
     def _checkEquivalence(olddom, newdom):
@@ -571,8 +666,18 @@ class GaussianEnergy(LikelihoodEnergyOperator):
 
     def apply(self, x):
         self._check_input(x)
-        residual = x if self._data is None else x - self._data
-        res = self._op(residual).real
+        device_id = -1
+        # device_id = x.val.device_id if isinstance(x, Linearization) else x.device_id
+
+        if modern_ducc and device_id == -1 and self._icov2 is not None and isinstance(self._domain, DomainTuple):  # TODO: Add support for multidomain
+            func = _apply_on_domaintuple if isinstance(self._domain, DomainTuple) else _apply_on_multidomain
+            res = func(LogUnnormalizedGaussProbability, LogUnnormalizedGaussProbabilityWithDeriv,
+                       x, self._data2, self._icov2)
+        else:
+            # Traditional ducc & Cupy
+            residual = x if self._data is None else x - self._data
+            res = self._op(residual).real
+
         if x.want_metric:
             return res.add_metric(self._icov)
         return res

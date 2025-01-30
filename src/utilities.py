@@ -253,6 +253,19 @@ def issingleprec(dtype):
     return dtype.type in (np.float32, np.complex64)
 
 
+def real_dtype_counterpart(dtype):
+    if dtype in [np.float32, np.float64, float]:
+        return dtype
+    if dtype == np.complex64:
+        return np.float32
+    if dtype in [np.complex128, complex]:
+        return np.float64
+    if isinstance(dtype, dict):
+        return {kk: real_dtype_counterpart(vv) for kk, vv in dtype.items()}
+    else:
+        raise TypeError(f"dtype needs to be floating dtype, got {dtype}")
+
+
 def _getunique(f, iterable):
     lst = list(f(vv) for vv in iterable)
     if len(set(lst)) == 1:
