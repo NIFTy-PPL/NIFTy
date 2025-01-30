@@ -29,9 +29,11 @@ try:
 except ImportError:
     def mul_conj(a, b, out=None):
         out = a*b.conj()
+        return out
 
     def div_conj(a, b, out=None):
         out = a/b.conj()
+        return out
 
 
 class DiagonalOperator(EndomorphicOperator):
