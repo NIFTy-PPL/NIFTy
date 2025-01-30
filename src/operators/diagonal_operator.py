@@ -116,7 +116,15 @@ class DiagonalOperator(EndomorphicOperator):
         self._complex = utilities.iscomplextype(self._ldiag.dtype)
         self._capability = self._all_ops
         if not self._complex:
-            self._diagmin = self._ldiag.min()
+            self._diagmin_cache = None
+
+    @property
+    def _diagmin(self):
+        if self._complex:
+            raise RuntimeError("complex DiagonalOperator does not have _diagmin")
+        if self._diagmin_cache is None:
+            self._diagmin_cache = self._ldiag.min()
+        return self._diagmin_cache
 
     def _from_ldiag(self, spc, ldiag, sampling_dtype, trafo):
         res = DiagonalOperator.__new__(DiagonalOperator)
