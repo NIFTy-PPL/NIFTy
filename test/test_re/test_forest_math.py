@@ -1,5 +1,7 @@
 import pytest
 
+pytest.importorskip("jax")
+
 import nifty8.re as jft
 
 
