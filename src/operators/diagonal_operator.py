@@ -25,7 +25,7 @@ from .endomorphic_operator import EndomorphicOperator
 # TODO: Eventually enforce somewhat modern ducc version (>=0.37.0) as nifty
 # dependency and remove the try statement below
 try:
-    from ducc0.misc import mul_conj, div_conj
+    from ducc0.misc.experimental import mul_conj, div_conj
 except ImportError:
     def mul_conj(a, b, out=None):
         out = a*b.conj()
