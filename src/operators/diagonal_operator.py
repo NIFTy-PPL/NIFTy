@@ -135,7 +135,8 @@ class DiagonalOperator(EndomorphicOperator):
             res._spaces = None
         else:
             res._spaces = tuple(set(self._spaces) | set(spc))
-        res._ldiag = np.array(ldiag)
+        utilities.myassert(isinstance(ldiag, np.ndarray))
+        res._ldiag = ldiag
         res._fill_rest()
         return res
 
