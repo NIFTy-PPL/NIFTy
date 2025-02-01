@@ -406,7 +406,7 @@ class BrokenLogarithmicGridAtLevel(SimpleOpenGridAtLevel):
         delta,
         epsilon,
         r_min,
-        r_0,
+        r_linthresh,
         r_max,
         rg_min,
         rg_0,
@@ -419,7 +419,7 @@ class BrokenLogarithmicGridAtLevel(SimpleOpenGridAtLevel):
         self.delta = delta
         self.epsilon = epsilon
         self._r_min = r_min
-        self._r_0 = r_0
+        self._r_linthresh = r_linthresh
         self._r_max = r_max
         self.rg_min = rg_min
         self.rg_0 = rg_0
@@ -440,14 +440,14 @@ class BrokenLogarithmicGridAtLevel(SimpleOpenGridAtLevel):
         # map to in-between r_min and r_max
         condlist = [
             coord < self.rg_min,
-            jnp.logical_and(self.rg_min <= coord, coord < self.rg_0),
-            jnp.logical_and(self.rg_0 <= coord, coord < self.rg_max),
+            (self.rg_min <= coord) & (coord < self.rg_0),
+            (self.rg_0 <= coord) & (coord < self.rg_max),
             self.rg_max <= coord,
         ]
         funclist = [
             lambda rg: self.gamma / (rg - self.delta),
             lambda rg: self._r_min + self.alpha * (rg - self.rg_min),
-            lambda rg: self._r_0 * jnp.exp(self.beta * (rg - self.rg_0)),
+            lambda rg: self._r_linthresh * jnp.exp(self.beta * (rg - self.rg_0)),
             lambda rg: self._r_max + self.epsilon * (rg - self.rg_max),
         ]
         return jnp.piecewise(coord, condlist, funclist)
@@ -456,14 +456,14 @@ class BrokenLogarithmicGridAtLevel(SimpleOpenGridAtLevel):
         # map to in-between 0 and 1
         condlist = [
             coord < self._r_min,
-            jnp.logical_and(self._r_min <= coord, coord < self._r_0),
-            jnp.logical_and(self._r_0 <= coord, coord < self._r_max),
+            (self._r_min <= coord) & (coord < self._r_linthresh),
+            (self._r_linthresh <= coord) & (coord < self._r_max),
             self._r_max <= coord,
         ]
         funclist = [
             lambda r: self.delta + self.gamma / r,
             lambda r: self.rg_min + (r - self._r_min) / self.alpha,
-            lambda r: self.rg_0 + jnp.log(r / self._r_0) / self.beta,
+            lambda r: self.rg_0 + jnp.log(r / self._r_linthresh) / self.beta,
             lambda r: self.rg_max + (r - self._r_max) / self.epsilon,
         ]
         coord = jnp.piecewise(coord, condlist, funclist)
@@ -479,7 +479,7 @@ class BrokenLogarithmicGridAtLevel(SimpleOpenGridAtLevel):
 def BrokenLogarithmicGrid(
     *,
     r_min: float,
-    r_0: float,
+    r_linthresh: float,
     r_max: float,
     distances=None,
     **kwargs,
@@ -496,21 +496,21 @@ def BrokenLogarithmicGrid(
         raise ValueError("`distances` are incompatible with a logarithmic grid")
     if r_min <= 0.0 or r_max <= r_min:
         raise ValueError(f"invalid r_min {r_min!r} or r_max {r_max!r}")
-    if r_0 < r_min or r_max <= r_0:
-        raise ValueError(f"invalid r_0 {r_0!r}")
+    if r_linthresh < r_min or r_max <= r_linthresh:
+        raise ValueError(f"invalid r_0 {r_linthresh!r}")
 
     # This parametrisation is technically capable of handling a transformation
     # from arbitrary rg_min and rg_max, but in accordance to the LogarithmicGrid,
     # we can fix them to 0 and 1 and use the parent class for mapping them there.
     rg_min = 0.0
     rg_max = 1.0
-    m = (1.0 - r_min / r_0) / (jnp.log(r_max / r_0))
+    m = (1.0 - r_min / r_linthresh) / (jnp.log(r_max / r_linthresh))
     rg_0 = rg_min / (1 + m) + rg_max * m / (1 + m)
-    alpha = r_0 / (rg_max - rg_0) * jnp.log(r_max / r_0)
-    beta = alpha / r_0
+    alpha = r_linthresh / (rg_max - rg_0) * jnp.log(r_max / r_linthresh)
+    beta = alpha / r_linthresh
     gamma = -(r_min**2) / alpha
     delta = rg_min + r_min / alpha
-    epsilon = r_0 * beta * jnp.exp(beta * (rg_max - rg_0))
+    epsilon = r_linthresh * beta * jnp.exp(beta * (rg_max - rg_0))
 
     return SimpleOpenGrid(
         **kwargs,
@@ -522,7 +522,7 @@ def BrokenLogarithmicGrid(
             delta=delta,
             epsilon=epsilon,
             r_min=r_min,
-            r_0=r_0,
+            r_linthresh=r_linthresh,
             r_max=r_max,
             rg_min=rg_min,
             rg_0=rg_0,
