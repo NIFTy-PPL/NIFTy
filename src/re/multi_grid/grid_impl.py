@@ -484,12 +484,25 @@ def BrokenLogGrid(
     distances=None,
     **kwargs,
 ) -> OpenGrid:
-    """Broken logarithmic grid on top of `SimpleOpenGrid` spanning from `r_min` to `r_max`
-    at the final depth.
+    """Create a broken logarithmic grid on top of `SimpleOpenGrid` spanning from
+    `r_min` to `r_max` at the final depth.
     The grid is parametrised by three radii: r_min, r_linthresh, and r_max.
+    Between r_min and r_linthresh pixels are spaced linearly (r).
+    Between r_linthresh and r_max pixels are spaced logarithmically (exp(r)).
+    
+    For available parameters see the `SimpleOpenGrid` docstring in addition the ones below.
+
+    Parameters
+    ----------
+    r_min:
+        Minimum coordinate value.
+    r_linthresh:
+        Coordinate value at which the grid switches from linear to logarithmic spacing.
+    r_max:
+        Maximum coordinate value.
+    
+    Notes:
     For values below rmin, the (padded) pixels are spaced antilinearly (1/r).
-    Between rmin and r0 they are spaced linearly (r).
-    Between r0 and rmax they are spaced logarithmically (exp(r)).
     Above rmax they are spaced linearly (r).
     """
     if distances is not None:
