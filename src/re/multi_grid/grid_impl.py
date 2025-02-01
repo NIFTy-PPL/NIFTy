@@ -116,24 +116,23 @@ class HEALPixGrid(Grid):
 
         assert shape0 is None or isinstance(shape0, (int, tuple, np.ndarray))
         if shape0 is not None:
-            shape0 = np.asarray(shape0).ravel()
-            assert (
-                shape0.size == 1
-            ), "shape0 must be a scalar or a single-element array/tuple"
-            shape0 = shape0[0]
+            (shape0,) = shape0
             assert isinstance(shape0, int)
             # Check whether the shape is a valid HEALPix shape
             assert shape0 > 0 and shape0 % 12 == 0
-            _nside0 = (shape0 / 12) ** 0.5
-            nside0_rounded = round(_nside0)
-            assert np.isclose(_nside0, nside0_rounded, atol=1.0e-10) and (
-                (nside0_rounded & (nside0_rounded - 1)) == 0
-            )
+            nside0 = (shape0 / 12) ** 0.5
+            assert np.isclose(nside0, round(nside0), atol=1.0e-10)
+            nside0 = round(nside0)
+
         assert nside is None or (
-            isinstance(nside, int) and nside > 0 and (nside & (nside - 1)) == 0
+            isinstance(nside, int)
+            and nside > 0
+            and (nside & (nside - 1)) == 0  # power of 2
         )
         assert nside0 is None or (
-            isinstance(nside0, int) and nside0 > 0 and (nside0 & (nside0 - 1)) == 0
+            isinstance(nside0, int)
+            and nside0 > 0
+            and (nside0 & (nside0 - 1)) == 0  # power of 2
         )
         assert depth is None or (isinstance(depth, int) and depth >= 0)
 
@@ -142,10 +141,6 @@ class HEALPixGrid(Grid):
                 raise ValueError(
                     "Ambiguous initialisation of HEALPixGrid. If depth is given, please supply exactly one of (nside0, nside, shape0)"
                 )
-            if shape0 is not None:
-                nside0 = nside0_rounded
-            if nside0 is not None:
-                pass
             if nside is not None:
                 nside0 = nside // 2**depth
         else:
@@ -155,14 +150,11 @@ class HEALPixGrid(Grid):
                 raise ValueError(
                     "Ambiguous initialisation of HEALPixGrid. If depth is not given, please supply nside and exactly one of (nside0, shape0)"
                 )
-            if shape0 is not None:
-                nside0 = nside0_rounded
             depth = np.log2(nside / nside0)
             assert np.isclose(depth, round(depth), atol=1.0e-10)
             depth = round(depth)
 
         self.nside0 = nside0
-        assert self.nside0 > 0
         if splits is None:
             splits = (4,) * depth
         super().__init__(
