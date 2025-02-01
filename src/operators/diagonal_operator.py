@@ -72,7 +72,7 @@ class DiagonalOperator(EndomorphicOperator):
 
     def __init__(self, diagonal, domain=None, spaces=None, sampling_dtype=None,
                  _trafo=0):
-# MR: _trafo is more or less deliberately undocumened, since it is not supposed
+# MR: _trafo is more or less deliberately undocumented, since it is not supposed
 # to be necessary for "end users". It describes the type of transform for which
 # the diagonal can be used without modification
 # (0:TIMES, 1:ADJOINT, 2:INVERSE, 3:ADJOINT_INVERSE)
