@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+# SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 # Author: Philipp Frank, Laurin Soeding, Gordian Edenhofer
 
 from dataclasses import dataclass, field
