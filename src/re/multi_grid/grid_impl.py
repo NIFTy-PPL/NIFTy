@@ -17,7 +17,6 @@ from .grid import Grid, GridAtLevel, MGrid, MGridAtLevel, OpenGrid, OpenGridAtLe
 class HEALPixGridAtLevel(GridAtLevel):
     nside: int
     nest: bool
-    fill_strategy: str
 
     def __init__(
         self,
