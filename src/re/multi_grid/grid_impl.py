@@ -450,7 +450,8 @@ class BrokenLogGridAtLevel(SimpleOpenGridAtLevel):
         funclist = [
             lambda rg: self._gamma / (rg - self._delta),
             lambda rg: self._r_min + self._alpha * (rg - self._rg_min),
-            lambda rg: self._r_linthresh * jnp.exp(self._beta * (rg - self._rg_linthresh)),
+            lambda rg: self._r_linthresh
+            * jnp.exp(self._beta * (rg - self._rg_linthresh)),
             lambda rg: self._r_max + self._epsilon * (rg - self._rg_max),
         ]
         return jnp.piecewise(coord, condlist, funclist)
@@ -492,7 +493,7 @@ def BrokenLogGrid(
     The grid is parametrised by three radii: r_min, r_linthresh, and r_max.
     Between r_min and r_linthresh pixels are spaced linearly (r).
     Between r_linthresh and r_max pixels are spaced logarithmically (exp(r)).
-    
+
     For available parameters see the `SimpleOpenGrid` docstring in addition the ones below.
 
     Parameters
@@ -503,8 +504,9 @@ def BrokenLogGrid(
         Coordinate value at which the grid switches from linear to logarithmic spacing.
     r_max:
         Maximum coordinate value.
-    
-    Notes:
+
+    Notes
+    -----
     For values below rmin, the (padded) pixels are spaced antilinearly (1/r).
     Above rmax they are spaced linearly (r).
     """
