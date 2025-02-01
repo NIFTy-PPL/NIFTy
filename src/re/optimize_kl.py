@@ -16,6 +16,8 @@ import numpy as np
 from jax import numpy as jnp
 from jax import random
 from jax.tree_util import Partial, tree_map
+from jax.sharding import PartitionSpec as Pspec, NamedSharding
+from jax.experimental.shard_map import shard_map
 
 from . import optimize
 from .evi import (
@@ -88,6 +90,8 @@ def _kl_vg(
     *,
     map=jax.vmap,
     reduce=_reduce,
+    mesh=None,
+    pspec=None,
 ):
     assert isinstance(primals_samples, Samples)
     map = get_map(map)
@@ -96,12 +100,27 @@ def _kl_vg(
     if len(primals_samples) == 0:
         return jax.value_and_grad(ham)(primals)
     vvg = map(jax.value_and_grad(ham))
+
+    if not mesh is None:
+        out_spec_tree = jax.tree.map(lambda x: pspec, primals)
+        out_spec = (pspec, out_spec_tree)
+        in_spec = jax.tree.map(lambda x: pspec, primals_samples.samples)
+        vvg = shard_map(vvg, mesh=mesh, in_specs=(in_spec,), out_specs=out_spec)
+
     s = vvg(primals_samples.at(primals).samples)
     return reduce(s)
 
 
 def _kl_met(
-    likelihood, primals, tangents, primals_samples, *, map=jax.vmap, reduce=_reduce
+    likelihood,
+    primals,
+    tangents,
+    primals_samples,
+    *,
+    map=jax.vmap,
+    reduce=_reduce,
+    mesh=None,
+    pspec=None,
 ):
     assert isinstance(primals_samples, Samples)
     map = get_map(map)
@@ -109,8 +128,22 @@ def _kl_met(
 
     if len(primals_samples) == 0:
         return ham.metric(primals, tangents)
-    vmet = map(ham.metric, in_axes=(0, None))
-    s = vmet(primals_samples.at(primals).samples, tangents)
+    met = Partial(ham.metric, tangents=tangents)
+    vmet = map(met)
+
+    # TODO: pass tangents via shard_map?
+    if not mesh is None:
+        out_spec_tree = jax.tree.map(lambda x: pspec, primals)
+        out_spec = out_spec_tree
+        in_spec0 = jax.tree.map(lambda x: pspec, primals_samples.samples)
+        vmet = shard_map(
+            vmet,
+            mesh=mesh,
+            in_specs=(in_spec0,),
+            out_specs=out_spec,
+        )
+
+    s = vmet(primals_samples.at(primals).samples)
     return reduce(s)
 
 
@@ -206,6 +239,7 @@ class OptimizeVI:
         residual_map="lmap",
         kl_reduce=_reduce,
         mirror_samples=True,
+        map_over_devices=None,
         _kl_value_and_grad: Optional[Callable] = None,
         _kl_metric: Optional[Callable] = None,
         _draw_linear_residual: Optional[Callable] = None,
@@ -252,23 +286,34 @@ class OptimizeVI:
         kl_jit = _parse_jit(kl_jit)
         residual_jit = _parse_jit(residual_jit)
         residual_map = get_map(residual_map)
+        self.mesh = None
+        self.pspec = None
+        if (not map_over_devices is None) and len(map_over_devices) > 1:
+            self.mesh = jax.make_mesh(
+                (len(map_over_devices),), ("x",), devices=map_over_devices
+            )
+            self.pspec = Pspec("x")
 
         if mirror_samples is False:
             raise NotImplementedError()
 
         if _kl_value_and_grad is None:
             _kl_value_and_grad = partial(
-                kl_jit(_kl_vg, static_argnames=("map", "reduce")),
+                kl_jit(_kl_vg, static_argnames=("map", "reduce", "mesh", "pspec")),
                 likelihood,
                 map=kl_map,
                 reduce=kl_reduce,
+                mesh=self.mesh,
+                pspec=self.pspec,
             )
         if _kl_metric is None:
             _kl_metric = partial(
-                kl_jit(_kl_met, static_argnames=("map", "reduce")),
+                kl_jit(_kl_met, static_argnames=("map", "reduce", "mesh", "pspec")),
                 likelihood,
                 map=kl_map,
                 reduce=kl_reduce,
+                mesh=self.mesh,
+                pspec=self.pspec,
             )
         if _draw_linear_residual is None:
             _draw_linear_residual = partial(
@@ -297,15 +342,31 @@ class OptimizeVI:
         # NOTE, use `Partial` in favor of `partial` to allow the (potentially)
         # re-jitting `residual_map` to trace the kwargs
         kwargs = hide_strings(kwargs)
-        sampler = Partial(self.draw_linear_residual, **kwargs)
-        sampler = self.residual_map(sampler, in_axes=(None, 0))
-        smpls, smpls_states = sampler(primals, keys)
+        if self.mesh is None:
+            sampler = Partial(self.draw_linear_residual, **kwargs)
+            sampler = self.residual_map(sampler, in_axes=(None, 0))
+            smpls, smpls_states = sampler(primals, keys)
+        else:
+            sampler = Partial(self.draw_linear_residual, primals, **kwargs)
+            out_spec_tree = jax.tree.map(lambda x: self.pspec, primals)
+            out_spec = (out_spec_tree, self.pspec)
+            sampler = shard_map(
+                self.residual_map(sampler),
+                mesh=self.mesh,
+                in_specs=self.pspec,
+                out_specs=out_spec,
+                check_rep=False,
+            )
+            smpls, smpls_states = sampler(keys)
+
+        # TODO: Special case that N_samples == n_devices // 2
         # zip samples such that the mirrored-counterpart always comes right
         # after the original sample
         smpls = Samples(pos=primals, samples=concatenate_zip(smpls, -smpls), keys=keys)
         return smpls, smpls_states
 
     def nonlinearly_update_samples(self, samples: Samples, **kwargs):
+        # TODO: introduce shard_map
         # NOTE, use `Partial` in favor of `partial` to allow the (potentially)
         # re-jitting `residual_map` to trace the kwargs
         kwargs = hide_strings(kwargs)
@@ -352,6 +413,10 @@ class OptimizeVI:
             if sample_mode.lower().endswith("_resample"):
                 k_smpls = random.split(key, n_samples)
             assert n_samples == len(k_smpls)
+            if not self.mesh is None:
+                # TODO: Special case that N_samples == n_devices // 2
+                k_smpls = jax.device_put(k_smpls, NamedSharding(self.mesh, self.pspec))
+
             samples, st_smpls = self.draw_linear_samples(
                 samples.pos,
                 k_smpls,
@@ -605,6 +670,7 @@ def optimize_kl(
     resume: Union[str, bool] = False,
     callback: Optional[Callable[[Samples, OptimizeVIState], None]] = None,
     odir: Optional[str] = None,
+    map_over_devices=None,
     _optimize_vi=None,
     _optimize_vi_state=None,
 ) -> tuple[Samples, OptimizeVIState]:
@@ -642,6 +708,7 @@ def optimize_kl(
             residual_map=residual_map,
             kl_reduce=kl_reduce,
             mirror_samples=mirror_samples,
+            map_over_devices=map_over_devices,
         )
 
     last_fn = os.path.join(odir, LAST_FILENAME) if odir is not None else None
