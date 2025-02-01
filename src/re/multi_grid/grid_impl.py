@@ -319,7 +319,7 @@ class LogarithmicGridAtLevel(SimpleOpenGridAtLevel):
     def index2volume(self, index):
         a = (slice(None),) + (np.newaxis,) * index.ndim
         coords = self.index2coord(index + jnp.array([-0.5, 0.5])[a])
-        return coords[1] - coords[0]
+        return jnp.prod(coords[1] - coords[0], axis=0, keepdims=True)
 
 
 def LogarithmicGrid(
@@ -473,7 +473,7 @@ class BrokenLogarithmicGridAtLevel(SimpleOpenGridAtLevel):
     def index2volume(self, index):
         a = (slice(None),) + (np.newaxis,) * index.ndim
         coords = self.index2coord(index + jnp.array([-0.5, 0.5])[a])
-        return coords[1] - coords[0]
+        return jnp.prod(coords[1] - coords[0], axis=0, keepdims=True)
 
 
 def BrokenLogarithmicGrid(
