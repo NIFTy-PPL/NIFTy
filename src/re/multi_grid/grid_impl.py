@@ -116,7 +116,7 @@ class HEALPixGrid(Grid):
 
         assert shape0 is None or isinstance(shape0, (int, tuple, np.ndarray))
         if shape0 is not None:
-            shape0 = np.asarray(shape0).flatten()
+            shape0 = np.asarray(shape0).ravel()
             assert (
                 shape0.size == 1
             ), "shape0 must be a scalar or a single-element array/tuple"
