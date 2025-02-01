@@ -537,7 +537,7 @@ def HPBrokenLogRGrid(
     nside: Optional[int] = None,
     r_min_shape: Optional[int] = None,
     r_min,
-    r_0,
+    r_linthresh,
     r_max,
     r_window_size=3,
     nside0=16,
@@ -556,7 +556,7 @@ def HPBrokenLogRGrid(
     grid_r = BrokenLogarithmicGrid(
         min_shape=r_min_shape,
         r_min=r_min,
-        r_0=r_0,
+        r_linthresh=r_linthresh,
         r_max=r_max,
         window_size=r_window_size,
         depth=depth,
