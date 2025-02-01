@@ -116,6 +116,7 @@ class HEALPixGrid(Grid):
 
         assert shape0 is None or isinstance(shape0, (int, tuple, np.ndarray))
         if shape0 is not None:
+            assert nside0 is None
             (shape0,) = shape0
             assert isinstance(shape0, int)
             # Check whether the shape is a valid HEALPix shape
@@ -137,19 +138,18 @@ class HEALPixGrid(Grid):
         assert depth is None or (isinstance(depth, int) and depth >= 0)
 
         if depth is not None:
-            if sum([nside0 is not None, nside is not None, shape0 is not None]) != 1:
+            if (nside0 is None) == (nside is None):
                 raise ValueError(
                     "Ambiguous initialisation of HEALPixGrid. If depth is given, please supply exactly one of (nside0, nside, shape0)"
                 )
             if nside is not None:
                 nside0 = nside // 2**depth
         else:
-            if (nside is not None) and (
-                sum([nside0 is not None, shape0 is not None]) != 1
-            ):
+            if (nside is None) or (nside0 is None):
                 raise ValueError(
                     "Ambiguous initialisation of HEALPixGrid. If depth is not given, please supply nside and exactly one of (nside0, shape0)"
                 )
+            assert nside0 <= nside
             depth = np.log2(nside / nside0)
             assert np.isclose(depth, round(depth), atol=1.0e-10)
             depth = round(depth)
