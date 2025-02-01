@@ -413,17 +413,17 @@ class BrokenLogarithmicGridAtLevel(SimpleOpenGridAtLevel):
         rg_max,
         **kwargs,
     ):
-        self.alpha = alpha
-        self.beta = beta
-        self.gamma = gamma
-        self.delta = delta
-        self.epsilon = epsilon
+        self._alpha = alpha
+        self._beta = beta
+        self._gamma = gamma
+        self._delta = delta
+        self._epsilon = epsilon
         self._r_min = r_min
         self._r_linthresh = r_linthresh
         self._r_max = r_max
-        self.rg_min = rg_min
-        self.rg_0 = rg_0
-        self.rg_max = rg_max
+        self._rg_min = rg_min
+        self._rg_0 = rg_0
+        self._rg_max = rg_max
         super().__init__(*args, **kwargs)
 
     @property
@@ -439,16 +439,16 @@ class BrokenLogarithmicGridAtLevel(SimpleOpenGridAtLevel):
         coord = super().index2coord(index)
         # map to in-between r_min and r_max
         condlist = [
-            coord < self.rg_min,
-            (self.rg_min <= coord) & (coord < self.rg_0),
-            (self.rg_0 <= coord) & (coord < self.rg_max),
-            self.rg_max <= coord,
+            coord < self._rg_min,
+            (self._rg_min <= coord) & (coord < self._rg_0),
+            (self._rg_0 <= coord) & (coord < self._rg_max),
+            self._rg_max <= coord,
         ]
         funclist = [
-            lambda rg: self.gamma / (rg - self.delta),
-            lambda rg: self._r_min + self.alpha * (rg - self.rg_min),
-            lambda rg: self._r_linthresh * jnp.exp(self.beta * (rg - self.rg_0)),
-            lambda rg: self._r_max + self.epsilon * (rg - self.rg_max),
+            lambda rg: self._gamma / (rg - self._delta),
+            lambda rg: self._r_min + self._alpha * (rg - self._rg_min),
+            lambda rg: self._r_linthresh * jnp.exp(self._beta * (rg - self._rg_0)),
+            lambda rg: self._r_max + self._epsilon * (rg - self._rg_max),
         ]
         return jnp.piecewise(coord, condlist, funclist)
 
@@ -461,10 +461,10 @@ class BrokenLogarithmicGridAtLevel(SimpleOpenGridAtLevel):
             self._r_max <= coord,
         ]
         funclist = [
-            lambda r: self.delta + self.gamma / r,
-            lambda r: self.rg_min + (r - self._r_min) / self.alpha,
-            lambda r: self.rg_0 + jnp.log(r / self._r_linthresh) / self.beta,
-            lambda r: self.rg_max + (r - self._r_max) / self.epsilon,
+            lambda r: self._delta + self._gamma / r,
+            lambda r: self._rg_min + (r - self._r_min) / self._alpha,
+            lambda r: self._rg_0 + jnp.log(r / self._r_linthresh) / self._beta,
+            lambda r: self._rg_max + (r - self._r_max) / self._epsilon,
         ]
         coord = jnp.piecewise(coord, condlist, funclist)
         # transform to index
