@@ -291,7 +291,7 @@ def SimpleOpenGrid(
     )
 
 
-class LogarithmicGridAtLevel(SimpleOpenGridAtLevel):
+class LogGridAtLevel(SimpleOpenGridAtLevel):
     def __init__(self, *args, coord_offset, coord_scale, **kwargs):
         # NOTE, technically `coord_offset` and `coord_scale` are redundant with
         # `shifts` and `distances`, however, for ease of use, we first let them
@@ -322,7 +322,7 @@ class LogarithmicGridAtLevel(SimpleOpenGridAtLevel):
         return jnp.prod(coords[1] - coords[0], axis=0, keepdims=True)
 
 
-def LogarithmicGrid(
+def LogGrid(
     *,
     r_min: float,
     r_max: float,
@@ -341,7 +341,7 @@ def LogarithmicGrid(
     return SimpleOpenGrid(
         **kwargs,
         atLevel=partial(
-            LogarithmicGridAtLevel, coord_offset=coord_offset, coord_scale=coord_scale
+            LogGridAtLevel, coord_offset=coord_offset, coord_scale=coord_scale
         ),
     )
 
@@ -378,7 +378,7 @@ def HPLogRGrid(
 ) -> MGrid:
     """Meshgrid of a HEALPix grid and a logarithmic grid.
 
-    See `HEALPixGrid` and `LogarithmicGrid`."""
+    See `HEALPixGrid` and `LogGrid`."""
     if r_min_shape is None and nside is None:
         hp_size, r_min_shape = min_shape
         nside = (hp_size / 12) ** 0.5
@@ -386,7 +386,7 @@ def HPLogRGrid(
     assert depth == int(depth)
     depth = int(depth)
     grid_hp = HEALPixGrid(nside0=nside0, depth=depth)
-    grid_r = LogarithmicGrid(
+    grid_r = LogGrid(
         min_shape=r_min_shape,
         r_min=r_min,
         r_max=r_max,
@@ -396,7 +396,7 @@ def HPLogRGrid(
     return MGrid(grid_hp, grid_r, atLevel=atLevel)
 
 
-class BrokenLogarithmicGridAtLevel(SimpleOpenGridAtLevel):
+class BrokenLogGridAtLevel(SimpleOpenGridAtLevel):
     def __init__(
         self,
         *args,
@@ -476,7 +476,7 @@ class BrokenLogarithmicGridAtLevel(SimpleOpenGridAtLevel):
         return jnp.prod(coords[1] - coords[0], axis=0, keepdims=True)
 
 
-def BrokenLogarithmicGrid(
+def BrokenLogGrid(
     *,
     r_min: float,
     r_linthresh: float,
@@ -500,7 +500,7 @@ def BrokenLogarithmicGrid(
         raise ValueError(f"invalid r_0 {r_linthresh!r}")
 
     # This parametrisation is technically capable of handling a transformation
-    # from arbitrary rg_min and rg_max, but in accordance to the LogarithmicGrid,
+    # from arbitrary rg_min and rg_max, but in accordance to the LogGrid,
     # we can fix them to 0 and 1 and use the parent class for mapping them there.
     rg_min = 0.0
     rg_max = 1.0
@@ -515,7 +515,7 @@ def BrokenLogarithmicGrid(
     return SimpleOpenGrid(
         **kwargs,
         atLevel=partial(
-            BrokenLogarithmicGridAtLevel,
+            BrokenLogGridAtLevel,
             alpha=alpha,
             beta=beta,
             gamma=gamma,
@@ -545,7 +545,7 @@ def HPBrokenLogRGrid(
 ) -> MGrid:
     """Meshgrid of a HEALPix grid and a broken logarithmic grid.
 
-    See `HEALPixGrid` and `BrokenLogarithmicGrid`."""
+    See `HEALPixGrid` and `BrokenLogGrid`."""
     if r_min_shape is None and nside is None:
         hp_size, r_min_shape = min_shape
         nside = (hp_size / 12) ** 0.5
@@ -553,7 +553,7 @@ def HPBrokenLogRGrid(
     assert depth == int(depth)
     depth = int(depth)
     grid_hp = HEALPixGrid(nside0=nside0, depth=depth)
-    grid_r = BrokenLogarithmicGrid(
+    grid_r = BrokenLogGrid(
         min_shape=r_min_shape,
         r_min=r_min,
         r_linthresh=r_linthresh,

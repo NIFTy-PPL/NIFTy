@@ -39,8 +39,10 @@ from .multi_grid import (
     Grid,
     HEALPixGrid,
     HPLogRGrid,
+    HPBrokenLogRGrid,
     ICRField,
-    LogarithmicGrid,
+    LogGrid,
+    BrokenLogGrid,
     MGrid,
     SimpleOpenGrid,
 )
