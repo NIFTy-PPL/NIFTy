@@ -409,7 +409,7 @@ class BrokenLogGridAtLevel(SimpleOpenGridAtLevel):
         r_linthresh,
         r_max,
         rg_min,
-        rg_0,
+        rg_linthresh,
         rg_max,
         **kwargs,
     ):
@@ -422,7 +422,7 @@ class BrokenLogGridAtLevel(SimpleOpenGridAtLevel):
         self._r_linthresh = r_linthresh
         self._r_max = r_max
         self._rg_min = rg_min
-        self._rg_0 = rg_0
+        self._rg_linthresh = rg_linthresh
         self._rg_max = rg_max
         super().__init__(*args, **kwargs)
 
@@ -440,14 +440,14 @@ class BrokenLogGridAtLevel(SimpleOpenGridAtLevel):
         # map to in-between r_min and r_max
         condlist = [
             coord < self._rg_min,
-            (self._rg_min <= coord) & (coord < self._rg_0),
-            (self._rg_0 <= coord) & (coord < self._rg_max),
+            (self._rg_min <= coord) & (coord < self._rg_linthresh),
+            (self._rg_linthresh <= coord) & (coord < self._rg_max),
             self._rg_max <= coord,
         ]
         funclist = [
             lambda rg: self._gamma / (rg - self._delta),
             lambda rg: self._r_min + self._alpha * (rg - self._rg_min),
-            lambda rg: self._r_linthresh * jnp.exp(self._beta * (rg - self._rg_0)),
+            lambda rg: self._r_linthresh * jnp.exp(self._beta * (rg - self._rg_linthresh)),
             lambda rg: self._r_max + self._epsilon * (rg - self._rg_max),
         ]
         return jnp.piecewise(coord, condlist, funclist)
@@ -463,7 +463,7 @@ class BrokenLogGridAtLevel(SimpleOpenGridAtLevel):
         funclist = [
             lambda r: self._delta + self._gamma / r,
             lambda r: self._rg_min + (r - self._r_min) / self._alpha,
-            lambda r: self._rg_0 + jnp.log(r / self._r_linthresh) / self._beta,
+            lambda r: self._rg_linthresh + jnp.log(r / self._r_linthresh) / self._beta,
             lambda r: self._rg_max + (r - self._r_max) / self._epsilon,
         ]
         coord = jnp.piecewise(coord, condlist, funclist)
@@ -486,7 +486,7 @@ def BrokenLogGrid(
 ) -> OpenGrid:
     """Broken logarithmic grid on top of `SimpleOpenGrid` spanning from `r_min` to `r_max`
     at the final depth.
-    The grid is parametrised by three radii: r_min, r_0, and r_max.
+    The grid is parametrised by three radii: r_min, r_linthresh, and r_max.
     For values below rmin, the (padded) pixels are spaced antilinearly (1/r).
     Between rmin and r0 they are spaced linearly (r).
     Between r0 and rmax they are spaced logarithmically (exp(r)).
@@ -505,12 +505,12 @@ def BrokenLogGrid(
     rg_min = 0.0
     rg_max = 1.0
     m = (1.0 - r_min / r_linthresh) / (jnp.log(r_max / r_linthresh))
-    rg_0 = rg_min / (1 + m) + rg_max * m / (1 + m)
-    alpha = r_linthresh / (rg_max - rg_0) * jnp.log(r_max / r_linthresh)
+    rg_linthresh = rg_min / (1 + m) + rg_max * m / (1 + m)
+    alpha = r_linthresh / (rg_max - rg_linthresh) * jnp.log(r_max / r_linthresh)
     beta = alpha / r_linthresh
     gamma = -(r_min**2) / alpha
     delta = rg_min + r_min / alpha
-    epsilon = r_linthresh * beta * jnp.exp(beta * (rg_max - rg_0))
+    epsilon = r_linthresh * beta * jnp.exp(beta * (rg_max - rg_linthresh))
 
     return SimpleOpenGrid(
         **kwargs,
@@ -525,7 +525,7 @@ def BrokenLogGrid(
             r_linthresh=r_linthresh,
             r_max=r_max,
             rg_min=rg_min,
-            rg_0=rg_0,
+            rg_linthresh=rg_linthresh,
             rg_max=rg_max,
         ),
     )
