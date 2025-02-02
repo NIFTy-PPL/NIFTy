@@ -177,6 +177,9 @@ class DiagonalOperator(EndomorphicOperator):
 
     def apply(self, x, mode):
         self._check_input(x, mode)
+        # To save both time and memory, we remap the `mode` (via `self._trafo`)
+        # and do not compute and store a new `self._ldiag`s for adjoint, inverse
+        # or adjoint-inverse DiagonalOperators.
         trafo = self._ilog[mode] ^ self._trafo
 
         if trafo == 0:  # straight application
@@ -198,6 +201,8 @@ class DiagonalOperator(EndomorphicOperator):
 
     def process_sample(self, samp, from_inverse):
         from_inverse2 = from_inverse ^ (self._trafo >= 2)
+        # `from_inverse2` captures if the inverse of `self._ldiag` needs to be
+        # taken or not (can happen for nontrivial `self._trafo`).
         if (self._complex or (self._diagmin < 0.) or
                 (self._diagmin == 0. and from_inverse2)):
             raise ValueError("operator not positive definite")
