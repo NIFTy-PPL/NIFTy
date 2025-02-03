@@ -16,7 +16,7 @@ import numpy as np
 from jax import numpy as jnp
 from jax import random
 from jax.tree_util import Partial, tree_map
-from jax.sharding import PartitionSpec as Pspec, NamedSharding
+from jax.sharding import PartitionSpec as Pspec, NamedSharding, Mesh
 from jax.experimental.shard_map import shard_map
 
 from . import optimize
@@ -289,9 +289,7 @@ class OptimizeVI:
         self.mesh = None
         self.pspec = None
         if (not map_over_devices is None) and len(map_over_devices) > 1:
-            self.mesh = jax.make_mesh(
-                (len(map_over_devices),), ("x",), devices=map_over_devices
-            )
+            self.mesh = Mesh(map_over_devices, ("x",))
             self.pspec = Pspec("x")
 
         if mirror_samples is False:
