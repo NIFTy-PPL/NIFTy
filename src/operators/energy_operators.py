@@ -573,7 +573,7 @@ class GaussianEnergy(LikelihoodEnergyOperator):
         residual = x if self._data is None else x - self._data
         res = self._op(residual).real
         if x.want_metric:
-            return res.add_metric(self.get_metric_at(x.val))
+            return res.add_metric(self._icov)
         return res
 
     def get_transformation(self):

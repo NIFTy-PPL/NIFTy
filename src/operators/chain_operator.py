@@ -42,9 +42,16 @@ class ChainOperator(LinearOperator):
 
     @staticmethod
     def simplify(ops):
+        if len(ops) == 1:
+            return ops
         # verify domains
         for i in range(len(ops) - 1):
             utilities.check_object_identity(ops[i + 1].target, ops[i].domain)
+        if len(ops)==2:
+            if ops[0].isIdentity():
+                return [ops[1]]
+            if ops[1].isIdentity():
+                return [ops[0]]
         # unpack ChainOperators
         opsnew = []
         for op in ops:

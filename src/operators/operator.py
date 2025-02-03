@@ -114,6 +114,9 @@ class Operator(metaclass=NiftyMeta):
         """
         return None
 
+    def isIdentity(self):  # Will be overloaded in ScalingOperator
+        return False
+
     def scale(self, factor):
         if not isinstance(factor, numbers.Number):
             raise TypeError(".scale() takes a number as input")
@@ -165,6 +168,10 @@ class Operator(metaclass=NiftyMeta):
         if isinstance(x, LikelihoodEnergyOperator):
             return NotImplemented
         if x.target is self.domain:
+            if x.isIdentity():
+                return self
+            if self.isIdentity():
+                return x
             return _OpChain.make((self, x))
         return self.partial_insert(x)
 
@@ -176,6 +183,10 @@ class Operator(metaclass=NiftyMeta):
         if isinstance(x, LikelihoodEnergyOperator):
             return NotImplemented
         if x.domain is self.target:
+            if x.isIdentity():
+                return self
+            if self.isIdentity():
+                return x
             return _OpChain.make((x, self))
         return x.partial_insert(self)
 
