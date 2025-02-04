@@ -102,10 +102,10 @@ def _kl_vg(
     vvg = map(jax.value_and_grad(ham))
 
     if not mesh is None:
-        out_spec_tree = jax.tree.map(lambda x: pspec, primals)
-        out_spec = (pspec, out_spec_tree)
-        in_spec = jax.tree.map(lambda x: pspec, primals_samples.samples)
-        vvg = shard_map(vvg, mesh=mesh, in_specs=(in_spec,), out_specs=out_spec)
+        spec_tree = tree_map(lambda x: pspec, primals)
+        out_spec = (pspec, spec_tree)
+        in_spec = (spec_tree,)
+        vvg = shard_map(vvg, mesh=mesh, in_specs=in_spec, out_specs=out_spec)
 
     s = vvg(primals_samples.at(primals).samples)
     return reduce(s)
@@ -133,13 +133,13 @@ def _kl_met(
 
     # TODO: pass tangents via shard_map?
     if not mesh is None:
-        out_spec_tree = jax.tree.map(lambda x: pspec, primals)
-        out_spec = out_spec_tree
-        in_spec0 = jax.tree.map(lambda x: pspec, primals_samples.samples)
+        spec_tree = tree_map(lambda x: pspec, primals)
+        out_spec = spec_tree
+        in_spec = (spec_tree,)
         vmet = shard_map(
             vmet,
             mesh=mesh,
-            in_specs=(in_spec0,),
+            in_specs=in_spec,
             out_specs=out_spec,
         )
 
@@ -346,8 +346,7 @@ class OptimizeVI:
             smpls, smpls_states = sampler(primals, keys)
         else:
             sampler = Partial(self.draw_linear_residual, primals, **kwargs)
-            out_spec_tree = jax.tree.map(lambda x: self.pspec, primals)
-            out_spec = (out_spec_tree, self.pspec)
+            out_spec = (tree_map(lambda x: self.pspec, primals), self.pspec)
             sampler = shard_map(
                 self.residual_map(sampler),
                 mesh=self.mesh,
