@@ -1,6 +1,12 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 
+import os
+
+os.environ["XLA_FLAGS"] = (
+    "--xla_force_host_platform_device_count=2"  # Use 2 CPU devices
+)
+
 import pytest
 
 pytest.importorskip("jax")
@@ -13,6 +19,8 @@ import numpy as np
 from jax import random
 from jax.tree_util import tree_map
 from numpy.testing import assert_allclose, assert_array_equal
+
+jax.config.update("jax_enable_x64", True)
 
 import nifty8.re as jft
 from nifty8.re.optimize_kl import concatenate_zip
@@ -298,6 +306,62 @@ def test_optimize_kl_constants(seed, shape, lh_init):
         True,
         0 != np.concatenate([[1] if c else np.ravel(m) for m, c in zip(move, const)]),
     )
+
+
+@pmp("seed", (12, 42))
+@pmp("shape", ((5,), ((4,), (2,), (1,), (1,)), ((2, [1, 1]), {"a": (3, 1)})))
+@pmp("lh_init", LH_INIT[:2])
+def test_optimize_kl_device_consistency(seed, shape, lh_init):
+    devices = jax.devices()
+    if not len(devices) > 1:
+        raise RuntimeError("Need more than one device for test.")
+    lh_init_method, draw, latent_init = lh_init
+    key = random.PRNGKey(seed)
+    key, *subkeys = random.split(key, 1 + len(draw))
+    init_kwargs = {
+        k: method(key=sk, shape=shape) for (k, method), sk in zip(draw.items(), subkeys)
+    }
+    lh = lh_init_method(**init_kwargs)
+    key, sk = random.split(key)
+    pos = latent_init(sk, shape=shape)
+
+    key, sk = random.split(key)
+    delta = 1e-3
+    absdelta = delta * jft.size(pos)
+
+    draw_linear_kwargs = dict(
+        cg_name="SL", cg_kwargs=dict(miniter=2, absdelta=absdelta / 10.0, maxiter=10)
+    )
+    minimize_kwargs = dict(
+        name="SN", xtol=delta, cg_kwargs=dict(name=None, miniter=2), maxiter=3
+    )
+
+    key, sk = random.split(key)
+    opt_kl_kwargs = dict(
+        likelihood=lh,
+        position_or_samples=pos,
+        key=sk,
+        n_total_iterations=2,
+        n_samples=4,
+        draw_linear_kwargs=draw_linear_kwargs,
+        nonlinearly_update_kwargs=dict(minimize_kwargs=minimize_kwargs),
+        kl_kwargs=dict(minimize_kwargs=dict(name="M", maxiter=5)),
+        sample_mode="linear_resample",  # TODO also test geoVI once implemented
+        odir=None,
+        residual_map="smap",
+    )
+    samples_single_device, _ = jft.optimize_kl(**opt_kl_kwargs, map_over_devices=None)
+    samples_multiple_devices, _ = jft.optimize_kl(
+        **opt_kl_kwargs,
+        map_over_devices=jax.devices(),
+    )
+    tree_map(
+        assert_allclose,
+        samples_single_device.samples,
+        samples_multiple_devices.samples,
+    )
+    tree_map(assert_allclose, samples_single_device.pos, samples_multiple_devices.pos)
+    tree_map(assert_allclose, samples_single_device.keys, samples_multiple_devices.keys)
 
 
 if __name__ == "__main__":
