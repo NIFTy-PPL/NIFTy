@@ -17,6 +17,7 @@
 
 import numpy as np
 
+from .multi_domain import MultiDomain
 from .operators.operator import Operator
 from .sugar import makeOp
 from .utilities import check_object_identity
@@ -124,6 +125,8 @@ class Linearization(Operator):
         return self._metric
 
     def __getitem__(self, name):
+        if not isinstance(self.domain, MultiDomain):
+            return NotImplemented
         return self.new(self._val[name], self._jac.ducktape_left(name))
 
     def __neg__(self):

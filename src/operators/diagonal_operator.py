@@ -94,7 +94,8 @@ class DiagonalOperator(EndomorphicOperator):
                 raise ValueError("spaces and domain must have the same length")
             for i, j in enumerate(self._spaces):
                 if diagonal.domain[i] != self._domain[j]:
-                    raise ValueError("Mismatch:\n{diagonal.domain[i]}\n{self._domain[j]}")
+                    raise ValueError(f"Mismatch between:\n{diagonal.domain[i]}\n"
+                                     f"and:\n{self._domain[j]}")
             if self._spaces == tuple(range(len(self._domain))):
                 self._spaces = None  # shortcut
 
