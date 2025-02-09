@@ -12,20 +12,26 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Copyright(C) 2021 Max-Planck-Society
+# Copyright(C) 2025 Philipp Arras
+#
 # Author: Philipp Arras, Philipp Frank
 
 import os
+import pathlib
 import pickle
 import re
 import time
 from warnings import warn
+
+import numpy as np
 
 from .. import utilities
 from ..field import Field
 from ..multi_domain import MultiDomain
 from ..multi_field import MultiField
 from ..operators.operator import Operator
-from ..utilities import get_MPI_params_from_comm, shareRange
+from ..utilities import (ensure_all_tasks_succeed, get_MPI_params_from_comm,
+                         shareRange)
 
 
 class SampleListBase:
@@ -428,7 +434,7 @@ class SampleListBase:
                  if re.match(f"{base_file}.[0-9]+.pickle", ff)]
         if len(files) == 0:
             raise RuntimeError(f"No files matching `{file_name_base}.*.pickle`")
-        n_samples = max(list(map(lambda x: int(x.split(".")[-2]), files))) + 1
+        n_samples = _consecutive_length(list(map(lambda x: int(x.split(".")[-2]), files)))
 
         ntask, rank, _ = get_MPI_params_from_comm(comm)
         local_indices = range(*shareRange(n_samples, ntask, rank))
@@ -437,6 +443,26 @@ class SampleListBase:
             if not os.path.isfile(ff):
                 raise RuntimeError(f"File {ff} not found")
         return files
+
+    def deep_eq(self, other):
+        # TODO: Potentially add __eq__ to MultiField and Field to simplify this
+        if not isinstance(other, SampleListBase):
+            return NotImplemented
+        if self.n_samples != other.n_samples:
+            return False
+        for xx, yy in zip(self.iterator(), other.iterator()):
+            if xx.domain is not yy.domain:
+                return False
+            if isinstance(xx, MultiField):
+                xx = list(xx.val.values())
+                yy = list(yy.val.values())
+            else:
+                xx, yy = [xx.val], [yy.val]
+            assert len(xx) == len(yy)
+            for xxx, yyy in zip(xx, yy):
+                if np.any(xxx != yyy):
+                    return False
+        return True
 
 
 class ResidualSampleList(SampleListBase):
@@ -508,13 +534,23 @@ class ResidualSampleList(SampleListBase):
         return ResidualSampleList(mean, self._r, self._n, self.comm)
 
     def save(self, file_name_base, overwrite=False):
-        for ii, isample in enumerate(self.local_indices):
-            obj = [self._r[ii], self._n[ii]]
-            fname = _sample_file_name(file_name_base, isample)
-            _save_to_disk(fname, obj, overwrite)
-        if self.MPI_master:
-            _save_to_disk(f"{file_name_base}.mean.pickle", self._m, overwrite)
-        _barrier(self.comm)
+        # TODO: Make this function atomic potentially unify with
+        #  SampleList.save.
+
+        _ensure_proper_sample_list_ending(_sample_file_name(file_name_base, self.n_samples),
+                                          overwrite, self.comm)
+
+        # Save samples
+        with ensure_all_tasks_succeed(self.comm):
+            for ii, isample in enumerate(self.local_indices):
+                obj = [self._r[ii], self._n[ii]]
+                fname = _sample_file_name(file_name_base, isample)
+                _save_to_disk(fname, obj, overwrite)
+
+        # Save mean
+        with ensure_all_tasks_succeed(self.comm):
+            if self.MPI_master:
+                _save_to_disk(f"{file_name_base}.mean.pickle", self._m, overwrite)
 
     @classmethod
     def load(cls, file_name_base, comm=None):
@@ -568,13 +604,18 @@ class SampleList(SampleListBase):
         return self._s[i]
 
     def save(self, file_name_base, overwrite=False):
-        nsample = self.n_samples
-        for isample in range(nsample):
-            if isample in self.local_indices:
-                obj = self._s[isample-self.local_indices[0]]
+        # TODO: Make this function atomic potentially unify with
+        # ResidualSampleList.save.
+
+        _ensure_proper_sample_list_ending(_sample_file_name(file_name_base, self.n_samples),
+                                          overwrite, self.comm)
+
+        # Save samples
+        with ensure_all_tasks_succeed(self.comm):
+            for ii, isample in enumerate(self.local_indices):
+                obj = self._s[ii]
                 fname = _sample_file_name(file_name_base, isample)
-                _save_to_disk(fname, obj, overwrite=True)
-        _barrier(self.comm)
+                _save_to_disk(fname, obj, overwrite)
 
     @classmethod
     def load(cls, file_name_base, comm=None):
@@ -647,6 +688,8 @@ def _load_from_disk(file_name):
 
 
 def _save_to_disk(file_name, obj, overwrite=False):
+    if not overwrite and os.path.isfile(file_name):
+        raise RuntimeError(f"{file_name} already exists")
     if overwrite and os.path.isfile(file_name):
         os.remove(file_name)
     with open(file_name, "wb") as f:
@@ -682,3 +725,31 @@ def _compute_local_indices(n_local, comm):
     n_locals = comm.allgather(n_local)
     start = sum(n_locals[:comm.Get_rank()])
     return range(start, start + n_local)
+
+
+def _consecutive_length(lst):
+    if 0 not in lst:
+        raise ValueError("List does not contain 0, the starting element")
+    res = 0
+    while True:
+        if res + 1 not in lst:
+            return res + 1
+        res += 1
+
+
+def _ensure_proper_sample_list_ending(fname, overwrite, comm):
+        with ensure_all_tasks_succeed(comm):
+            MPI_master = utilities.get_MPI_params_from_comm(comm)[2]
+            if MPI_master:
+                if overwrite:
+                    # Remove potential "next sample"
+
+                    # TODO: this might leave dangling samples that are either
+                    # ignored or overwritten later. So it is fine for now. Will
+                    # be deleted once a proper atomic approach is implemented.
+                    pathlib.Path(fname).unlink(missing_ok=True)
+                else:
+                    # Make sure that "next" sample does not exist
+                    if os.path.isfile(fname):
+                        raise RuntimeError(f"{fname} already exists. You may "
+                            "want to remove it or specify overwrite=True")
