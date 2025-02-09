@@ -535,17 +535,14 @@ def _apply_on_domaintuple(func, funcWithDeriv, x, *args):
 
 
 def _apply_on_multidomain(func, funcWithDeriv, x, *args):
+    # TODO: Somehow this is not tested
     if isinstance(x, Linearization):
-        val, jac = Field.scalar(0), None
+        val, jac = [Field.scalar(0)], []
         for kk in x.domain.keys():
             tmp = _apply_on_domaintuple(func, funcWithDeriv, x[kk], *[a[kk] for a in args])
-            if tmp.jac is not None:
-                if jac is None:
-                    jac = tmp.jac
-                else:
-                    jac = jac + tmp.jac
-            val = val + tmp.val
-        return x.new(val, jac)
+            val.append(tmp.val)
+            jac.append(tmp.jac)
+        return x.new(reduce(Operator.add, val), jac)
     else:
         raise NotImplementedError
 

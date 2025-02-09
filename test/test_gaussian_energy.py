@@ -105,3 +105,46 @@ def testgaussianenergy_compatibility(cplx):
     loc1 = ift.MultiField.from_dict({'icov': ift.from_random(dom).exp()})
     loc = loc0.unite(loc1)
     ift.extra.check_operator(e, loc, ntries=20)
+
+
+@pmp('domain', [(ift.GLSpace(5), ift.UnstructuredDomain(21)),
+               ift.RGSpace([2, 2], distances=.789),
+               {"a": ift.RGSpace([3, 2]), "b": ift.UnstructuredDomain(12)}])
+@pmp("sampling_dtype", [np.float32, np.float64, np.complex64, np.complex128])
+def test_modern_ducc_backend(domain, sampling_dtype):
+    data = ift.from_random(domain, dtype=sampling_dtype)
+    icov = ift.from_random(domain, dtype=ift.utilities.real_dtype_counterpart(sampling_dtype)).exp()
+
+    if isinstance(domain, ift.MultiDomain):
+        icov2 = {}
+        icov2["a"] = ift.makeOp(icov["a"])
+        icov2["b"] = _DummyOperatorWrapper(ift.makeOp(icov["b"]))
+        icov2 = ift.makeOp(icov2)
+
+        e = ift.GaussianEnergy(data=data, inverse_covariance=icov2)
+        ift.extra.check_operator(e, ift.from_random(e.domain, dtype=sampling_dtype), ntries=ntries)
+
+        e = ift.GaussianEnergy(inverse_covariance=icov2)
+        ift.extra.check_operator(e, ift.from_random(e.domain, dtype=sampling_dtype), ntries=ntries)
+
+    icov = ift.makeOp(icov, sampling_dtype=sampling_dtype)
+
+    e = ift.GaussianEnergy(data=data, inverse_covariance=icov)
+    ift.extra.check_operator(e, ift.from_random(e.domain, dtype=sampling_dtype), ntries=ntries)
+
+    e = ift.GaussianEnergy(data=data, inverse_covariance=None)
+    ift.extra.check_operator(e, ift.from_random(e.domain, dtype=sampling_dtype), ntries=ntries)
+
+    e = ift.GaussianEnergy(domain=domain, sampling_dtype=sampling_dtype)
+    ift.extra.check_operator(e, ift.from_random(e.domain, dtype=sampling_dtype), ntries=ntries)
+
+
+class _DummyOperatorWrapper(ift.EndomorphicOperator):
+    def __init__(self, op):
+        self._domain = ift.makeDomain(op.domain)
+        self._capability = op._capability
+        self._op = op
+        assert op.domain == op.target
+
+    def apply(self, x, mode):
+        return self._op.apply(x, mode)
