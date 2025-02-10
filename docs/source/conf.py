@@ -4,11 +4,14 @@ needs_sphinx = '3.2.0'
 
 extensions = [
     'sphinx.ext.napoleon',    # Support for NumPy and Google style docstrings
-    'sphinx.ext.imgmath',     # Render math as images
+    'sphinx.ext.mathjax',     # Render math as images
     'sphinx.ext.viewcode',    # Add links to highlighted source code
     'sphinx.ext.intersphinx', # Links to other sphinx docs (mostly numpy)
     'myst_parser',            # Parse markdown
-]
+    'sphinxcontrib.bibtex',
+] 
+
+bibtex_bibfiles = ['user/paper.bib']
 master_doc = 'index'
 
 myst_enable_extensions = [
@@ -35,6 +38,7 @@ napoleon_use_admonition_for_references = True
 napoleon_include_special_with_doc = True
 
 imgmath_embed = True
+numfig = True
 
 project = u'NIFTy8'
 copyright = u'2013-2022, Max-Planck-Society'
