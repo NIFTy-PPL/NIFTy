@@ -1,5 +1,5 @@
-Citing NIFTy and the Magic Inside
-=================================
+Citing NIFTy
+============
 
 To cite the software library NIFTy, please use the following references:
 

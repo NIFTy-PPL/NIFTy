@@ -16,7 +16,7 @@ RUN pip3 install --break-system-packages \
     # Testing dependencies
     pytest pytest-cov pytest-xdist \
     # Documentation build dependencies
-    jupyter nbconvert jupytext sphinx pydata-sphinx-theme myst-parser
+    jupyter nbconvert jupytext sphinx pydata-sphinx-theme myst-parser sphinxcontrib-bibtex
 
 # Create user (openmpi does not like to be run as root)
 RUN useradd -ms /bin/bash runner
