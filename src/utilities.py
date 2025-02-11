@@ -12,10 +12,12 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Copyright(C) 2013-2022 Max-Planck-Society
+# Copyright(C) 2025 Philipp Arras
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 import collections
+import contextlib
 import pickle
 from functools import reduce
 from itertools import product
@@ -473,6 +475,21 @@ def check_MPI_synced_random_state(comm):
     if comm is None:
         return
     check_MPI_equality(getState(), comm)
+
+
+@contextlib.contextmanager
+def ensure_all_tasks_succeed(comm):
+    if comm is not None:
+        comm.Barrier()
+    all_good, exception_message = True, ""
+    try:
+        yield
+    except Exception as e:
+        all_good, exception_message = False, str(e)
+    finally:
+        all_good = [all_good] if comm is None else comm.allgather(all_good)
+        if not all(all_good):
+            raise RuntimeError(exception_message)
 
 
 def check_dtype_or_none(obj, domain=None):

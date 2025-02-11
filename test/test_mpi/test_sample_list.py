@@ -12,9 +12,12 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Copyright(C) 2021 Max-Planck-Society
+# Copyright(C) 2025 Philipp Arras
+#
 # Author: Philipp Arras
 
 import os
+from itertools import chain
 
 import nifty8 as ift
 import pytest
@@ -122,6 +125,41 @@ def test_load_and_save(comm, cls):
             ift.extra.assert_equal(s0, s1)
 
 
+@pmp("cls", all_cls)
+def test_load_makeshorter_and_save(comm, cls):
+    if comm is None and ift.utilities.get_MPI_params()[1] > 1:
+        pytest.skip()
+
+    sl_short_0, _ = _get_sample_list(comm, cls)
+    sl_short_1, _ = _get_sample_list(comm, cls)
+
+    if cls in ["SampleList", "PartiallyEmptySampleList"]:
+        combined_samples = list(chain(sl_short_0.local_iterator(),
+                                      sl_short_1.local_iterator()))
+        sl_long = ift.SampleList(combined_samples, comm, sl_short_0.domain)
+    elif cls in ["ResidualSampleList", "SymmetricalSampleList",
+                 "PartiallyEmptyResidualSampleList"]:
+        residuals = sl_short_0._r + sl_short_1._r
+        neg = sl_short_0._n + sl_short_1._n
+        sl_long = ift.ResidualSampleList(sl_short_0._m, residuals, neg, comm)
+    else:
+        raise ValueError
+
+    with MPISafeTempdir(comm) as direc:
+        fname = os.path.join(direc, "sl")
+        sl_long.save(fname)
+
+        with pytest.raises(RuntimeError):
+            sl_short_0.save(fname, overwrite=False)
+
+        sl_short_0.save(fname, overwrite=True)
+        sl_short_0_fromdisk = type(sl_short_0).load(fname, comm)
+        assert sl_short_0.deep_eq(sl_short_0)
+        assert sl_short_0.deep_eq(sl_short_0_fromdisk)
+        if comm is not None:
+            comm.Barrier()
+
+
 def test_load_mean(comm):
     sl, _ = _get_sample_list(comm, "SymmetricalSampleList")
     m0 = sl._m
@@ -178,6 +216,35 @@ def test_save_to_hdf5(comm, cls, mean, std, samples):
 
                 dom1 = eval(domain_repr)
                 assert dom1 is flddom
+
+
+
+
+@pmp("cls", all_cls)
+def test_broken_saves(comm, cls):
+    if comm is None and ift.utilities.get_MPI_params()[1] > 1:
+        pytest.skip()
+    sl, _ = _get_sample_list(comm, cls)
+
+    # Try to save when n+1st sample is already there without overwrite -> shall fail
+    overwrite = False
+    with MPISafeTempdir(comm) as direc:
+        fname = os.path.join(direc, "sl")
+        offender = f"{fname}.{sl.n_samples}.pickle"
+        open(offender, "w").close()
+        with pytest.raises(RuntimeError):
+            sl.save(fname, overwrite=overwrite)
+
+    # Try to save when n+1st sample is already there with overwrite -> shall delete
+    overwrite = True
+    with MPISafeTempdir(comm) as direc:
+        fname = os.path.join(direc, "sl")
+        offender = f"{fname}.{sl.n_samples}.pickle"
+        open(offender, "w").close()
+        sl.save(fname, overwrite=overwrite)
+        assert not os.path.isfile(offender)
+        sl1 = type(sl).load(fname)
+        assert sl.deep_eq(sl1)
 
 
 def _get_shape(inp, mdom):
