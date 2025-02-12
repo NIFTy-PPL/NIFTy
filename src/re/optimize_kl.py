@@ -363,19 +363,34 @@ class OptimizeVI:
         return smpls, smpls_states
 
     def nonlinearly_update_samples(self, samples: Samples, **kwargs):
-        # TODO: introduce shard_map
         # NOTE, use `Partial` in favor of `partial` to allow the (potentially)
         # re-jitting `residual_map` to trace the kwargs
         kwargs = hide_strings(kwargs)
-        curver = Partial(self.nonlinearly_update_residual, **kwargs)
-        curver = self.residual_map(curver, in_axes=(None, 0, 0, 0))
         assert len(samples.keys) == len(samples) // 2
         metric_sample_key = concatenate_zip(*((samples.keys,) * 2))
         sgn = jnp.ones(len(samples.keys))
         sgn = concatenate_zip(sgn, -sgn)
-        smpls, smpls_states = curver(
-            samples.pos, samples._samples, metric_sample_key, sgn
-        )
+        # raise
+        if self.mesh is None:
+            curver = Partial(self.nonlinearly_update_residual, **kwargs)
+            curver = self.residual_map(curver, in_axes=(None, 0, 0, 0))
+            smpls, smpls_states = curver(
+                samples.pos, samples._samples, metric_sample_key, sgn
+            )
+        else:
+            curver = Partial(self.nonlinearly_update_residual, samples.pos, **kwargs)
+            spec_tree = tree_map(lambda x: self.pspec, samples.pos)
+            out_spec = (spec_tree, self.pspec)
+            in_spec = (spec_tree, self.pspec, self.pspec)
+            curver = shard_map(
+                self.residual_map(curver, in_axes=(0, 0, 0)),
+                mesh=self.mesh,
+                in_specs=in_spec,
+                out_specs=out_spec,
+                check_rep=False,
+            )
+            smpls, smpls_states = curver(samples._samples, metric_sample_key, sgn)
+
         smpls = Samples(pos=samples.pos, samples=smpls, keys=samples.keys)
         return smpls, smpls_states
 
