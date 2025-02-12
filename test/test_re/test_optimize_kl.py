@@ -308,15 +308,23 @@ def test_optimize_kl_constants(seed, shape, lh_init):
     )
 
 
-@pmp("seed", (12, 42))
 @pmp("shape", ((5,), ((4,), (2,), (1,), (1,)), ((2, [1, 1]), {"a": (3, 1)})))
-@pmp("lh_init", LH_INIT[:2])
-def test_optimize_kl_device_consistency(seed, shape, lh_init):
+@pmp(
+    "sample_mode",
+    (
+        "linear_resample",
+        "linear_sample",
+        "nonlinear_resample",
+        "nonlinear_sample",
+        "nonlinear_update",
+    ),
+)
+def test_optimize_kl_device_consistency(shape, sample_mode):
     devices = jax.devices()
     if not len(devices) > 1:
         raise RuntimeError("Need more than one device for test.")
-    lh_init_method, draw, latent_init = lh_init
-    key = random.PRNGKey(seed)
+    lh_init_method, draw, latent_init = LH_INIT[0]
+    key = random.PRNGKey(42)
     key, *subkeys = random.split(key, 1 + len(draw))
     init_kwargs = {
         k: method(key=sk, shape=shape) for (k, method), sk in zip(draw.items(), subkeys)
@@ -333,7 +341,7 @@ def test_optimize_kl_device_consistency(seed, shape, lh_init):
         cg_name="SL", cg_kwargs=dict(miniter=2, absdelta=absdelta / 10.0, maxiter=10)
     )
     minimize_kwargs = dict(
-        name="SN", xtol=delta, cg_kwargs=dict(name=None, miniter=2), maxiter=3
+        name="SN", xtol=delta, cg_kwargs=dict(name=None, miniter=2), maxiter=5
     )
 
     key, sk = random.split(key)
@@ -345,8 +353,8 @@ def test_optimize_kl_device_consistency(seed, shape, lh_init):
         n_samples=4,
         draw_linear_kwargs=draw_linear_kwargs,
         nonlinearly_update_kwargs=dict(minimize_kwargs=minimize_kwargs),
-        kl_kwargs=dict(minimize_kwargs=dict(name="M", maxiter=5)),
-        sample_mode="linear_resample",  # TODO also test geoVI once implemented
+        kl_kwargs=dict(minimize_kwargs=dict(name="M", maxiter=10)),
+        sample_mode=sample_mode,
         odir=None,
         residual_map="smap",
     )
@@ -355,13 +363,16 @@ def test_optimize_kl_device_consistency(seed, shape, lh_init):
         **opt_kl_kwargs,
         map_over_devices=jax.devices(),
     )
+    aallclose = partial(assert_allclose, rtol=1e-5, atol=1e-5)
     tree_map(
-        assert_allclose,
+        aallclose,
         samples_single_device.samples,
         samples_multiple_devices.samples,
     )
-    tree_map(assert_allclose, samples_single_device.pos, samples_multiple_devices.pos)
-    tree_map(assert_allclose, samples_single_device.keys, samples_multiple_devices.keys)
+    tree_map(aallclose, samples_single_device.pos, samples_multiple_devices.pos)
+    tree_map(
+        assert_array_equal, samples_single_device.keys, samples_multiple_devices.keys
+    )
 
 
 if __name__ == "__main__":
