@@ -173,6 +173,11 @@ def _getitem_at_nit(config, key, nit):
     return c
 
 
+@jax.jit
+def _special_mirror_samples(samples):
+    return samples.at[1::2].set(-samples[1::2])
+
+
 class OptimizeVI:
     """State-less assembly of all methods needed for an MGVI/geoVI style VI
     approximation.
@@ -344,6 +349,9 @@ class OptimizeVI:
             sampler = Partial(self.draw_linear_residual, **kwargs)
             sampler = self.residual_map(sampler, in_axes=(None, 0))
             smpls, smpls_states = sampler(primals, keys)
+            # zip samples such that the mirrored-counterpart always comes right
+            # after the original sample
+            smpls = concatenate_zip(smpls, -smpls)
         else:
             sampler = Partial(self.draw_linear_residual, primals, **kwargs)
             out_spec = (tree_map(lambda x: self.pspec, primals), self.pspec)
@@ -354,12 +362,20 @@ class OptimizeVI:
                 out_specs=out_spec,
                 check_rep=False,
             )
+            n_samples = len(keys)
+            if n_samples == self.mesh.size / 2:
+                keys = jnp.repeat(keys, 2, axis=0)
+            keys = jax.device_put(keys, NamedSharding(self.mesh, self.pspec))
             smpls, smpls_states = sampler(keys)
 
-        # TODO: Special case that N_samples == n_devices // 2
-        # zip samples such that the mirrored-counterpart always comes right
-        # after the original sample
-        smpls = Samples(pos=primals, samples=concatenate_zip(smpls, -smpls), keys=keys)
+            # mirrored-counterpart always comes right after the original sample
+            if n_samples == self.mesh.size / 2:
+                smpls = tree_map(_special_mirror_samples, smpls)
+                keys = keys[::2]  # undo jnp.repeat
+            else:
+                smpls = concatenate_zip(smpls, -smpls)
+
+        smpls = Samples(pos=primals, samples=smpls, keys=keys)
         return smpls, smpls_states
 
     def nonlinearly_update_samples(self, samples: Samples, **kwargs):
@@ -370,7 +386,6 @@ class OptimizeVI:
         metric_sample_key = concatenate_zip(*((samples.keys,) * 2))
         sgn = jnp.ones(len(samples.keys))
         sgn = concatenate_zip(sgn, -sgn)
-        # raise
         if self.mesh is None:
             curver = Partial(self.nonlinearly_update_residual, **kwargs)
             curver = self.residual_map(curver, in_axes=(None, 0, 0, 0))
@@ -425,10 +440,6 @@ class OptimizeVI:
             if sample_mode.lower().endswith("_resample"):
                 k_smpls = random.split(key, n_samples)
             assert n_samples == len(k_smpls)
-            if not self.mesh is None:
-                # TODO: Special case that N_samples == n_devices // 2
-                k_smpls = jax.device_put(k_smpls, NamedSharding(self.mesh, self.pspec))
-
             samples, st_smpls = self.draw_linear_samples(
                 samples.pos,
                 k_smpls,
