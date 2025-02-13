@@ -4,7 +4,7 @@
 import os
 
 os.environ["XLA_FLAGS"] = (
-    "--xla_force_host_platform_device_count=2"  # Use 2 CPU devices
+    "--xla_force_host_platform_device_count=4"  # Use 4 CPU devices
 )
 
 import pytest
@@ -308,7 +308,7 @@ def test_optimize_kl_constants(seed, shape, lh_init):
     )
 
 
-@pmp("shape", ((5,), ((4,), (2,), (1,), (1,)), ((2, [1, 1]), {"a": (3, 1)})))
+@pmp("shape", (((2, [1, 1]), {"a": (3, 1)})))
 @pmp(
     "sample_mode",
     (
@@ -319,7 +319,8 @@ def test_optimize_kl_constants(seed, shape, lh_init):
         "nonlinear_update",
     ),
 )
-def test_optimize_kl_device_consistency(shape, sample_mode):
+@pmp("n_samples", (2, 4, 8))
+def test_optimize_kl_device_consistency(shape, sample_mode, n_samples):
     devices = jax.devices()
     if not len(devices) > 1:
         raise RuntimeError("Need more than one device for test.")
@@ -350,7 +351,7 @@ def test_optimize_kl_device_consistency(shape, sample_mode):
         position_or_samples=pos,
         key=sk,
         n_total_iterations=2,
-        n_samples=4,
+        n_samples=n_samples,
         draw_linear_kwargs=draw_linear_kwargs,
         nonlinearly_update_kwargs=dict(minimize_kwargs=minimize_kwargs),
         kl_kwargs=dict(minimize_kwargs=dict(name="M", maxiter=10)),
