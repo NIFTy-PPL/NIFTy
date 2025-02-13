@@ -244,7 +244,7 @@ class OptimizeVI:
         residual_map="lmap",
         kl_reduce=_reduce,
         mirror_samples=True,
-        map_over_devices=None,
+        map_over_devices: Optional[list]=None,
         _kl_value_and_grad: Optional[Callable] = None,
         _kl_metric: Optional[Callable] = None,
         _draw_linear_residual: Optional[Callable] = None,
@@ -273,6 +273,13 @@ class OptimizeVI:
             Reduce function used for the KL minimization.
         mirror_samples: bool
             Whether to mirror the samples or not.
+        map_over_devices : list of devices or None
+            Devices over which the samples are mapped. If `None` only the
+            default device is used. To use all detected devices pass
+            jax.devices(). The number of samples either needs to be a multiple
+            of the number of devices to evenly distribute the samples, or as a
+            special case 2 * n_samples needs to be equal to the number of
+            devices.
 
         Notes
         -----
@@ -693,7 +700,7 @@ def optimize_kl(
     resume: Union[str, bool] = False,
     callback: Optional[Callable[[Samples, OptimizeVIState], None]] = None,
     odir: Optional[str] = None,
-    map_over_devices=None,
+    map_over_devices: Optional[list]=None,
     _optimize_vi=None,
     _optimize_vi_state=None,
 ) -> tuple[Samples, OptimizeVIState]:
