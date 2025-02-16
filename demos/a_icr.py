@@ -2,7 +2,6 @@
 
 import jax
 import matplotlib.pyplot as plt
-
 import nifty8.re as jft
 from jax import random
 

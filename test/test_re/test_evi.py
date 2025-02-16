@@ -1,21 +1,18 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 
-import pytest
-
-pytest.importorskip("jax")
-
 from functools import partial
 
 import jax
 import jax.numpy as jnp
+import nifty8.re as jft
 import numpy as np
+import pytest
 from jax import random
 from numpy.testing import assert_allclose, assert_array_equal
 
-import nifty8.re as jft
-
 jax.config.update("jax_enable_x64", True)
+
 pmp = pytest.mark.parametrize
 
 

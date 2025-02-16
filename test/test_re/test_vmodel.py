@@ -1,17 +1,16 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 
-import pytest
-
-pytest.importorskip("jax")
-
+import jax
 import jax.numpy as jnp
 import jax.random as random
-from jax import vmap
+import pytest
 from jax.tree_util import tree_map
 from numpy.testing import assert_allclose
 
 import nifty8.re as jft
+
+jax.config.update("jax_enable_x64", True)
 
 pmp = pytest.mark.parametrize
 
@@ -21,7 +20,7 @@ def _v_compare(model, axis_size, in_axes=0, out_axes=0):
 
     x = jft.random_like(random.PRNGKey(10), vmodel.domain)
     res = vmodel(x)
-    gt = vmap(model, in_axes=(in_axes,), out_axes=out_axes)(x)
+    gt = jax.vmap(model, in_axes=(in_axes,), out_axes=out_axes)(x)
 
     tree_map(assert_allclose, gt, res)
 
@@ -73,7 +72,7 @@ def test_key(key):
 
     x = jft.random_like(random.PRNGKey(10), vmodel.domain)
     res = vmodel(x)
-    gt = vmap(model, in_axes=({"a": 0, "b": None},))(x)
+    gt = jax.vmap(model, in_axes=({"a": 0, "b": None},))(x)
     assert_allclose(gt, res)
 
     # Check intended dict handling with dummy input

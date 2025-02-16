@@ -5,23 +5,19 @@
 import sys
 from functools import partial
 
-import pytest
-
-pytest.importorskip("jax")
-pytest.importorskip("healpy")
-
 import jax
-from jax import random
 import jax.numpy as jnp
-from jax.tree_util import Partial
 import numpy as np
+import pytest
+from jax import random
+from jax.tree_util import Partial
 from numpy.testing import assert_allclose, assert_array_equal
 
 import nifty8.re as jft
 
-pmp = pytest.mark.parametrize
-
 jax.config.update("jax_enable_x64", True)
+
+pmp = pytest.mark.parametrize
 
 
 def lst2fixt(lst):

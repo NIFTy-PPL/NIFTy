@@ -1,8 +1,8 @@
+import jax
+import nifty8.re as jft
 import pytest
 
-pytest.importorskip("jax")
-
-import nifty8.re as jft
+jax.config.update("jax_enable_x64", True)
 
 
 def test_map_forest_axes_validation():

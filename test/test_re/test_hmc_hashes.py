@@ -1,14 +1,12 @@
 import sys
 
-import pytest
-
-pytest.importorskip("jax")
-
 import jax
+import nifty8.re as jft
+import pytest
 from jax import numpy as jnp
 from numpy import ndarray
 
-import nifty8.re as jft
+jax.config.update("jax_enable_x64", True)
 
 NDARRAY_TYPE = [ndarray]
 

@@ -1,9 +1,10 @@
+import jax
+import numpy as np
 import pytest
 
-pytest.importorskip("jax")
-
 import nifty8.re as jft
-import numpy as np
+
+jax.config.update("jax_enable_x64", True)
 
 pmp = pytest.mark.parametrize
 
