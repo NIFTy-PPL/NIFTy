@@ -12,7 +12,7 @@ RUN pip3 install --break-system-packages \
     # Packages needed for NIFTy
     scipy \
     # Optional nifty dependencies
-    matplotlib h5py astropy ducc0 jax jaxlib jaxbind mpi4py \
+    matplotlib h5py astropy ducc0 jax jaxlib jaxbind mpi4py healpy \
     # Testing dependencies
     pytest pytest-cov pytest-xdist \
     # Documentation build dependencies

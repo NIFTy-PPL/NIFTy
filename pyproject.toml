@@ -64,6 +64,7 @@ test = [
     "pytest-xdist",
     "ducc0",
     "nifty8[re]",
+    "nifty8[util]",
 ]
 all = ["nifty8[re,native,parallel,doc,util,test]"]
 

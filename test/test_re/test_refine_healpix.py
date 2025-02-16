@@ -15,6 +15,8 @@ from numpy.testing import assert_allclose, assert_array_equal
 
 import nifty8.re as jft
 
+pytest.importorskip("healpy")
+
 jax.config.update("jax_enable_x64", True)
 
 pmp = pytest.mark.parametrize
