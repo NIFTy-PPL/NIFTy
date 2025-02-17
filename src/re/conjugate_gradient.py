@@ -8,10 +8,9 @@ import jax
 from jax import numpy as jnp
 
 from .logger import logger
-from .misc import doc_from
-from .tree_math import assert_arithmetics
+from .misc import doc_from, safeguard_arguments_against_accidental_calls_into_jax
+from .tree_math import assert_arithmetics, result_type, size, vdot, where, zeros_like
 from .tree_math import norm as jft_norm
-from .tree_math import result_type, size, vdot, where, zeros_like
 
 HessVP = Callable[[jnp.ndarray], jnp.ndarray]
 
@@ -51,6 +50,7 @@ def static_cg(mat, j, x0=None, *args, **kwargs):
     return cg_res.x, cg_res.info
 
 
+@safeguard_arguments_against_accidental_calls_into_jax
 def _cg_pretty_print_it(
     name,
     i,
@@ -520,6 +520,7 @@ def _cg_steihaug_subproblem(
     # and hessian
     soa = partial(second_order_approx, cur_val=cur_val, g=g, hessp_at_xk=hessp_at_xk)
 
+    @safeguard_arguments_against_accidental_calls_into_jax
     def pp(arg):
         msg = (
             "{name}: |∇|:{r_norm:.6e} ➽:{resnorm:.6e} ↗:{tr:.6e}"

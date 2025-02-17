@@ -5,6 +5,7 @@ from functools import wraps
 from typing import Any, Callable, Dict, Hashable, Mapping, ParamSpec, TypeVar
 
 import jax
+import numpy as np
 from jax import numpy as jnp
 from jax.tree_util import Partial
 
@@ -95,8 +96,6 @@ def interpolate(xmin=-7.0, xmax=7.0, N=14000) -> Callable:
     """
 
     def decorator(f):
-        from functools import wraps
-
         x = jnp.linspace(xmin, xmax, N)
         y = f(x)
 
@@ -109,6 +108,29 @@ def interpolate(xmin=-7.0, xmax=7.0, N=14000) -> Callable:
     return decorator
 
 
+def _to_numpy(arg):
+    # NOTE, assume no cycles in the input and recurse into it without safeguards
+    if isinstance(arg, jax.Array):
+        return np.asarray(arg)
+    elif isinstance(arg, dict):
+        # JAX arrays are not hashable so keys do not need to be checked
+        return {k: _to_numpy(v) for k, v in arg.items()}
+    elif isinstance(arg, (tuple, list)):
+        type(arg)(map(_to_numpy, arg))
+    return arg
+
+
+def safeguard_arguments_against_accidental_calls_into_jax(func):
+    """Safeguard against using JAX in callback, see !25861"""
+
+    @wraps(func)
+    def safe_func(*args, **kwargs):
+        return func(*_to_numpy(args), **_to_numpy(kwargs))
+
+    return safe_func
+
+
+@safeguard_arguments_against_accidental_calls_into_jax
 def _maybe_raise(condition, exception):
     if condition:
         raise exception()
@@ -137,6 +159,7 @@ def conditional_raise(condition: bool, exception):
     )
 
 
+@safeguard_arguments_against_accidental_calls_into_jax
 def _maybe_call(condition, fn, args, kwargs):
     if condition:
         fn(*args, **kwargs)
@@ -144,6 +167,12 @@ def _maybe_call(condition, fn, args, kwargs):
 
 def conditional_call(condition, fn, *args, **kwargs):
     """JAX JIT-safe call to `fn` if `condition` is True.
+
+    Warning:
+    ---------
+    The function `fn` may NOT dispatch ANY JAX code, including by comparing JAX
+    objects! To safeguard against easy to miss fallacies, all JAX arrays are
+    automatically converted to numpy arrays.
 
     Parameters:
     -----------
