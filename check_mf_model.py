@@ -9,7 +9,7 @@
 import jax.numpy as jnp
 from jax import random
 import matplotlib.pyplot as plt
-from src.re.library.mf_spectral_fun import (
+from src.re.library.mf_model import (
     _build_fluctuations_model)
 from src.re.library.mf_model_utils import (
     _build_distribution_or_default)
