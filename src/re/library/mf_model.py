@@ -297,8 +297,10 @@ class CorrelatedMultiFrequencySky(Model):
         else:
             amplitude = self.spectral_amplitude(p)
         amplitude = amplitude.at[0].set(0.0)
+        spectral_deviations = self.log_spectral_behavior.remove_degeneracy_of_spectral_deviations(
+            self._spectral_index_deviations(p))
         return self._hdvol * vmap(self._ht)(
-            amplitude[self._pd] * self._spectral_index_deviations(p))
+            amplitude[self._pd] * spectral_deviations)
 
     def spectral_distribution(self, p):
         """Convenience function to retrieve the model's spectral
