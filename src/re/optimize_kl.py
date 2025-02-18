@@ -244,7 +244,7 @@ class OptimizeVI:
         residual_map="lmap",
         kl_reduce=_reduce,
         mirror_samples=True,
-        map_over_devices: Optional[list]=None,
+        map_over_devices: Optional[list] = None,
         use_pmap=False,
         _kl_value_and_grad: Optional[Callable] = None,
         _kl_metric: Optional[Callable] = None,
@@ -359,14 +359,17 @@ class OptimizeVI:
             sampler = jax.pmap(sampler, in_axes=(None, 0))
             keys = jax.device_put(keys, NamedSharding(self.mesh, self.pspec))
             smpls, smpls_states = sampler(primals, keys)
+
             # zip samples such that the mirrored-counterpart always comes right
             # after the original sample. out_shardings is need for telling JAX
             # not to move all samples to a single device.
             @partial(jax.jit, out_shardings=NamedSharding(self.mesh, self.pspec))
             def concatenate_zip_pmap(*arrays):
                 return tree_map(
-                    lambda *x: jnp.stack(x, axis=1).reshape((-1,) + x[0].shape[1:]), *arrays
+                    lambda *x: jnp.stack(x, axis=1).reshape((-1,) + x[0].shape[1:]),
+                    *arrays,
                 )
+
             smpls = concatenate_zip_pmap(smpls, -smpls)
         elif self.mesh is None:
             sampler = Partial(self.draw_linear_residual, **kwargs)
@@ -383,7 +386,7 @@ class OptimizeVI:
                 mesh=self.mesh,
                 in_specs=self.pspec,
                 out_specs=out_spec,
-                check_rep=False, # FIXME Maybe enable in future JAX releases
+                check_rep=False,  # FIXME Maybe enable in future JAX releases
             )
             n_samples = len(keys)
             if n_samples == self.mesh.size / 2:
@@ -716,7 +719,7 @@ def optimize_kl(
     resume: Union[str, bool] = False,
     callback: Optional[Callable[[Samples, OptimizeVIState], None]] = None,
     odir: Optional[str] = None,
-    map_over_devices: Optional[list]=None,
+    map_over_devices: Optional[list] = None,
     use_pmap=False,
     _optimize_vi=None,
     _optimize_vi_state=None,

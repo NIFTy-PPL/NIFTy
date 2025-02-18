@@ -325,7 +325,7 @@ def test_optimize_kl_device_consistency(shape, sample_mode, n_samples, use_pmap)
     devices = jax.devices()
     if not len(devices) > 1:
         raise RuntimeError("Need more than one device for test.")
-    if use_pmap and n_samples!=len(devices):
+    if use_pmap and n_samples != len(devices):
         pytest.skip("n_samples!=len(devices), skipping for pmap.")
     lh_init_method, draw, latent_init = LH_INIT[0]
     key = random.PRNGKey(42)
