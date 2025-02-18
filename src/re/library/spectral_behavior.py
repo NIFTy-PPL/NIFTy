@@ -15,7 +15,7 @@ from ..model import Model
 from ..tree_math.vector import Vector
 
 
-class LogSpectralBehavior(Model, ABC):
+class HarmonicLogSpectralBehavior(Model, ABC):
     @property
     @abstractmethod
     def relative_log_frequencies(self):
@@ -49,7 +49,7 @@ class LogSpectralBehavior(Model, ABC):
         pass
 
 
-class SingleLogSpectralBehavior(LogSpectralBehavior, ABC):
+class SingleHarmonicLogSpectralBehavior(HarmonicLogSpectralBehavior, ABC):
     '''Abstract base class for a model with single spectral behavior.
     Hence, mean is a single number and fluctations is an Array.
 
@@ -61,7 +61,7 @@ class SingleLogSpectralBehavior(LogSpectralBehavior, ABC):
     pass
 
 
-class SpectralIndex(SingleLogSpectralBehavior):
+class SpectralIndex(SingleHarmonicLogSpectralBehavior):
     def __init__(
         self,
         log_frequencies: ArrayLike,
@@ -139,7 +139,7 @@ class SpectralIndex(SingleLogSpectralBehavior):
         return None
 
 
-class SpectralPolynomial(LogSpectralBehavior):
+class SpectralPolynomial(HarmonicLogSpectralBehavior):
     def __init__(
         self,
         log_frequencies: ArrayLike,

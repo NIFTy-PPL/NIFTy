@@ -12,7 +12,7 @@ import nifty8.re as jft
 from nifty8.re.correlated_field import (
     make_grid, NonParametricAmplitude, MaternAmplitude)
 from nifty8.re.library.frequency_deviations import build_frequency_deviations_model_with_degeneracies
-from nifty8.re.library.spectral_behaviour import SpectralIndex
+from nifty8.re.library.spectral_behavior import SpectralIndex
 from nifty8.re.library.mf_spectral_fun import _build_fluctuations_model
 
 pmp = pytest.mark.parametrize

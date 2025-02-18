@@ -16,7 +16,7 @@ from src.re.library.mf_model_utils import (
 from src.re.num.stats_distributions import (
     normal_prior)
 
-from src.re.library.spectral_behaviour import SpectralPolynomial
+from src.re.library.spectral_behavior import SpectralPolynomial
 
 from sys import exit
 

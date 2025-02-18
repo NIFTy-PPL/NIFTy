@@ -156,7 +156,7 @@ def build_frequency_deviations_model_with_degeneracies(
     reference_frequency_index: int,
     deviations_settings: Optional[dict],
     prefix: str = None,
-) -> SlopelessGaussMarkovProcess | None:
+) -> GaussMarkovProcess | None:
     """
     Builds a frequency deviations model based on
     the specified settings.
@@ -181,7 +181,7 @@ def build_frequency_deviations_model_with_degeneracies(
 
     Returns
     -------
-    SlopelessGaussMarkovProcess or None
+    GaussMarkovProcess or None
         A SlopelessGaussMarkovProcess instance configured with
         the specified settings.
         Returns None if `deviations_settings` is None.
