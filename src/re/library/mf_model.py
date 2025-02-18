@@ -249,7 +249,7 @@ class CorrelatedMultiFrequencySky(Model):
                     self.log_ref_freq_mean_model(p)+cf_values+spectral_mean+zm)
 
     def reference_frequency_distribution(self, p):
-        """Convenience function to retrieve the model's spatial distribution at
+        """Convenience method to retrieve the model's spatial distribution at
         the reference frequency."""
         amplitude = self.spatial_amplitude(p)
         amplitude = amplitude.at[0].set(0.0)
@@ -288,7 +288,7 @@ class CorrelatedMultiFrequencySky(Model):
         ])
 
     def spectral_deviations_distribution(self, p):
-        """Convenience function to retrieve the model's spectral deviations."""
+        """Convenience method to retrieve the model's spectral deviations."""
         if self._spectral_index_deviations is None:
             return None
 
@@ -303,7 +303,7 @@ class CorrelatedMultiFrequencySky(Model):
             amplitude[self._pd] * spectral_deviations)
 
     def spectral_distribution(self, p):
-        """Convenience function to retrieve the model's spectral
+        """Convenience method to retrieve the model's spectral
         distribution."""
         if self.spectral_amplitude is None:
             amplitude = self.spatial_amplitude(p)
@@ -327,7 +327,7 @@ class CorrelatedMultiFrequencySky(Model):
         p,
         relative_log_frequency
     ):
-        """Convenience function to retrieve the model's deviations at
+        """Convenience method to retrieve the model's deviations at
         a given relative log frequency."""
         # TODO: deviations could be recalculated at
         # given relative_log_frequency instead of interp
@@ -362,7 +362,7 @@ class CorrelatedMultiFrequencySky(Model):
         p,
         relative_log_frequency
     ):
-        """Convenience function to retrieve the model's spectral
+        """Convenience method to retrieve the model's spectral
         distribution at a given relative frequency."""
         if self.spectral_amplitude is None:
             amplitude = self.spatial_amplitude(p)
@@ -387,7 +387,7 @@ class CorrelatedMultiFrequencySky(Model):
         p,
         relative_log_frequency
     ):
-        """Convenience function to retrieve the model's distribution
+        """Convenience method to retrieve the model's distribution
         at a given relative frequency."""
         spatial_distr = self.reference_frequency_distribution(p)
         spec_dist = self.get_spectral_distribution_at_relative_log_frequency(
@@ -396,7 +396,7 @@ class CorrelatedMultiFrequencySky(Model):
         return spatial_distr * self._nonlinearity(spec_dist)
 
     def reference_frequency_correlated_field(self, p):
-        """Convenience function to retrieve the model's spatial distribution
+        """Convenience method to retrieve the model's spatial distribution
         perturbations at the reference frequency."""
         amplitude = self.spatial_amplitude(p)
         amplitude = amplitude.at[0].set(0.0)
@@ -405,7 +405,7 @@ class CorrelatedMultiFrequencySky(Model):
         ) + self.zero_mode(p))
 
     def reference_frequency_mean_distribution(self, p):
-        """Convenience function to retrieve the model's mean spatial
+        """Convenience method to retrieve the model's mean spatial
         distribution at the reference frequency."""
         if self.log_ref_freq_mean_model is None:
             return 1.
