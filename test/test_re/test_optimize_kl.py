@@ -320,10 +320,13 @@ def test_optimize_kl_constants(seed, shape, lh_init):
     ),
 )
 @pmp("n_samples", (2, 4, 8))
-def test_optimize_kl_device_consistency(shape, sample_mode, n_samples):
+@pmp("use_pmap", (True, False))
+def test_optimize_kl_device_consistency(shape, sample_mode, n_samples, use_pmap):
     devices = jax.devices()
     if not len(devices) > 1:
         raise RuntimeError("Need more than one device for test.")
+    if use_pmap and n_samples!=len(devices):
+        pytest.skip("n_samples!=len(devices), skipping for pmap.")
     lh_init_method, draw, latent_init = LH_INIT[0]
     key = random.PRNGKey(42)
     key, *subkeys = random.split(key, 1 + len(draw))
@@ -363,6 +366,7 @@ def test_optimize_kl_device_consistency(shape, sample_mode, n_samples):
     samples_multiple_devices, _ = jft.optimize_kl(
         **opt_kl_kwargs,
         map_over_devices=jax.devices(),
+        use_pmap=use_pmap,
     )
     aallclose = partial(assert_allclose, rtol=1e-5, atol=1e-5)
     tree_map(
