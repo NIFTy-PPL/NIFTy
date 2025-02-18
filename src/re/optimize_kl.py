@@ -245,6 +245,7 @@ class OptimizeVI:
         kl_reduce=_reduce,
         mirror_samples=True,
         map_over_devices: Optional[list]=None,
+        use_pmap=False,
         _kl_value_and_grad: Optional[Callable] = None,
         _kl_metric: Optional[Callable] = None,
         _draw_linear_residual: Optional[Callable] = None,
@@ -303,6 +304,7 @@ class OptimizeVI:
         if (not map_over_devices is None) and len(map_over_devices) > 1:
             self.mesh = Mesh(map_over_devices, ("x",))
             self.pspec = Pspec("x")
+        self.use_pmap = use_pmap
 
         if mirror_samples is False:
             raise NotImplementedError()
@@ -352,7 +354,21 @@ class OptimizeVI:
         # NOTE, use `Partial` in favor of `partial` to allow the (potentially)
         # re-jitting `residual_map` to trace the kwargs
         kwargs = hide_strings(kwargs)
-        if self.mesh is None:
+        if self.use_pmap and self.mesh is not None:
+            sampler = Partial(self.draw_linear_residual, **kwargs)
+            sampler = jax.pmap(sampler, in_axes=(None, 0))
+            keys = jax.device_put(keys, NamedSharding(self.mesh, self.pspec))
+            smpls, smpls_states = sampler(primals, keys)
+            # zip samples such that the mirrored-counterpart always comes right
+            # after the original sample. out_shardings is need for telling JAX
+            # not to move all samples to a single device.
+            @partial(jax.jit, out_shardings=NamedSharding(self.mesh, self.pspec))
+            def concatenate_zip_pmap(*arrays):
+                return tree_map(
+                    lambda *x: jnp.stack(x, axis=1).reshape((-1,) + x[0].shape[1:]), *arrays
+                )
+            smpls = concatenate_zip_pmap(smpls, -smpls)
+        elif self.mesh is None:
             sampler = Partial(self.draw_linear_residual, **kwargs)
             sampler = self.residual_map(sampler, in_axes=(None, 0))
             smpls, smpls_states = sampler(primals, keys)
@@ -367,7 +383,7 @@ class OptimizeVI:
                 mesh=self.mesh,
                 in_specs=self.pspec,
                 out_specs=out_spec,
-                check_rep=False,
+                check_rep=False, # FIXME Maybe enable in future JAX releases
             )
             n_samples = len(keys)
             if n_samples == self.mesh.size / 2:
@@ -701,6 +717,7 @@ def optimize_kl(
     callback: Optional[Callable[[Samples, OptimizeVIState], None]] = None,
     odir: Optional[str] = None,
     map_over_devices: Optional[list]=None,
+    use_pmap=False,
     _optimize_vi=None,
     _optimize_vi_state=None,
 ) -> tuple[Samples, OptimizeVIState]:
@@ -739,6 +756,7 @@ def optimize_kl(
             kl_reduce=kl_reduce,
             mirror_samples=mirror_samples,
             map_over_devices=map_over_devices,
+            use_pmap=use_pmap,
         )
 
     last_fn = os.path.join(odir, LAST_FILENAME) if odir is not None else None
