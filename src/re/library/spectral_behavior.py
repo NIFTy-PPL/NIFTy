@@ -204,14 +204,10 @@ class SpectralPolynomial(HarmonicLogSpectralBehavior):
         return self._relative_log_frequencies
 
     def mean(self, p) -> ArrayLike:
-        # NOTE : This method might be unnecessary. See comment in
-        # CorrelatedMultiFrequencySky.spectral_index_distribution
-        return self._means[0](p)
+        return [m(p) for m in self._means]
 
     def fluctuations(self, p) -> ArrayLike:
-        # NOTE : This method might be unnecessary. See comment in
-        # CorrelatedMultiFrequencySky.spectral_index_distribution
-        return self._fluctuations[0](p)
+        return [f(p) for f in self._fluctuations]
 
     def fluctuations_with_frequencies(self, p) -> ArrayLike:
         '''Implements the fluctuations part. See above.

@@ -265,16 +265,9 @@ class CorrelatedMultiFrequencySky(Model):
                     amplitude[self._pd] * self._spatial_fluctuations(p))
                 + self.zero_mode(p))
 
-    def spectral_index_distribution(self, p):
-        """Convenience function to retrieve the model's spectral index."""
-
-        # FIXME : This function does only work for `SingleHarmonicLogSpectralBehavior`,
-        # e.g., the `SpectralIndex `model. Maybe needs to be moved to the
-        # `HarmonicLogSpectralBehavior`.
-        # NOTE : This would also remove the necessity to implement the mean and
-        # fluctuations methods in `HarmonicLogSpectralBehavior`. Furthermore,
-        # these two methods need only to be implemented for
-        # `SingleHarmonicLogSpectralBehavior` instances.
+    def spectral_index_distribution(self, p, order: int = 1):
+        """Convenience method to retrieve the model's spectral index. Or the
+        higher order terms which is controlled by the order parameter."""
 
         if self.spectral_amplitude is None:
             amplitude = self.spatial_amplitude(p)
@@ -284,9 +277,15 @@ class CorrelatedMultiFrequencySky(Model):
         spectral_mean = self.log_spectral_behavior.mean(p)
         spectral_fluc = self.log_spectral_behavior.fluctuations(p)
 
-        return (self._hdvol*self._ht(
-            amplitude[self._pd] * spectral_fluc
-        ) + spectral_mean)
+        if isinstance(self.log_spectral_behavior, SingleHarmonicLogSpectralBehavior):
+            return (self._hdvol*self._ht(
+                amplitude[self._pd] * spectral_fluc
+            ) + spectral_mean)
+
+        return jnp.array([
+            (self._hdvol*self._ht(amplitude[self._pd]*spf)) + spm
+            for spm, spf in zip(spectral_mean[:order], spectral_fluc[:order])
+        ])
 
     def spectral_deviations_distribution(self, p):
         """Convenience function to retrieve the model's spectral deviations."""
