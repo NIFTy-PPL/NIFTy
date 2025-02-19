@@ -354,7 +354,14 @@ class OptimizeVI:
         # NOTE, use `Partial` in favor of `partial` to allow the (potentially)
         # re-jitting `residual_map` to trace the kwargs
         kwargs = hide_strings(kwargs)
-        if self.mesh is not None:
+        if self.mesh is None:
+            sampler = Partial(self.draw_linear_residual, **kwargs)
+            sampler = self.residual_map(sampler, in_axes=(None, 0))
+            smpls, smpls_states = sampler(primals, keys)
+            # zip samples such that the mirrored-counterpart always comes right
+            # after the original sample
+            smpls = concatenate_zip(smpls, -smpls)
+        else:
             n_samples = len(keys)
             if n_samples == self.mesh.size / 2:
                 keys = jnp.repeat(keys, 2, axis=0)
@@ -375,7 +382,13 @@ class OptimizeVI:
                 sampler = jax.pmap(sampler, in_axes=(None, 0))
                 keys = jax.device_put(keys, NamedSharding(self.mesh, self.pspec))
                 smpls, smpls_states = sampler(primals, keys)
-            elif self.residual_device_map == "shared_map":
+            elif self.residual_device_map == "jit":
+                sampler = Partial(self.draw_linear_residual, primals, **kwargs)
+                sampler = self.residual_map(sampler)
+                sharding = NamedSharding(self.mesh, self.pspec)
+                sampler = jax.jit(sampler, in_shardings=sharding, out_shardings=sharding)
+                smpls, smpls_states = sampler(keys)
+            elif self.residual_device_map == "shard_map":
                 sampler = Partial(self.draw_linear_residual, primals, **kwargs)
                 out_spec = (tree_map(lambda x: self.pspec, primals), self.pspec)
                 sampler = shard_map(
@@ -387,20 +400,14 @@ class OptimizeVI:
                 )
                 smpls, smpls_states = sampler(keys)
             else:
-                ve = f"`residual_device_map` need to be `pmap` or `shared_map`, not {self.residual_device_map}"
+                ve = f"`residual_device_map` need to be `pmap`, `shard_map`, or `jit`, not {self.residual_device_map}"
                 raise ValueError(ve)
             if n_samples == self.mesh.size / 2:
                 smpls = tree_map(_special_mirror_samples, smpls)
                 keys = keys[::2]  # undo jnp.repeat
             else:
                 smpls = concatenate_zip_pmap(smpls, -smpls)
-        else:
-            sampler = Partial(self.draw_linear_residual, **kwargs)
-            sampler = self.residual_map(sampler, in_axes=(None, 0))
-            smpls, smpls_states = sampler(primals, keys)
-            # zip samples such that the mirrored-counterpart always comes right
-            # after the original sample
-            smpls = concatenate_zip(smpls, -smpls)
+
 
         smpls = Samples(pos=primals, samples=smpls, keys=keys)
         return smpls, smpls_states
@@ -421,16 +428,30 @@ class OptimizeVI:
             )
         else:
             curver = Partial(self.nonlinearly_update_residual, samples.pos, **kwargs)
-            spec_tree = tree_map(lambda x: self.pspec, samples.pos)
-            out_spec = (spec_tree, self.pspec)
-            in_spec = (spec_tree, self.pspec, self.pspec)
-            curver = shard_map(
-                self.residual_map(curver, in_axes=(0, 0, 0)),
-                mesh=self.mesh,
-                in_specs=in_spec,
-                out_specs=out_spec,
-                check_rep=False,
-            )
+            if self.residual_device_map == "shard_map":
+                spec_tree = tree_map(lambda x: self.pspec, samples.pos)
+                out_spec = (spec_tree, self.pspec)
+                in_spec = (spec_tree, self.pspec, self.pspec)
+                curver = shard_map(
+                    self.residual_map(curver, in_axes=(0, 0, 0)),
+                    mesh=self.mesh,
+                    in_specs=in_spec,
+                    out_specs=out_spec,
+                    check_rep=False,
+                )
+            elif self.residual_device_map == "jit":
+                sharding = NamedSharding(self.mesh, self.pspec)
+                sharding_tree = tree_map(lambda x: sharding, samples.pos)
+                out_sharding = (sharding_tree, sharding)
+                in_sharding = (sharding_tree, sharding, sharding)
+                curver = self.residual_map(curver)
+                curver = jax.jit(curver, in_shardings=in_sharding, out_shardings=out_sharding)
+                metric_sample_key = jax.device_put(metric_sample_key, sharding)
+            elif self.residual_device_map == "pmap":
+                curver = jax.pmap(curver, in_axes=(0, 0, 0))
+            else:
+                ve = f"`residual_device_map` need to be `pmap`, `shard_map`, or `jit`, not {self.residual_device_map}"
+                raise ValueError(ve)
             smpls, smpls_states = curver(samples._samples, metric_sample_key, sgn)
 
         smpls = Samples(pos=samples.pos, samples=smpls, keys=samples.keys)
@@ -721,7 +742,7 @@ def optimize_kl(
     callback: Optional[Callable[[Samples, OptimizeVIState], None]] = None,
     odir: Optional[str] = None,
     map_over_devices: Optional[list] = None,
-    residual_device_map="shared_map",
+    residual_device_map="shard_map",
     _optimize_vi=None,
     _optimize_vi_state=None,
 ) -> tuple[Samples, OptimizeVIState]:
