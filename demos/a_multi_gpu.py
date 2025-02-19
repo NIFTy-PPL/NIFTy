@@ -142,7 +142,7 @@ samples, state = jft.optimize_kl(
     # issues when used with shared_map device parallelization for the CG. For
     # mitigation either disable flexibility and asperity or use pmap to
     # parallelize over the sampling CG.
-    use_pmap=True,
+    residual_device_map="pmap",
 )
 
 # %%

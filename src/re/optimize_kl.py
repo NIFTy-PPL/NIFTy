@@ -245,7 +245,7 @@ class OptimizeVI:
         kl_reduce=_reduce,
         mirror_samples=True,
         map_over_devices: Optional[list] = None,
-        use_pmap=False,
+        residual_device_map="shard_map",
         _kl_value_and_grad: Optional[Callable] = None,
         _kl_metric: Optional[Callable] = None,
         _draw_linear_residual: Optional[Callable] = None,
@@ -304,7 +304,7 @@ class OptimizeVI:
         if (not map_over_devices is None) and len(map_over_devices) > 1:
             self.mesh = Mesh(map_over_devices, ("x",))
             self.pspec = Pspec("x")
-        self.use_pmap = use_pmap
+        self.residual_device_map = residual_device_map
 
         if mirror_samples is False:
             raise NotImplementedError()
@@ -354,11 +354,11 @@ class OptimizeVI:
         # NOTE, use `Partial` in favor of `partial` to allow the (potentially)
         # re-jitting `residual_map` to trace the kwargs
         kwargs = hide_strings(kwargs)
-        if self.use_pmap and self.mesh is not None:
-            sampler = Partial(self.draw_linear_residual, **kwargs)
-            sampler = jax.pmap(sampler, in_axes=(None, 0))
+        if self.mesh is not None:
+            n_samples = len(keys)
+            if n_samples == self.mesh.size / 2:
+                keys = jnp.repeat(keys, 2, axis=0)
             keys = jax.device_put(keys, NamedSharding(self.mesh, self.pspec))
-            smpls, smpls_states = sampler(primals, keys)
 
             # zip samples such that the mirrored-counterpart always comes right
             # after the original sample. out_shardings is need for telling JAX
@@ -370,36 +370,37 @@ class OptimizeVI:
                     *arrays,
                 )
 
-            smpls = concatenate_zip_pmap(smpls, -smpls)
-        elif self.mesh is None:
+            if self.residual_device_map == "pmap":
+                sampler = Partial(self.draw_linear_residual, **kwargs)
+                sampler = jax.pmap(sampler, in_axes=(None, 0))
+                keys = jax.device_put(keys, NamedSharding(self.mesh, self.pspec))
+                smpls, smpls_states = sampler(primals, keys)
+            elif self.residual_device_map == "shared_map":
+                sampler = Partial(self.draw_linear_residual, primals, **kwargs)
+                out_spec = (tree_map(lambda x: self.pspec, primals), self.pspec)
+                sampler = shard_map(
+                    self.residual_map(sampler),
+                    mesh=self.mesh,
+                    in_specs=self.pspec,
+                    out_specs=out_spec,
+                    check_rep=False,  # FIXME Maybe enable in future JAX releases
+                )
+                smpls, smpls_states = sampler(keys)
+            else:
+                ve = f"`residual_device_map` need to be `pmap` or `shared_map`, not {self.residual_device_map}"
+                raise ValueError(ve)
+            if n_samples == self.mesh.size / 2:
+                smpls = tree_map(_special_mirror_samples, smpls)
+                keys = keys[::2]  # undo jnp.repeat
+            else:
+                smpls = concatenate_zip_pmap(smpls, -smpls)
+        else:
             sampler = Partial(self.draw_linear_residual, **kwargs)
             sampler = self.residual_map(sampler, in_axes=(None, 0))
             smpls, smpls_states = sampler(primals, keys)
             # zip samples such that the mirrored-counterpart always comes right
             # after the original sample
             smpls = concatenate_zip(smpls, -smpls)
-        else:
-            sampler = Partial(self.draw_linear_residual, primals, **kwargs)
-            out_spec = (tree_map(lambda x: self.pspec, primals), self.pspec)
-            sampler = shard_map(
-                self.residual_map(sampler),
-                mesh=self.mesh,
-                in_specs=self.pspec,
-                out_specs=out_spec,
-                check_rep=False,  # FIXME Maybe enable in future JAX releases
-            )
-            n_samples = len(keys)
-            if n_samples == self.mesh.size / 2:
-                keys = jnp.repeat(keys, 2, axis=0)
-            keys = jax.device_put(keys, NamedSharding(self.mesh, self.pspec))
-            smpls, smpls_states = sampler(keys)
-
-            # mirrored-counterpart always comes right after the original sample
-            if n_samples == self.mesh.size / 2:
-                smpls = tree_map(_special_mirror_samples, smpls)
-                keys = keys[::2]  # undo jnp.repeat
-            else:
-                smpls = concatenate_zip(smpls, -smpls)
 
         smpls = Samples(pos=primals, samples=smpls, keys=keys)
         return smpls, smpls_states
@@ -720,7 +721,7 @@ def optimize_kl(
     callback: Optional[Callable[[Samples, OptimizeVIState], None]] = None,
     odir: Optional[str] = None,
     map_over_devices: Optional[list] = None,
-    use_pmap=False,
+    residual_device_map="shared_map",
     _optimize_vi=None,
     _optimize_vi_state=None,
 ) -> tuple[Samples, OptimizeVIState]:
@@ -759,7 +760,7 @@ def optimize_kl(
             kl_reduce=kl_reduce,
             mirror_samples=mirror_samples,
             map_over_devices=map_over_devices,
-            use_pmap=use_pmap,
+            residual_device_map=residual_device_map,
         )
 
     last_fn = os.path.join(odir, LAST_FILENAME) if odir is not None else None
