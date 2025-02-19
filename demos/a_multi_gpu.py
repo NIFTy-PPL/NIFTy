@@ -92,7 +92,7 @@ lh = jft.Gaussian(data, noise_cov_inv).amend(signal_response)
 # %%
 n_vi_iterations = 6
 delta = 1e-4
-n_samples = 8
+n_samples = 4
 
 key, k_i, k_o = random.split(key, 3)
 # NOTE, changing the number of samples always triggers a resampling even if
@@ -118,31 +118,37 @@ samples, state = jft.optimize_kl(
         cg_kwargs=dict(absdelta=delta * jft.size(lh.domain) / 10.0, maxiter=100),
     ),
     # Arguements for the minimizer in the nonlinear updating of the samples
-    # nonlinearly_update_kwargs=dict(
-    #     minimize_kwargs=dict(
-    #         name="SN",
-    #         xtol=delta,
-    #         cg_kwargs=dict(name=None),
-    #         maxiter=5,
-    #     )
-    # ),
+    nonlinearly_update_kwargs=dict(
+        minimize_kwargs=dict(
+            name="SN",
+            xtol=delta,
+            cg_kwargs=dict(name=None),
+            maxiter=5,
+        )
+    ),
     # Arguments for the minimizer of the KL-divergence cost potential
     kl_kwargs=dict(
         minimize_kwargs=dict(
             name="M", xtol=delta, cg_kwargs=dict(name=None), maxiter=35
         )
     ),
+    # sample_mode="nonlinear_resample",
     sample_mode="linear_resample",
     odir="results_intro",
     resume=False,
-    kl_map="smap",
-    residual_map="smap",
+    # kl_map="smap",
+    kl_map="vmap",
+    # residual_map="smap",
+    residual_map="vmap",
     map_over_devices=jax.devices(),
     # NOTE: The IWP model of the correlated field currently creates performance
     # issues when used with shared_map device parallelization for the CG. For
     # mitigation either disable flexibility and asperity or use pmap to
     # parallelize over the sampling CG.
-    residual_device_map="pmap",
+    residual_device_map="jit",
+    kl_device_map="shard_map",
+    kl_jit=True,
+    residual_jit=True,
 )
 
 # %%
