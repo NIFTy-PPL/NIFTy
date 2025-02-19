@@ -92,6 +92,7 @@ def _kl_vg(
     reduce=_reduce,
     mesh=None,
     pspec=None,
+    kl_device_map="shard_map",
 ):
     assert isinstance(primals_samples, Samples)
     map = get_map(map)
@@ -99,13 +100,28 @@ def _kl_vg(
 
     if len(primals_samples) == 0:
         return jax.value_and_grad(ham)(primals)
-    vvg = map(jax.value_and_grad(ham))
 
-    if not mesh is None:
-        spec_tree = tree_map(lambda x: pspec, primals)
-        out_spec = (pspec, spec_tree)
-        in_spec = (spec_tree,)
-        vvg = shard_map(vvg, mesh=mesh, in_specs=in_spec, out_specs=out_spec)
+    if mesh is None:
+        vvg = map(jax.value_and_grad(ham))
+    else:
+        if kl_device_map == "shard_map":
+            vvg = map(jax.value_and_grad(ham))
+            spec_tree = tree_map(lambda x: pspec, primals)
+            out_spec = (pspec, spec_tree)
+            in_spec = (spec_tree,)
+            vvg = shard_map(vvg, mesh=mesh, in_specs=in_spec, out_specs=out_spec)
+        elif kl_device_map == "jit":
+            vvg = map(jax.value_and_grad(ham))
+            sharding = NamedSharding(mesh, pspec)
+            sharding_tree = tree_map(lambda x: sharding, primals)
+            out_sharding = (sharding, sharding_tree)
+            in_sharding = (sharding_tree,)
+            vvg = jax.jit(vvg, in_shardings=in_sharding, out_shardings=out_sharding)
+        elif kl_device_map == "pmap":
+            vvg = jax.pmap(jax.value_and_grad(ham))
+        else:
+            ve = f"`residual_device_map` need to be `pmap`, `shard_map`, or `jit`, not {self.residual_device_map}"
+            raise ValueError(ve)
 
     s = vvg(primals_samples.at(primals).samples)
     return reduce(s)
@@ -121,6 +137,7 @@ def _kl_met(
     reduce=_reduce,
     mesh=None,
     pspec=None,
+    kl_device_map="shard_map",
 ):
     assert isinstance(primals_samples, Samples)
     map = get_map(map)
@@ -129,20 +146,33 @@ def _kl_met(
     if len(primals_samples) == 0:
         return ham.metric(primals, tangents)
     met = Partial(ham.metric, tangents=tangents)
-    vmet = map(met)
 
-    # TODO: pass tangents via shard_map?
-    if not mesh is None:
-        spec_tree = tree_map(lambda x: pspec, primals)
-        out_spec = spec_tree
-        in_spec = (spec_tree,)
-        vmet = shard_map(
-            vmet,
-            mesh=mesh,
-            in_specs=in_spec,
-            out_specs=out_spec,
-        )
-
+    if mesh is None:
+        vmet = map(met)
+    else:
+        if kl_device_map == "shard_map":
+            vmet = map(met)
+            spec_tree = tree_map(lambda x: pspec, primals)
+            out_spec = spec_tree
+            in_spec = (spec_tree,)
+            vmet = shard_map(
+                vmet,
+                mesh=mesh,
+                in_specs=in_spec,
+                out_specs=out_spec,
+            )
+        elif kl_device_map == "jit":
+            vmet = map(met)
+            sharding = NamedSharding(mesh, pspec)
+            sharding_tree = tree_map(lambda x: sharding, primals)
+            out_sharding = sharding_tree
+            in_sharding = (sharding_tree,)
+            vmet = jax.jit(vmet, in_shardings=in_sharding, out_shardings=out_sharding)
+        elif kl_device_map == "pmap":
+            vmet = jax.pmap(met)
+        else:
+            ve = f"`residual_device_map` need to be `pmap`, `shard_map`, or `jit`, not {self.residual_device_map}"
+            raise ValueError(ve)
     s = vmet(primals_samples.at(primals).samples)
     return reduce(s)
 
@@ -171,11 +201,6 @@ def _getitem_at_nit(config, key, nit):
     if callable(c) and len(inspect.getfullargspec(c).args) == 1:
         return c(nit)
     return c
-
-
-@jax.jit
-def _special_mirror_samples(samples):
-    return samples.at[1::2].set(-samples[1::2])
 
 
 class OptimizeVI:
@@ -245,6 +270,7 @@ class OptimizeVI:
         kl_reduce=_reduce,
         mirror_samples=True,
         map_over_devices: Optional[list] = None,
+        kl_device_map="shard_map",
         residual_device_map="shard_map",
         _kl_value_and_grad: Optional[Callable] = None,
         _kl_metric: Optional[Callable] = None,
@@ -311,21 +337,29 @@ class OptimizeVI:
 
         if _kl_value_and_grad is None:
             _kl_value_and_grad = partial(
-                kl_jit(_kl_vg, static_argnames=("map", "reduce", "mesh", "pspec")),
+                kl_jit(
+                    _kl_vg,
+                    static_argnames=("map", "reduce", "mesh", "pspec", "kl_device_map"),
+                ),
                 likelihood,
                 map=kl_map,
                 reduce=kl_reduce,
                 mesh=self.mesh,
                 pspec=self.pspec,
+                kl_device_map=kl_device_map,
             )
         if _kl_metric is None:
             _kl_metric = partial(
-                kl_jit(_kl_met, static_argnames=("map", "reduce", "mesh", "pspec")),
+                kl_jit(
+                    _kl_met,
+                    static_argnames=("map", "reduce", "mesh", "pspec", "kl_device_map"),
+                ),
                 likelihood,
                 map=kl_map,
                 reduce=kl_reduce,
                 mesh=self.mesh,
                 pspec=self.pspec,
+                kl_device_map=kl_device_map,
             )
         if _draw_linear_residual is None:
             _draw_linear_residual = partial(
@@ -377,6 +411,10 @@ class OptimizeVI:
                     *arrays,
                 )
 
+            @partial(jax.jit, out_shardings=NamedSharding(self.mesh, self.pspec))
+            def _special_mirror_samples(samples):
+                return samples.at[1::2].set(-samples[1::2])
+
             if self.residual_device_map == "pmap":
                 sampler = Partial(self.draw_linear_residual, **kwargs)
                 sampler = jax.pmap(sampler, in_axes=(None, 0))
@@ -386,7 +424,9 @@ class OptimizeVI:
                 sampler = Partial(self.draw_linear_residual, primals, **kwargs)
                 sampler = self.residual_map(sampler)
                 sharding = NamedSharding(self.mesh, self.pspec)
-                sampler = jax.jit(sampler, in_shardings=sharding, out_shardings=sharding)
+                sampler = jax.jit(
+                    sampler, in_shardings=sharding, out_shardings=sharding
+                )
                 smpls, smpls_states = sampler(keys)
             elif self.residual_device_map == "shard_map":
                 sampler = Partial(self.draw_linear_residual, primals, **kwargs)
@@ -407,7 +447,6 @@ class OptimizeVI:
                 keys = keys[::2]  # undo jnp.repeat
             else:
                 smpls = concatenate_zip_pmap(smpls, -smpls)
-
 
         smpls = Samples(pos=primals, samples=smpls, keys=keys)
         return smpls, smpls_states
@@ -445,7 +484,9 @@ class OptimizeVI:
                 out_sharding = (sharding_tree, sharding)
                 in_sharding = (sharding_tree, sharding, sharding)
                 curver = self.residual_map(curver)
-                curver = jax.jit(curver, in_shardings=in_sharding, out_shardings=out_sharding)
+                curver = jax.jit(
+                    curver, in_shardings=in_sharding, out_shardings=out_sharding
+                )
                 metric_sample_key = jax.device_put(metric_sample_key, sharding)
             elif self.residual_device_map == "pmap":
                 curver = jax.pmap(curver, in_axes=(0, 0, 0))
@@ -742,6 +783,7 @@ def optimize_kl(
     callback: Optional[Callable[[Samples, OptimizeVIState], None]] = None,
     odir: Optional[str] = None,
     map_over_devices: Optional[list] = None,
+    kl_device_map="shard_map",
     residual_device_map="shard_map",
     _optimize_vi=None,
     _optimize_vi_state=None,
@@ -781,6 +823,7 @@ def optimize_kl(
             kl_reduce=kl_reduce,
             mirror_samples=mirror_samples,
             map_over_devices=map_over_devices,
+            kl_device_map=kl_device_map,
             residual_device_map=residual_device_map,
         )
 

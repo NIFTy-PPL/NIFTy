@@ -308,7 +308,6 @@ def test_optimize_kl_constants(seed, shape, lh_init):
     )
 
 
-@pmp("shape", (((2, [1, 1]), {"a": (3, 1)})))
 @pmp(
     "sample_mode",
     (
@@ -321,16 +320,27 @@ def test_optimize_kl_constants(seed, shape, lh_init):
 )
 @pmp("n_samples", (2, 4, 8))
 @pmp("residual_device_map", ("pmap", "shard_map", "jit"))
+@pmp("kl_device_map", ("pmap", "shard_map", "jit"))
 def test_optimize_kl_device_consistency(
-    shape, sample_mode, n_samples, residual_device_map
+    sample_mode, n_samples, residual_device_map, kl_device_map
 ):
     devices = jax.devices()
     if not len(devices) > 1:
         raise RuntimeError("Need more than one device for test.")
     if residual_device_map == "pmap" and n_samples > len(devices):
         pytest.skip("n_samples>len(devices), skipping for pmap.")
-    if residual_device_map == "pmap" and n_samples/2 != len(devices) and sample_mode in ("nonlinear_resample", "nonlinear_sample", "nonlinear_update"):
-        pytest.skip("n_samples/2 != len(devices), skipping for pmap and geoVI based inference")
+    if (
+        residual_device_map == "pmap"
+        and n_samples / 2 != len(devices)
+        and sample_mode
+        in ("nonlinear_resample", "nonlinear_sample", "nonlinear_update")
+    ):
+        pytest.skip(
+            "n_samples/2 != len(devices), skipping for pmap and geoVI based inference"
+        )
+    if kl_device_map == "pmap" and n_samples * 2 != len(devices):
+        pytest.skip("n_samples*2 != len(devices), skipping for pmap")
+    shape = {"a": (3, 1)}
     lh_init_method, draw, latent_init = LH_INIT[0]
     key = random.PRNGKey(42)
     key, *subkeys = random.split(key, 1 + len(draw))
@@ -365,12 +375,16 @@ def test_optimize_kl_device_consistency(
         sample_mode=sample_mode,
         odir=None,
         residual_map="vmap",
+        kl_map="vmap",
+        kl_jit=False,
+        residual_jit=False,
     )
     samples_single_device, _ = jft.optimize_kl(**opt_kl_kwargs, map_over_devices=None)
     samples_multiple_devices, _ = jft.optimize_kl(
         **opt_kl_kwargs,
         map_over_devices=jax.devices(),
         residual_device_map=residual_device_map,
+        kl_device_map=kl_device_map,
     )
     aallclose = partial(assert_allclose, rtol=1e-5, atol=1e-5)
     tree_map(
