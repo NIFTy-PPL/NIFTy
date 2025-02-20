@@ -316,10 +316,10 @@ class OptimizeVI:
             Map function used for mapping sampling over the devices listed in
             `map_over_devices`. `residual_device_map` can be 'shard_map',
             'pmap', or 'jit'. If set to 'pmap', 2*n_samples need to be equal to
-            the number of devices. If only linear samples are drawn, n_samples
-            can also be equal to the number of devices for 'pmap'. For the other
-            maps it is sufficient if 2*n_samples equals the number of devices,
-            or n_samples can be evenly divided by the number of devices.
+            the number of devices. If only linear samples are drawn ,'pmap' also
+            works if n_samples equals the number of devices. For the other maps
+            it is sufficient if 2*n_samples equals the number of devices, or
+            n_samples can be evenly divided by the number of devices.
 
         Notes
         -----
