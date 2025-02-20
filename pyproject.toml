@@ -44,7 +44,7 @@ parallel = [
     "mpi4py",
 ]
 doc = [
-    "sphinx",
+    "sphinx<8.2",
     "pydata-sphinx-theme",
     "myst-parser",
     "jupyter",
