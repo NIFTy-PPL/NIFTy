@@ -271,7 +271,7 @@ class OptimizeVI:
         mirror_samples=True,
         map_over_devices: Optional[list] = None,
         kl_device_map="shard_map",
-        residual_device_map="shard_map",
+        residual_device_map="pmap",
         _kl_value_and_grad: Optional[Callable] = None,
         _kl_metric: Optional[Callable] = None,
         _draw_linear_residual: Optional[Callable] = None,
@@ -303,10 +303,23 @@ class OptimizeVI:
         map_over_devices : list of devices or None
             Devices over which the samples are mapped. If `None` only the
             default device is used. To use all detected devices pass
-            jax.devices(). The number of samples either needs to be a multiple
-            of the number of devices to evenly distribute the samples, or as a
-            special case 2 * n_samples needs to be equal to the number of
-            devices.
+            jax.devices(). Generally the samples needs to be evenly
+            distributable over the devices. For details see the descriptions of
+            the `kl_device_map` and `residual_device_map` arguments.
+        kl_device_map : str
+            Map function used for mapping KL minimization over the devices
+            listed in `map_over_devices`. `kl_device_map` can be 'shard_map',
+            'pmap', or 'jit'. If set to 'pmap', 2*n_samples need to be equal to
+            the number of devices. For all other maps the samples needs to be
+            equally distributable over the devices.
+        residual_device_map : str
+            Map function used for mapping sampling over the devices listed in
+            `map_over_devices`. `residual_device_map` can be 'shard_map',
+            'pmap', or 'jit'. If set to 'pmap', 2*n_samples need to be equal to
+            the number of devices. If only linear samples are drawn, n_samples
+            can also be equal to the number of devices for 'pmap'. For the other
+            maps it is sufficient if 2*n_samples equals the number of devices,
+            or n_samples can be evenly divided by the number of devices.
 
         Notes
         -----
@@ -784,7 +797,7 @@ def optimize_kl(
     odir: Optional[str] = None,
     map_over_devices: Optional[list] = None,
     kl_device_map="shard_map",
-    residual_device_map="shard_map",
+    residual_device_map="pmap",
     _optimize_vi=None,
     _optimize_vi_state=None,
 ) -> tuple[Samples, OptimizeVIState]:
