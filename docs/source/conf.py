@@ -7,6 +7,7 @@ extensions = [
     'sphinx.ext.mathjax',     # Render math as images
     'sphinx.ext.viewcode',    # Add links to highlighted source code
     'sphinx.ext.intersphinx', # Links to other sphinx docs (mostly numpy)
+    'sphinx.ext.autodoc',
     'myst_parser',            # Parse markdown
     'sphinxcontrib.bibtex',
 ] 
