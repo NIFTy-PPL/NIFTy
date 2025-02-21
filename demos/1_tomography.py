@@ -15,6 +15,8 @@ from jax import random
 
 import nifty8.re as jft
 
+jax.config.update("jax_enable_x64", True)
+
 # %%
 key = random.PRNGKey(42)
 

@@ -5,7 +5,8 @@ import operator
 from functools import partial, reduce
 from typing import Any, List, Optional, Tuple, Union
 
-from jax import dtypes, numpy as jnp
+from jax import dtypes
+from jax import numpy as jnp
 from jax.tree_util import (
     all_leaves,
     tree_leaves,
