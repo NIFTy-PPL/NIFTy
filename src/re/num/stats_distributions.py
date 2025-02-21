@@ -62,10 +62,11 @@ def lognormal_moments(mean, std):
     """Compute the cumulants a log-normal process would need to comply with the
     provided mean and standard-deviation `std`
     """
-    if tree_any(mean <= 0.0):
-        raise ValueError(f"`mean` must be greater zero; got {mean!r}")
-    if tree_any(std <= 0.0):
-        raise ValueError(f"`std` must be greater zero; got {std!r}")
+    from jax.experimental import checkify
+    checkify.check(tree_any(mean > 0.),
+                   f"`mean` must be greater zero; got {mean!r}")
+    checkify.check(tree_any(std > 0.),
+                   f"`std` must be greater zero; got {std!r}")
 
     logstd = sqrt(log1p((std / mean) ** 2))
     logmean = log(mean) - 0.5 * logstd**2
