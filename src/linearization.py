@@ -126,7 +126,7 @@ class Linearization(Operator):
 
     def __getitem__(self, name):
         if not isinstance(self.domain, MultiDomain):
-            return NotImplemented
+            raise TypeError(f"'{type(self)}' object is not subscriptable")
         return self.new(self._val[name], self._jac.ducktape_left(name))
 
     def __neg__(self):
