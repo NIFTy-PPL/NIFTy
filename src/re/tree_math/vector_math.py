@@ -5,6 +5,7 @@ import operator
 from functools import partial, reduce
 from typing import Any, List, Optional, Tuple, Union
 
+from jax import dtypes
 from jax import numpy as jnp
 from jax.tree_util import (
     all_leaves,
@@ -46,7 +47,7 @@ class ShapeWithDtype:
             raise TypeError(ve)
 
         self._shape = shape
-        self._dtype = jnp.float64 if dtype is None else dtype
+        self._dtype = dtypes.canonicalize_dtype(float).type if dtype is None else dtype
         self._size = None
 
     @classmethod
