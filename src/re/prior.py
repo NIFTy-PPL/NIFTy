@@ -11,14 +11,14 @@ from .num import (
 )
 
 _doc_shared = """name : hashable, optional
-            Name within the new `input` on which `call` acts.
-        shape : tuple or tree-like structure of ShapeWithDtype
-            Shape of the latent parameter(s) that are transformed to the desired
-            distribution. This can also be an arbitrary shape-dtype structure in
-            which case `dtype` is ignored. Defaults to a scalar.
-        dtype : dtype
-            Data type of the latent parameter(s) that are transformed to the
-            desired distribution."""
+    Name within the new `input` on which `call` acts.
+shape : tuple or tree-like structure of ShapeWithDtype
+    Shape of the latent parameter(s) that are transformed to the desired
+    distribution. This can also be an arbitrary shape-dtype structure in
+    which case `dtype` is ignored. Defaults to a scalar.
+dtype : dtype
+    Data type of the latent parameter(s) that are transformed to the
+    desired distribution."""
 
 
 def _format_doc(func):
