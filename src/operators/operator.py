@@ -257,7 +257,7 @@ class Operator(metaclass=NiftyMeta):
         from .simple_linear_operators import ducktape
 
         if not is_operator(self):
-            return NotImplemented
+            raise TypeError(f"'{type(self)}' object is not subscriptable")
         if not isinstance(self.target, MultiDomain):
             raise TypeError("Only Operators with a MultiDomain as target can be subscripted.")
         return ducktape(None, self, key) @ self
