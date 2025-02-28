@@ -110,6 +110,7 @@ class Gaussian(Likelihood):
         data,
         noise_cov_inv: Optional[Callable] = None,
         noise_std_inv: Optional[Callable] = None,
+        name: str | None = None
     ):
         self.data = data
         noise_cov_inv, noise_std_inv = _get_cov_inv_and_std_inv(
@@ -117,6 +118,7 @@ class Gaussian(Likelihood):
         )
         self.noise_cov_inv = noise_cov_inv
         self.noise_std_inv = noise_std_inv
+        self._name = name
         shp = tree_map(ShapeWithDtype.from_leave, data)
         super().__init__(domain=shp, lsm_tangents_shape=shp)
 

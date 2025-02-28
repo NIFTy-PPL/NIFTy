@@ -210,6 +210,7 @@ class Likelihood(LazyModel):
     """
 
     _lsm_tan_shp: Any = None
+    _name = None
 
     def __init__(self, *, domain=NoValue, init=NoValue, lsm_tangents_shape=None):
         # NOTE, `lsm_tangents_shape` is not `normalized_residual` applied to
@@ -566,6 +567,7 @@ class LikelihoodWithModel(Likelihood):
         lh : Likelihood
         """
         self.likelihood = likelihood
+        self._name = likelihood._name
         if not callable(f):
             te = f"second argument to {self.__class__.__name__} must be callable; got {f!r}"
             raise TypeError(te)
@@ -666,7 +668,8 @@ class LikelihoodSum(Likelihood):
                 f" {type(right)!r}"
             )
             raise TypeError(te)
-        self._lkey, self._rkey = _left_key, _right_key
+        self._lkey = _left_key if left._name is None else left._name
+        self._rkey = _right_key if right._name is None else right._name
         joined_tangents_shape = {
             self._lkey: left._lsm_tan_shp,
             self._rkey: right._lsm_tan_shp,

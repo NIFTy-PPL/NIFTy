@@ -74,7 +74,9 @@ def reduced_residual_stats(position_or_samples, func=None, *, map="lmap"):
     return tree_map(red_chisq_stat, samples)
 
 
-def _rpprint(ps: Any, *, _indent=0, _key="") -> str:
+def _rpprint(ps: Any, *, _indent=0, _key="", flatten=True) -> str:
+    if flatten:
+        _key = ""
     if isinstance(ps, Vector):
         msg = _rpprint(ps.tree, _indent=_indent)
     elif isinstance(ps, dict):
