@@ -19,6 +19,8 @@ from nifty8.re.likelihood import partial_insert_and_remove as jpartial
 
 pmp = pytest.mark.parametrize
 
+jax.config.update("jax_enable_x64", True)
+
 
 def _identity(x):
     return x
@@ -143,8 +145,8 @@ def test_nonvariable_likelihood_add(seed, likelihood, forward_a, forward_b):
     assert_allclose(jax.vmap(lh_orig)(p), jax.vmap(lh_ab)(p), equal_nan=False)
     rsm_orig = jax.vmap(lh_orig.right_sqrt_metric)(p, t)
     rsm_ab = jax.vmap(lh_ab.right_sqrt_metric)(p, t)
-    tree_assert_allclose(rsm_orig.tree[key_a], rsm_ab["lh_left"], equal_nan=False)
-    tree_assert_allclose(rsm_orig.tree[key_b], rsm_ab["lh_right"], equal_nan=False)
+    tree_assert_allclose(rsm_orig.tree[key_a], rsm_ab["lh_0"], equal_nan=False)
+    tree_assert_allclose(rsm_orig.tree[key_b], rsm_ab["lh_1"], equal_nan=False)
     tree_assert_allclose(
         jax.vmap(
             lambda p, t, q: lh_orig.left_sqrt_metric(p, lh_orig.right_sqrt_metric(t, q))
@@ -159,12 +161,12 @@ def test_nonvariable_likelihood_add(seed, likelihood, forward_a, forward_b):
     )
     nresi_orig = jax.vmap(lh_orig.normalized_residual)(p)
     nresi_ab = jax.vmap(lh_ab.normalized_residual)(p)
-    tree_assert_allclose(nresi_orig.tree[key_a], nresi_ab["lh_left"], equal_nan=False)
-    tree_assert_allclose(nresi_orig.tree[key_b], nresi_ab["lh_right"], equal_nan=False)
+    tree_assert_allclose(nresi_orig.tree[key_a], nresi_ab["lh_0"], equal_nan=False)
+    tree_assert_allclose(nresi_orig.tree[key_b], nresi_ab["lh_1"], equal_nan=False)
     trafo_orig = jax.vmap(lh_orig.transformation)(p)
     trafo_ab = jax.vmap(lh_ab.transformation)(p)
-    tree_assert_allclose(trafo_orig.tree[key_a], trafo_ab["lh_left"], equal_nan=False)
-    tree_assert_allclose(trafo_orig.tree[key_b], trafo_ab["lh_right"], equal_nan=False)
+    tree_assert_allclose(trafo_orig.tree[key_a], trafo_ab["lh_0"], equal_nan=False)
+    tree_assert_allclose(trafo_orig.tree[key_b], trafo_ab["lh_1"], equal_nan=False)
 
 
 @pmp("seed", (33, 42, 43))
@@ -224,10 +226,10 @@ def test_variable_likelihood_add(seed, likelihood, forward_a, forward_b):
     rsm_orig = jax.vmap(lh_orig.right_sqrt_metric)(p, t)
     rsm_ab = jax.vmap(lh_ab.right_sqrt_metric)(p, t)
     tree_assert_allclose(
-        tuple(r.tree[key_a] for r in rsm_orig), rsm_ab["lh_left"], equal_nan=False
+        tuple(r.tree[key_a] for r in rsm_orig), rsm_ab["lh_0"], equal_nan=False
     )
     tree_assert_allclose(
-        tuple(r.tree[key_b] for r in rsm_orig), rsm_ab["lh_right"], equal_nan=False
+        tuple(r.tree[key_b] for r in rsm_orig), rsm_ab["lh_1"], equal_nan=False
     )
     tree_assert_allclose(
         jax.vmap(
@@ -243,8 +245,8 @@ def test_variable_likelihood_add(seed, likelihood, forward_a, forward_b):
     )
     nresi_orig = lh_orig.normalized_residual(p)
     nresi_ab = lh_ab.normalized_residual(p)
-    tree_assert_allclose(nresi_orig[key_a], nresi_ab["lh_left"], equal_nan=False)
-    tree_assert_allclose(nresi_orig[key_b], nresi_ab["lh_right"], equal_nan=False)
+    tree_assert_allclose(nresi_orig[key_a], nresi_ab["lh_0"], equal_nan=False)
+    tree_assert_allclose(nresi_orig[key_b], nresi_ab["lh_1"], equal_nan=False)
 
     try:
         jax.vmap(lh_orig.transformation)(p)
@@ -253,10 +255,10 @@ def test_variable_likelihood_add(seed, likelihood, forward_a, forward_b):
     trafo_orig = jax.vmap(lh_orig.transformation)(p)
     trafo_ab = jax.vmap(lh_ab.transformation)(p)
     tree_assert_allclose(
-        tuple(t[key_a] for t in trafo_orig), trafo_ab["lh_left"], equal_nan=False
+        tuple(t[key_a] for t in trafo_orig), trafo_ab["lh_0"], equal_nan=False
     )
     tree_assert_allclose(
-        tuple(t[key_b] for t in trafo_orig), trafo_ab["lh_right"], equal_nan=False
+        tuple(t[key_b] for t in trafo_orig), trafo_ab["lh_1"], equal_nan=False
     )
 
 
