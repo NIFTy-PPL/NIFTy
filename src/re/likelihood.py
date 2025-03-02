@@ -392,6 +392,9 @@ class Likelihood(LazyModel):
         lp = LikelihoodPartial(self, primals=primals, point_estimates=point_estimates)
         return lp, lp.splitx(primals)[0]
 
+    def __str__(self):
+        return f"{self.__class__.__name__}()"
+
 
 class LikelihoodPartial(Likelihood):
     """Likelihood with partially inserted `primals`."""
@@ -490,6 +493,10 @@ class LikelihoodPartial(Likelihood):
             Frozen/static part of the position at which to evaluate the energy.
         """
         return _parse_point_estimates(self.point_estimates, primals)[1:]
+
+    def __str__(self):
+        args_str = f"{self.likelihood}, point_estimates={self.point_estimates}"
+        return f"{self.__class__.__name__}({args_str})"
 
 
 class _ChainModel(LazyModel):
@@ -646,6 +653,9 @@ class LikelihoodWithModel(Likelihood):
             domain=domain,
             likelihood_argnames=likelihood_argnames,
         )
+
+    def __str__(self):
+        return f"{self.likelihood}.amend({self.forward})"
 
 
 class LikelihoodSum(Likelihood):
