@@ -379,10 +379,10 @@ def test_optimize_kl_device_consistency(
         kl_jit=False,
         residual_jit=False,
     )
-    samples_single_device, _ = jft.optimize_kl(**opt_kl_kwargs, map_over_devices=None)
+    samples_single_device, _ = jft.optimize_kl(**opt_kl_kwargs, devices=None)
     samples_multiple_devices, _ = jft.optimize_kl(
         **opt_kl_kwargs,
-        map_over_devices=jax.devices(),
+        devices=jax.devices(),
         residual_device_map=residual_device_map,
         kl_device_map=kl_device_map,
     )
