@@ -23,7 +23,6 @@ from .misc import conditional_raise
 from .tree_math import (
     Vector,
     assert_arithmetics,
-    dot,
     get_map,
     random_like,
     stack,
@@ -163,7 +162,7 @@ def nonlinearly_update_residual(
         t = tree_map(jnp.subtract, lh.transformation(x), lh_trafo_at_p)
         g = x - e_liquid + lh.left_sqrt_metric(e_liquid, t)
         r = ms_at_p - g
-        res = 0.5 * dot(r, r)
+        res = 0.5 * vdot(r, r)
 
         r = conj(r)
         ngrad = r + lh.left_sqrt_metric(x, lh.right_sqrt_metric(e_liquid, r))
