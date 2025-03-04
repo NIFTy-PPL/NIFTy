@@ -1,7 +1,9 @@
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 
+import operator
 from dataclasses import field
-from typing import Any, Callable, TypeVar
+from functools import reduce
+from typing import Any, Callable, Tuple, TypeVar
 
 import jax
 from jax.tree_util import (
@@ -390,6 +392,9 @@ class Likelihood(LazyModel):
         lp = LikelihoodPartial(self, primals=primals, point_estimates=point_estimates)
         return lp, lp.splitx(primals)[0]
 
+    def __str__(self):
+        return f"{self.__class__.__name__}()"
+
 
 class LikelihoodPartial(Likelihood):
     """Likelihood with partially inserted `primals`."""
@@ -488,6 +493,10 @@ class LikelihoodPartial(Likelihood):
             Frozen/static part of the position at which to evaluate the energy.
         """
         return _parse_point_estimates(self.point_estimates, primals)[1:]
+
+    def __str__(self):
+        args_str = f"{self.likelihood}, point_estimates={self.point_estimates}"
+        return f"{self.__class__.__name__}({args_str})"
 
 
 class _ChainModel(LazyModel):
@@ -645,48 +654,46 @@ class LikelihoodWithModel(Likelihood):
             likelihood_argnames=likelihood_argnames,
         )
 
+    def __str__(self):
+        return f"{self.likelihood}.amend({self.forward})"
+
 
 class LikelihoodSum(Likelihood):
-    left_likelihood: Likelihood = field(metadata=dict(static=False))
-    right_likelihood: Likelihood = field(metadata=dict(static=False))
+    likelihood_summands: Tuple[Likelihood] = field(metadata=dict(static=False))
 
     def __init__(
         self,
-        left,
-        right,
-        /,
+        *likelihood_summands,
         domain=NoValue,
         init=NoValue,
-        _left_key="lh_left",
-        _right_key="lh_right",
+        _key_template="lh_{index}",
     ):
-        if not (isinstance(left, Likelihood) and isinstance(right, Likelihood)):
-            te = (
-                "object which to add to this instance is of invalid type"
-                f" {type(right)!r}"
-            )
-            raise TypeError(te)
-        self._lkey, self._rkey = _left_key, _right_key
-        joined_tangents_shape = {
-            self._lkey: left._lsm_tan_shp,
-            self._rkey: right._lsm_tan_shp,
-        }
-        if isinstance(left._lsm_tan_shp, Vector) or isinstance(
-            right._lsm_tan_shp, Vector
-        ):
+        for i, lh in enumerate(likelihood_summands):
+            if not isinstance(lh, Likelihood):
+                te = (
+                    f"object at position {i} which to add to this instance is of"
+                    f" invalid type {type(lh)!r}"
+                )
+                raise TypeError(te)
+        self.likelihood_summands = tuple(likelihood_summands)
+        self._key_template = _key_template
+
+        joined_tangents_shape = {key: lh._lsm_tan_shp for key, lh in self._items()}
+        if any(isinstance(lh._lsm_tan_shp, Vector) for _, lh in self._items()):
             joined_tangents_shape = Vector(joined_tangents_shape)
 
-        if (
-            domain is NoValue
-            and left.domain is not NoValue
-            and right.domain is not NoValue
+        if domain is NoValue and all(
+            lh.domain is not NoValue for _, lh in self._items()
         ):
-            lvec = isinstance(left.domain, Vector)
-            rvec = isinstance(right.domain, Vector)
-            ldomain = left.domain.tree if lvec else left.domain
-            rdomain = right.domain.tree if rvec else right.domain
-            domain = ldomain | rdomain
-            domain = Vector(domain) if lvec or rvec else domain
+            domain = reduce(
+                operator.or_,
+                (
+                    lh.domain.tree if isinstance(lh.domain, Vector) else lh.domain
+                    for _, lh in self._items()
+                ),
+            )
+            isvec = any(isinstance(lh.domain, Vector) for _, lh in self._items())
+            domain = Vector(domain) if isvec else domain
             isswd = hasattr(domain, "shape") and hasattr(domain, "dtype")
             if not isswd and not has_arithmetics(domain):
                 ve = (
@@ -696,49 +703,55 @@ class LikelihoodSum(Likelihood):
                     " in `Vector`s"
                 )
                 raise ValueError(ve)
-        self.left_likelihood = left
-        self.right_likelihood = right
         super().__init__(
             domain=domain, init=init, lsm_tangents_shape=joined_tangents_shape
         )
 
+    def _items(self):
+        for i, lh in enumerate(self.likelihood_summands):
+            # Allow the user to manipulate the keys to contain information about
+            # the likelihood
+            yield self._key_template.format(index=i, likelihood=lh), lh
+
     def energy(self, primals, **kwargs):
-        return self.left_likelihood.energy(
-            primals, **kwargs
-        ) + self.right_likelihood.energy(primals, **kwargs)
+        return reduce(
+            operator.add, (lh.energy(primals, **kwargs) for _, lh in self._items())
+        )
 
     def normalized_residual(self, primals, **kwargs):
-        lres = self.left_likelihood.normalized_residual(primals, **kwargs)
-        rres = self.right_likelihood.normalized_residual(primals, **kwargs)
-        lvec, rvec = isinstance(lres, Vector), isinstance(rres, Vector)
-        res = {self._lkey: lres, self._rkey: rres}
-        res = Vector(res) if lvec or rvec else res
-        return res
+        res = {
+            key: lh.normalized_residual(primals, **kwargs) for key, lh in self._items()
+        }
+        isvec = any(isinstance(lh.domain, Vector) for _, lh in self._items())
+        return Vector(res) if isvec else res
 
     def metric(self, primals, tangents, **kwargs):
-        return self.left_likelihood.metric(
-            primals, tangents, **kwargs
-        ) + self.right_likelihood.metric(primals, tangents, **kwargs)
+        return reduce(
+            operator.add,
+            (lh.metric(primals, tangents, **kwargs) for _, lh in self._items()),
+        )
 
     def transformation(self, primals, **kwargs):
-        lres = self.left_likelihood.transformation(primals, **kwargs)
-        rres = self.right_likelihood.transformation(primals, **kwargs)
-        lvec, rvec = isinstance(lres, Vector), isinstance(rres, Vector)
-        res = {self._lkey: lres, self._rkey: rres}
-        res = Vector(res) if lvec or rvec else res
-        return res
+        res = {key: lh.transformation(primals, **kwargs) for key, lh in self._items()}
+        isvec = any(isinstance(lh.domain, Vector) for _, lh in self._items())
+        return Vector(res) if isvec else res
 
     def left_sqrt_metric(self, primals, tangents, **kwargs):
-        return self.left_likelihood.left_sqrt_metric(
-            primals, tangents[self._lkey], **kwargs
-        ) + self.right_likelihood.left_sqrt_metric(
-            primals, tangents[self._rkey], **kwargs
+        return reduce(
+            operator.add,
+            (
+                lh.left_sqrt_metric(primals, tangents[key], **kwargs)
+                for key, lh in self._items()
+            ),
         )
 
     def right_sqrt_metric(self, primals, tangents, **kwargs):
-        lres = self.left_likelihood.right_sqrt_metric(primals, tangents, **kwargs)
-        rres = self.right_likelihood.right_sqrt_metric(primals, tangents, **kwargs)
-        lvec, rvec = isinstance(lres, Vector), isinstance(rres, Vector)
-        res = {self._lkey: lres, self._rkey: rres}
-        res = Vector(res) if lvec or rvec else res
-        return res
+        res = {
+            key: lh.right_sqrt_metric(primals, tangents, **kwargs)
+            for key, lh in self._items()
+        }
+        isvec = any(isinstance(lh.domain, Vector) for _, lh in self._items())
+        return Vector(res) if isvec else res
+
+    def __add__(self, other):
+        return LikelihoodSum(*self.likelihood_summands, other)

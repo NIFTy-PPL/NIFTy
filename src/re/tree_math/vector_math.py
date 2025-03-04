@@ -139,7 +139,7 @@ def _size(x):
 def size(a, axis: Optional[int] = None) -> int:
     if axis is not None:
         raise TypeError("axis of an arbitrary tree is ill defined")
-    return tree_reduce(operator.add, tree_map(_size, a))
+    return tree_reduce(operator.add, tree_map(_size, a), 0)
 
 
 def shape(a):
