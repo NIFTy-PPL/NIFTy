@@ -43,7 +43,7 @@ test_serial:
   stage: test
   script:
     - pytest -n auto -q --cov=nifty8 --ignore test/test_re/test_optimize_kl.py test
-    - pytest -n auto -q --cov=nifty8 --cov-append test/test_re/test_optimize_kl.py
+    - env XLA_FLAGS="--xla_force_host_platform_device_count=4" pytest -n auto -q --cov=nifty8 --cov-append test/test_re/test_optimize_kl.py
     - >
       python3 -m coverage report --omit "*plot*" | tee coverage.txt
   coverage: '/(?i)total.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)$/'

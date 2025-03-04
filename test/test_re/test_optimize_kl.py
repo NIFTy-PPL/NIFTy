@@ -1,12 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 
-import os
-
-os.environ["XLA_FLAGS"] = (
-    "--xla_force_host_platform_device_count=4"  # Use 4 CPU devices
-)
-
 import pytest
 
 pytest.importorskip("jax")
@@ -20,12 +14,12 @@ from jax import random
 from jax.tree_util import tree_map
 from numpy.testing import assert_allclose, assert_array_equal
 
-jax.config.update("jax_enable_x64", True)
-
 import nifty8.re as jft
 from nifty8.re.optimize_kl import concatenate_zip
 
 pmp = pytest.mark.parametrize
+
+jax.config.update("jax_enable_x64", True)
 
 
 def random_draw(key, shape, dtype, method):
@@ -326,7 +320,7 @@ def test_optimize_kl_device_consistency(
 ):
     devices = jax.devices()
     if not len(devices) > 1:
-        raise RuntimeError("Need more than one device for test.")
+        pytest.skip("Need more than one device for test.")
     if residual_device_map == "pmap" and n_samples > len(devices):
         pytest.skip("n_samples>len(devices), skipping for pmap.")
     if (
