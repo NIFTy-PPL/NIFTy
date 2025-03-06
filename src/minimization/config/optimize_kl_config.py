@@ -128,10 +128,10 @@ class OptimizeKLConfig:
         """
         from ..optimize_kl import optimize_kl
 
-        dct = dict(self)
+        dct = {**dict(self), **kwargs}
         os.makedirs(dct["output_directory"], exist_ok=True)
         self.to_file(os.path.join(dct["output_directory"], "optimization.cfg"))
-        return optimize_kl(**dct, **kwargs)
+        return optimize_kl(**dct)
 
     def _interpret_base(self):
         """Replace `base` entry in every section by the content of the section it points to."""
@@ -341,8 +341,10 @@ class OptimizeKLConfig:
 
         # static
         copt = self._cfg["optimization"]
-        yield "output_directory", copt["output directory"]
-        yield "save_strategy", copt["save strategy"]
+        if "output directory" in copt:
+            yield "output_directory", copt["output directory"]
+        if "save strategy" in copt:
+            yield "save_strategy", copt["save strategy"]
         yield "plot_energy_history", True
         yield "plot_minisanity_history", True
 
