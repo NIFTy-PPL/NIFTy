@@ -81,7 +81,7 @@ class OptimizeKLConfig:
     `optionxform` to `str` before parsing.
     """
 
-    def __init__(self, config_parser, builders):
+    def __init__(self, config_parser, builders={}):
         if not isinstance(config_parser, ConfigParser):
             raise TypeError
         if config_parser.optionxform != str:
