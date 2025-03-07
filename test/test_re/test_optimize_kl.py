@@ -19,6 +19,8 @@ from nifty8.re.optimize_kl import concatenate_zip
 
 pmp = pytest.mark.parametrize
 
+jax.config.update("jax_enable_x64", True)
+
 
 def random_draw(key, shape, dtype, method):
     def _isleaf(x):
@@ -297,6 +299,96 @@ def test_optimize_kl_constants(seed, shape, lh_init):
     np.testing.assert_array_equal(
         True,
         0 != np.concatenate([[1] if c else np.ravel(m) for m, c in zip(move, const)]),
+    )
+
+
+@pmp(
+    "sample_mode",
+    (
+        "linear_resample",
+        "linear_sample",
+        "nonlinear_resample",
+        "nonlinear_sample",
+        "nonlinear_update",
+    ),
+)
+@pmp("n_samples", (2, 4, 8))
+@pmp("residual_device_map", ("pmap", "shard_map", "jit"))
+@pmp("kl_device_map", ("pmap", "shard_map", "jit"))
+def test_optimize_kl_device_consistency(
+    sample_mode, n_samples, residual_device_map, kl_device_map
+):
+    devices = jax.devices()
+    if not len(devices) > 1:
+        pytest.skip("Need more than one device for test.")
+    if residual_device_map == "pmap" and n_samples > len(devices):
+        pytest.skip("n_samples>len(devices), skipping for pmap.")
+    if (
+        residual_device_map == "pmap"
+        and n_samples / 2 != len(devices)
+        and sample_mode
+        in ("nonlinear_resample", "nonlinear_sample", "nonlinear_update")
+    ):
+        pytest.skip(
+            "n_samples/2 != len(devices), skipping for pmap and geoVI based inference"
+        )
+    if kl_device_map == "pmap" and n_samples * 2 != len(devices):
+        pytest.skip("n_samples*2 != len(devices), skipping for pmap")
+    shape = {"a": (3, 1)}
+    lh_init_method, draw, latent_init = LH_INIT[0]
+    key = random.PRNGKey(42)
+    key, *subkeys = random.split(key, 1 + len(draw))
+    init_kwargs = {
+        k: method(key=sk, shape=shape) for (k, method), sk in zip(draw.items(), subkeys)
+    }
+    lh = lh_init_method(**init_kwargs)
+    key, sk = random.split(key)
+    pos = latent_init(sk, shape=shape)
+
+    key, sk = random.split(key)
+    delta = 1e-3
+    absdelta = delta * jft.size(pos)
+
+    draw_linear_kwargs = dict(
+        cg_name="SL", cg_kwargs=dict(miniter=2, absdelta=absdelta / 10.0, maxiter=10)
+    )
+    minimize_kwargs = dict(
+        name="SN", xtol=delta, cg_kwargs=dict(name=None, miniter=2), maxiter=5
+    )
+
+    key, sk = random.split(key)
+    opt_kl_kwargs = dict(
+        likelihood=lh,
+        position_or_samples=pos,
+        key=sk,
+        n_total_iterations=2,
+        n_samples=n_samples,
+        draw_linear_kwargs=draw_linear_kwargs,
+        nonlinearly_update_kwargs=dict(minimize_kwargs=minimize_kwargs),
+        kl_kwargs=dict(minimize_kwargs=dict(name="M", maxiter=10)),
+        sample_mode=sample_mode,
+        odir=None,
+        residual_map="vmap",
+        kl_map="vmap",
+        kl_jit=False,
+        residual_jit=False,
+    )
+    samples_single_device, _ = jft.optimize_kl(**opt_kl_kwargs, devices=None)
+    samples_multiple_devices, _ = jft.optimize_kl(
+        **opt_kl_kwargs,
+        devices=jax.devices(),
+        residual_device_map=residual_device_map,
+        kl_device_map=kl_device_map,
+    )
+    aallclose = partial(assert_allclose, rtol=1e-5, atol=1e-5)
+    tree_map(
+        aallclose,
+        samples_single_device.samples,
+        samples_multiple_devices.samples,
+    )
+    tree_map(aallclose, samples_single_device.pos, samples_multiple_devices.pos)
+    tree_map(
+        assert_array_equal, samples_single_device.keys, samples_multiple_devices.keys
     )
 
 
