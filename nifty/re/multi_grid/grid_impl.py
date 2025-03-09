@@ -209,10 +209,10 @@ class SimpleOpenGridAtLevel(OpenGridAtLevel):
         coord = super().index2coord(index)
         return coord * ((self.shape + 2 * self.shifts) * self.distances)[bc]
 
-    def coord2index(self, coord, dtype=np.uint64):
+    def coord2index(self, coord, **kwargs):
         bc = (slice(None),) + (np.newaxis,) * (coord.ndim - 1)
         coord = coord / ((self.shape + 2 * self.shifts) * self.distances)[bc]
-        return super().coord2index(coord, dtype=dtype)
+        return super().coord2index(coord, **kwargs)
 
     def index2volume(self, index):
         vol = super().index2volume(index)
@@ -319,9 +319,9 @@ class LogGridAtLevel(SimpleOpenGridAtLevel):
         coord = super().index2coord(index)
         return jnp.exp(self.coord_scale * coord + self.coord_offset)
 
-    def coord2index(self, coord, dtype=np.uint64):
+    def coord2index(self, coord, **kwargs):
         coord = (jnp.log(coord) - self.coord_offset) / self.coord_scale
-        return super().coord2index(coord, dtype=dtype)
+        return super().coord2index(coord, **kwargs)
 
     def index2volume(self, index):
         a = (slice(None),) + (np.newaxis,) * index.ndim
@@ -460,7 +460,7 @@ class BrokenLogGridAtLevel(SimpleOpenGridAtLevel):
         ]
         return jnp.piecewise(coord, condlist, funclist)
 
-    def coord2index(self, coord, dtype=np.uint64):
+    def coord2index(self, coord, **kwargs):
         # map to in-between 0 and 1
         condlist = [
             coord < self._r_min,
@@ -476,7 +476,7 @@ class BrokenLogGridAtLevel(SimpleOpenGridAtLevel):
         ]
         coord = jnp.piecewise(coord, condlist, funclist)
         # transform to index
-        return super().coord2index(coord, dtype=dtype)
+        return super().coord2index(coord, **kwargs)
 
     def index2volume(self, index):
         a = (slice(None),) + (np.newaxis,) * index.ndim
