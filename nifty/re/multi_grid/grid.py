@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from functools import reduce
 from typing import Callable, Iterable, Optional
 
+import jax
 import jax.numpy as jnp
 import numpy as np
 import numpy.typing as npt
@@ -112,17 +113,17 @@ class GridAtLevel:
         slc = (slice(None),) + (np.newaxis,) * (index.ndim - 1)
         return (index + 0.5) / self.shape[slc]
 
-    def coord2index(self, coord, dtype=np.uint64):
+    def coord2index(self, coord, dtype=np.int64):
         slc = (slice(None),) + (np.newaxis,) * (coord.ndim - 1)
         index = (coord * self.shape[slc] - 0.5)
         if np.issubdtype(dtype, np.integer):
-            return np.rint(index).astype(dtype)
+            index = np.rint(index).astype(dtype)
+            return index
         else:
             raise ValueError(f"non-integer index dtype: {dtype}")
 
     def index2volume(self, index):
         return np.array(1.0 / self.size)[(np.newaxis,) * index.ndim]
-
 
 @dataclass()
 class Grid:
@@ -236,12 +237,13 @@ class OpenGridAtLevel(GridAtLevel):
         index = index + self.shifts[slc]
         return (index + 0.5) / shp[slc]
 
-    def coord2index(self, coord, dtype=np.uint64):
+    def coord2index(self, coord, dtype=np.int64):
         slc = (slice(None),) + (np.newaxis,) * (coord.ndim - 1)
         shp = self.shape + 2 * self.shifts
         index = coord * shp[slc] - self.shifts[slc] - 0.5
         if np.issubdtype(dtype, np.integer):
-            return np.rint(index).astype(dtype)
+            index = np.rint(index).astype(dtype)
+            return index
         else:
             raise ValueError(f"non-integer index dtype: {dtype}")
 
@@ -522,45 +524,57 @@ class FlatGridAtLevel(GridAtLevel):
             for sp, shp in zip(all_splits, self.all_shapes)
         )
         super().__init__(
-            shape=(reduce(operator.mul, grid_at_level.shape, 1),),
-            splits=None,
-            parent_splits=None,
+            shape=np.prod(grid_at_level.shape, keepdims=True), # np.array([reduce(operator.mul, grid_at_level.shape, 1),],
+            splits=np.prod(grid_at_level.splits, keepdims=True) if grid_at_level.splits is not None else None,
+            parent_splits=np.prod(grid_at_level.parent_splits, keepdims=True) if grid_at_level.parent_splits is not None else None,
         )
 
     @property
     def raw_grids(self):
         return self.grid_at_level.raw_grids
 
+    def levelshape(self, levelshift):
+        return self.all_shapes[-2 + levelshift]
+
     def _weights_serial(self, levelshift):
         if levelshift not in (-1, 0, 1):
             raise ValueError(f"invalid shift in level {levelshift!r}")
-        shape = self.all_shapes[-2 + levelshift]
+        shape = self.levelshape(levelshift)
         return np.cumprod(np.append(shape[1:], 1)[::-1])[::-1]
 
-    def _nested_index2flatindex(self, index, levelshift):
-        bases = self.all_splits[:(len(self.all_splits) - 1 + levelshift)]
-        shape = self.all_shapes[-2 + levelshift]
-        base_shape = shape // reduce(operator.mul, bases)
-        return nested_index_to_flatindex(index, base_shape, bases)[jnp.newaxis, ...]
-
-    def _nested_flatindex2index(self, index, levelshift):
-        bases = self.all_splits[:(len(self.all_splits) - 1 + levelshift)]
-        shape = self.all_shapes[-2 + levelshift]
-        base_shape = shape // reduce(operator.mul, bases)
-        return nested_flatindex_to_index(index[0], base_shape, bases)
+    def _weights_nest(self, levelshift):
+        if levelshift not in (-1, 0, 1):
+            raise ValueError(f"invalid shift in level {levelshift!r}")
+        bases = self.all_splits[:(len(self.all_splits) - 2 + levelshift)]
+        shape = self.levelshape(levelshift)
+        base_shape = shape // reduce(operator.mul, bases, np.ones_like(shape))
+        wgts = (base_shape,) + bases
+        return np.stack(wgts, axis=0)
 
     def index2flatindex(self, index, levelshift=0):
-        # TODO vectorize better
         if self.ordering == "serial":
             wgt = self._weights_serial(levelshift)
             wgt = wgt[(slice(None),) + (np.newaxis,) * (index.ndim - 1)]
-            return (wgt * index).sum(axis=0).astype(index.dtype)[jnp.newaxis, ...]
-        if self.ordering == "nest":
-            return self._nested_index2flatindex(index, levelshift)
-        raise RuntimeError
+            res = (wgt * index).sum(axis=0).astype(index.dtype)[jnp.newaxis, ...]
+        elif self.ordering == "nest":
+            fid = jnp.zeros(index.shape[1:], dtype=index.dtype)
+            wgts = self._weights_nest(levelshift)
+            for n, ww in enumerate(wgts):
+                j = 0
+                for ax in range(ww.size):
+                    j *= ww[ax]
+                    j += (index[ax] // wgts[(n + 1) :, ax].prod()) % ww[ax]
+                fid *= ww.prod()
+                fid += j
+            res = fid
+        else:
+            raise RuntimeError
+        shape = self.levelshape(levelshift)
+        valid = reduce(operator.mul, ((ii>=0)*(ii<sh) for ii, sh in zip(index, shape)))
+        res = jax.lax.select(valid, res, jnp.ones_like(res) * np.prod(shape) + 1)
+        return res[jnp.newaxis, ...]
 
     def flatindex2index(self, index, levelshift=0):
-        # TODO vectorize better
         dtp = index.dtype
         if self.ordering == "serial":
             wgt = self._weights_serial(levelshift)
@@ -571,9 +585,23 @@ class FlatGridAtLevel(GridAtLevel):
                 tmfl = tm // w
                 tm -= w * tmfl
                 index.append(tmfl)
-            return jnp.stack(index, axis=0).astype(dtp)
+            res = jnp.stack(index, axis=0).astype(dtp)
         if self.ordering == "nest":
-            return self._nested_flatindex2index(index, levelshift)
+            wgts = self._weights_nest(levelshift)
+            fid = jnp.copy(index[0])
+            index = jnp.zeros((wgts.shape[1],) + index.shape[1:], dtype=dtp)
+            for n, ww in reversed(list(enumerate(wgts))):
+                fct = ww.prod()
+                j = fid % fct
+                for ax in range(ww.size)[::-1]:
+                    index = index.at[ax].add(wgts[(n + 1) :, ax].prod() * (j % ww[ax]))
+                    j //= ww[ax]
+                fid //= fct
+            res = index.astype(dtp)
+        shape = self.levelshape(levelshift)
+        valid = (index >= 0) * (index <= np.prod(shape))
+        oob = shape[(slice(None),) * (np.newaxis,)*valid.ndim]
+        res = jax.lax.select(valid, res, jnp.ones_like(res)*oob)
         raise RuntimeError
 
     def refined_indices(self):
@@ -581,6 +609,8 @@ class FlatGridAtLevel(GridAtLevel):
         return self.index2flatindex(ids).reshape((1, -1))
 
     def resort(self, batched_ar, /):
+        if self.ordering == "nest":
+            return super().resort(batched_ar)
         parent_splits = self.all_splits[-3]
         shape = self.all_shapes[-2]
         if batched_ar.ndim != 2:
@@ -595,8 +625,6 @@ class FlatGridAtLevel(GridAtLevel):
             idx = np.arange(ndim)
             axes = reduce(operator.add, ((a, b) for a, b in zip(idx, ndim + idx)))
             return jnp.transpose(batched_ar, axes).ravel()
-        if self.ordering == "nest":
-            raise NotImplementedError
         raise RuntimeError
 
     def children(self, index) -> npt.NDArray:
