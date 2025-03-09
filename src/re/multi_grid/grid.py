@@ -15,6 +15,8 @@ from jax import ShapeDtypeStruct, eval_shape
 from jax.experimental import checkify
 from jax.lax import select
 
+from .util import nested_index_to_flatindex, nested_flatindex_to_index
+
 
 @dataclass()
 class GridAtLevel:
@@ -502,7 +504,7 @@ class FlatGridAtLevel(GridAtLevel):
     """Same as :class:`GridAtLevel` but with a single global integer index for each voxel."""
 
     grid_at_level: GridAtLevel
-    all_shapes: npt.NDArray[np.int_]
+    all_shapes: tuple[npt.NDArray[np.int_]]
     all_splits: tuple[npt.NDArray[np.int_]]
     ordering: str
 
@@ -535,8 +537,17 @@ class FlatGridAtLevel(GridAtLevel):
         shape = self.all_shapes[-2 + levelshift]
         return np.cumprod(np.append(shape[1:], 1)[::-1])[::-1]
 
-    def _weights_nest(self, levelshift):
-        raise NotImplementedError
+    def _nested_index2flatindex(self, index, levelshift):
+        bases = self.all_splits[:(len(self.all_splits) - 1 + levelshift)]
+        shape = self.all_shapes[-2 + levelshift]
+        base_shape = shape // reduce(operator.mul, bases)
+        return nested_index_to_flatindex(index, base_shape, bases)[jnp.newaxis, ...]
+
+    def _nested_flatindex2index(self, index, levelshift):
+        bases = self.all_splits[:(len(self.all_splits) - 1 + levelshift)]
+        shape = self.all_shapes[-2 + levelshift]
+        base_shape = shape // reduce(operator.mul, bases)
+        return nested_flatindex_to_index(index[0], base_shape, bases)
 
     def index2flatindex(self, index, levelshift=0):
         # TODO vectorize better
@@ -545,7 +556,7 @@ class FlatGridAtLevel(GridAtLevel):
             wgt = wgt[(slice(None),) + (np.newaxis,) * (index.ndim - 1)]
             return (wgt * index).sum(axis=0).astype(index.dtype)[jnp.newaxis, ...]
         if self.ordering == "nest":
-            raise NotImplementedError
+            return self._nested_index2flatindex(index, levelshift)
         raise RuntimeError
 
     def flatindex2index(self, index, levelshift=0):
@@ -562,7 +573,7 @@ class FlatGridAtLevel(GridAtLevel):
                 index.append(tmfl)
             return jnp.stack(index, axis=0).astype(dtp)
         if self.ordering == "nest":
-            raise NotImplementedError
+            return self._nested_flatindex2index(index, levelshift)
         raise RuntimeError
 
     def refined_indices(self):
@@ -628,7 +639,7 @@ class FlatGrid(Grid):
     grid: Grid
     ordering: str
 
-    def __init__(self, grid, *, ordering="serial", atLevel=FlatGridAtLevel):
+    def __init__(self, grid, *, ordering="nest", atLevel=FlatGridAtLevel):
         if not isinstance(grid, Grid):
             raise TypeError(f"Grid {grid.__name__} of invalid type")
         self.grid = grid
