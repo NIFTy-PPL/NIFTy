@@ -510,7 +510,7 @@ class FlatGridAtLevel(GridAtLevel):
     all_splits: tuple[npt.NDArray[np.int_]]
     ordering: str
 
-    def __init__(self, grid_at_level, *, all_shapes, all_splits, ordering="serial"):
+    def __init__(self, grid_at_level, *, all_shapes, all_splits, ordering="nest"):
         if not isinstance(grid_at_level, GridAtLevel):
             raise TypeError(f"Grid {grid_at_level.__name__} of invalid type")
         self.grid_at_level = grid_at_level
@@ -611,14 +611,16 @@ class FlatGridAtLevel(GridAtLevel):
     def resort(self, batched_ar, /):
         if self.ordering == "nest":
             return super().resort(batched_ar)
-        parent_splits = self.all_splits[-3]
-        shape = self.all_shapes[-2]
-        if batched_ar.ndim != 2:
-            raise ValueError
-        if batched_ar.shape[1] != np.prod(parent_splits):
-            raise ValueError
-
         if self.ordering == "serial":
+            from ..logger import logger
+            msg = "Ring sorting triggers potentially expensive resorting of Kernel."
+            logger.warning(msg)
+            parent_splits = self.all_splits[-3]
+            shape = self.all_shapes[-2]
+            if batched_ar.ndim != 2:
+                raise ValueError
+            if batched_ar.shape[1] != np.prod(parent_splits):
+                raise ValueError
             shp = tuple(shape // parent_splits) + tuple(parent_splits)
             batched_ar = batched_ar.reshape(shp)
             ndim = shape.size
