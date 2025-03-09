@@ -143,7 +143,7 @@ class Kernel:
             assert index.ndim == ids.ndim - 1
             return (distance_norm(out[..., jnp.newaxis] - ids[..., jnp.newaxis, :]),)
 
-        gridf = self.grid if isinstance(self.grid, FlatGrid) else FlatGrid(self.grid)
+        gridf = FlatGrid(self.grid)
         uindices = []
         invindices = []
         indexmaps = []
@@ -254,9 +254,9 @@ class ICRKernel(Kernel):
             window_size = tuple(
                 _default_window_size(grid.at(lvl)) for lvl in range(grid.depth)
             )
-        self._window_size = tuple(
-            np.broadcast_to(window_size, (grid.depth, grid.at(0).ndim))
-        )
+        elif not isinstance(window_size, tuple):
+            window_size = (window_size)*grid.depth
+        self._window_size = window_size
         super().__init__(grid=grid, _cim=_cim)
 
     def replace(self, *, covariance=None, window_size=None, _cim=None):
