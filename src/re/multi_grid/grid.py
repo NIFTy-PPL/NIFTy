@@ -16,9 +16,6 @@ from jax import ShapeDtypeStruct, eval_shape
 from jax.experimental import checkify
 from jax.lax import select
 
-from .util import nested_index_to_flatindex, nested_flatindex_to_index
-
-
 @dataclass()
 class GridAtLevel:
     shape: npt.NDArray[np.int_]
@@ -555,7 +552,7 @@ class FlatGridAtLevel(GridAtLevel):
         if self.ordering == "serial":
             wgt = self._weights_serial(levelshift)
             wgt = wgt[(slice(None),) + (np.newaxis,) * (index.ndim - 1)]
-            res = (wgt * index).sum(axis=0).astype(index.dtype)[jnp.newaxis, ...]
+            res = (wgt * index).sum(axis=0).astype(index.dtype)
         elif self.ordering == "nest":
             fid = jnp.zeros(index.shape[1:], dtype=index.dtype)
             wgts = self._weights_nest(levelshift)
@@ -586,7 +583,7 @@ class FlatGridAtLevel(GridAtLevel):
                 tm -= w * tmfl
                 index.append(tmfl)
             res = jnp.stack(index, axis=0).astype(dtp)
-        if self.ordering == "nest":
+        elif self.ordering == "nest":
             wgts = self._weights_nest(levelshift)
             fid = jnp.copy(index[0])
             index = jnp.zeros((wgts.shape[1],) + index.shape[1:], dtype=dtp)
@@ -598,15 +595,17 @@ class FlatGridAtLevel(GridAtLevel):
                     j //= ww[ax]
                 fid //= fct
             res = index.astype(dtp)
-        shape = self.levelshape(levelshift)
-        valid = (index >= 0) * (index <= np.prod(shape))
-        oob = shape[(slice(None),) * (np.newaxis,)*valid.ndim]
-        res = jax.lax.select(valid, res, jnp.ones_like(res)*oob)
-        raise RuntimeError
+        else:
+            raise RuntimeError
+        return res
 
     def refined_indices(self):
         ids = self.grid_at_level.refined_indices()
-        return self.index2flatindex(ids).reshape((1, -1))
+        res = self.index2flatindex(ids)
+        if self.ordering == "nest":
+            return jnp.sort(res.flatten()).reshape((1, -1))
+        else:
+            return res.reshape((1, -1))
 
     def resort(self, batched_ar, /):
         if self.ordering == "nest":
@@ -676,6 +675,13 @@ class FlatGrid(Grid):
         ordering = str(ordering).lower()
         if ordering not in ("serial", "nest"):
             raise ValueError(f"invalid flat index ordering scheme {ordering}")
+        if ordering == "nest":
+            if isinstance(grid, OpenGrid):
+                raise ValueError("Nest ordering is not supported for OpenGrids")
+            if isinstance(grid, MGrid):
+                for g in grid.grids:
+                    if isinstance(g, OpenGrid):
+                        raise ValueError("Nest ordering is not supported for OpenGrids")
         self.ordering = ordering
         shape0 = np.array([np.prod(grid.shape0)])
         splits = tuple(np.array([np.prod(spl)]) for spl in grid.splits)
