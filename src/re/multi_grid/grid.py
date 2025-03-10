@@ -16,6 +16,7 @@ from jax import ShapeDtypeStruct, eval_shape
 from jax.experimental import checkify
 from jax.lax import select
 
+
 @dataclass()
 class GridAtLevel:
     shape: npt.NDArray[np.int_]
@@ -112,7 +113,7 @@ class GridAtLevel:
 
     def coord2index(self, coord, dtype=np.int64):
         slc = (slice(None),) + (np.newaxis,) * (coord.ndim - 1)
-        index = (coord * self.shape[slc] - 0.5)
+        index = coord * self.shape[slc] - 0.5
         if np.issubdtype(dtype, np.integer):
             index = np.rint(index).astype(dtype)
             return index
@@ -121,6 +122,7 @@ class GridAtLevel:
 
     def index2volume(self, index):
         return np.array(1.0 / self.size)[(np.newaxis,) * index.ndim]
+
 
 @dataclass()
 class Grid:
@@ -521,9 +523,19 @@ class FlatGridAtLevel(GridAtLevel):
             for sp, shp in zip(all_splits, self.all_shapes)
         )
         super().__init__(
-            shape=np.prod(grid_at_level.shape, keepdims=True), # np.array([reduce(operator.mul, grid_at_level.shape, 1),],
-            splits=np.prod(grid_at_level.splits, keepdims=True) if grid_at_level.splits is not None else None,
-            parent_splits=np.prod(grid_at_level.parent_splits, keepdims=True) if grid_at_level.parent_splits is not None else None,
+            shape=np.prod(
+                grid_at_level.shape, keepdims=True
+            ),  # np.array([reduce(operator.mul, grid_at_level.shape, 1),],
+            splits=(
+                np.prod(grid_at_level.splits, keepdims=True)
+                if grid_at_level.splits is not None
+                else None
+            ),
+            parent_splits=(
+                np.prod(grid_at_level.parent_splits, keepdims=True)
+                if grid_at_level.parent_splits is not None
+                else None
+            ),
         )
 
     @property
@@ -542,7 +554,7 @@ class FlatGridAtLevel(GridAtLevel):
     def _weights_nest(self, levelshift):
         if levelshift not in (-1, 0, 1):
             raise ValueError(f"invalid shift in level {levelshift!r}")
-        bases = self.all_splits[:(len(self.all_splits) - 2 + levelshift)]
+        bases = self.all_splits[: (len(self.all_splits) - 2 + levelshift)]
         shape = self.levelshape(levelshift)
         base_shape = shape // reduce(operator.mul, bases, np.ones_like(shape))
         wgts = (base_shape,) + bases
@@ -566,9 +578,6 @@ class FlatGridAtLevel(GridAtLevel):
             res = fid
         else:
             raise RuntimeError
-        shape = self.levelshape(levelshift)
-        valid = reduce(operator.mul, ((ii>=0)*(ii<sh) for ii, sh in zip(index, shape)))
-        res = jax.lax.select(valid, res, jnp.ones_like(res) * np.prod(shape) + 1)
         return res[jnp.newaxis, ...]
 
     def flatindex2index(self, index, levelshift=0):
@@ -612,6 +621,7 @@ class FlatGridAtLevel(GridAtLevel):
             return super().resort(batched_ar)
         if self.ordering == "serial":
             from ..logger import logger
+
             msg = "Ring sorting triggers potentially expensive resorting of Kernel."
             logger.warning(msg)
             parent_splits = self.all_splits[-3]
@@ -651,9 +661,21 @@ class FlatGridAtLevel(GridAtLevel):
         index = self.flatindex2index(index)
         return self.grid_at_level.index2coord(index, **kwargs)
 
-    def coord2index(self, coord, **kwargs):
+    def coord2index(self, coord, *, boundary_handling="parse", **kwargs):
         index = self.grid_at_level.coord2index(coord, **kwargs)
-        return self.index2flatindex(index)
+        if boundary_handling == "parse":
+            index = self.grid_at_level._parse_index(index)
+            res = self.index2flatindex(index)
+        elif boundary_handling == "invalid":
+            shape = self.levelshape(0)
+            valid = reduce(
+                operator.mul, ((ii >= 0) * (ii < sh) for ii, sh in zip(index, shape))
+            )
+            res = self.index2flatindex(index)
+            res = jax.lax.select(valid, res, jnp.ones_like(res) * np.prod(shape) + 1)
+        else:
+            raise ValueError(f"invalid boundary handling {boundary_handling}")
+        return res
 
     def index2volume(self, index, **kwargs):
         index = self._parse_index(index)
@@ -668,7 +690,7 @@ class FlatGrid(Grid):
     grid: Grid
     ordering: str
 
-    def __init__(self, grid, *, ordering="nest", atLevel=FlatGridAtLevel):
+    def __init__(self, grid, *, ordering="serial", atLevel=FlatGridAtLevel):
         if not isinstance(grid, Grid):
             raise TypeError(f"Grid {grid.__name__} of invalid type")
         self.grid = grid
@@ -676,12 +698,13 @@ class FlatGrid(Grid):
         if ordering not in ("serial", "nest"):
             raise ValueError(f"invalid flat index ordering scheme {ordering}")
         if ordering == "nest":
+            msg = "Nest ordering is not supported for OpenGrids; Use `SparseGrid` or `serial` ordering instead."
             if isinstance(grid, OpenGrid):
-                raise ValueError("Nest ordering is not supported for OpenGrids")
+                raise ValueError(msg)
             if isinstance(grid, MGrid):
                 for g in grid.grids:
                     if isinstance(g, OpenGrid):
-                        raise ValueError("Nest ordering is not supported for OpenGrids")
+                        raise ValueError(msg)
         self.ordering = ordering
         shape0 = np.array([np.prod(grid.shape0)])
         splits = tuple(np.array([np.prod(spl)]) for spl in grid.splits)
@@ -809,11 +832,10 @@ class SparseGridAtLevel(FlatGridAtLevel):
         return self.grid_at_level.index2volume(index, **kwargs)
 
     def to_flat_grid(self):
-        # FIXME @ph-frank incompatible with the current `FlatGridAtLevel` impl
         return FlatGridAtLevel(
             self.grid_at_level,
-            self.shape0,
-            self.all_parent_splits,
+            all_shapes=self.all_shapes,
+            all_splits=self.all_splits,
             ordering=self.ordering,
         )
 
@@ -830,7 +852,7 @@ class SparseGrid(FlatGrid):
         self,
         grid,
         mapping,
-        ordering="nest",
+        ordering="serial",
         *,
         _check_mapping=True,
         atLevel=SparseGridAtLevel,
@@ -865,14 +887,22 @@ class SparseGrid(FlatGrid):
 
     def at(self, level: int):
         level = self._parse_level(level)
-        grid_at_level = self.grid.at(level)
         parent_mapping = None if level == 0 else self.mapping[level - 1]
         children_mapping = None if level == self.depth else self.mapping[level + 1]
+        shapes = []
+        splits = []
+        for lvl in range(level + 2):
+            if lvl <= self.depth:
+                atlvl = self.grid.at(lvl)
+                shapes.append(atlvl.shape)
+                splits.append(atlvl.splits)
+            else:
+                shapes.append(None)
+                splits.append(None)
         return self.atLevel(
-            grid_at_level,
-            # FIXME @ph-frank pass `all_shapes`,
-            self.grid.splits[: (level + 1)] + ((None,) if level == self.depth else ()),
-            self.mapping[level],
+            self.grid.at(level),
+            all_shapes=shapes,
+            all_splits=splits,
             ordering=self.ordering,
             parent_mapping=parent_mapping,
             children_mapping=children_mapping,
