@@ -15,16 +15,19 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
+import logging
 
-def _logger_init():
+
+def logger_init(level=logging.INFO):
     import logging
-    res = logging.getLogger('NIFTy8')
-    res.setLevel(logging.DEBUG)
+
+    res = logging.getLogger("NIFTy8")
+    res.setLevel(level)
     res.propagate = False
     ch = logging.StreamHandler()
-    ch.setLevel(logging.INFO)
+    ch.setLevel(level)
     res.addHandler(ch)
     return res
 
 
-logger = _logger_init()
+logger = logger_init()
