@@ -86,6 +86,10 @@ class MultiField(Operator):
     def dtype(self):
         return {key: val.dtype for key, val in self.items()}
 
+    def astype(self, dtype):
+        val = (vv.astype(dtype[kk]) for vv, kk in zip(self._val, self._domain.keys()))
+        return MultiField(self._domain, tuple(val))
+
     def _transform(self, op):
         return MultiField(self._domain, tuple(op(v) for v in self._val))
 

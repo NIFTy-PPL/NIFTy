@@ -175,6 +175,9 @@ class Field(Operator):
         """type : the data type of the field's entries"""
         return self._val.dtype
 
+    def astype(self, dtype):
+        return Field(self._domain, np.astype(self._val, dtype))
+
     @property
     def domain(self):
         """DomainTuple : the field's domain"""
