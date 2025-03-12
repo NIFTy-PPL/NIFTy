@@ -318,10 +318,14 @@ def _get_acceptable_location(op, loc, lin):
         direction = direction * (lin.val.norm() * fac)
     else:
         direction = direction * (lin.val.norm() * fac / dirder.norm())
+    direction = direction.astype(loc.dtype)
+    assert direction.dtype == loc.dtype
+
     # Find a step length that leads to a "reasonable" location
     for i in range(50):
         try:
             loc2 = loc + direction
+            assert loc2.dtype == loc.dtype
             lin2 = op(Linearization.make_var(loc2, lin.want_metric))
             if np.isfinite(lin2.val.s_sum()) and abs(lin2.val.s_sum()) < 1e20:
                 break

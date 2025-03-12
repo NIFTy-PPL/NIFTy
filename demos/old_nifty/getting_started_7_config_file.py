@@ -75,6 +75,7 @@ def main():
     cfg = ift.OptimizeKLConfig.from_file(cfg_file, builder_dct)
     cfg.optimize_kl(
         export_operator_outputs={"sky1": cfg.instantiate_section("sky1")},
+        output_directory="output"
     )
 
 
