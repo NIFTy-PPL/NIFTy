@@ -224,7 +224,7 @@ def _newton_cg(
             if naive_ls_it == 5:
                 ls_reset = True
                 gam = float(vdot(g, g))
-                curv = float(g.dot(hessp(pos, g)))
+                curv = float(vdot(g, hessp(pos, g)))
                 nhev += 1
                 grad_scaling = 1.0
                 dd = gam / curv * g
@@ -487,7 +487,7 @@ def _line_search_successive_halving(
         grad_scaling = jnp.where(do_reset, 1.0, grad_scaling)
         dd = cond(
             do_reset,
-            lambda x: vdot(g, g) / g.dot(hessp(pos, g)) * g,
+            lambda x: vdot(g, g) / vdot(g, hessp(pos, g)) * g,
             lambda x: x,
             dd,
         )

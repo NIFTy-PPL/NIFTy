@@ -15,6 +15,8 @@ from jax.tree_util import (
     tree_structure,
 )
 
+from ..misc import deprecated
+
 
 class ShapeWithDtype:
     """Minimal helper class storing the shape and dtype of an object.
@@ -186,8 +188,14 @@ def norm(tree, ord=2):
     return norm(jnp.array(tree_leaves(tree_map(el_norm, tree))), ord=ord)
 
 
+@deprecated("`nifty.re.dot` is deprecated. Consider using `nifty.re.vdot`.")
 def dot(a, b, *, precision=None):
     """Returns the dot product of the two vectors.
+
+    Notes
+    -----
+    This method is deprecated, please use the `vdot` method and be careful with
+    complex conjugation.
 
     Parameters
     ----------
