@@ -272,6 +272,8 @@ def SimpleOpenGrid(
             )
             depth = max(int(np.ceil(depth)), 0)
         splits = np.broadcast_to(splits, (depth,) + min_shape.shape)
+    if depth is None:
+        depth = len(splits)
     padding = np.ceil((window_size - 1) // 2).astype(np.int_)
     padding = np.broadcast_to(padding, (depth,) + min_shape.shape)
 
