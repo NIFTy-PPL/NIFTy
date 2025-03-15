@@ -39,7 +39,8 @@ class GridAtLevel:
             raise IndexError(ve)
         # Follow jax-array style out of bounds handling
         shp_bc = self.shape[(slice(None),) + (np.newaxis,) * (index.ndim - 1)]
-        index = select(jnp.abs(index) < shp_bc, index, jnp.sign(index) * (shp_bc - 1))
+        index = select(jnp.abs(index) < shp_bc, index,
+                       (jnp.sign(index) * (shp_bc - 1)).astype(index.dtype))
         return index % shp_bc
 
     @property
@@ -59,6 +60,11 @@ class GridAtLevel:
             raise IndexError("this level has no children")
         # TODO non-dense grid
         return np.mgrid[tuple(slice(0, sh) for sh in self.shape)]
+
+    def is_index_refined(self, index):
+        if self.splits is None:
+            return jnp.zeros(index.shape[1:], dtype=bool) if index.ndim > 1 else False
+        return jnp.ones(index.shape[1:], dtype=bool) if index.ndim > 1 else True
 
     def resort(self, batched_ar, /):
         if batched_ar.ndim != 2 * self.ndim:
@@ -111,7 +117,7 @@ class GridAtLevel:
         slc = (slice(None),) + (np.newaxis,) * (index.ndim - 1)
         return (index + 0.5) / self.shape[slc]
 
-    def coord2index(self, coord, dtype=np.int64):
+    def coord2index(self, coord, dtype=np.int64, **kwargs):
         slc = (slice(None),) + (np.newaxis,) * (coord.ndim - 1)
         index = coord * self.shape[slc] - 0.5
         if np.issubdtype(dtype, np.integer):
@@ -206,6 +212,12 @@ class OpenGridAtLevel(GridAtLevel):
             tuple(slice(pp, sh - pp) for sh, pp in zip(self.shape, self.padding))
         ]
 
+    def is_index_refined(self, index):
+        if self.splits is None:
+            return jnp.zeros(index.shape[1:], dtype=bool) if index.ndim > 1 else False
+        isin = ((ii>=pp)*(ii<sh-pp) for ii, pp, sh in zip(index, self.padding, self.shape))
+        return reduce(operator.mul, isin, 1)
+
     def children(self, index):
         if (self.splits is None) or (self.padding is None):
             raise IndexError("this level has no children")
@@ -236,7 +248,7 @@ class OpenGridAtLevel(GridAtLevel):
         index = index + self.shifts[slc]
         return (index + 0.5) / shp[slc]
 
-    def coord2index(self, coord, dtype=np.int64):
+    def coord2index(self, coord, dtype=np.int64, **kwargs):
         slc = (slice(None),) + (np.newaxis,) * (coord.ndim - 1)
         shp = self.shape + 2 * self.shifts
         index = coord * shp[slc] - self.shifts[slc] - 0.5
@@ -360,9 +372,20 @@ class MGridAtLevel(GridAtLevel):
             res = jnp.concatenate((res, mg), axis=0)
         return res
 
+    def is_index_refined(self, index):
+        if self.splits is None:
+            return jnp.zeros(index.shape[1:], dtype=bool) if index.ndim > 1 else False
+        ndims_off = tuple(np.cumsum(tuple(g.ndim for g in self.grids)))
+        islice = tuple(slice(l, r) for l, r in zip((0,) + ndims_off[:-1], ndims_off))
+        isin = tuple(g.is_index_refined(index[i]) for i, g in zip(islice, self.grids))
+        return reduce(operator.mul, isin, 1)
+
     def resort(self, batched_ar, /):
-        if any(isinstance(g, FlatGrid) for g in self.grids):
-            raise NotImplementedError()  # TODO generalize using grids resort
+        for g in self.grids:
+            if isinstance(g, FlatGrid):
+                if g.ordering == "serial":
+                    msg = "serial ordering MGrid resort not implemented"
+                    raise NotImplementedError(msg) # TODO generalize using grids resort
         return super().resort(batched_ar)
 
     def children(self, index) -> npt.NDArray:
@@ -616,18 +639,19 @@ class FlatGridAtLevel(GridAtLevel):
         else:
             return res.reshape((1, -1))
 
+    def is_index_refined(self, index):
+        index = self._parse_index(index)
+        index = self.flatindex2index(index)
+        return self.grid_at_level.is_index_refined(index)
+
     def resort(self, batched_ar, /):
         if self.ordering == "nest":
             return super().resort(batched_ar)
         if self.ordering == "serial":
-            from ..logger import logger
-
-            msg = "Ring sorting triggers potentially expensive resorting of Kernel."
-            logger.warning(msg)
             parent_splits = self.all_splits[-3]
             shape = self.all_shapes[-2]
             if batched_ar.ndim != 2:
-                raise ValueError
+                raise ValueError(f"batched_ar must have 2 dimensions, got {batched_ar.ndim}")
             if batched_ar.shape[1] != np.prod(parent_splits):
                 raise ValueError
             shp = tuple(shape // parent_splits) + tuple(parent_splits)
@@ -661,27 +685,30 @@ class FlatGridAtLevel(GridAtLevel):
         index = self.flatindex2index(index)
         return self.grid_at_level.index2coord(index, **kwargs)
 
-    def coord2index(self, coord, *, boundary_handling="parse", **kwargs):
+    def coord2index(self, coord, *, return_valid=False, **kwargs):
         index = self.grid_at_level.coord2index(coord, **kwargs)
-        if boundary_handling == "parse":
-            index = self.grid_at_level._parse_index(index)
-            res = self.index2flatindex(index)
-        elif boundary_handling == "invalid":
-            shape = self.levelshape(0)
+        if return_valid:
             valid = reduce(
-                operator.mul, ((ii >= 0) * (ii < sh) for ii, sh in zip(index, shape))
-            )
-            res = self.index2flatindex(index)
-            res = jax.lax.select(valid, res, jnp.ones_like(res) * np.prod(shape) + 1)
-        else:
-            raise ValueError(f"invalid boundary handling {boundary_handling}")
-        return res
+                    operator.mul, ((ii >= 0) * (ii < sh) for ii, sh in zip(index, shape))
+                )
+        index = self.grid_at_level._parse_index(index)
+        index = self.index2flatindex(index)
+        if return_valid:
+            return index, valid
+        return index
 
     def index2volume(self, index, **kwargs):
         index = self._parse_index(index)
         index = self.flatindex2index(index)
         return self.grid_at_level.index2volume(index, **kwargs)
 
+def _check_open(grid):
+    if isinstance(grid, OpenGrid):
+        return True
+    if isinstance(grid, MGrid):
+        for g in grid.grids:
+            if _check_open(g):
+                return True
 
 @dataclass()
 class FlatGrid(Grid):
@@ -698,13 +725,10 @@ class FlatGrid(Grid):
         if ordering not in ("serial", "nest"):
             raise ValueError(f"invalid flat index ordering scheme {ordering}")
         if ordering == "nest":
-            msg = "Nest ordering is not supported for OpenGrids; Use `SparseGrid` or `serial` ordering instead."
-            if isinstance(grid, OpenGrid):
+            if _check_open(grid):
+                msg = "Nest ordering is not supported for OpenGrids; Use `SparseGrid` or `serial` ordering instead."
                 raise ValueError(msg)
-            if isinstance(grid, MGrid):
-                for g in grid.grids:
-                    if isinstance(g, OpenGrid):
-                        raise ValueError(msg)
+
         self.ordering = ordering
         shape0 = np.array([np.prod(grid.shape0)])
         splits = tuple(np.array([np.prod(spl)]) for spl in grid.splits)
@@ -736,9 +760,9 @@ class FlatGrid(Grid):
 
 @dataclass()
 class SparseGridAtLevel(FlatGridAtLevel):
-    mapping: npt.NDArray[np.int_]
-    parent_mapping: Optional[npt.NDArray[np.int_]] = None
-    children_mapping: Optional[npt.NDArray[np.int_]] = None
+    mapping: jnp.ndarray
+    parent_mapping: Optional[jnp.ndarray] = None
+    children_mapping: Optional[jnp.ndarray] = None
 
     def __init__(
         self,
@@ -746,20 +770,21 @@ class SparseGridAtLevel(FlatGridAtLevel):
         all_shapes,
         all_splits,
         mapping,
-        ordering="nest",
         parent_mapping=None,
         children_mapping=None,
+        _debug=False,
     ):
         if not isinstance(grid_at_level, GridAtLevel):
             raise TypeError(f"Grid {grid_at_level.__name__} of invalid type")
         self.mapping = mapping
         self.parent_mapping = parent_mapping
         self.children_mapping = children_mapping
+        self._debug = _debug
         super().__init__(
             grid_at_level=grid_at_level,
             all_shapes=all_shapes,
             all_splits=all_splits,
-            ordering=ordering,
+            ordering="nest",
         )
         # Overrides shape to utilize base functions
         self.shape = np.array([self.mapping.size])
@@ -779,34 +804,44 @@ class SparseGridAtLevel(FlatGridAtLevel):
         index = self._parse_index(index)
         return self._mapping(levelshift)[index]
 
-    def flatindex2arrayindex(self, index, levelshift=0):
+    def flatindex2arrayindex(self, index, levelshift=0, return_valid=False):
         mapping = self._mapping(levelshift)
-        arrayid = np.searchsorted(mapping, index)
-        #  TODO Benchmark searchsorted on stack instead of second one with `right`
-        valid = np.searchsorted(mapping, index, side="right") == arrayid + 1
-
-        checkify.check(
-            jnp.all(valid),
-            f"flat index {{ids}} not on child grid of {self.__class__.__name__}",
-            ids=arrayid[~valid],
-        )
+        arrayid = jnp.searchsorted(mapping, index)
+        valid = jnp.searchsorted(mapping, index, side="right") == arrayid + 1
+        valid = valid[0]
+        if self._debug:
+            if not jnp.all(valid):
+                msg = f"flat index {arrayid[~valid]} not on child grid of {self.__class__.__name__}"
+                raise ValueError(msg)
+        if return_valid:
+            return arrayid, valid
         return arrayid
 
     def refined_indices(self):
-        raise NotImplementedError  # TODO
+        index = jnp.arange(self.mapping.size, dtype=self.mapping.dtype)[jnp.newaxis,:]
+        return index[:, self.is_index_refined(index)]
 
-    def children(self, index) -> npt.NDArray:
+    def is_index_refined(self, index):
+        index = self.arrayindex2flatindex(index)
+        children = self.to_flat_grid().children(index)
+        isin = jnp.isin(children[0], self.children_mapping)
+        return jnp.all(isin, axis=-1)
+
+    def resort(self, batched_ar, /):
+        return super().resort(batched_ar)
+
+    def children(self, index) -> jnp.ndarray:
         index = self.arrayindex2flatindex(index)
         index = self.flatindex2index(index)
-        children = self.grid_at_level.children(index)
+        children = self.grid_at_level.children(index).reshape(index.shape + (-1,))
         children = self.index2flatindex(children, +1)
         return self.flatindex2arrayindex(children, +1)
 
     def neighborhood(self, index, window_size: Iterable[int]):
-        window = self.arrayindex2flatindex(index)
-        window = self.flatindex2index(window)
+        index = self.arrayindex2flatindex(index)
+        index = self.flatindex2index(index)
         window = self.grid_at_level.neighborhood(index, window_size=window_size)
-        window = self.index2flatindex(window)
+        window = self.index2flatindex(window.reshape(index.shape + (-1,)))
         return self.flatindex2arrayindex(window)
 
     def parent(self, index):
@@ -821,22 +856,35 @@ class SparseGridAtLevel(FlatGridAtLevel):
         index = self.flatindex2index(index)
         return self.grid_at_level.index2coord(index, **kwargs)
 
-    def coord2index(self, coord, **kwargs):
+    def coord2index(self, coord, return_valid=False, **kwargs):
         index = self.grid_at_level.coord2index(coord, **kwargs)
         index = self.index2flatindex(index)
-        return self.flatindex2arrayindex(index)
+        return self.flatindex2arrayindex(index, return_valid=return_valid)
 
     def index2volume(self, index, **kwargs):
         index = self.arrayindex2flatindex(index)
         index = self.flatindex2index(index)
         return self.grid_at_level.index2volume(index, **kwargs)
 
+    def is_leaf(self, index):
+        if self.children_mapping is None:
+            return jnp.ones_like(index, dtype=bool)
+        else:
+            children = self.children(index)
+            children = self.arrayindex2flatindex(children)[0]
+            ischild = jnp.isin(children, self.children_mapping)
+            if self._debug:
+                n_children = ischild.shape[-1]
+                check = jnp.sum(ischild, axis=-1)
+                assert jnp.all(check[check > 0] == n_children)
+            return ischild
+
     def to_flat_grid(self):
         return FlatGridAtLevel(
             self.grid_at_level,
             all_shapes=self.all_shapes,
             all_splits=self.all_splits,
-            ordering=self.ordering,
+            ordering="nest",
         )
 
 
@@ -846,24 +894,30 @@ class SparseGrid(FlatGrid):
     being modeled. This class is especially convenient for open boundary conditions
     but works for arbitrarily sparsely resolved grids."""
 
-    mapping: tuple[npt.NDArray[np.int_]]
+    mapping: tuple[jnp.ndarray]
 
     def __init__(
         self,
         grid,
         mapping,
-        ordering="serial",
         *,
-        _check_mapping=True,
         atLevel=SparseGridAtLevel,
+        _check_mapping=True,
+        _debug=False,
     ):
+        if isinstance(grid, FlatGrid):
+            if grid.ordering == "serial":
+                raise ValueError("Serial ordering is not supported for SparseGrids")
+            grid = grid.grid
         if not isinstance(grid, Grid):
             raise TypeError(f"Grid {grid.__class__.__name__} of invalid type")
         self.grid = grid
-        self.ordering = ordering
-
+        self._check_mapping = _check_mapping
+        self._debug = _debug
+        if isinstance(mapping, list):
+            mapping = tuple(mapping)
         mapping = (mapping,) if not isinstance(mapping, tuple) else mapping
-        mapping = tuple(np.atleast_1d(m) for m in mapping)
+        mapping = tuple(jnp.atleast_1d(jnp.array(m)) for m in mapping)
 
         if _check_mapping:
             if len(mapping) != grid.depth + 1:
@@ -875,20 +929,24 @@ class SparseGrid(FlatGrid):
                 if mm.ndim != 1:
                     raise IndexError("Mapping must be one dimensional")
                 if np.any(mm[1:] <= mm[:-1]):
+                    print(mm)
                     raise IndexError("Mapping must be unique and sorted")
         self.mapping = mapping
 
-        super().__init__(grid=grid, ordering=ordering, atLevel=atLevel)
+        super().__init__(grid=grid, ordering="nest", atLevel=atLevel)
 
     def amend(self, splits, mapping, **kwargs):
         grid = self.grid.amend(splits, **kwargs)
         mapping = (mapping,) if not isinstance(mapping, tuple) else mapping
-        return self.__class__(grid, mapping, nest=self.nest)
+        return self.__class__(grid, self.mapping + mapping,
+                              _check_mapping=self._check_mapping,
+                              _debug=self._debug)
+
+    def get_flat_grid(self):
+        return FlatGrid(self.grid, ordering="nest")
 
     def at(self, level: int):
         level = self._parse_level(level)
-        parent_mapping = None if level == 0 else self.mapping[level - 1]
-        children_mapping = None if level == self.depth else self.mapping[level + 1]
         shapes = []
         splits = []
         for lvl in range(level + 2):
@@ -903,7 +961,8 @@ class SparseGrid(FlatGrid):
             self.grid.at(level),
             all_shapes=shapes,
             all_splits=splits,
-            ordering=self.ordering,
-            parent_mapping=parent_mapping,
-            children_mapping=children_mapping,
+            mapping=self.mapping[level],
+            parent_mapping=None if level == 0 else self.mapping[level - 1],
+            children_mapping=None if level == self.depth else self.mapping[level + 1],
+            _debug=self._debug,
         )
