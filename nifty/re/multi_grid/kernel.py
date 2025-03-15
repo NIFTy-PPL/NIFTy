@@ -20,7 +20,7 @@ from .grid_impl import HEALPixGridAtLevel
 from ..tree_math import solve, sqrtm
 
 
-def apply_kernel(x, *, kernel):
+def apply_kernel(x, *, kernel, indices=None):
     """Applies the kernel to values on an entire multigrid"""
     if len(x) != (kernel.grid.depth + 1):
         msg = f"input depth {len(x)} does not match grid depth {kernel.grid.depth}"
@@ -43,10 +43,12 @@ def apply_kernel(x, *, kernel):
         return iout, res.reshape(iout[0].shape[1:])
 
     x = list(x)
-    _, x[0] = apply_at(jnp.array([-1]), None, x)  # Use dummy index for base
+    _, x[0] = apply_at(
+        indices[0] if indices is not None else jnp.array([-1]), None, x
+    )  # Use dummy index for base
     for lvl in range(kernel.grid.depth):
         g = kernel.grid.at(lvl)
-        index = g.refined_indices()
+        index = indices[lvl + 1] if indices is not None else g.refined_indices()
         # TODO this selects window for each index individually
         f = apply_at
         for i in range(g.ndim):
@@ -143,7 +145,11 @@ class Kernel:
             assert index.ndim == ids.ndim - 1
             return (distance_norm(out[..., jnp.newaxis] - ids[..., jnp.newaxis, :]),)
 
-        gridf = FlatGrid(self.grid)
+        gridf = (
+            FlatGrid(self.grid)
+            if not isinstance(self.grid, FlatGrid)
+            else FlatGrid(self.grid, ordering=self.grid.ordering)
+        )
         uindices = []
         invindices = []
         indexmaps = []
@@ -255,7 +261,7 @@ class ICRKernel(Kernel):
                 _default_window_size(grid.at(lvl)) for lvl in range(grid.depth)
             )
         elif not isinstance(window_size, tuple):
-            window_size = (window_size)*grid.depth
+            window_size = (window_size) * grid.depth
         self._window_size = window_size
         super().__init__(grid=grid, _cim=_cim)
 
@@ -263,7 +269,7 @@ class ICRKernel(Kernel):
         cim = self._cim if _cim is None else _cim
         if covariance is not None and cim is not None:
             cim = cim._replace(base_kernel=None, kernels=None)
-        else:
+        elif covariance is None:
             covariance = self._covariance_elem
         window_size = self.window_size if window_size is None else window_size
         return self.__class__(self.grid, covariance, window_size=window_size, _cim=cim)
