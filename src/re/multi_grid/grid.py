@@ -455,23 +455,31 @@ class MGridAtLevel(GridAtLevel):
     def index2coord(self, index, **kwargs):
         ndims_off = tuple(np.cumsum(tuple(g.ndim for g in self.grids)))
         islice = tuple(slice(l, r) for l, r in zip((0,) + ndims_off[:-1], ndims_off))
-        coord = tuple(g.index2coord(index[i]) for i, g in zip(islice, self.grids))
+        coord = tuple(g.index2coord(index[i], **kwargs) for i, g in zip(islice, self.grids))
         return jnp.concatenate(coord, axis=0)
 
-    def coord2index(self, coord, **kwargs):
+    def coord2index(self, coord, return_valid=False, **kwargs):
         cdims = tuple(
             eval_shape(gg.index2coord, ShapeDtypeStruct((gg.ndim,), jnp.int_)).shape[0]
             for gg in self.grids
         )
         ndims_off = tuple(np.cumsum(cdims))
         islice = tuple(slice(l, r) for l, r in zip((0,) + ndims_off[:-1], ndims_off))
-        index = tuple(g.coord2index(coord[i]) for i, g in zip(islice, self.grids))
+        index = tuple(g.coord2index(coord[i], return_valid=return_valid, **kwargs) for i, g in zip(islice, self.grids))
+        if return_valid:
+            inds = tuple(i[0] if isinstance(i, tuple) else i for i in index)
+            valid = []
+            for i in index:
+                if isinstance(i, tuple):
+                    valid.append(i[1])
+            valid = jnp.all(jnp.concatenate(valid, axis=0), axis=0)
+            return jnp.concatenate(inds, axis=0), valid
         return jnp.concatenate(index, axis=0)
 
     def index2volume(self, index, **kwargs):
         ndims_off = tuple(np.cumsum(tuple(g.ndim for g in self.grids)))
         islice = tuple(slice(l, r) for l, r in zip((0,) + ndims_off[:-1], ndims_off))
-        volume = tuple(g.index2volume(index[i]) for i, g in zip(islice, self.grids))
+        volume = tuple(g.index2volume(index[i], **kwargs) for i, g in zip(islice, self.grids))
         return reduce(operator.mul, volume)
 
 
@@ -811,7 +819,7 @@ class SparseGridAtLevel(FlatGridAtLevel):
         valid = valid[0]
         if self._debug:
             if not jnp.all(valid):
-                msg = f"flat index {arrayid[~valid]} not on child grid of {self.__class__.__name__}"
+                msg = f"flat index {arrayid[:, ~valid]} not on child grid of {self.__class__.__name__}"
                 raise ValueError(msg)
         if return_valid:
             return arrayid, valid
