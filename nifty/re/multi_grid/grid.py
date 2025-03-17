@@ -39,8 +39,11 @@ class GridAtLevel:
             raise IndexError(ve)
         # Follow jax-array style out of bounds handling
         shp_bc = self.shape[(slice(None),) + (np.newaxis,) * (index.ndim - 1)]
-        index = select(jnp.abs(index) < shp_bc, index,
-                       (jnp.sign(index) * (shp_bc - 1)).astype(index.dtype))
+        index = select(
+            jnp.abs(index) < shp_bc,
+            index,
+            (jnp.sign(index) * (shp_bc - 1)).astype(index.dtype),
+        )
         return index % shp_bc
 
     @property
@@ -215,7 +218,10 @@ class OpenGridAtLevel(GridAtLevel):
     def is_index_refined(self, index):
         if self.splits is None:
             return jnp.zeros(index.shape[1:], dtype=bool) if index.ndim > 1 else False
-        isin = ((ii>=pp)*(ii<sh-pp) for ii, pp, sh in zip(index, self.padding, self.shape))
+        isin = (
+            (ii >= pp) * (ii < sh - pp)
+            for ii, pp, sh in zip(index, self.padding, self.shape)
+        )
         return reduce(operator.mul, isin, 1)
 
     def children(self, index):
@@ -385,7 +391,7 @@ class MGridAtLevel(GridAtLevel):
             if isinstance(g, FlatGrid):
                 if g.ordering == "serial":
                     msg = "serial ordering MGrid resort not implemented"
-                    raise NotImplementedError(msg) # TODO generalize using grids resort
+                    raise NotImplementedError(msg)  # TODO generalize using grids resort
         return super().resort(batched_ar)
 
     def children(self, index) -> npt.NDArray:
@@ -455,7 +461,9 @@ class MGridAtLevel(GridAtLevel):
     def index2coord(self, index, **kwargs):
         ndims_off = tuple(np.cumsum(tuple(g.ndim for g in self.grids)))
         islice = tuple(slice(l, r) for l, r in zip((0,) + ndims_off[:-1], ndims_off))
-        coord = tuple(g.index2coord(index[i], **kwargs) for i, g in zip(islice, self.grids))
+        coord = tuple(
+            g.index2coord(index[i], **kwargs) for i, g in zip(islice, self.grids)
+        )
         return jnp.concatenate(coord, axis=0)
 
     def coord2index(self, coord, return_valid=False, **kwargs):
@@ -465,7 +473,10 @@ class MGridAtLevel(GridAtLevel):
         )
         ndims_off = tuple(np.cumsum(cdims))
         islice = tuple(slice(l, r) for l, r in zip((0,) + ndims_off[:-1], ndims_off))
-        index = tuple(g.coord2index(coord[i], return_valid=return_valid, **kwargs) for i, g in zip(islice, self.grids))
+        index = tuple(
+            g.coord2index(coord[i], return_valid=return_valid, **kwargs)
+            for i, g in zip(islice, self.grids)
+        )
         if return_valid:
             inds = tuple(i[0] if isinstance(i, tuple) else i for i in index)
             valid = []
@@ -479,7 +490,9 @@ class MGridAtLevel(GridAtLevel):
     def index2volume(self, index, **kwargs):
         ndims_off = tuple(np.cumsum(tuple(g.ndim for g in self.grids)))
         islice = tuple(slice(l, r) for l, r in zip((0,) + ndims_off[:-1], ndims_off))
-        volume = tuple(g.index2volume(index[i], **kwargs) for i, g in zip(islice, self.grids))
+        volume = tuple(
+            g.index2volume(index[i], **kwargs) for i, g in zip(islice, self.grids)
+        )
         return reduce(operator.mul, volume)
 
 
@@ -659,7 +672,9 @@ class FlatGridAtLevel(GridAtLevel):
             parent_splits = self.all_splits[-3]
             shape = self.all_shapes[-2]
             if batched_ar.ndim != 2:
-                raise ValueError(f"batched_ar must have 2 dimensions, got {batched_ar.ndim}")
+                raise ValueError(
+                    f"batched_ar must have 2 dimensions, got {batched_ar.ndim}"
+                )
             if batched_ar.shape[1] != np.prod(parent_splits):
                 raise ValueError
             shp = tuple(shape // parent_splits) + tuple(parent_splits)
@@ -697,8 +712,12 @@ class FlatGridAtLevel(GridAtLevel):
         index = self.grid_at_level.coord2index(coord, **kwargs)
         if return_valid:
             valid = reduce(
-                    operator.mul, ((ii >= 0) * (ii < sh) for ii, sh in zip(index, shape))
-                )
+                operator.mul,
+                (
+                    (ii >= 0) * (ii < sh)
+                    for ii, sh in zip(index, self.grid_at_level.shape)
+                ),
+            )
         index = self.grid_at_level._parse_index(index)
         index = self.index2flatindex(index)
         if return_valid:
@@ -710,6 +729,7 @@ class FlatGridAtLevel(GridAtLevel):
         index = self.flatindex2index(index)
         return self.grid_at_level.index2volume(index, **kwargs)
 
+
 def _check_open(grid):
     if isinstance(grid, OpenGrid):
         return True
@@ -717,6 +737,7 @@ def _check_open(grid):
         for g in grid.grids:
             if _check_open(g):
                 return True
+
 
 @dataclass()
 class FlatGrid(Grid):
@@ -826,7 +847,7 @@ class SparseGridAtLevel(FlatGridAtLevel):
         return arrayid
 
     def refined_indices(self):
-        index = jnp.arange(self.mapping.size, dtype=self.mapping.dtype)[jnp.newaxis,:]
+        index = jnp.arange(self.mapping.size, dtype=self.mapping.dtype)[jnp.newaxis, :]
         return index[:, self.is_index_refined(index)]
 
     def is_index_refined(self, index):
@@ -946,9 +967,12 @@ class SparseGrid(FlatGrid):
     def amend(self, splits, mapping, **kwargs):
         grid = self.grid.amend(splits, **kwargs)
         mapping = (mapping,) if not isinstance(mapping, tuple) else mapping
-        return self.__class__(grid, self.mapping + mapping,
-                              _check_mapping=self._check_mapping,
-                              _debug=self._debug)
+        return self.__class__(
+            grid,
+            self.mapping + mapping,
+            _check_mapping=self._check_mapping,
+            _debug=self._debug,
+        )
 
     def get_flat_grid(self):
         return FlatGrid(self.grid, ordering="nest")
