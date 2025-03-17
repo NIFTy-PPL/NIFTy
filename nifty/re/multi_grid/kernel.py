@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 # Authors: Philipp Frank, Gordian Edenhofer
 
+from dataclasses import field
 import operator
 from collections import namedtuple
 from functools import partial, reduce
@@ -11,9 +12,11 @@ from typing import Optional, Tuple
 import jax.numpy as jnp
 import numpy as np
 from jax import eval_shape, jit, vmap
+from jax.tree_util import register_pytree_node
 from jax.lax import scan
 from numpy import typing as npt
 
+from ..model import ModelMeta
 from ..num import amend_unique_
 from .grid import FlatGrid, Grid, OpenGridAtLevel
 from .grid_impl import HEALPixGridAtLevel
@@ -63,15 +66,27 @@ _CompressedIndexMap = namedtuple(
     "_CompressedIndexMap",
     ("base_kernel", "kernels", "uindices", "indexmaps", "invindices"),
 )
+def tree_flatten(self):
+    dynamic = [self.base_kernel, self.kernels, self.uindices, self.invindices]
+    static = [self.indexmaps]
+    return (tuple(dynamic), tuple(static))
+
+def tree_unflatten(aux, children):
+    static, dynamic = aux, children
+    return _CompressedIndexMap(base_kernel=dynamic[0], kernels=dynamic[1],
+                               uindices=dynamic[2], indexmaps=static[0], invindices=dynamic[3])
+register_pytree_node(_CompressedIndexMap, tree_flatten, tree_unflatten)
 
 
-class Kernel:
+class Kernel(metaclass=ModelMeta):
     """
     - Apply linear operators with inputs accross an arbitrary grid
     - A Kernel could be as simple as coarse graining children to a parent; or a full
       ICR or MSC implementation
     - Fully jax transformable to allow seamlessly being used in larger models
     """
+    _grid: Grid = field(metadata=dict(static=False))
+    _cim: Optional[_CompressedIndexMap] = field(metadata=dict(static=False), default=None)
 
     def __init__(self, grid, *, _cim: Optional[_CompressedIndexMap] = None):
         self._grid = grid
@@ -253,6 +268,7 @@ def refinement_matrices(cov, n_fsz: int):
 
 class ICRKernel(Kernel):
     """Full ICR implementation taking an arbitrary grid and a covariance function."""
+
 
     def __init__(self, grid, covariance, *, window_size=None, _cim=None):
         self._covariance_elem = covariance
