@@ -253,7 +253,7 @@ class OpenGridAtLevel(GridAtLevel):
         shp = self.shape + 2 * self.shifts
         index = coord * shp[slc] - self.shifts[slc] - 0.5
         if np.issubdtype(dtype, np.integer):
-            index = np.rint(index).astype(dtype)
+            index = jnp.rint(index).astype(dtype)
             return index
         else:
             raise ValueError(f"non-integer index dtype: {dtype}")
@@ -472,7 +472,7 @@ class MGridAtLevel(GridAtLevel):
             for i in index:
                 if isinstance(i, tuple):
                     valid.append(i[1])
-            valid = jnp.all(jnp.concatenate(valid, axis=0), axis=0)
+            valid = jnp.all(jnp.stack(valid, axis=0), axis=0)
             return jnp.concatenate(inds, axis=0), valid
         return jnp.concatenate(index, axis=0)
 
