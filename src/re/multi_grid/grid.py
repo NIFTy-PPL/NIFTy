@@ -4,21 +4,18 @@
 # Authors: Gordian Edenhofer, Philipp Frank
 
 import operator
-from dataclasses import dataclass
+from dataclasses import field
 from functools import reduce
 from typing import Callable, Iterable, Optional
 
-import jax
 import jax.numpy as jnp
 import numpy as np
 import numpy.typing as npt
 from jax import ShapeDtypeStruct, eval_shape
-from jax.experimental import checkify
 from jax.lax import select
+from ..model import ModelMeta
 
-
-@dataclass()
-class GridAtLevel:
+class GridAtLevel(metaclass=ModelMeta):
     shape: npt.NDArray[np.int_]
     splits: Optional[npt.NDArray[np.int_]]
     parent_splits: Optional[npt.NDArray[np.int_]]
@@ -133,13 +130,12 @@ class GridAtLevel:
         return np.array(1.0 / self.size)[(np.newaxis,) * index.ndim]
 
 
-@dataclass()
-class Grid:
+class Grid(metaclass=ModelMeta):
     """Dense grid with periodic boundary conditions."""
 
-    shape0: npt.NDArray[np.int_]
-    splits: tuple[npt.NDArray[np.int_]]
-    atLevel: Callable
+    shape0: npt.NDArray[np.int_] = field(metadata=dict(static=True))
+    splits: tuple[npt.NDArray[np.int_]] = field(metadata=dict(static=True))
+    atLevel: Callable = field(metadata=dict(static=True))
 
     def __init__(self, *, shape0, splits, atLevel=GridAtLevel):
         self.shape0 = np.atleast_1d(shape0)
@@ -177,7 +173,6 @@ class Grid:
         )
 
 
-@dataclass()
 class OpenGridAtLevel(GridAtLevel):
     padding: Optional[npt.NDArray[np.int_]]
     parent_padding: Optional[npt.NDArray[np.int_]]
@@ -269,7 +264,6 @@ class OpenGridAtLevel(GridAtLevel):
         return np.array(1.0 / sz)[(np.newaxis,) * index.ndim]
 
 
-@dataclass()
 class OpenGrid(Grid):
     """Dense grid with open boundary conditions.
 
@@ -279,6 +273,7 @@ class OpenGrid(Grid):
     refinement/convolution span the full space including any padding on all
     previous layers.
     """
+    padding: tuple[npt.NDArray[np.int_]] = field(metadata=dict(static=True))
 
     def __init__(self, *, shape0, splits, padding, atLevel=OpenGridAtLevel):
         super().__init__(shape0=shape0, splits=splits, atLevel=atLevel)
@@ -324,11 +319,10 @@ class OpenGrid(Grid):
         )
 
 
-@dataclass()
 class MGridAtLevel(GridAtLevel):
     """Multi-dimensional meshgrid product of multiple grids."""
 
-    grids: tuple[GridAtLevel]
+    grids: tuple[GridAtLevel] = field(metadata=dict(static=False))
 
     def __init__(self, *grids):
         self.grids = tuple(grids)
@@ -496,11 +490,10 @@ class MGridAtLevel(GridAtLevel):
         return reduce(operator.mul, volume)
 
 
-@dataclass()
 class MGrid(Grid):
     """Multi-dimensional meshgrid product of multiple grids."""
 
-    grids: tuple[Grid]
+    grids: tuple[Grid] = field(metadata=dict(static=False))
 
     def __init__(self, *grids, atLevel=MGridAtLevel):
         self.grids = tuple(grids)
@@ -544,11 +537,10 @@ class MGrid(Grid):
         return self.atLevel(*tuple(g.at(level) for g in self.grids))
 
 
-@dataclass()
 class FlatGridAtLevel(GridAtLevel):
     """Same as :class:`GridAtLevel` but with a single global integer index for each voxel."""
 
-    grid_at_level: GridAtLevel
+    grid_at_level: GridAtLevel = field(metadata=dict(static=False))
     all_shapes: tuple[npt.NDArray[np.int_]]
     all_splits: tuple[npt.NDArray[np.int_]]
     ordering: str
@@ -739,11 +731,10 @@ def _check_open(grid):
                 return True
 
 
-@dataclass()
 class FlatGrid(Grid):
     """Same as :class:`Grid` but with a single global integer index for each voxel."""
 
-    grid: Grid
+    grid: Grid = field(metadata=dict(static=False))
     ordering: str
 
     def __init__(self, grid, *, ordering="serial", atLevel=FlatGridAtLevel):
@@ -787,11 +778,10 @@ class FlatGrid(Grid):
         )
 
 
-@dataclass()
 class SparseGridAtLevel(FlatGridAtLevel):
-    mapping: jnp.ndarray
-    parent_mapping: Optional[jnp.ndarray] = None
-    children_mapping: Optional[jnp.ndarray] = None
+    mapping: jnp.ndarray = field(metadata=dict(static=False))
+    parent_mapping: Optional[jnp.ndarray] = field(metadata=dict(static=False), default=None)
+    children_mapping: Optional[jnp.ndarray] = field(metadata=dict(static=False), default=None)
 
     def __init__(
         self,
@@ -917,13 +907,12 @@ class SparseGridAtLevel(FlatGridAtLevel):
         )
 
 
-@dataclass()
 class SparseGrid(FlatGrid):
     """Same as :class:`FlatGrid` but keeping track of the indices that are actually
     being modeled. This class is especially convenient for open boundary conditions
     but works for arbitrarily sparsely resolved grids."""
 
-    mapping: tuple[jnp.ndarray]
+    mapping: tuple[jnp.ndarray] = field(metadata=dict(static=False))
 
     def __init__(
         self,
