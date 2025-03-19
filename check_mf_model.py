@@ -9,6 +9,14 @@
 import jax.numpy as jnp
 from jax import random
 import matplotlib.pyplot as plt
+from src.re.library.mf_model import (
+    _build_fluctuations_model)
+from src.re.library.mf_model_utils import (
+    _build_distribution_or_default)
+from src.re.num.stats_distributions import (
+    normal_prior)
+
+from src.re.library.spectral_behavior import SpectralPolynomial
 
 from sys import exit
 
@@ -26,13 +34,13 @@ amplitude_settings = dict(
 )
 amplitude_model = "matern"
 
-# amplitude_settings = dict(
-#     fluctuations=(1.0, 0.02),
-#     loglogavgslope=(-4, 0.1),
-#     flexibility=None,
-#     asperity=None,
-# )
-# amplitude_model = "non_parametric"
+amplitude_settings = dict(
+    fluctuations=(1.0, 0.02),
+    loglogavgslope=(-4, 0.1),
+    flexibility=None,
+    asperity=None,
+)
+amplitude_model = "non_parametric"
 
 spectral_amplitude_settings = dict(
     fluctuations=(1.0, 0.02),
@@ -47,11 +55,12 @@ spectral_idx_settings = dict(
     mean=(-1., .05),
     fluctuations=(.1, 1.e-2),
 )
+
 deviations_settings = dict(
     process='wiener',
     sigma=(0.2, 0.08),
 )
-# deviations_settings = None
+deviations_settings = None
 
 mf_model = jft.build_default_mf_model(
     prefix='test',
@@ -111,3 +120,32 @@ if spectral_deviations is not None:
         a.set_title(f'spectral devs nu={freqs[i]}')
 
 plt.show()
+
+exit()
+
+polynomial_order = 2
+fluctuations = [
+    _build_fluctuations_model(
+        prefix=f'test_spectral_{ii}',
+        fluctuation_settings=spectral_idx_settings['fluctuations'],
+        shape=shape)
+    for ii in range(polynomial_order)
+]
+means = [_build_distribution_or_default(
+    spectral_idx_settings['mean'],
+    f'test_spectral_mean_{ii}',
+    normal_prior)
+    for ii in range(polynomial_order)
+]
+freqs, reference_frequency = jnp.array((0.1, 1.5, 2, 10)), 1
+
+
+polynomial = SpectralPolynomial(
+    freqs,
+    means,
+    fluctuations,
+    reference_frequency
+)
+p = polynomial.init(key+1)
+polynomial.fluctuations_with_frequencies(p)
+polynomial.mean_with_frequencies(p)

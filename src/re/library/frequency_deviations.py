@@ -13,77 +13,15 @@ from numpy.typing import ArrayLike
 from .mf_model_utils import _check_demands, _build_distribution_or_default
 from .. import lognormal_prior
 from ..gauss_markov import GaussMarkovProcess, build_fixed_point_wiener_process
-from ..model import Model
 
 
-class SlopelessGaussMarkovProcess(Model):
-    """
-    Model that removes the average slope of a Gauss-Markov process relative to
-    a specific reference time. This ensures that the process has zero mean slope
-    when evaluated at various time stamps, effectively 'detrending' the process.
-
-    Let `g(t)` represent the Gauss-Markov process at time `t`. The class removes
-    the average slope of the process relative to the reference time, `t_ref`, by
-    computing the slope `m` using the following formula:
-
-    .. math::
-
-        m = \\frac{\\sum_{i} (g(t_i) - g(t_{ref}))(t_i - t_{ref})}{\\sum_{i} (t_i - t_{ref})^2}
-
-    Here:
-    - `t_i` are the time stamps from the `time_stamps` array.
-    - `g(t_i)` are the values of the Gauss-Markov process at these time stamps.
-    - `t_{ref}` is the reference time, corresponding to
-    `time_stamps[reference_time_index]`.
-
-    Parameters
-    ----------
-    process: GaussMarkovProcess
-        The input Gauss-Markov process that is assumed to be zero at the
-        reference time.
-        TODO: Extend to allow for a correlated field.
-    time_stamps: Union[tuple[float], ArrayLike]
-        A list or array of time stamps at which the deviations from the
-        reference slope are computed.
-    reference_time_index: int
-        The index of the reference time within the `time_stamps` array.
-    """
-
-    def __init__(
-        self,
-        process: GaussMarkovProcess,  # TODO: Allow for correlated field
-        time_stamps: Union[tuple[float], ArrayLike],
-        reference_time_index: int
-    ):
-        self.process = process
-
-        slicing_tuple = (
-            (slice(None),) +
-            (None,) * len(self.process.target.shape[1:])
-        )
-        relative_times = jnp.array(
-            time_stamps - time_stamps[reference_time_index])
-        self._relative_times = relative_times[slicing_tuple]
-        self._denominator = 1 / jnp.sum(relative_times**2)
-
-        super().__init__(init=process.init)
-
-    def __call__(self, primals):
-        dev = self.process(primals)
-
-        dev_slope = (jnp.sum(dev * self._relative_times, axis=0)
-                     * self._denominator)
-
-        return dev - dev_slope * self._relative_times
-
-
-def build_frequency_deviations_model(
+def build_frequency_deviations_model_with_degeneracies(
     shape: tuple[int],
     log_frequencies: Union[tuple[float], ArrayLike],
     reference_frequency_index: int,
     deviations_settings: Optional[dict],
     prefix: str = None,
-) -> SlopelessGaussMarkovProcess | None:
+) -> GaussMarkovProcess | None:
     """
     Builds a frequency deviations model based on
     the specified settings.
@@ -108,9 +46,8 @@ def build_frequency_deviations_model(
 
     Returns
     -------
-    SlopelessGaussMarkovProcess or None
-        A SlopelessGaussMarkovProcess instance configured with
-        the specified settings.
+    GaussMarkovProcess or None
+        A GaussMarkovProcess instance configured with the specified settings.
         Returns None if `deviations_settings` is None.
 
     Raises
@@ -146,6 +83,4 @@ def build_frequency_deviations_model(
     else:
         raise NotImplementedError(f'{process_name} not implemented.')
 
-    return SlopelessGaussMarkovProcess(process,
-                                       log_frequencies,
-                                       reference_frequency_index)
+    return process
