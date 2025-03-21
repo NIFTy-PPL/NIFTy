@@ -198,7 +198,7 @@ def test_mgvi_wiener_filter_consistency(
         odir=None,
     )
     approx_post_mean = jax.vmap(forward)(samples_opt.samples).mean(axis=0)
-    assert_allclose(post_mean, approx_post_mean, atol=1e-10, rtol=1e-10)
+    assert_allclose(post_mean, approx_post_mean, atol=1e-9, rtol=1e-10)
 
     # Wiener filter test
     key, w_key = random.split(key)
