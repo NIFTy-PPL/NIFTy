@@ -477,7 +477,10 @@ class MGridAtLevel(GridAtLevel):
             for i in index:
                 if isinstance(i, tuple):
                     valid.append(i[1])
-            valid = jnp.all(jnp.stack(valid, axis=0), axis=0)
+            if len(valid) > 0:
+                valid = jnp.all(jnp.stack(valid, axis=0), axis=0)
+            else:
+                valid = jnp.ones(inds[0].shape[1:], dtype=bool)
             return jnp.concatenate(inds, axis=0), valid
         return jnp.concatenate(index, axis=0)
 
