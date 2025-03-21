@@ -5,11 +5,10 @@
 from abc import ABC, abstractmethod
 from functools import reduce
 
-import numpy as np
-
-import jax
 import jax.numpy as jnp
 from jax.typing import ArrayLike
+
+from .scaled_excitations import ScaledExcitations
 
 from ..model import Model
 from ..tree_math.vector import Vector
@@ -66,7 +65,7 @@ class SpectralIndex(SingleHarmonicLogSpectralBehavior):
         self,
         log_frequencies: ArrayLike,
         mean: Model,
-        fluctuations: Model,
+        spectral_scaled_excitations: ScaledExcitations,
         reference_frequency_index: int,
     ):
         '''Spectral Index spectral behavior. Special case of the
@@ -85,8 +84,8 @@ class SpectralIndex(SingleHarmonicLogSpectralBehavior):
             internally. See `reference_frequency_index`.
         mean: Model
             The means of the polynomial model. See equation above.
-        fluctuations: Model
-            The fluctuations, already applied to the xis. Hence, the
+        spectral_scaled_excitations: Model
+            The fluctuations already applied to the xis. Hence, the
             combination of \\mathrm{fluc.}^A \\xi^A.
         reference_frequency_index: int
             The index of the reference frequency. Used in order to calculate
@@ -96,17 +95,17 @@ class SpectralIndex(SingleHarmonicLogSpectralBehavior):
         # index of the output model. The slicing tuple matches the shape of the
         # relative_log_frequencies using the numpy slicing convention.
         slicing_tuple = (
-            (slice(None),) + (None,)*len(fluctuations.target.shape))
+            (slice(None),) + (None,)*len(spectral_scaled_excitations.target.shape))
         self._relative_log_frequencies = (
             log_frequencies - log_frequencies[reference_frequency_index]
         )[slicing_tuple]
 
         self._mean = mean
-        self._fluctuations = fluctuations
+        self.spectral_scaled_excitations = spectral_scaled_excitations
 
         self._denominator = 1 / jnp.sum(self.relative_log_frequencies**2)
 
-        super().__init__(domain=self._mean.domain | self._fluctuations.domain)
+        super().__init__(domain=self._mean.domain | self.spectral_scaled_excitations.domain)
 
     @property
     def relative_log_frequencies(self):
@@ -116,7 +115,7 @@ class SpectralIndex(SingleHarmonicLogSpectralBehavior):
         return self._mean(p)
 
     def fluctuations(self, p) -> ArrayLike:
-        return self._fluctuations(p)
+        return self.spectral_scaled_excitations(p)
 
     def fluctuations_with_frequencies(self, p) -> ArrayLike:
         return self.fluctuations(p) * self.relative_log_frequencies

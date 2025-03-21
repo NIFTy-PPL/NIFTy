@@ -9,10 +9,9 @@
 import jax.numpy as jnp
 from jax import random
 import matplotlib.pyplot as plt
-from src.re.library.mf_model import (
-    _build_fluctuations_model)
 from src.re.library.mf_model_utils import (
     _build_distribution_or_default)
+from src.re.library.scaled_excitations import build_scaled_excitations
 from src.re.num.stats_distributions import (
     normal_prior)
 
@@ -125,7 +124,7 @@ exit()
 
 polynomial_order = 2
 fluctuations = [
-    _build_fluctuations_model(
+    build_scaled_excitations(
         prefix=f'test_spectral_{ii}',
         fluctuation_settings=spectral_idx_settings['fluctuations'],
         shape=shape)

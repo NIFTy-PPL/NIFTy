@@ -18,6 +18,7 @@ from .mf_model_utils import (
 from .spectral_behavior import (
     HarmonicLogSpectralBehavior, SingleHarmonicLogSpectralBehavior,
     SpectralIndex)
+from .scaled_excitations import ScaledExcitations, build_scaled_excitations
 
 from ..tree_math.vector import Vector
 from .. import logger
@@ -46,8 +47,8 @@ class CorrelatedMultiFrequencySky(Model):
         delta log(v) = log(v) - log(v_ref) = \\mu - \\mu_\\mathrm{ref}
     zero_model: jft.Model
         The model for the zero mode
-    spatial_fluctuations: jft.Model
-        Multiplicative factor on the spatial xis at reference frequency.
+    spatial_scaled_excitations: jft.Model
+        Spatial excitations xi scaled by the fluctuations at reference frequency.
     spatial_amplitude: Union[MaternAmplitude, NonParametricAmplitude]
         Amplitude model for the spatial correlations.
     log_spectral_behavior: HarmonicLogSpectralBehavior
@@ -68,14 +69,12 @@ class CorrelatedMultiFrequencySky(Model):
     nonlinearity: Optional[jnp.callable]
         The nonlinearity to be applied to the multifrequency correlated
         field.
-    dtype: type
-        The dtype of the model output. Needed for compilation.
     """
 
     def __init__(
         self,
         zero_mode: Model,
-        spatial_fluctuations: Model,
+        spatial_scaled_excitations: ScaledExcitations,
         spatial_amplitude: Union[MaternAmplitude, NonParametricAmplitude],
         log_spectral_behavior: HarmonicLogSpectralBehavior,
         spectral_amplitude: Optional[
@@ -83,7 +82,6 @@ class CorrelatedMultiFrequencySky(Model):
         spectral_index_deviations: Optional[Model] = None,
         log_ref_freq_mean_model: Optional[Model] = None,
         nonlinearity: Optional[Callable] = jnp.exp,
-        dtype: type = jnp.float64,
     ):
 
         # The amplitudes supplied need to be normalized, as both the spatial
@@ -109,17 +107,17 @@ class CorrelatedMultiFrequencySky(Model):
         self._nonlinearity = nonlinearity
 
         self.zero_mode = zero_mode
-        self._spatial_fluctuations = spatial_fluctuations
+        self.spatial_scaled_excitations = spatial_scaled_excitations
         self.spatial_amplitude = spatial_amplitude
         self.log_ref_freq_mean_model = log_ref_freq_mean_model
 
         self.log_spectral_behavior = log_spectral_behavior
-        self._spectral_index_deviations = spectral_index_deviations
+        self.spectral_index_deviations = spectral_index_deviations
         self.spectral_amplitude = spectral_amplitude
 
         models = [
             self.zero_mode,
-            self._spatial_fluctuations,
+            self.spatial_scaled_excitations,
             self.spatial_amplitude,
             self.log_ref_freq_mean_model,
         ]
@@ -127,7 +125,7 @@ class CorrelatedMultiFrequencySky(Model):
         logfreqs = self.log_spectral_behavior.relative_log_frequencies
         if logfreqs.shape[0] > 1:
             models += [
-                self._spectral_index_deviations,
+                self.spectral_index_deviations,
                 self.log_spectral_behavior,
                 self.spectral_amplitude,
             ]
@@ -153,9 +151,9 @@ class CorrelatedMultiFrequencySky(Model):
         zm = self.zero_mode(p)
         spat_amplitude = self.spatial_amplitude(p)
         spat_amplitude = spat_amplitude.at[0].set(0.0)
-        spatial_reference = self._spatial_fluctuations(p)
+        spatial_reference = self.spatial_scaled_excitations(p)
 
-        if (self._spectral_index_deviations is None and
+        if (self.spectral_index_deviations is None and
                 isinstance(self.log_spectral_behavior,
                            SingleHarmonicLogSpectralBehavior)):
             """Apply method for single spectral behavior and no spectral
@@ -218,11 +216,11 @@ class CorrelatedMultiFrequencySky(Model):
             :math:`\\mu` is the log spectral frequency index,
             and `slope` represents the spectral index.
             """
-            if self._spectral_index_deviations is None:
+            if self.spectral_index_deviations is None:
                 spectral_terms = self.log_spectral_behavior.fluctuations_with_frequencies(
                     p)
             else:
-                spectral_deviations = self._spectral_index_deviations(p)
+                spectral_deviations = self.spectral_index_deviations(p)
                 spectral_terms = (
                     self.log_spectral_behavior.fluctuations_with_frequencies(p) +
                     self.log_spectral_behavior.remove_degeneracy_of_spectral_deviations(
@@ -256,13 +254,13 @@ class CorrelatedMultiFrequencySky(Model):
         if self.log_ref_freq_mean_model is None:
             return self._nonlinearity(
                 self._hdvol*self._ht(
-                    amplitude[self._pd] * self._spatial_fluctuations(p))
+                    amplitude[self._pd] * self.spatial_scaled_excitations(p))
                 + self.zero_mode(p))
         else:
             return self._nonlinearity(
                 self.log_ref_freq_mean_model(p) +
                 self._hdvol * self._ht(
-                    amplitude[self._pd] * self._spatial_fluctuations(p))
+                    amplitude[self._pd] * self.spatial_scaled_excitations(p))
                 + self.zero_mode(p))
 
     def spectral_index_distribution(self, p, order: int = 1):
@@ -289,7 +287,7 @@ class CorrelatedMultiFrequencySky(Model):
 
     def spectral_deviations_distribution(self, p):
         """Convenience method to retrieve the model's spectral deviations."""
-        if self._spectral_index_deviations is None:
+        if self.spectral_index_deviations is None:
             return None
 
         if self.spectral_amplitude is None:
@@ -298,7 +296,7 @@ class CorrelatedMultiFrequencySky(Model):
             amplitude = self.spectral_amplitude(p)
         amplitude = amplitude.at[0].set(0.0)
         spectral_deviations = self.log_spectral_behavior.remove_degeneracy_of_spectral_deviations(
-            self._spectral_index_deviations(p))
+            self.spectral_index_deviations(p))
         return self._hdvol * vmap(self._ht)(
             amplitude[self._pd] * spectral_deviations)
 
@@ -312,8 +310,8 @@ class CorrelatedMultiFrequencySky(Model):
         amplitude = amplitude.at[0].set(0.0)
 
         deviations = 0.0
-        if self._spectral_index_deviations is not None:
-            deviations = self._spectral_index_deviations(p)
+        if self.spectral_index_deviations is not None:
+            deviations = self.spectral_index_deviations(p)
 
         spectral_fluc = self.log_spectral_behavior.fluctuations_with_frequencies(
             p)
@@ -331,10 +329,10 @@ class CorrelatedMultiFrequencySky(Model):
         a given relative log frequency."""
         # TODO: deviations could be recalculated at
         # given relative_log_frequency instead of interp
-        if self._spectral_index_deviations is None:
+        if self.spectral_index_deviations is None:
             return 0.0
 
-        deviations = self._spectral_index_deviations(p)
+        deviations = self.spectral_index_deviations(p)
 
         def _interpolate_1d(times_series, times, target_time):
             return jnp.interp(target_time, times, times_series)
@@ -401,7 +399,7 @@ class CorrelatedMultiFrequencySky(Model):
         amplitude = self.spatial_amplitude(p)
         amplitude = amplitude.at[0].set(0.0)
         return self._nonlinearity(self._hdvol*self._ht(
-            amplitude[self._pd] * self._spatial_fluctuations(p)
+            amplitude[self._pd] * self.spatial_scaled_excitations(p)
         ) + self.zero_mode(p))
 
     def reference_frequency_mean_distribution(self, p):
@@ -410,26 +408,6 @@ class CorrelatedMultiFrequencySky(Model):
         if self.log_ref_freq_mean_model is None:
             return 1.
         return self._nonlinearity(self.log_ref_freq_mean_model(p))
-
-
-def _build_fluctuations_model(
-    prefix: str,
-    fluctuation_settings: dict,
-    shape: tuple[int],
-) -> Model:
-    spatial_fluctuations = _build_distribution_or_default(
-        fluctuation_settings,
-        f'{prefix}_fluctuations',
-        lognormal_prior
-    )
-    spatial_xi = _build_distribution_or_default(
-        (0.0, 1.0),
-        f'{prefix}_xi',
-        normal_prior,
-        shape=shape)
-    return Model(
-        lambda p: spatial_fluctuations(p)*spatial_xi(p),
-        domain=spatial_fluctuations.domain | spatial_xi.domain)
 
 
 def build_default_mf_model(
@@ -449,7 +427,6 @@ def build_default_mf_model(
     spatial_amplitude_model: str = "non_parametric",
     spectral_amplitude_model: str = "non_parametric",
     harmonic_type: str = 'fourier',
-    dtype: type = jnp.float64,
     nonlinearity: callable = jnp.exp,
 ) -> CorrelatedMultiFrequencySky:
     """
@@ -560,7 +537,7 @@ def build_default_mf_model(
 
     # FIXME: FIX WITH NORMAMP
     fluct = 'fluctuations' if 'fluctuations' in spatial_amplitude_settings else 'scale'
-    spatial_fluctuations = _build_fluctuations_model(
+    spatial_fluctuations = build_scaled_excitations(
         f'{prefix}_spatial',
         fluctuation_settings=spatial_amplitude_settings[fluct],
         shape=shape,
@@ -583,7 +560,7 @@ def build_default_mf_model(
             normal_prior
         )
     if spectral_index_fluctuations is None:
-        spectral_index_fluctuations = _build_fluctuations_model(
+        spectral_index_fluctuations = build_scaled_excitations(
             prefix=f'{prefix}_spectral_index',
             fluctuation_settings=spectral_index_settings['fluctuations'],
             shape=shape,
@@ -592,7 +569,7 @@ def build_default_mf_model(
     log_spectral_behavior = SpectralIndex(
         log_frequencies=log_frequencies,
         mean=spectral_index_mean,
-        fluctuations=spectral_index_fluctuations,
+        spectral_scaled_excitations=spectral_index_fluctuations,
         reference_frequency_index=reference_frequency_index,
     )
 
@@ -612,14 +589,52 @@ def build_default_mf_model(
         normal_prior
     )
 
-    return CorrelatedMultiFrequencySky(
+    sky = CorrelatedMultiFrequencySky(
         zero_mode=zero_mode,
-        spatial_fluctuations=spatial_fluctuations,
+        spatial_scaled_excitations=spatial_fluctuations,
         spatial_amplitude=spatial_amplitude,
         log_spectral_behavior=log_spectral_behavior,
         spectral_amplitude=spectral_amplitude,
         spectral_index_deviations=deviations_model,
         log_ref_freq_mean_model=log_reference_frequency_mean_model,
-        dtype=dtype,
-        nonlinearity=nonlinearity,
-    )
+        nonlinearity=nonlinearity, )
+
+    return add_prefix(sky, prefix)
+
+
+def add_xi_keys_properties(object: CorrelatedMultiFrequencySky):
+
+    @property
+    def spatial_xi_key(self: CorrelatedMultiFrequencySky):
+        sc_excitations: ScaledExcitations = self.spatial_scaled_excitations
+        return next(iter(sc_excitations.latent_space_xi.domain.keys()))
+
+    @property
+    def spectral_xi_key(self: CorrelatedMultiFrequencySky):
+        spectral: HarmonicLogSpectralBehavior = self.log_spectral_behavior
+        sc_excitations: ScaledExcitations = spectral.spectral_scaled_excitations
+        return next(iter(sc_excitations.latent_space_xi.domain.keys()))
+
+    @property
+    def spectral_deviations_xi_key(self: CorrelatedMultiFrequencySky):
+        deviations: Model = self.spectral_index_deviations
+        for k in deviations.domain.keys():
+            if "xi" in k:
+                return k
+        raise ValueError("No xi key found in deviations model.")
+
+    setattr(object, "spatial_xi_key", spatial_xi_key)
+    setattr(object, "spectral_xi_key", spectral_xi_key)
+    if object.spectral_index_deviations is not None:
+        setattr(object,
+                "spectral_deviations_xi_key",
+                spectral_deviations_xi_key)
+    return object
+
+
+def add_prefix(
+    object: CorrelatedMultiFrequencySky,
+    prefix_key: str
+):
+    setattr(object, "_prefix", prefix_key)
+    return object
