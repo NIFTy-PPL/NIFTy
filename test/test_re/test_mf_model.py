@@ -10,10 +10,10 @@ import numpy as np
 
 import nifty8.re as jft
 from nifty8.re.correlated_field import (
-    make_grid, NonParametricAmplitude, MaternAmplitude)
+    make_grid, NonParametricAmplitude)
 from nifty8.re.library.frequency_deviations import build_frequency_deviations_model_with_degeneracies
 from nifty8.re.library.spectral_behavior import SpectralIndex
-from nifty8.re.library.mf_model import _build_fluctuations_model
+from nifty8.re.library.mf_model import build_scaled_excitations
 
 pmp = pytest.mark.parametrize
 
@@ -87,7 +87,7 @@ def test_correlated_multi_frequency_sky_init(
     spectral_behavior = SpectralIndex(
         log_frequencies=log_frequencies,
         mean=spectral_index_mean,
-        fluctuations=spectral_index_fluctuations,
+        spectral_scaled_excitations=spectral_index_fluctuations,
         reference_frequency_index=reference_frequency_index,
     )
 
@@ -130,7 +130,7 @@ def test_spatial_convolution(
     spatial_amplitude = NonParametricAmplitude(
         grid, jft.normal_prior(*avgsl), None, prefix=f"{prefix}_")
 
-    spatial_fluctuations = _build_fluctuations_model(
+    spatial_fluctuations = build_scaled_excitations(
         prefix=f'{prefix}_spatial',
         fluctuation_settings=fluct,
         shape=shape,
@@ -139,7 +139,7 @@ def test_spatial_convolution(
     spectral_behavior = SpectralIndex(
         log_frequencies=np.array((0.,)),
         mean=spectral_index_mean,
-        fluctuations=spectral_index_fluctuations,
+        spectral_scaled_excitations=spectral_index_fluctuations,
         reference_frequency_index=0,
     )
 
@@ -204,12 +204,12 @@ def test_apply_with_and_without_frequency_deviations(
 
     log_frequencies = np.array(log_frequencies)
 
-    spatial_fluctuations = _build_fluctuations_model(
+    spatial_fluctuations = build_scaled_excitations(
         prefix=f'{prefix}_spatial',
         fluctuation_settings=fluct,
         shape=shape,
     )
-    spectral_fluctuations = _build_fluctuations_model(
+    spectral_fluctuations = build_scaled_excitations(
         prefix=f'{prefix}_spatial',
         fluctuation_settings=spectral_index_fluctuations,
         shape=shape,
@@ -218,7 +218,7 @@ def test_apply_with_and_without_frequency_deviations(
     spectral_behavior = SpectralIndex(
         log_frequencies=log_frequencies,
         mean=spectral_index_mean,
-        fluctuations=spectral_fluctuations,
+        spectral_scaled_excitations=spectral_fluctuations,
         reference_frequency_index=reference_freq_idx,
     )
 
