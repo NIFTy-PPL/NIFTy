@@ -3,16 +3,15 @@
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 # Author: Matteo Guardiani
 
-import pytest
-
-pytest.importorskip("jax")
-
 import jax
 import jax.random as random
 import numpy as np
+import pytest
 
 import nifty8 as ift
 import nifty8.re as jft
+
+jax.config.update("jax_enable_x64", True)
 
 pmp = pytest.mark.parametrize
 

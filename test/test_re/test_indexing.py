@@ -2,15 +2,15 @@
 
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 
-import pytest
-
-pytest.importorskip("jax")
-
+import jax
 import numpy as np
+import pytest
 from jax.tree_util import tree_flatten, tree_map
 
 from nifty8.re.multi_grid.grid import FlatGrid, Grid, MGrid, OpenGrid
 from nifty8.re.multi_grid.grid_impl import HEALPixGrid
+
+jax.config.update("jax_enable_x64", True)
 
 pmp = pytest.mark.parametrize
 

@@ -1,14 +1,12 @@
-import pytest
-
-pytest.importorskip("jax")
-
-from functools import partial
-
+import jax
 import numpy as np
+import pytest
 from numpy.testing import assert_allclose
 from scipy import stats
 
 import nifty8.re as jft
+
+jax.config.update("jax_enable_x64", True)
 
 pmp = pytest.mark.parametrize
 

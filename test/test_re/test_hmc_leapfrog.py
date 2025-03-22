@@ -1,14 +1,12 @@
-import pytest
-
-pytest.importorskip("jax")
-
 import sys
 
-from jax import grad
+import jax
+import nifty8.re as jft
+import pytest
 from jax import numpy as jnp
 from numpy.testing import assert_allclose
 
-import nifty8.re as jft
+jax.config.update("jax_enable_x64", True)
 
 pmp = pytest.mark.parametrize
 
@@ -29,7 +27,7 @@ def test_leapfrog_energy_conservation(potential_energy, rtol, interactive=False)
     mass_matrix = jnp.ones(shape=dims)
     kinetic_energy = lambda p: jnp.sum(p**2 / mass_matrix / 2.0)
 
-    potential_energy_gradient = grad(potential_energy)
+    potential_energy_gradient = jax.grad(potential_energy)
     positions = [jnp.array([-1.5, -1.55])]
     momenta = [jnp.array([-1, 1])]
     for _ in range(25):
@@ -52,7 +50,7 @@ def test_leapfrog_energy_conservation(potential_energy, rtol, interactive=False)
     ):
         msg = (
             f"q: {q}; p: {p}"
-            f"\nE_tot: {e_pot+e_kin:.2e}; E_pot: {e_pot:.2e}; E_kin: {e_kin:.2e}"
+            f"\nE_tot: {e_pot + e_kin:.2e}; E_pot: {e_pot:.2e}; E_kin: {e_kin:.2e}"
         )
         print(msg, file=sys.stderr)
 

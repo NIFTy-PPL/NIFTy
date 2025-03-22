@@ -11,10 +11,9 @@
 # %%
 import jax
 import matplotlib.pyplot as plt
+import nifty8.re as jft
 from jax import numpy as jnp
 from jax import random
-
-import nifty8.re as jft
 
 jax.config.update("jax_enable_x64", True)
 

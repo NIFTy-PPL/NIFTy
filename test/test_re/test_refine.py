@@ -2,18 +2,15 @@
 
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 
-from functools import partial
 import sys
-
-import pytest
-
-pytest.importorskip("jax")
+from functools import partial
 
 import jax
-from jax import random
 import jax.numpy as jnp
-from jax.tree_util import Partial
 import numpy as np
+import pytest
+from jax import random
+from jax.tree_util import Partial
 from numpy.testing import assert_allclose
 from scipy.spatial import distance_matrix
 
@@ -25,6 +22,8 @@ try:
     import healpy
 except ImportError:
     healpy = None
+
+jax.config.update("jax_enable_x64", True)
 
 pmp = pytest.mark.parametrize
 

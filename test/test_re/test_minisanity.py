@@ -2,14 +2,14 @@
 
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 
-import pytest
-
-pytest.importorskip("jax")
-
+import jax
 import numpy as np
+import pytest
 from numpy.testing import assert_allclose, assert_array_equal
 
 from nifty8.re.minisanity import reduced_residual_stats
+
+jax.config.update("jax_enable_x64", True)
 
 pmp = pytest.mark.parametrize
 

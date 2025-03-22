@@ -1,21 +1,20 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 
-import pytest
-
-pytest.importorskip("jax")
-
 from functools import partial, reduce
 
 import jax
 import jax.numpy as jnp
 import numpy as np
+import pytest
 from jax import random
 from jax.tree_util import tree_map
 from numpy.testing import assert_allclose, assert_array_equal
 
 import nifty8.re as jft
 from nifty8.re.optimize_kl import concatenate_zip
+
+jax.config.update("jax_enable_x64", True)
 
 pmp = pytest.mark.parametrize
 
@@ -223,7 +222,9 @@ def test_optimize_kl_sample_consistency(
         point_estimates=point_estimates,
         draw_linear_kwargs=draw_linear_kwargs,
         nonlinearly_update_kwargs=dict(minimize_kwargs=minimize_kwargs),
-        kl_kwargs=dict(minimize_kwargs=dict(name="M", maxiter=0)),
+        kl_kwargs=dict(
+            minimize=jft.optimize._newton_cg, minimize_kwargs=dict(name="M", maxiter=0)
+        ),
         sample_mode=sample_mode,
         kl_jit=False,
         residual_jit=False,

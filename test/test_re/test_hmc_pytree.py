@@ -1,14 +1,13 @@
-import pytest
-
-pytest.importorskip("jax")
-
 from functools import partial
 
+import jax
+import nifty8.re as jft
+import pytest
 from jax import numpy as jnp
 from jax.tree_util import tree_leaves
 from numpy.testing import assert_array_equal
 
-import nifty8.re as jft
+jax.config.update("jax_enable_x64", True)
 
 
 def test_hmc_pytree():
