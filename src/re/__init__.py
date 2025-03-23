@@ -3,7 +3,7 @@
 from .. import config
 from . import structured_kernel_interpolation
 from .conjugate_gradient import cg, static_cg
-from .correlated_field import CorrelatedFieldMaker, non_parametric_amplitude
+from .correlated_field import CorrelatedFieldMaker
 from .custom_map import lmap, smap
 from .evi import (
     Samples,
