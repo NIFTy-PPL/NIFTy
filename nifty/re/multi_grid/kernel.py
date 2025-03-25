@@ -121,8 +121,7 @@ class Kernel(metaclass=ModelMeta):
         """Compute kernel matrices from scratch."""
         raise NotImplementedError()
 
-    def lookup_matrices(self, index, level):
-        """Efficient retrieval of kernel matrices for a compressed kernel."""
+    def _lookup_indices(self, index, level):
         if self._cim is None:
             msg = "kernel needs to be compressed first for fast lookups"
             raise NotImplementedError(msg)
@@ -131,6 +130,17 @@ class Kernel(metaclass=ModelMeta):
             return self._cim.base_kernel
         index = self._cim.indexmaps[level].index2flatindex(index)[0]
         index = self._cim.invindices[level][index - self._cim.indexmaps[level].shift]
+        return index
+
+    def lookup_matrices(self, index, level):
+        """Efficient retrieval of kernel matrices for a compressed kernel."""
+        if self._cim is None:
+            msg = "kernel needs to be compressed first for fast lookups"
+            raise NotImplementedError(msg)
+
+        if level is None:
+            return self._cim.base_kernel
+        index = self._lookup_indices(index, level)
         return tuple(kk[index] for kk in self._cim.kernels[level])
 
     def compress_indices(
@@ -315,6 +325,21 @@ class ICRKernel(Kernel):
         gout = g.children(index)
         gf = gout.reshape(index.shape + (-1,))
         return (gout, level + 1), ((gc, level), (gf, level + 1))
+
+    def get_kernel_distmat(self, index, level):
+        if level is None:
+            _, ((ids, _),) = self.get_output_input_indices(index, None)
+            coords = self.grid.at(0).index2coord(ids)
+            dists = coords[..., jnp.newaxis] - coords[..., jnp.newaxis, :]
+            dists = jnp.linalg.norm(dists, axis=0)
+            return dists
+        _, ((idc, _), (idf, _)) = self.get_output_input_indices(index, level)
+        gc = self.grid.at(level).index2coord(idc)
+        gf = self.grid.at(level + 1).index2coord(idf)
+        coords = jnp.concatenate((gc, gf), axis=-1)
+        dists = coords[..., jnp.newaxis] - coords[..., jnp.newaxis, :]
+        dists = jnp.linalg.norm(dists, axis=0)
+        return dists, gf.shape[-1]
 
     def compute_matrices(self, index, level):
         if level is None:
