@@ -1,6 +1,12 @@
 Changes since NIFTy 8
 =====================
 
+`estimate_evidence_lower_bound`
+-------------
+
+Renamed `batch_size` to `n_batches` for clarity. Improved batch logic.
+
+
 Minimum Python version increased to 3.10
 
 Stabilize ICR at the cost of disallowing using old ICR reconstructions

@@ -22,11 +22,6 @@ class _Projector(ssl.LinearOperator):
     ----------
     eigenvectors : ndarray
         The eigenvectors representing the directions to project out.
-
-    Returns
-    -------
-    Projector : LinearOperator
-        Operator representing the projection.
     """
 
     def __init__(self, eigenvectors):
@@ -44,35 +39,33 @@ class _Projector(ssl.LinearOperator):
 
 
 def _explicify(M):
-    n = M.shape[0]
-    m = []
-    for i in range(n):
-        basis_vector = np.zeros(n)
-        basis_vector[i] = 1
-        m.append(M @ basis_vector)
-    return np.stack(m, axis=1)
+    identity = np.identity(M.shape[0], dtype=np.float64)
+    return np.column_stack([M.matvec(v) for v in identity])
 
 
 def _ravel_metric(metric, position, dtype):
-    shape = 2 * (size(metric(position, position)),)
+    def ravel(x):
+        return jax.flatten_util.ravel_pytree(x)[0]
 
-    ravel = lambda x: jax.flatten_util.ravel_pytree(x)[0]
-    unravel = lambda x: jax.linear_transpose(ravel, position)(x)[0]
-    met = lambda x: ravel(metric(position, unravel(x)))
+    shp, unravel = jax.flatten_util.ravel_pytree(position)
+    shape = 2 * (shp.size,)
+
+    def met(x):
+        return ravel(metric(position, unravel(x)))
 
     return ssl.LinearOperator(shape=shape, dtype=dtype, matvec=met)
 
 
 def _eigsh(
     metric,
+    metric_size,
     n_eigenvalues,
     tot_dofs,
     min_lh_eval=1e-4,
-    batch_size=10,
+    n_batches=10,
     tol=0.0,
     verbose=True,
 ):
-    metric_size = metric.shape[0]
     eigenvectors = None
     if n_eigenvalues > tot_dofs:
         raise ValueError(
@@ -83,7 +76,7 @@ def _eigsh(
     if tot_dofs == n_eigenvalues:
         # Compute exact eigensystem
         if verbose:
-            logger.info(f"Computing all {tot_dofs} relevant " f"metric eigenvalues.")
+            logger.info(f"Computing all {tot_dofs} relevant metric eigenvalues.")
         eigenvalues = slg.eigh(
             _explicify(metric),
             eigvals_only=True,
@@ -92,14 +85,12 @@ def _eigsh(
         eigenvalues = np.flip(eigenvalues)
     else:
         # Set up batches
-        batch_size = n_eigenvalues // batch_size
-        batches = [
-            batch_size,
-        ] * (batch_size - 1)
-        batches += [
-            n_eigenvalues - batch_size * (batch_size - 1),
-        ]
+        batch_size = n_eigenvalues // n_batches
+        remainder = n_eigenvalues % batch_size
+        batches = [batch_size] * n_batches
+        batches += [remainder] if remainder > 0 else []
         eigenvalues, projected_metric = None, metric
+
         for batch in batches:
             if verbose:
                 logger.info(f"\nNumber of eigenvalues being computed: {batch}")
@@ -130,8 +121,9 @@ def estimate_evidence_lower_bound(
     likelihood,
     samples,
     n_eigenvalues,
+    *,
     min_lh_eval=1e-3,
-    batch_size=10,
+    n_batches=10,
     tol=0.0,
     verbose=True,
 ):
@@ -189,7 +181,7 @@ def estimate_evidence_lower_bound(
         eigenvalue estimation terminates and uses the smallest eigenvalue as a
         proxy for all remaining eigenvalues in the trace-log estimation.
         Default is 1e-3.
-    batch_size : int
+    n_batches : int
         Number of batches into which the eigenvalue estimation gets subdivided
         into. Only after completing one batch the early stopping criterion
         based on `min_lh_eval` is checked for.
@@ -250,19 +242,18 @@ def estimate_evidence_lower_bound(
 
     hamiltonian = StandardHamiltonian(likelihood)
     metric = hamiltonian.metric
+    metric_size = jax.flatten_util.ravel_pytree(samples.pos)[0].size
     metric = _ravel_metric(metric, samples.pos, dtype=likelihood.target.dtype)
-    metric_size = metric.shape[0]
     n_data_points = size(likelihood.lsm_tangents_shape) if not None else metric_size
-    n_relevant_dofs = min(
-        n_data_points, metric_size
-    )  # Number of metric eigenvalues that are not 1
+    n_relevant_dofs = min(n_data_points, metric_size)
 
     eigenvalues, _ = _eigsh(
         metric,
+        metric_size,
         n_eigenvalues,
         tot_dofs=n_relevant_dofs,
         min_lh_eval=min_lh_eval,
-        batch_size=batch_size,
+        n_batches=n_batches,
         tol=tol,
         verbose=verbose,
     )

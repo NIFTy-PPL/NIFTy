@@ -42,14 +42,15 @@ class _Projector(ssl.LinearOperator):
     Projector : LinearOperator
         Operator representing the projection.
     """
+
     def __init__(self, eigenvectors):
-        super().__init__(np.dtype('f8'), 2 * (eigenvectors.shape[0],))
+        super().__init__(eigenvectors.dtype, 2 * (eigenvectors.shape[0],))
         self.eigenvectors = eigenvectors
 
     def _matvec(self, x):
         res = x.copy()
         for eigenvector in self.eigenvectors.T:
-            res -= eigenvector * eigenvector.dot(x)
+            res -= eigenvector * np.vdot(eigenvector, x)
         return res
 
     def _rmatvec(self, x):
@@ -61,40 +62,76 @@ def _explicify(M):
     m = []
     for v in identity:
         m.append(M.matvec(v))
-    return np.vstack(m).T
+    return np.column_stack(m)
 
 
-def _eigsh(metric, n_eigenvalues, tot_dofs, min_lh_eval=1e-4, batch_number=10, tol=0., verbose=True):
+def _eigsh(
+    metric,
+    n_eigenvalues,
+    tot_dofs,
+    dtype,
+    min_lh_eval=1e-4,
+    n_batches=10,
+    tol=0.0,
+    verbose=True,
+):
     metric = SandwichOperator.make(_DomRemover(metric.domain).adjoint, metric)
     metric_size = metric.domain.size
-    M = ssl.LinearOperator(shape=2 * (metric_size,), matvec=lambda x: metric(makeField(metric.domain, x)).val)
+    M = ssl.LinearOperator(
+        shape=2 * (metric_size,),
+        matvec=lambda x: metric(makeField(metric.domain, x)).val,
+        dtype=dtype,
+    )
     eigenvectors = None
 
     if n_eigenvalues > tot_dofs:
-        raise ValueError("Number of requested eigenvalues exceeds the number of relevant degrees of freedom!")
+        raise ValueError(
+            "Number of requested eigenvalues exceeds the number of relevant degrees of freedom!"
+        )
 
     if tot_dofs == n_eigenvalues:
         # Compute exact eigensystem
         if verbose:
             logger.info(f"Computing all {tot_dofs} relevant metric eigenvalues.")
-        eigenvalues = slg.eigh(_explicify(M), eigvals_only=True,
-                               subset_by_index=[metric_size - tot_dofs, metric_size - 1])
+        eigenvalues = slg.eigh(
+            _explicify(M),
+            eigvals_only=True,
+            subset_by_index=[metric_size - tot_dofs, metric_size - 1],
+        )
         eigenvalues = np.flip(eigenvalues)
     else:
         # Set up batches
-        batch_size = n_eigenvalues // batch_number
-        batches = [batch_size, ] * (batch_number - 1)
-        batches += [n_eigenvalues - batch_size * (batch_number - 1), ]
+        batch_size = n_eigenvalues // n_batches
+        remainder = n_eigenvalues % batch_size
+        batches = [
+            batch_size,
+        ] * n_batches
+        batches += (
+            [
+                remainder,
+            ]
+            if remainder > 0
+            else []
+        )
         eigenvalues, projected_metric = None, M
+
         for batch in batches:
             if verbose:
                 logger.info(f"\nNumber of eigenvalues being computed: {batch}")
             # Get eigensystem for current batch
-            eigvals, eigvecs = ssl.eigsh(projected_metric, k=batch, tol=tol, return_eigenvectors=True, which='LM')
+            eigvals, eigvecs = ssl.eigsh(
+                projected_metric, k=batch, tol=tol, return_eigenvectors=True, which="LM"
+            )
             i = np.argsort(eigvals)
             eigvals, eigvecs = np.flip(eigvals[i]), np.flip(eigvecs[:, i], axis=1)
-            eigenvalues = eigvals if eigenvalues is None else np.concatenate((eigenvalues, eigvals))
-            eigenvectors = eigvecs if eigenvectors is None else np.hstack((eigenvectors, eigvecs))
+            eigenvalues = (
+                eigvals
+                if eigenvalues is None
+                else np.concatenate((eigenvalues, eigvals))
+            )
+            eigenvectors = (
+                eigvecs if eigenvectors is None else np.hstack((eigenvectors, eigvecs))
+            )
 
             if abs(1.0 - np.min(eigenvalues)) < min_lh_eval:
                 break
@@ -104,8 +141,17 @@ def _eigsh(metric, n_eigenvalues, tot_dofs, min_lh_eval=1e-4, batch_number=10, t
     return eigenvalues, eigenvectors
 
 
-def estimate_evidence_lower_bound(hamiltonian, samples, n_eigenvalues, min_lh_eval=1e-3, batch_number=10, tol=0.,
-                                  verbose=True):
+def estimate_evidence_lower_bound(
+    hamiltonian,
+    samples,
+    n_eigenvalues,
+    *,
+    min_lh_eval=1e-3,
+    n_batches=10,
+    tol=0.0,
+    verbose=True,
+    dtype=np.float64,
+):
     """Provides an estimate for the Evidence Lower Bound (ELBO).
 
     Statistical inference deals with the problem of hypothesis testing, given
@@ -161,7 +207,7 @@ def estimate_evidence_lower_bound(hamiltonian, samples, n_eigenvalues, min_lh_ev
         eigenvalue estimation terminates and uses the smallest eigenvalue as a
         proxy for all remaining eigenvalues in the trace-log estimation.
         Default is 1e-3.
-    batch_number : int
+    n_batches : int
         Number of batches into which the eigenvalue estimation gets subdivided
         into. Only after completing one batch the early stopping criterion
         based on `min_lh_eval` is checked for.
@@ -171,6 +217,8 @@ def estimate_evidence_lower_bound(hamiltonian, samples, n_eigenvalues, min_lh_ev
     verbose : Optional[bool]
         Print list of eigenvalues and summary of evidence calculation. Default
         is True.
+    dtype : Optional[numpy.dtype]
+        Data type of the eigenvalues and eigenvectors. Default is np.float64.
 
     Returns
     -------
@@ -218,36 +266,58 @@ def estimate_evidence_lower_bound(hamiltonian, samples, n_eigenvalues, min_lh_ev
     if not isinstance(hamiltonian, StandardHamiltonian):
         raise TypeError("hamiltonian is not an instance of `ift.StandardHamiltonian`.")
 
-    n_data_points = hamiltonian.likelihood_energy.data_domain.size if not None else hamiltonian.domain.size
-    n_relevant_dofs = min(n_data_points, hamiltonian.domain.size)  # Number of metric eigenvalues that are not one
+    n_data_points = (
+        hamiltonian.likelihood_energy.data_domain.size
+        if not None
+        else hamiltonian.domain.size
+    )
+    n_relevant_dofs = min(
+        n_data_points, hamiltonian.domain.size
+    )  # Number of metric eigenvalues that are not one
 
     metric = hamiltonian(Linearization.make_var(samples._m, want_metric=True)).metric
     metric_size = metric.domain.size
-    eigenvalues, _ = _eigsh(metric, n_eigenvalues, tot_dofs=n_relevant_dofs, min_lh_eval=min_lh_eval,
-                            batch_number=batch_number, tol=tol, verbose=verbose)
+
+    eigenvalues, _ = _eigsh(
+        metric,
+        n_eigenvalues,
+        n_relevant_dofs,
+        dtype,
+        min_lh_eval=min_lh_eval,
+        n_batches=n_batches,
+        tol=tol,
+        verbose=verbose,
+    )
     if verbose:
         # FIXME
         logger.info(
             f"\nComputed {eigenvalues.size} largest eigenvalues (out of {n_relevant_dofs} relevant degrees of freedom)."
             f"\nThe remaining {metric_size - n_relevant_dofs} metric eigenvalues (out of {metric_size}) are equal to "
-            f"1.\n\n{eigenvalues}.")
+            f"1.\n\n{eigenvalues}."
+        )
 
     # Return a list of ELBO samples and a summary of the ELBO statistics
     log_eigenvalues = np.log(eigenvalues)
-    tr_log_lat_cov = - 0.5 * np.sum(log_eigenvalues)
-    tr_log_lat_cov_lower = 0.5 * (n_relevant_dofs - log_eigenvalues.size) * np.min(log_eigenvalues)
+    tr_log_lat_cov = -0.5 * np.sum(log_eigenvalues)
+    tr_log_lat_cov_lower = (
+        0.5 * (n_relevant_dofs - log_eigenvalues.size) * np.min(log_eigenvalues)
+    )
     tr_log_lat_cov_lower = Field.scalar(tr_log_lat_cov_lower)
     posterior_contribution = Field.scalar(tr_log_lat_cov + 0.5 * metric_size)
-    elbo_samples = SampleList(list(samples.iterator(lambda x: posterior_contribution - hamiltonian(x))))
+    elbo_samples = SampleList(
+        list(samples.iterator(lambda x: posterior_contribution - hamiltonian(x)))
+    )
 
-    stats = {'lower_error': tr_log_lat_cov_lower}
+    stats = {"lower_error": tr_log_lat_cov_lower}
     elbo_mean, elbo_var = elbo_samples.sample_stat()
     elbo_up = elbo_mean + elbo_var.sqrt()
     elbo_lw = elbo_mean - elbo_var.sqrt() - stats["lower_error"]
-    stats['elbo_mean'], stats['elbo_up'], stats['elbo_lw'] = elbo_mean, elbo_up, elbo_lw
+    stats["elbo_mean"], stats["elbo_up"], stats["elbo_lw"] = elbo_mean, elbo_up, elbo_lw
     if verbose:
-        s = (f"\nELBO decomposition (in log units)"
-             f"\nELBO mean : {elbo_mean.val:.4e} (upper: {elbo_up.val:.4e}, lower: {elbo_lw.val:.4e})")
+        s = (
+            f"\nELBO decomposition (in log units)"
+            f"\nELBO mean : {elbo_mean.val:.4e} (upper: {elbo_up.val:.4e}, lower: {elbo_lw.val:.4e})"
+        )
         logger.info(s)
 
     return elbo_samples, stats
