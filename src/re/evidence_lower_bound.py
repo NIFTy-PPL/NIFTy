@@ -2,12 +2,14 @@
 
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 
+from functools import partial
+
 import jax.flatten_util
 import numpy as np
 import scipy.linalg as slg
 import scipy.sparse.linalg as ssl
 
-from .evi import Samples
+from .evi import Samples, _parse_jit
 from .likelihood import Likelihood
 from .logger import logger
 from .optimize_kl import _StandardHamiltonian as StandardHamiltonian
@@ -43,15 +45,18 @@ def _explicify(M):
     return np.column_stack([M.matvec(v) for v in identity])
 
 
-def _ravel_metric(metric, position, dtype):
+def _ravel_metric(metric, position, dtype, metric_jit):
     def ravel(x):
         return jax.flatten_util.ravel_pytree(x)[0]
 
     shp, unravel = jax.flatten_util.ravel_pytree(position)
     shape = 2 * (shp.size,)
 
-    def met(x):
+    def met(x, *, position):
         return ravel(metric(position, unravel(x)))
+
+    metric_jit = _parse_jit(metric_jit)
+    met = partial(metric_jit(met), position=position)
 
     return ssl.LinearOperator(shape=shape, dtype=dtype, matvec=met)
 
@@ -126,6 +131,7 @@ def estimate_evidence_lower_bound(
     n_batches=10,
     tol=0.0,
     verbose=True,
+    metric_jit=True,
 ):
     """Provides an estimate for the Evidence Lower Bound (ELBO).
 
@@ -191,6 +197,8 @@ def estimate_evidence_lower_bound(
     verbose : Optional[bool]
         Print list of eigenvalues and summary of evidence calculation. Default
         is True.
+    metric_jit : bool or callable
+        Whether to jit the metric. Default is True.
 
     Returns
     -------
@@ -243,7 +251,9 @@ def estimate_evidence_lower_bound(
     hamiltonian = StandardHamiltonian(likelihood)
     metric = hamiltonian.metric
     metric_size = jax.flatten_util.ravel_pytree(samples.pos)[0].size
-    metric = _ravel_metric(metric, samples.pos, dtype=likelihood.target.dtype)
+    metric = _ravel_metric(
+        metric, samples.pos, dtype=likelihood.target.dtype, metric_jit=metric_jit
+    )
     n_data_points = size(likelihood.lsm_tangents_shape) if not None else metric_size
     n_relevant_dofs = min(n_data_points, metric_size)
 
