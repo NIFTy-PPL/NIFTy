@@ -1,6 +1,25 @@
 Changes since NIFTy 8
 =====================
 
+optimize_kl
+-----------
+
+Introduce the new option `fresh stochasticity` to control whether new randomness
+is used at each global iteration. It accepts a boolean (or callable returning
+booleans). Setting it to `False` in later iterations can help reduce stochastic
+fluctuations and improve convergence behavior.
+
+The optimize_kl config system supports this option as well. Note that old config
+files need to be updated: each `optimization` section requires a
+`fresh_stochasticity` entry now. To reproduce old behaviour, set
+`fresh_stochasticity` to `True` for all iterations.
+
+On a technical level, the RNG state is now saved once at the start (instead of
+per iteration), and restored from a unified file (`nifty_random_state`) when
+resuming. The per-iteration random state save/load via
+`nifty_random_state_<iteration>` has been removed to simplify state management.
+
+
 `estimate_evidence_lower_bound`
 -------------
 

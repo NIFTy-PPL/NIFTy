@@ -358,10 +358,13 @@ class OptimizeKLConfig:
             "kl_minimizer",
             "sampling_iteration_controller",
             "nonlinear_sampling_minimizer",
+            "fresh_stochasticity",
         ]:
             key1 = key.replace("_", " ")
             if key == "n_samples":
                 yield key, self._to_callable(cdyn[key1], int)
+            elif key == "fresh_stochasticity":
+                yield key, self._to_callable(cdyn[key1], bool)
             else:
                 yield key, self._to_callable(cdyn[key1])
 
