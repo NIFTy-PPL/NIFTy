@@ -31,11 +31,9 @@ from ..multi_field import MultiField
 from ..operators.counting_operator import CountingOperator
 from ..operators.energy_operators import StandardHamiltonian
 from ..operators.operator import Operator
-from ..operators.scaling_operator import ScalingOperator
-from ..plot import Plot, plottable2D
+from ..plot import Plot
 from ..sugar import from_random
-from ..utilities import (Nop, check_MPI_equality,
-                         check_MPI_synced_random_state, check_object_identity,
+from ..utilities import (check_MPI_equality, check_MPI_synced_random_state,
                          get_MPI_params_from_comm)
 from .energy_adapter import EnergyAdapter
 from .iteration_controllers import EnergyHistory, IterationController
@@ -203,9 +201,9 @@ def optimize_kl(likelihood_energy,
     This function comes with some MPI support. Generally, with the help of MPI
     samples are distributed over tasks.
     """
+    from ..sugar import full, makeDomain
     from ..utilities import myassert
     from .descent_minimizers import DescentMinimizer
-    from ..sugar import full, makeDomain
 
     if not isinstance(export_operator_outputs, dict):
         raise TypeError

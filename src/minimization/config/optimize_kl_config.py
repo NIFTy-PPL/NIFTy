@@ -251,7 +251,8 @@ class OptimizeKLConfig:
             del c[fst_key]
 
     def _to_callable(self, s, dtype=None):
-        """Turn list separated by `,` into function that takes the index and returns the respective entry.
+        """Turn list separated by `,` into function that takes the index and
+        returns the respective entry.
 
         Additionally all references indicated by `*` are instantiated.
         """

@@ -21,7 +21,8 @@ breakage, we renamed `RefinementField` to the more descriptive `ChartedField`.
 `optimize_kl`
 -------------
 
-Make the iteration number a counter instead of an index, i.e., initialize at zero instead of at negative one.
+Make the iteration number a counter instead of an index, i.e., initialize at
+zero instead of at negative one.
 
 Hartley convention
 ------------------
@@ -143,8 +144,8 @@ distinction is a required structure for defining the `SampledKLEnergy`.
 Evidence Lower Bound
 --------------------
 Created new function `estimate_evidence_lower_bound` to calculate an estimate
-of the evidence lower bound (ELBO) for a model at hand. This can be used for 
-model comparison. 
+of the evidence lower bound (ELBO) for a model at hand. This can be used for
+model comparison.
 
 Sampling dtypes
 ---------------
