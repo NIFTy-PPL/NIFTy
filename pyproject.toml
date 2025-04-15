@@ -11,13 +11,12 @@ dependencies = [
     "numpy >= 1.17.0",
     "scipy >= 1.9.0",
 ]
-license = {file = "LICENSE"}
+license.text = "GPL-3.0-or-later"
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Science/Research",
     "Topic :: Scientific/Engineering :: Mathematics",
     "Topic :: Scientific/Engineering :: Physics",
-    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
     "Operating System :: OS Independent",
     "Programming Language :: Python",
 ]
