@@ -20,7 +20,7 @@
         req.rest = with myPyPkgs; [ astropy h5py ];
         req.docs = with myPyPkgs; [
           sphinx
-          pkgs.jupyter  # python3Packages.jupyter is broken, see https://github.com/NixOS/nixpkgs/issues/299385
+          pkgs.jupyter # python3Packages.jupyter is broken, see https://github.com/NixOS/nixpkgs/issues/299385
           jupytext
           pydata-sphinx-theme
           myst-parser
@@ -36,7 +36,7 @@
           dependencies = req.minimal;
 
           # TODO Add MPI tests
-          checkInputs =  [ myPyPkgs.pytestCheckHook ] ++ allreqs;
+          checkInputs = [ myPyPkgs.pytestCheckHook ] ++ allreqs;
           disabledTestPaths = [ "test/test_mpi" ];
           pythonImportsCheck = [ "nifty8" ];
         };
