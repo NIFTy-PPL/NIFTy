@@ -11,7 +11,7 @@
         pkgs = import nixpkgs { inherit system; };
         myPyPkgs = pkgs.python3Packages;
 
-        version = "8.5.2";
+        version = "8.5.7";
 
         req.minimal = with myPyPkgs; [ numpy scipy ducc0 ];
         req.dev = with myPyPkgs; [ pytest pytest-cov matplotlib ];
