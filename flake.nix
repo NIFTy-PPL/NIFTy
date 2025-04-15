@@ -62,17 +62,20 @@
 
         # Development shell (`nix develop .`) including python-lsp-server for development
         devShells.default = pkgs.mkShell {
-          nativeBuildInputs =
-            (with myPyPkgs; [ python-lsp-server python-lsp-ruff ])
-            ++ (with pkgs; [ ruff ruff-lsp ]) ++ allreqs;
-        };
+          buildInputs = allreqs ++ (with myPyPkgs; [
+            pip
+            venvShellHook
+            python-lsp-server
+            python-lsp-ruff
+          ]) ++ (with pkgs; [ ruff ruff-lsp ]);
+          venvDir = ".nix-nifty-venv";
 
-        # Shell in which nifty is installed (`nix develop .#nifty-installed`),
-        # e.g., for building the docs (`sh docs/generate.sh`) or running demos
-        devShells."nifty-installed" = pkgs.mkShell {
-          nativeBuildInputs = allreqs;
-          packages = [ nifty ];
+          shellHook = ''
+            export PIP_PREFIX=$(pwd)/_build/pip_packages
+            export PYTHONPATH="$PIP_PREFIX/${myPyPkgs.python.sitePackages}:$PYTHONPATH"
+            export PATH="$PIP_PREFIX/bin:$PATH"
+            unset SOURCE_DATE_EPOCH
+          '';
         };
-
       });
 }
