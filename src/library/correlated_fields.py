@@ -708,7 +708,7 @@ class CorrelatedFieldMaker:
                 zm = _Distributor(dofdex, zm.target, UnstructuredDomain(self._total_N)) @ zm
             self._azm = zm
 
-    def finalize(self, prior_info=100):
+    def finalize(self, prior_info=0):
         """Finishes model construction process and returns the constructed
         operator.
 
@@ -716,7 +716,7 @@ class CorrelatedFieldMaker:
         ----------
         prior_info : integer
             How many prior samples to draw for property verification statistics
-            If zero, skips calculating and displaying statistics.
+            If zero, skips calculating and displaying statistics. Default: 0
         """
         n_amplitudes = len(self._a)
         if self._total_N > 0:
