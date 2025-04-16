@@ -261,7 +261,6 @@ class _LikelihoodSum(LikelihoodEnergyOperator):
         return cls(res, _callingfrommake=True)
 
     def apply(self, x):
-        from ..linearization import Linearization
         self._check_input(x)
         return _OpSum._apply_operator_sum(x, self._ops)
 
@@ -509,8 +508,6 @@ class GaussianEnergy(LikelihoodEnergyOperator):
     """
 
     def __init__(self, data=None, inverse_covariance=None, domain=None, sampling_dtype=None):
-        from ..sugar import full
-
         if inverse_covariance is not None and not isinstance(inverse_covariance, LinearOperator):
             raise TypeError
 
