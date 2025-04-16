@@ -285,6 +285,11 @@ class OptimizeKLConfig:
         default all values have type `str`. If `bool`, `float` or `int` shall be
         passed, the syntax `type :: value`, e.g. `float :: 1.2`, needs to be
         used in the config file.
+
+        Note
+        ----
+        Especially for expensive functions like data loading functions, it might
+        be sensible to cache the function (e.g., via `functools.lru_cache`).
         """
         dct = dict(self._cfg[sec])
 
