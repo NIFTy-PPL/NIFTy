@@ -533,6 +533,17 @@ class ResidualSampleList(SampleListBase):
             mean = MultiField.union([self._m, mean])
         return ResidualSampleList(mean, self._r, self._n, self.comm)
 
+    @property
+    def mean(self):
+        """Read-only view on the `mean` of the `ResidualSampleList`.
+
+        Note
+        ----
+        This mean should not be used to compute the sample average of a
+        non-linear observable/ operator (use `.average(operator)` instead).
+        """
+        return self._m
+
     def save(self, file_name_base, overwrite=False):
         # TODO: Make this function atomic potentially unify with
         #  SampleList.save.
