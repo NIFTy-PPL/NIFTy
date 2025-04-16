@@ -24,10 +24,8 @@ from warnings import warn
 
 import numpy as np
 
-from .. import utilities
 from ..domain_tuple import DomainTuple
 from ..domains.power_space import PowerSpace
-from ..domains.rg_space import RGSpace
 from ..domains.unstructured_domain import UnstructuredDomain
 from ..field import Field
 from ..logger import logger
