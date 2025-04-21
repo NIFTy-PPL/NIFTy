@@ -52,7 +52,9 @@ def _check_sampling_dtype(domain, dtypes):
         else:
             np.dtype(dtypes)
             return
-    raise TypeError
+    raise TypeError("Check sampling dtype failed. Got:\n"
+                    f"- domain: {domain}\n"
+                    f"- dtypes: {dtypes}")
 
 
 def _field_to_dtype(field):
@@ -61,7 +63,7 @@ def _field_to_dtype(field):
     elif isinstance(field, MultiField):
         dt = {kk: ff.dtype for kk, ff in field.items()}
     else:
-        raise TypeError
+        raise TypeError(f"Field to dtype conversion failed. Got: {field}")
     _check_sampling_dtype(field.domain, dt)
     return dt
 
@@ -126,7 +128,8 @@ class LikelihoodEnergyOperator(EnergyOperator):
         are prefixed with an index and `DomainTuples` are converted to
         `MultiDomains` with the index as the key.
         """
-        raise NotImplementedError
+        raise NotImplementedError("`get_transformation` not implemented (yet) "
+                                  "for this operator")
 
     def __matmul__(self, other):
         return _LikelihoodChain(self, other)
@@ -261,7 +264,6 @@ class _LikelihoodSum(LikelihoodEnergyOperator):
         return cls(res, _callingfrommake=True)
 
     def apply(self, x):
-        from ..linearization import Linearization
         self._check_input(x)
         return _OpSum._apply_operator_sum(x, self._ops)
 
@@ -337,7 +339,7 @@ class QuadraticFormOperator(EnergyOperator):
     def __init__(self, endo):
         from .endomorphic_operator import EndomorphicOperator
         if not isinstance(endo, EndomorphicOperator):
-            raise TypeError("op must be an EndomorphicOperator")
+            raise TypeError(f"op must be an EndomorphicOperator.\nGot: {endo}")
         self._op = endo
         self._domain = endo.domain
 
@@ -509,15 +511,15 @@ class GaussianEnergy(LikelihoodEnergyOperator):
     """
 
     def __init__(self, data=None, inverse_covariance=None, domain=None, sampling_dtype=None):
-        from ..sugar import full
-
         if inverse_covariance is not None and not isinstance(inverse_covariance, LinearOperator):
-            raise TypeError
+            raise TypeError("inverse_covariance needs to be either None or a LinearOperator, "
+                            f"got: {inverse_covariance}")
 
         self._domain = self._parseDomain(data, inverse_covariance, domain)
 
         if not isinstance(data, (Field, MultiField)) and data is not None:
-            raise TypeError
+            raise TypeError("data needs to be a (Multi)Field or None, "
+                            f"got: {data}")
 
         self._icov = inverse_covariance
         if inverse_covariance is None:
@@ -542,10 +544,9 @@ class GaussianEnergy(LikelihoodEnergyOperator):
                     fst = list(i0.values())[0]
                     if all(elem == fst for elem in i0.values()) and i1 == fst:
                         return
-            s = "Sampling dtype of inverse covariance does not match dtype of data.\n"
-            s += f"icov.sampling_dtype: {icovdtype}\n"
-            s += f"data.dtype: {data.dtype}"
-            raise RuntimeError(s)
+            raise RuntimeError("Sampling dtype of inverse covariance does not match dtype of data.\n"
+                               f"- icov.sampling_dtype: {icovdtype}\n"
+                               f"- data.dtype: {data.dtype}")
 
 
     @staticmethod
@@ -605,8 +606,7 @@ class PoissonianEnergy(LikelihoodEnergyOperator):
 
     def __init__(self, d):
         if not isinstance(d, Field) or not np.issubdtype(d.dtype, np.integer):
-            te = "data is of invalid data-type; counts need to be integers"
-            raise TypeError(te)
+            raise TypeError("data is of invalid data-type; counts need to be integers")
         if np.any(d.val < 0):
             ve = "count data is negative and thus can not be Poissonian"
             raise ValueError(ve)
@@ -651,17 +651,17 @@ class InverseGammaEnergy(LikelihoodEnergyOperator):
         from .simplify_for_const import ConstantOperator
 
         if not isinstance(beta, Field):
-            raise TypeError
+            raise TypeError(f"beta needs to be a `Field`. Got:\n{beta}")
         self._domain = DomainTuple.make(beta.domain)
         self._beta = beta
         if np.isscalar(alpha):
             alpha = Field(beta.domain, np.full(beta.shape, alpha))
         elif not isinstance(alpha, Field):
-            raise TypeError
+            raise TypeError(f"alpha needs to be a `Field`. Got:\n{alpha}")
         self._alphap1 = alpha+1
         if not self._beta.dtype == np.float64:
             # FIXME Add proper complex support for this energy
-            raise TypeError
+            raise TypeError(f"beta.dtype needs to be float64. Got: {beta.dtype}")
         self._sampling_dtype = _field_to_dtype(self._beta)
 
         super(InverseGammaEnergy, self).__init__(
@@ -740,9 +740,10 @@ class BernoulliEnergy(LikelihoodEnergyOperator):
 
     def __init__(self, d):
         if not isinstance(d, Field) or not np.issubdtype(d.dtype, np.integer):
-            raise TypeError
-        if np.any(np.logical_and(d.val != 0, d.val != 1)):
-            raise ValueError
+            raise TypeError("d needs to be a Field with integer values. Got:\n"
+                            f"{d}")
+        if actualvals := set(np.unique(d.val)) != set([0, 1]):
+            raise ValueError(f"d can only contain 0 and 1. Got: {actualvals}")
         self._d = d
         self._domain = DomainTuple.make(d.domain)
         super(BernoulliEnergy, self).__init__(Adder(d, neg=True),
