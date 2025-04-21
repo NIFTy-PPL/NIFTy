@@ -67,11 +67,14 @@ def get_k_length_array_configs():
 
 
 def get_dvol_configs():
-    return [[(11, 11), None, False, 1], [(11, 11), None, False, 1],
-            [(11, 11), (1.3, 1.3), False, 1], [(11, 11), (1.3, 1.3), False,
-                                               1], [(11, 11), None, True, 1],
-            [(11, 11), None, True, 1], [(11, 11), (1.3, 1.3), True,
-                                        1], [(11, 11), (1.3, 1.3), True, 1]]
+    return [[(11, 11), None, False],
+            [(11, 11), None, False],
+            [(11, 11), (1.3, 1.3), False],
+            [(11, 11), (1.3, 1.3), False],
+            [(11, 11), None, True],
+            [(11, 11), None, True],
+            [(11, 11), (1.3, 1.3), True],
+            [(11, 11), (1.3, 1.3), True]]
 
 
 @pmp('attribute, expected_type', [['distances', tuple]])
@@ -93,10 +96,10 @@ def test_k_length_array(shape, distances, expected):
     assert_allclose(r.get_k_length_array().val, expected)
 
 
-@pmp('shape, distances, harmonic, power', get_dvol_configs())
-def test_dvol(shape, distances, harmonic, power):
+@pmp('shape, distances, harmonic', get_dvol_configs())
+def test_dvol(shape, distances, harmonic):
     r = ift.RGSpace(shape=shape, distances=distances, harmonic=harmonic)
-    assert_allclose(r.dvol, np.prod(r.distances)**power)
+    assert_allclose(r.dvol, np.prod(r.distances))
 
 
 def test_codomain():
