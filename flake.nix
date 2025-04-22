@@ -11,7 +11,7 @@
         pkgs = import nixpkgs { inherit system; };
         myPyPkgs = pkgs.python3Packages;
 
-        version = "8.5.2";
+        version = "8.5.7";
 
         req.minimal = with myPyPkgs; [ numpy scipy ducc0 ];
         req.dev = with myPyPkgs; [ pytest pytest-cov matplotlib ];
@@ -20,7 +20,7 @@
         req.rest = with myPyPkgs; [ astropy h5py ];
         req.docs = with myPyPkgs; [
           sphinx
-          pkgs.jupyter  # python3Packages.jupyter is broken, see https://github.com/NixOS/nixpkgs/issues/299385
+          pkgs.jupyter # python3Packages.jupyter is broken, see https://github.com/NixOS/nixpkgs/issues/299385
           jupytext
           pydata-sphinx-theme
           myst-parser
@@ -36,7 +36,7 @@
           dependencies = req.minimal;
 
           # TODO Add MPI tests
-          checkInputs =  [ myPyPkgs.pytestCheckHook ] ++ allreqs;
+          checkInputs = [ myPyPkgs.pytestCheckHook ] ++ allreqs;
           disabledTestPaths = [ "test/test_mpi" ];
           pythonImportsCheck = [ "nifty8" ];
         };
@@ -62,17 +62,20 @@
 
         # Development shell (`nix develop .`) including python-lsp-server for development
         devShells.default = pkgs.mkShell {
-          nativeBuildInputs =
-            (with myPyPkgs; [ python-lsp-server python-lsp-ruff ])
-            ++ (with pkgs; [ ruff ruff-lsp ]) ++ allreqs;
-        };
+          buildInputs = allreqs ++ (with myPyPkgs; [
+            pip
+            venvShellHook
+            python-lsp-server
+            python-lsp-ruff
+          ]) ++ (with pkgs; [ ruff ruff-lsp ]);
+          venvDir = ".nix-nifty-venv";
 
-        # Shell in which nifty is installed (`nix develop .#nifty-installed`),
-        # e.g., for building the docs (`sh docs/generate.sh`) or running demos
-        devShells."nifty-installed" = pkgs.mkShell {
-          nativeBuildInputs = allreqs;
-          packages = [ nifty ];
+          shellHook = ''
+            export PIP_PREFIX=$(pwd)/_build/pip_packages
+            export PYTHONPATH="$PIP_PREFIX/${myPyPkgs.python.sitePackages}:$PYTHONPATH"
+            export PATH="$PIP_PREFIX/bin:$PATH"
+            unset SOURCE_DATE_EPOCH
+          '';
         };
-
       });
 }
