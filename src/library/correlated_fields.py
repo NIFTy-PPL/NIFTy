@@ -24,10 +24,8 @@ from warnings import warn
 
 import numpy as np
 
-from .. import utilities
 from ..domain_tuple import DomainTuple
 from ..domains.power_space import PowerSpace
-from ..domains.rg_space import RGSpace
 from ..domains.unstructured_domain import UnstructuredDomain
 from ..field import Field
 from ..logger import logger
@@ -710,16 +708,19 @@ class CorrelatedFieldMaker:
                 zm = _Distributor(dofdex, zm.target, UnstructuredDomain(self._total_N)) @ zm
             self._azm = zm
 
-    def finalize(self, prior_info=100):
+    def finalize(self, prior_info=0):
         """Finishes model construction process and returns the constructed
         operator.
 
         Parameters
         ----------
-        prior_info : integer
-            How many prior samples to draw for property verification statistics
-            If zero, skips calculating and displaying statistics.
+        prior_info : deprecated
         """
+        if prior_info != 0:
+            warn("prior_info will be deleted from `finalize()`. To get a summary "
+                 "on the statistics of the configured correlated field model, "
+                 "use `statistics_summary(prior_info)` instead.",
+                 DeprecationWarning)
         n_amplitudes = len(self._a)
         if self._total_N > 0:
             hspace = makeDomain(
@@ -765,15 +766,16 @@ class CorrelatedFieldMaker:
             else:
                 offset = float(offset)
                 op = Adder(full(op.target, offset)) @ op
-        self.statistics_summary(prior_info)
-
         return op
 
     def statistics_summary(self, prior_info):
-        from ..sugar import from_random
+        """High-level statistics of a readily configured correlated field model.
 
-        if prior_info == 0:
-            return
+        ----------
+        prior_info : int
+            How many prior samples to draw for property verification statistics
+        """
+        from ..sugar import from_random
 
         lst = []
         try:
