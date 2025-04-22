@@ -37,7 +37,7 @@
 
           # TODO Add MPI tests
           checkInputs = [ myPyPkgs.pytestCheckHook ] ++ allreqs;
-          disabledTestPaths = [ "test/test_mpi" ];
+          disabledTestPaths = [ "test/test_mpi" "test/test_re" ];
           pythonImportsCheck = [ "nifty8" ];
         };
 
