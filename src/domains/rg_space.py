@@ -46,6 +46,14 @@ class RGSpace(StructuredDomain):
     -----
     Topologically, a n-dimensional RGSpace is a n-Torus, i.e. it has periodic
     boundary conditions.
+
+    `scalar_dvol` denotes the scalar volume of a pixel.
+
+    `shape` denotes the shape of the `RGSpace`.
+
+    `extents` denotes the length of the `RGSpace` in a given coordinate
+    direction. Notably, the product of all `extents` equals the product of
+    `scalar_dvol` and `shape`.
     """
     _needed_for_hash = ["_rdistances", "_shape", "_harmonic"]
 
@@ -101,6 +109,10 @@ class RGSpace(StructuredDomain):
     @property
     def scalar_dvol(self):
         return self._dvol
+
+    @property
+    def extents(self):
+        return tuple(x*y for x,y in zip(self._shape, self.distances))
 
     def _get_dist_array(self):
         res = np.arange(self.shape[0], dtype=np.float64)
