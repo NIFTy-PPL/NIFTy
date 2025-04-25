@@ -16,7 +16,7 @@
 
 from time import time
 
-import nifty8 as ift
+import nifty as ift
 import numpy as np
 import pytest
 

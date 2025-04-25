@@ -14,9 +14,9 @@ from jax.tree_util import Partial
 from numpy.testing import assert_allclose
 from scipy.spatial import distance_matrix
 
-import nifty8.re as jft
-from nifty8.re import refine
-from nifty8.re.refine import charted_refine, healpix_refine
+import nifty.re as jft
+from nifty.re import refine
+from nifty.re.refine import charted_refine, healpix_refine
 
 try:
     import healpy

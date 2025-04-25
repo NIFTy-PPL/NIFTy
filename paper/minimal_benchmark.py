@@ -34,8 +34,8 @@ from collections import namedtuple
 from functools import partial
 
 import jax
-import nifty8 as ift
-import nifty8.re as jft
+import nifty as ift
+import nifty.re as jft
 import numpy as np
 from jax import numpy as jnp
 from jax import random

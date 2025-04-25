@@ -14,12 +14,12 @@
 # Copyright(C) 2022 Max-Planck-Society
 # Author: Matteo Guardiani
 
-import nifty8 as ift
+import nifty as ift
 import numpy as np
 import pytest
 
 pmp = pytest.mark.parametrize
-from nifty8.operator_spectrum import _DomRemover
+from nifty.operator_spectrum import _DomRemover
 
 
 def _explicify(operator):

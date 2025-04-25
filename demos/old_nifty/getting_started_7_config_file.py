@@ -22,7 +22,7 @@
 
 import sys
 
-import nifty8 as ift
+import nifty as ift
 
 
 def sky(

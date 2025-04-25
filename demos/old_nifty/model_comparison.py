@@ -35,7 +35,7 @@
 
 import sys
 
-import nifty8 as ift
+import nifty as ift
 import numpy as np
 
 ift.random.push_sseq_from_seed(28)

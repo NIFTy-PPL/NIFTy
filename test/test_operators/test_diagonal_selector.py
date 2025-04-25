@@ -15,10 +15,10 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-import nifty8 as ift
+import nifty as ift
 import numpy as np
 import pytest
-from nifty8.library.variational_models import DiagonalSelector
+from nifty.library.variational_models import DiagonalSelector
 from numpy.testing import assert_allclose
 
 from ..common import list2fixture, setup_function, teardown_function

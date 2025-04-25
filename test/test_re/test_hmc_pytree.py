@@ -1,7 +1,7 @@
 from functools import partial
 
 import jax
-import nifty8.re as jft
+import nifty.re as jft
 import pytest
 from jax import numpy as jnp
 from jax.tree_util import tree_leaves

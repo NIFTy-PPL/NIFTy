@@ -13,7 +13,7 @@ from jax import random
 from numpy.testing import assert_allclose
 from scipy.spatial import distance_matrix
 
-import nifty8.re as jft
+import nifty.re as jft
 
 jax.config.update("jax_enable_x64", True)
 

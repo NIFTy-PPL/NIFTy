@@ -1,6 +1,6 @@
 from importlib.metadata import version
 
-__version__ = version("nifty8")
+__version__ = version("nifty")
 
 from . import config
 from . import random
@@ -115,4 +115,4 @@ from .ducc_dispatch import set_nthreads, nthreads
 
 
 # We deliberately don't set __all__ here, because we don't want people to do a
-# "from nifty8 import *"; that would swamp the global namespace.
+# "from nifty import *"; that would swamp the global namespace.

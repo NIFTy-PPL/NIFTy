@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 from numpy.testing import assert_allclose
 
-from nifty8.ducc_dispatch import (
+from nifty.ducc_dispatch import (
     _scipy_fftn, _scipy_hartley, _scipy_ifftn, _scipy_vdot, fftn, hartley,
     ifftn, vdot
 )

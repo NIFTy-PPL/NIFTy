@@ -125,7 +125,7 @@ class DescentMinimizer(Minimizer):
 
         Returns
         -------
-        :class:`nifty8.field.Field` or :class:`nifty8.multi_field.MultiField`
+        :class:`nifty.field.Field` or :class:`nifty.multi_field.MultiField`
            The descent direction.
         """
         raise NotImplementedError
@@ -316,9 +316,9 @@ class _InformationStore:
     ----------
     max_history_length : int
         Maximum number of stored past updates.
-    x0 : :class:`nifty8.field.Field`
+    x0 : :class:`nifty.field.Field`
         Initial position in variable space.
-    gradient : :class:`nifty8.field.Field`
+    gradient : :class:`nifty.field.Field`
         Gradient at position x0.
 
     Attributes
@@ -329,9 +329,9 @@ class _InformationStore:
         Circular buffer of past position differences, which are Fields.
     y : List
         Circular buffer of past gradient differences, which are Fields.
-    last_x : :class:`nifty8.field.Field`
+    last_x : :class:`nifty.field.Field`
         Latest position in variable space.
-    last_gradient : :class:`nifty8.field.Field`
+    last_gradient : :class:`nifty.field.Field`
         Gradient at latest position.
     k : int
         Number of updates that have taken place

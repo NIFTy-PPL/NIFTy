@@ -28,7 +28,7 @@
         allreqs = pkgs.lib.attrValues req;
 
         nifty = myPyPkgs.buildPythonPackage {
-          pname = "nifty8";
+          pname = "nifty";
           inherit version;
           src = ./.;
           pyproject = true;
@@ -38,7 +38,7 @@
           # TODO Add MPI tests
           checkInputs = [ myPyPkgs.pytestCheckHook ] ++ allreqs;
           disabledTestPaths = [ "test/test_mpi" "test/test_re" ];
-          pythonImportsCheck = [ "nifty8" ];
+          pythonImportsCheck = [ "nifty" ];
         };
 
         nifty-docs = pkgs.stdenv.mkDerivation {

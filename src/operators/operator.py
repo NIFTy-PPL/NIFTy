@@ -267,11 +267,11 @@ class Operator(metaclass=NiftyMeta):
 
         Parameters
         ----------
-        x : :class:`nifty8.field.Field`, :class:`nifty8.multi_field.MultiField`,
-            or :class:`nifty8.linearization.Linearization`
+        x : :class:`nifty.field.Field`, :class:`nifty.multi_field.MultiField`,
+            or :class:`nifty.linearization.Linearization`
             Input on which the operator shall act. Needs to be defined on
-            :attr:`domain`. If `x`is a :class:`nifty8.linearization.Linearization`,
-            `apply` returns a new :class:`nifty8.linearization.Linearization`
+            :attr:`domain`. If `x`is a :class:`nifty.linearization.Linearization`,
+            `apply` returns a new :class:`nifty.linearization.Linearization`
             contining the result of the operator application as well as its
             Jacobian, evaluated at `x`.
         """

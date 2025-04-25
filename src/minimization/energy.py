@@ -26,7 +26,7 @@ class Energy(metaclass=NiftyMeta):
 
     Parameters
     ----------
-    position : :class:`nifty8.field.Field`
+    position : :class:`nifty.field.Field`
         The input parameter of the scalar function.
 
     Notes
@@ -51,7 +51,7 @@ class Energy(metaclass=NiftyMeta):
 
         Parameters
         ----------
-        position : :class:`nifty8.field.Field`
+        position : :class:`nifty.field.Field`
             Location in parameter space for the new Energy object.
 
         Returns
@@ -109,12 +109,12 @@ class Energy(metaclass=NiftyMeta):
         """
         Parameters
         ----------
-        x : :class:`nifty8.field.Field` or :class:`nifty8.multi_field.MultiField`
+        x : :class:`nifty.field.Field` or :class:`nifty.multi_field.MultiField`
             Argument for the metric operator
 
         Returns
         -------
-        :class:`nifty8.field.Field` or :class:`nifty8.multi_field.MultiField`
+        :class:`nifty.field.Field` or :class:`nifty.multi_field.MultiField`
             Output of the metric operator
         """
         raise NotImplementedError
@@ -124,7 +124,7 @@ class Energy(metaclass=NiftyMeta):
 
         Parameters
         ----------
-        direction : :class:`nifty8.field.Field`
+        direction : :class:`nifty.field.Field`
             the search direction
 
         Returns

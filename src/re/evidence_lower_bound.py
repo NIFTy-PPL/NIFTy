@@ -171,9 +171,9 @@ def estimate_evidence_lower_bound(
 
     Parameters
     ----------
-    likelihood : :class:`nifty8.re.likelihood.Likelihood`
+    likelihood : :class:`nifty.re.likelihood.Likelihood`
         Log-likelihood of the model.
-    samples : :class:`nifty8.re.evi.Samples`
+    samples : :class:`nifty.re.evi.Samples`
         Collection of samples from the posterior distribution.
     n_eigenvalues : int
         Maximum number of eigenvalues to be considered for the estimation of

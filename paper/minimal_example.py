@@ -12,7 +12,7 @@ from matplotlib import pyplot as plt
 from plotly.subplots import make_subplots
 from upy.detective import timeit
 
-from nifty8 import re as jft
+from nifty import re as jft
 
 jax.config.update("jax_enable_x64", True)
 
@@ -242,7 +242,7 @@ fig.write_html("minimal_reconstruction_data_mean_std.html")
 fig.write_image("minimal_reconstruction_data_mean_std.png", scale=4)
 
 # %%
-import nifty8 as ift
+import nifty as ift
 
 dims = (128, 128)
 dom = ift.RGSpace(dims, distances=tuple(1.0 / d for d in dims))

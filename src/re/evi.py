@@ -372,7 +372,7 @@ def wiener_filter_posterior(
 
     Parameters
     ----------
-    likelihood : :class:`~nifty8.re.likelihood.LikelihoodWithModel`
+    likelihood : :class:`~nifty.re.likelihood.LikelihoodWithModel`
         Likelihood to be used for the wiener filter.
     primals : tree-like
         Position around which to linearize (if the problem is non-linear).

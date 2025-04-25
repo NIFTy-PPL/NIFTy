@@ -26,12 +26,12 @@
 
 # %matplotlib inline
 import jax
-import nifty8.re as jft
+import nifty.re as jft
 import matplotlib.pyplot as plt
 from jax import numpy as jnp
 from typing import Tuple
 import numpy as np
-import nifty8 as ift
+import nifty as ift
 
 jax.config.update("jax_enable_x64", True)
 

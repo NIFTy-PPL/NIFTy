@@ -11,8 +11,8 @@ from jax import random
 from jax.tree_util import tree_map
 from numpy.testing import assert_allclose, assert_array_equal
 
-import nifty8.re as jft
-from nifty8.re.optimize_kl import concatenate_zip
+import nifty.re as jft
+from nifty.re.optimize_kl import concatenate_zip
 
 jax.config.update("jax_enable_x64", True)
 

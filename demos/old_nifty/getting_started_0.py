@@ -71,7 +71,7 @@
 
 # %matplotlib inline
 import numpy as np
-import nifty8 as ift
+import nifty as ift
 import matplotlib.pyplot as plt
 plt.rcParams['figure.dpi'] = 100
 

@@ -19,7 +19,7 @@
 import os
 from itertools import chain
 
-import nifty8 as ift
+import nifty as ift
 import pytest
 from mpi4py import MPI
 
@@ -181,7 +181,7 @@ def test_save_to_hdf5(comm, cls, mean, std, samples):
     pytest.importorskip("h5py")
     import h5py
     import numpy as np
-    from nifty8 import DomainTuple, MultiDomain, RGSpace, UnstructuredDomain
+    from nifty import DomainTuple, MultiDomain, RGSpace, UnstructuredDomain
 
     if comm is None and ift.utilities.get_MPI_params()[1] > 1:
         pytest.skip()

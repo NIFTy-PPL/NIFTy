@@ -11,6 +11,6 @@ for FILE in ${FOLDER}/0_intro ${FOLDER}/old_nifty_getting_started_0 ${FOLDER}/ol
     fi
 done
 
-EXCLUDE="nifty8/logger.py"
-sphinx-apidoc -e -d 1 -o docs/source/mod nifty8 ${EXCLUDE}
+EXCLUDE="nifty/logger.py"
+sphinx-apidoc -e -d 1 -o docs/source/mod nifty ${EXCLUDE}
 sphinx-build -b html docs/source/ docs/build/

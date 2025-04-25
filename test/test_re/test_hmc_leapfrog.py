@@ -1,7 +1,7 @@
 import sys
 
 import jax
-import nifty8.re as jft
+import nifty.re as jft
 import pytest
 from jax import numpy as jnp
 from numpy.testing import assert_allclose

@@ -3,7 +3,7 @@
 import pytest
 from numpy.testing import assert_array_equal
 
-import nifty8 as ift
+import nifty as ift
 
 pmp = pytest.mark.parametrize
 

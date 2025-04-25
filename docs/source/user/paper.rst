@@ -146,7 +146,7 @@ the following.
 
 .. code:: python
 
-   from nifty8 import re as jft
+   from nifty import re as jft
 
    dims = (128, 128)
    cfm = jft.CorrelatedFieldMaker("cf")

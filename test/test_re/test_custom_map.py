@@ -4,7 +4,7 @@ from functools import partial
 
 import jax
 import jax.numpy as jnp
-import nifty8.re as jft
+import nifty.re as jft
 import pytest
 from jax import random
 from jax.tree_util import tree_map

@@ -11,8 +11,8 @@ from jax import random
 from jax.tree_util import tree_map
 from numpy.testing import assert_allclose
 
-import nifty8.re as jft
-from nifty8.re.likelihood import partial_insert_and_remove as jpartial
+import nifty.re as jft
+from nifty.re.likelihood import partial_insert_and_remove as jpartial
 
 jax.config.update("jax_enable_x64", True)
 

@@ -1,5 +1,5 @@
 [project]
-name = "nifty8"
+name = "nifty"
 version = "8.5.7"
 description = "Probabilistic programming framework for signal inference algorithms that operate regardless of the underlying grids and their resolutions"
 readme = "README.md"
@@ -62,10 +62,10 @@ test = [
     "pytest-cov",
     "pytest-xdist",
     "ducc0",
-    "nifty8[re]",
-    "nifty8[util]",
+    "nifty[re]",
+    "nifty[util]",
 ]
-all = ["nifty8[re,native,parallel,doc,util,test]"]
+all = ["nifty[re,native,parallel,doc,util,test]"]
 
 [build-system]
 requires = [
@@ -76,4 +76,4 @@ requires = [
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
-include = ["nifty8", "nifty8*"]
+include = ["nifty", "nifty*"]

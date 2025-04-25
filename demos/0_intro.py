@@ -11,7 +11,7 @@
 # %%
 import jax
 import matplotlib.pyplot as plt
-import nifty8.re as jft
+import nifty.re as jft
 from jax import numpy as jnp
 from jax import random
 

@@ -13,7 +13,7 @@
 #
 # Copyright(C) 2022 Max-Planck-Society
 
-import nifty8 as ift
+import nifty as ift
 import numpy as np
 import pytest
 

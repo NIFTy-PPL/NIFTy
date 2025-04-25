@@ -282,7 +282,7 @@ class OptimizeVI:
 
         Parameters
         ----------
-        likelihood: :class:`~nifty8.re.likelihood.Likelihood`
+        likelihood: :class:`~nifty.re.likelihood.Likelihood`
             Likelihood to be used for inference.
         n_total_iterations: int
             Total number of iterations. One iteration consists of the steps

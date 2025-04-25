@@ -22,7 +22,7 @@ These models usually rely on the harmonic domain being easily accessible, e.g. f
 An example, initializing a non-parameteric GP prior for a $128 \times 128$ space with unit volume is shown in the following.
 
 ```python
-from nifty8 import re as jft
+from nifty import re as jft
 
 dims = (128, 128)
 cfm = jft.CorrelatedFieldMaker("cf")
@@ -139,7 +139,7 @@ for i in range(opt_vi.n_total_iterations):
 If you only want to use NIFTy in your projects, but not change its source code, the easiest way to install NIFTy is via pip:
 
 ```
-pip install --user 'nifty8[re]'
+pip install --user 'nifty[re]'
 ```
 
 The line above installs the optional JAX backend termed NIFTy.re in addition to the numpy-based NIFTy.
@@ -188,13 +188,13 @@ Note: Make sure that you reinstall nifty after each change since sphinx imports 
 
 ### Run the tests
 
-To run the tests, install all optional requirements `'nifty8[all]'` and afterwards run pytest (and create a coverage report) via
+To run the tests, install all optional requirements `'nifty[all]'` and afterwards run pytest (and create a coverage report) via
 
 ```
-pytest --cov=nifty8 test
+pytest --cov=nifty test
 ```
 
-If you are writing your own tests, it is often sufficient to just install the optional test dependencies `'nifty8[test]'`. However, to run the full test suit including tests of optional functionality, it is assumed that all optional dependencies are installed.
+If you are writing your own tests, it is often sufficient to just install the optional test dependencies `'nifty[test]'`. However, to run the full test suit including tests of optional functionality, it is assumed that all optional dependencies are installed.
 
 ## Licensing terms
 

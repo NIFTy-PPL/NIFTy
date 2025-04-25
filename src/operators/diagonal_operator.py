@@ -45,7 +45,7 @@ class DiagonalOperator(EndomorphicOperator):
 
     Parameters
     ----------
-    diagonal : :class:`nifty8.field.Field`
+    diagonal : :class:`nifty.field.Field`
         The diagonal entries of the operator.
     domain : Domain, tuple of Domain or DomainTuple, optional
         The domain on which the Operator's input Field is defined.

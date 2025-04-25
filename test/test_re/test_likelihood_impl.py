@@ -9,7 +9,7 @@ from jax import random
 from jax.tree_util import tree_map
 from numpy.testing import assert_allclose
 
-import nifty8.re as jft
+import nifty.re as jft
 
 jax.config.update("jax_enable_x64", True)
 
@@ -303,7 +303,7 @@ def test_residuals_allfinite(seed, shape, lh_init):
 
 @pmp("iscomplex", [False, True])
 def test_nifty_vcgaussian_vs_niftyre_vcgaussian_consistency(seed, iscomplex):
-    import nifty8 as ift
+    import nifty as ift
 
     key = random.PRNGKey(seed)
 

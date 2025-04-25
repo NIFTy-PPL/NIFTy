@@ -266,7 +266,7 @@ class MultiField(Operator):
 
         Parameters
         ----------
-        other : :class:`nifty8.multi_field.MultiField`
+        other : :class:`nifty.multi_field.MultiField`
             the partner Field
 
         Returns
@@ -285,7 +285,7 @@ class MultiField(Operator):
 
         Parameters
         ----------
-        fields : iterable of :class:`nifty8.multi_field.MultiField`
+        fields : iterable of :class:`nifty.multi_field.MultiField`
             The set of input fields. Their domains need not be identical.
         domain : MultiDomain or None
             If supplied, this will be the domain of the resulting field.
@@ -312,7 +312,7 @@ class MultiField(Operator):
 
         Parameters
         ----------
-        other : :class:`nifty8.multi_field.MultiField`
+        other : :class:`nifty.multi_field.MultiField`
             the partner Field
         neg : bool or dict
             if True, the partner field is subtracted, otherwise added

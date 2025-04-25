@@ -108,7 +108,7 @@ def check_operator(op, loc, tol=1e-12, ntries=100, perf_check=True,
     ----------
     op : Operator
         Operator which shall be checked.
-    loc : :class:`nifty8.field.Field` or :class:`nifty8.multi_field.MultiField`
+    loc : :class:`nifty.field.Field` or :class:`nifty.multi_field.MultiField`
         An Field or MultiField instance which has the same domain
         as op. The location at which the gradient is checked
     tol : float

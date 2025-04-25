@@ -60,7 +60,7 @@ def PS_field(pspace, function):
 
     Returns
     -------
-    :class:`nifty8.field.Field`
+    :class:`nifty.field.Field`
         A field defined on (pspace,) containing the computed function values
     """
     if not isinstance(pspace, PowerSpace):
@@ -112,14 +112,14 @@ def power_analyze(field, spaces=None, binbounds=None,
 
     Creates a PowerSpace for the space addressed by `spaces` with the
     given binning and computes the power spectrum as a
-    :class:`~nifty8.field.Field` over this PowerSpace. This can only
+    :class:`~nifty.field.Field` over this PowerSpace. This can only
     be done if the subspace to be analyzed is a harmonic space. The
     resulting field has the same units as the square of the initial
     field.
 
     Parameters
     ----------
-    field : :class:`nifty8.field.Field`
+    field : :class:`nifty.field.Field`
         The field to be analyzed
     spaces : None or int or tuple of int, optional
         The indices of subdomains for which the power spectrum shall be
@@ -142,7 +142,7 @@ def power_analyze(field, spaces=None, binbounds=None,
 
     Returns
     -------
-    :class:`nifty8.field.Field`
+    :class:`nifty.field.Field`
         The output object. Its domain is a PowerSpace and it contains
         the power spectrum of `field`.
     """
@@ -203,7 +203,7 @@ def create_power_operator(domain, power_spectrum, space=None,
     ----------
     domain : Domain, tuple of Domain or DomainTuple
         Domain on which the power operator shall be defined.
-    power_spectrum : callable or :class:`nifty8.field.Field`
+    power_spectrum : callable or :class:`nifty.field.Field`
         An object that contains the power spectrum as a function of k.
     space : int
         the domain index on which the power operator will work
@@ -318,7 +318,7 @@ def full(domain, val):
 
     Returns
     -------
-    :class:`nifty8.field.Field` or:class:`nifty8.mulit_field.MultiField`
+    :class:`nifty.field.Field` or:class:`nifty.mulit_field.MultiField`
         The newly created uniform field
     """
     if isinstance(domain, (dict, MultiDomain)):
@@ -344,7 +344,7 @@ def from_random(domain, random_type='normal', dtype=np.float64, **kwargs):
 
     Returns
     -------
-    :class:`nifty8.field.Field` or:class:`nifty8.mulit_field.MultiField`
+    :class:`nifty.field.Field` or:class:`nifty.mulit_field.MultiField`
         The newly created random field
 
     Notes
@@ -372,7 +372,7 @@ def makeField(domain, arr):
 
     Returns
     -------
-    :class:`nifty8.field.Field` or:class:`nifty8.mulit_field.MultiField`
+    :class:`nifty.field.Field` or:class:`nifty.mulit_field.MultiField`
         The newly created random field
     """
     if isinstance(domain, (dict, MultiDomain)):
@@ -405,7 +405,7 @@ def makeOp(inp, dom=None, sampling_dtype=None):
 
     Parameters
     ----------
-    inp : None, :class:`nifty8.field.Field` or :class:`nifty8.multi_field.MultiField`
+    inp : None, :class:`nifty.field.Field` or :class:`nifty.multi_field.MultiField`
         - if None, None is returned.
         - if Field on scalar-domain, a ScalingOperator with the coefficient
             given by the Field is returned.
@@ -667,8 +667,8 @@ def is_operator(obj):
     Note
     ----
     A simple `isinstance(obj, ift.Operator)` does not give the expected result
-    because, e.g., :class:`~nifty8.field.Field` inherits from
-    :class:`~nifty8.operators.operator.Operator`.
+    because, e.g., :class:`~nifty.field.Field` inherits from
+    :class:`~nifty.operators.operator.Operator`.
     """
     return isinstance(obj, Operator) and obj.val is None
 
@@ -685,8 +685,8 @@ def is_fieldlike(obj):
     ----
     A simple `isinstance(obj, ift.Field)` does not give the expected result
     because users might have implemented another class which behaves field-like
-    but is not an instance of :class:`~nifty8.field.Field`. Also note that
-    instances of :class:`~nifty8.linearization.Linearization` behave
+    but is not an instance of :class:`~nifty.field.Field`. Also note that
+    instances of :class:`~nifty.linearization.Linearization` behave
     field-like.
     """
     return isinstance(obj, Operator) and obj.val is not None

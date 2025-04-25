@@ -30,7 +30,7 @@ class Linearization(Operator):
 
     Parameters
     ----------
-    val : :class:`nifty8.field.Field` or :class:`nifty8.multi_field.MultiField`
+    val : :class:`nifty.field.Field` or :class:`nifty.multi_field.MultiField`
         The value of the operator application.
     jac : LinearOperator
         The Jacobian.
@@ -53,7 +53,7 @@ class Linearization(Operator):
 
         Parameters
         ----------
-        val : :class:`nifty8.field.Field` or :class:`nifty8.multi_field.MultiField`
+        val : :class:`nifty.field.Field` or :class:`nifty.multi_field.MultiField`
             the value of the operator application
         jac : LinearOperator
             the Jacobian
@@ -90,7 +90,7 @@ class Linearization(Operator):
 
     @property
     def val(self):
-        """:class:`nifty8.field.Field` or :class:`nifty8.multi_field.MultiField` : the value"""
+        """:class:`nifty.field.Field` or :class:`nifty.multi_field.MultiField` : the value"""
         return self._val
 
     @property
@@ -100,7 +100,7 @@ class Linearization(Operator):
 
     @property
     def gradient(self):
-        """:class:`nifty8.field.Field` or :class:`nifty8.multi_field.MultiField` : the gradient
+        """:class:`nifty.field.Field` or :class:`nifty.multi_field.MultiField` : the gradient
 
         Notes
         -----
@@ -207,7 +207,7 @@ class Linearization(Operator):
 
         Parameters
         ----------
-        other : :class:`nifty8.field.Field` or :class:`nifty8.multi_field.MultiField` or Linearization
+        other : :class:`nifty.field.Field` or :class:`nifty.multi_field.MultiField` or Linearization
 
         Returns
         -------
@@ -232,7 +232,7 @@ class Linearization(Operator):
 
         Parameters
         ----------
-        other : :class:`nifty8.field.Field` or :class:`nifty8.multi_field.MultiField` or Linearization
+        other : :class:`nifty.field.Field` or :class:`nifty.multi_field.MultiField` or Linearization
 
         Returns
         -------
@@ -301,7 +301,7 @@ class Linearization(Operator):
 
         Parameters
         ----------
-        field : :class:`nifty8.field.Field` or :class:`nifty8.multi_field.MultiField`
+        field : :class:`nifty.field.Field` or :class:`nifty.multi_field.MultiField`
             the field to be converted
         want_metric : bool
             If True, the metric will be computed for other Linearizations
@@ -322,7 +322,7 @@ class Linearization(Operator):
 
         Parameters
         ----------
-        field : :class:`nifty8.field.Field` or :class:`nifty8.multi_field.MultiField`
+        field : :class:`nifty.field.Field` or :class:`nifty.multi_field.MultiField`
             the field to be converted
         want_metric : bool
             If True, the metric will be computed for other Linearizations
@@ -347,7 +347,7 @@ class Linearization(Operator):
 
         Parameters
         ----------
-        field : :class:`nifty8.field.Field` or :class:`nifty8.multi_field.MultiField`
+        field : :class:`nifty.field.Field` or :class:`nifty.multi_field.MultiField`
             the field to be converted
         want_metric : bool
             If True, the metric will be computed for other Linearizations
@@ -376,7 +376,7 @@ class Linearization(Operator):
 
         Parameters
         ----------
-        field ::class:`nifty8.multi_field.MultiField`
+        field ::class:`nifty.multi_field.MultiField`
             the field to be converted
         constants : list of string
             the MultiField components for which the Jacobian should be

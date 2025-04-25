@@ -318,7 +318,7 @@ class MaternAmplitude(Model):
         power spectrum.
 
         See
-        :class:`nifty8.re.correlated_field.CorrelatedFieldMaker.add_fluctuations
+        :class:`nifty.re.correlated_field.CorrelatedFieldMaker.add_fluctuations
         _matern`
         for more details on the parameters.
 
@@ -418,7 +418,7 @@ class NonParametricAmplitude(Model):
         power spectrum.
 
         See
-        :class:`nifty8.re.correlated_field.CorrelatedFieldMaker.add_fluctuations`
+        :class:`nifty.re.correlated_field.CorrelatedFieldMaker.add_fluctuations`
         for more details on the parameters.
 
         See also
