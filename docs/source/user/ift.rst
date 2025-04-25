@@ -173,7 +173,7 @@ It only requires minimizing the information Hamiltonian, e.g. by a gradient desc
 
     \frac{\partial \mathcal{H}(d,\xi)}{\partial \xi} = 0.
 
-NIFTy8 automatically calculates the necessary gradient from a generative model of the signal and the data and uses this to minimize the Hamiltonian.
+NIFTy automatically calculates the necessary gradient from a generative model of the signal and the data and uses this to minimize the Hamiltonian.
 
 However, MAP often provides unsatisfactory results in cases of deep hierarchical Bayesian networks.
 The reason for this is that MAP ignores the volume factors in parameter space, which are not to be neglected in deciding whether a solution is reasonable or not.

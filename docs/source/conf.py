@@ -42,7 +42,7 @@ napoleon_include_special_with_doc = True
 imgmath_embed = True
 numfig = True
 
-project = "NIFTy8"
+project = "NIFTy"
 copyright = "2013-2022, Max-Planck-Society"
 author = "Martin Reinecke"
 

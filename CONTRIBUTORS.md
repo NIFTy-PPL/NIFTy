@@ -1,6 +1,6 @@
 # Contributors
 
-## NIFTy8
+## NIFTy
 
 - Andrija Kostic
 - David Outland

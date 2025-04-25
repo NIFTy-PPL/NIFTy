@@ -18,7 +18,7 @@
 
 def _logger_init():
     import logging
-    res = logging.getLogger('NIFTy8')
+    res = logging.getLogger('NIFTy')
     res.setLevel(logging.DEBUG)
     res.propagate = False
     ch = logging.StreamHandler()
