@@ -251,7 +251,8 @@ class OptimizeKLConfig:
             del c[fst_key]
 
     def _to_callable(self, s, dtype=None):
-        """Turn list separated by `,` into function that takes the index and returns the respective entry.
+        """Turn list separated by `,` into function that takes the index and
+        returns the respective entry.
 
         Additionally all references indicated by `*` are instantiated.
         """
@@ -284,6 +285,11 @@ class OptimizeKLConfig:
         default all values have type `str`. If `bool`, `float` or `int` shall be
         passed, the syntax `type :: value`, e.g. `float :: 1.2`, needs to be
         used in the config file.
+
+        Note
+        ----
+        Especially for expensive functions like data loading functions, it might
+        be sensible to cache the function (e.g., via `functools.lru_cache`).
         """
         dct = dict(self._cfg[sec])
 
@@ -357,10 +363,13 @@ class OptimizeKLConfig:
             "kl_minimizer",
             "sampling_iteration_controller",
             "nonlinear_sampling_minimizer",
+            "fresh_stochasticity",
         ]:
             key1 = key.replace("_", " ")
             if key == "n_samples":
                 yield key, self._to_callable(cdyn[key1], int)
+            elif key == "fresh_stochasticity":
+                yield key, self._to_callable(cdyn[key1], bool)
             else:
                 yield key, self._to_callable(cdyn[key1])
 

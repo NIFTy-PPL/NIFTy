@@ -1,32 +1,54 @@
 Changes since NIFTy 8
 =====================
 
-`estimate_evidence_lower_bound`
--------------
+General
+-------
+Minimum Python version increased to 3.10
 
+
+ift.optimize_kl: fresh_stochasticity
+------------------------------------
+Introduce the new option `fresh stochasticity` to control whether new randomness
+is used at each global iteration. It accepts a boolean (or callable returning
+booleans). Setting it to `False` in later iterations can help reduce stochastic
+fluctuations and improve convergence behavior.
+
+The optimize_kl config system supports this option as well. Note that old config
+files need to be updated: each `optimization` section requires a
+`fresh_stochasticity` entry now. To reproduce old behaviour, set
+`fresh_stochasticity` to `True` for all iterations.
+
+On a technical level, the RNG state is now saved once at the start (instead of
+per iteration), and restored from a unified file (`nifty_random_state`) when
+resuming. The per-iteration random state save/load via
+`nifty_random_state_<iteration>` has been removed to simplify state management.
+
+
+ift.estimate_evidence_lower_bound
+---------------------------------
 Renamed `batch_size` to `n_batches` for clarity. Improved batch logic.
 
 
-Minimum Python version increased to 3.10
-
-Stabilize ICR at the cost of disallowing using old ICR reconstructions
-----------------------------------------------------------------------
-
+ift.re: Stabilize ICR at the cost of disallowing using old ICR reconstructions
+------------------------------------------------------------------------------
 ICR's refinement now uses `eigsh` based matrix inversions and square roots,
 significantly stabilizing the scheme. However, previous latent parameters for
 ICR will now produce different results, effectively disallowing the use of old
 reconstruction results with the new `eigsh` based refinement. To avoid silent
 breakage, we renamed `RefinementField` to the more descriptive `ChartedField`.
 
-`optimize_kl`
--------------
 
-Make the iteration number a counter instead of an index, i.e., initialize at zero instead of at negative one.
+ift.optimize_kl: indexing
+-------------------------
+Make the iteration number a counter instead of an index, i.e., initialize at
+zero instead of at negative one.
 
-Hartley convention
-------------------
 
+ift & ift.re: Hartley convention
+--------------------------------
 The Hartley convention can now be configured via `jft.config.update`.
+
+
 
 Changes since NIFTy 7
 =====================
@@ -143,8 +165,8 @@ distinction is a required structure for defining the `SampledKLEnergy`.
 Evidence Lower Bound
 --------------------
 Created new function `estimate_evidence_lower_bound` to calculate an estimate
-of the evidence lower bound (ELBO) for a model at hand. This can be used for 
-model comparison. 
+of the evidence lower bound (ELBO) for a model at hand. This can be used for
+model comparison.
 
 Sampling dtypes
 ---------------

@@ -16,6 +16,8 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
+import os
+
 import nifty8 as ift
 import numpy as np
 import pytest
@@ -170,3 +172,51 @@ def test_transitions():
                              terminate_callback, save_strategy="all", plot_energy_history=False,
                              plot_minisanity_history=False)
         assert sl.domain is mdom2
+
+
+def test_optimize_kl_fresh_stochasticity():
+    with MPISafeTempdir(comm) as direc0:
+
+        d = sky(mock_pos)
+        likelihood_energy = ift.GaussianEnergy(d) @ sky
+        total_iterations = 5
+        n_samples = 2
+
+        ic0 = ift.GradientNormController(iteration_limit=0)
+        ic1 = ift.GradientNormController(iteration_limit=10)
+        mini0 = ift.SteepestDescent(ic0)
+        kl_minimizer = mini0
+        sampling_iteration_controller = ic1
+        nonlinear_sampling_minimizer = None
+        fresh = [0, 2]
+        fresh_stochasticity = lambda iiter: iiter in fresh
+
+        initial_position = ift.from_random(likelihood_energy.domain)
+
+        def inspect_callback(sl, iiter):
+            ift.extra.assert_allclose(initial_position, sl.mean)
+            fname_ref = os.path.join(direc0, "slref")
+            fresh_iter = iiter in fresh
+            if fresh_iter:
+                sl.save(fname_ref, overwrite=True)
+            if comm is not None:
+                comm.Barrier()
+            slref = ift.ResidualSampleList.load(fname_ref, comm)
+
+            if not fresh_iter:
+                for s0, s1 in zip(sl.iterator(), slref.iterator()):
+                    ift.extra.assert_allclose(s0, s1)
+
+        ift.optimize_kl(
+            likelihood_energy,
+            total_iterations,
+            n_samples,
+            kl_minimizer,
+            sampling_iteration_controller,
+            nonlinear_sampling_minimizer,
+            output_directory=direc0,
+            comm=comm,
+            inspect_callback=inspect_callback,
+            initial_position=initial_position,
+            fresh_stochasticity=fresh_stochasticity,
+        )

@@ -311,9 +311,9 @@ class SampledKLEnergyClass(Energy):
 
         self._sample_list = sample_list
         self._hamiltonian = hamiltonian
-        self._nanisinf = bool(nanisinf)
         self._constants = constants
         self._invariants = invariants
+        self._nanisinf = bool(nanisinf)
 
         def _func(inp):
             inp, tmp = _reduce_by_keys(inp, hamiltonian, constants)

@@ -15,7 +15,7 @@
 
         req.minimal = with myPyPkgs; [ numpy scipy ducc0 ];
         req.dev = with myPyPkgs; [ pytest pytest-cov matplotlib ];
-        # req.mpi = [ myPyPkgs.mpi4py pkgs.openmpi pkgs.openssh ];
+        req.mpi = [ myPyPkgs.mpi4py ];
         req.jax = with myPyPkgs; [ jax jaxlib ];
         req.rest = with myPyPkgs; [ astropy h5py ];
         req.docs = with myPyPkgs; [
@@ -33,11 +33,15 @@
           src = ./.;
           pyproject = true;
           build-system = with pkgs.python3.pkgs; [ setuptools ];
-          dependencies = req.minimal;
-
-          # TODO Add MPI tests
-          checkInputs = [ myPyPkgs.pytestCheckHook ] ++ allreqs;
-          disabledTestPaths = [ "test/test_mpi" "test/test_re" ];
+          dependencies = req.minimal ++ req.mpi;
+          checkInputs = with myPyPkgs; [ pytestCheckHook pytest-xdist ]
+            ++ allreqs;
+          disabledTestPaths = [ "test/test_re" ];
+          postCheck = ''
+            ${
+              pkgs.lib.getExe' pkgs.mpi "mpirun"
+            } -n 2 --bind-to none python3 -m pytest test/test_mpi
+          '';
           pythonImportsCheck = [ "nifty8" ];
         };
 

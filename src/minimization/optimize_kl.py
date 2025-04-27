@@ -31,11 +31,10 @@ from ..multi_field import MultiField
 from ..operators.counting_operator import CountingOperator
 from ..operators.energy_operators import StandardHamiltonian
 from ..operators.operator import Operator
-from ..operators.scaling_operator import ScalingOperator
-from ..plot import Plot, plottable2D
+from ..plot import Plot
+from ..random import pop_sseq, push_sseq, spawn_sseq
 from ..sugar import from_random
-from ..utilities import (Nop, check_MPI_equality,
-                         check_MPI_synced_random_state, check_object_identity,
+from ..utilities import (check_MPI_equality, check_MPI_synced_random_state,
                          get_MPI_params_from_comm)
 from .energy_adapter import EnergyAdapter
 from .iteration_controllers import EnergyHistory, IterationController
@@ -70,7 +69,8 @@ def optimize_kl(likelihood_energy,
                 return_final_position=False,
                 resume=False,
                 sanity_checks=True,
-                dry_run=False):
+                dry_run=False,
+                fresh_stochasticity=True):
     """Provide potentially useful interface for standard KL minimization.
 
     The parameters `likelihood_energy`, `kl_minimizer`,
@@ -184,6 +184,16 @@ def optimize_kl(likelihood_energy,
     dry_run : bool
         Skips all expensive optimizations. Can be used to check that all domains
         fit together. Default: False.
+    fresh_stochasticity : bool or callable
+        Controls whether new randomness is used when drawing samples. If set to
+        a boolean, the same value is used across all iterations (note that it
+        cannot be False initially, since the first iteration requires fresh
+        samples). Alternatively, a callable can be provided that takes the
+        current iteration index as input and returns a boolean, allowing for
+        dynamic control over when new stochasticity is introduced. Some users
+        choose to set `fresh_stochasticity` to False toward the end of an
+        `optimize_kl` run to reduce stochastic fluctuations and artificially
+        increase convergence. Default: True.
 
     Returns
     -------
@@ -203,9 +213,9 @@ def optimize_kl(likelihood_energy,
     This function comes with some MPI support. Generally, with the help of MPI
     samples are distributed over tasks.
     """
+    from ..sugar import full, makeDomain
     from ..utilities import myassert
     from .descent_minimizers import DescentMinimizer
-    from ..sugar import full, makeDomain
 
     if not isinstance(export_operator_outputs, dict):
         raise TypeError
@@ -230,6 +240,7 @@ def optimize_kl(likelihood_energy,
     inspect_callback = _make_callable(inspect_callback)
     if terminate_callback is None:
         terminate_callback = _make_callable(False)
+    fresh_stochasticity = _make_callable(fresh_stochasticity)
 
     if initial_position is None:
         mean = full(makeDomain({}), 0.)
@@ -308,15 +319,32 @@ def optimize_kl(likelihood_energy,
                 sl = SampleList.load(fname)
                 myassert(sl.n_samples == 1)
                 mean = sl.local_item(0)
-            _load_random_state(last_finished_index)
+            _load_random_state()
             energy_history = _pickle_load_values(last_finished_index, 'energy_history')
 
             if initial_index == total_iterations:
                 if isfile(fname + ".mean.pickle"):
                     sl = ResidualSampleList.load(fname)
                 return (sl, mean) if return_final_position else sl
+        # No resume
+        else:
+            check_MPI_synced_random_state(comm(iglobal))
+            if _MPI_master(comm(initial_index)):
+                _save_random_state()
+
+    # Prepare stochasicity contexts
+    sseqs = spawn_sseq(total_iterations)
+    for iglobal in range(total_iterations):
+        if not fresh_stochasticity(iglobal):
+            if iglobal == 0:
+                raise ValueError("fresh_stochasticity needs to be True for initial iteration")
+            sseq_dup = np.random.SeedSequence(sseqs[iglobal-1].entropy,
+                                              spawn_key=sseqs[iglobal-1].spawn_key,
+                                              pool_size=sseqs[iglobal-1].pool_size)
+            sseqs[iglobal] = sseq_dup
 
     for iglobal in range(initial_index, total_iterations):
+        push_sseq(sseqs[iglobal])
         lh = likelihood_energy(iglobal)
         if not isinstance(lh.domain, MultiDomain):
             raise TypeError("Domain of likelihood_energy needs to be a MultiDomain, "
@@ -385,7 +413,6 @@ def optimize_kl(likelihood_energy,
             _export_operators(iglobal, export_operator_outputs, sl, comm(iglobal))
             sl.save(join(output_directory, "pickle/") + _file_name_by_strategy(iglobal),
                     overwrite=True)
-            _save_random_state(iglobal)
 
             if _MPI_master(comm(iglobal)):
                 with open(join(output_directory, "last_finished_iteration"), "w") as f:
@@ -408,6 +435,7 @@ def optimize_kl(likelihood_energy,
         _barrier(comm(iglobal))
 
         lh = None
+        pop_sseq()
 
     return (sl, mean) if return_final_position else sl
 
@@ -427,18 +455,16 @@ def _file_name_by_strategy(iglobal, save_strategy='global_strategy'):
     raise RuntimeError
 
 
-def _save_random_state(index):
+def _save_random_state():
     from ..random import getState
-    file_name = join(_output_directory, "pickle/nifty_random_state_")
-    file_name += _file_name_by_strategy(index)
+    file_name = join(_output_directory, "pickle/nifty_random_state")
     with open(file_name, "wb") as f:
         f.write(getState())
 
 
-def _load_random_state(index):
+def _load_random_state():
     from ..random import setState
-    file_name = join(_output_directory, "pickle/nifty_random_state_")
-    file_name += _file_name_by_strategy(index)
+    file_name = join(_output_directory, "pickle/nifty_random_state")
     with open(file_name, "rb") as f:
         setState(f.read())
 
