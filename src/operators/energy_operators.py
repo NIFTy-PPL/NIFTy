@@ -742,7 +742,8 @@ class BernoulliEnergy(LikelihoodEnergyOperator):
         if not isinstance(d, Field) or not np.issubdtype(d.dtype, np.integer):
             raise TypeError("d needs to be a Field with integer values. Got:\n"
                             f"{d}")
-        if actualvals := set(np.unique(d.val)) != set([0, 1]):
+        actualvals = set(np.unique(d.val))
+        if (actualvals | set([0, 1])) != set([0, 1]):
             raise ValueError(f"d can only contain 0 and 1. Got: {actualvals}")
         self._d = d
         self._domain = DomainTuple.make(d.domain)

@@ -145,5 +145,20 @@ def test_VariableCovarianceGaussianEnergy(dtype):
     energy_tester(mf, get_noisy_data, E_init, assume_diagonal=True)
 
 
+def test_BernoulliEnergy(field):
+    if not isinstance(field, ift.Field):
+        pytest.skip("MultiField energy not supported")
+    if np.iscomplexobj(field.val):
+        pytest.skip("Bernoulli energy not defined for complex flux")
+    def get_noisy_data(mean):
+        x = ift.random.current_rng().uniform(size=mean.shape)
+        x = (x<mean.val).astype(int)
+        x = ift.makeField(mean.domain, x)
+        return x
+    E_init = lambda data: ift.BernoulliEnergy(data)
+    loc = field.sigmoid()
+    energy_tester(loc, get_noisy_data, E_init, assume_diagonal=True)
+
+
 def normal(dtype, shape):
     return ift.random.Random.normal(dtype, shape)
