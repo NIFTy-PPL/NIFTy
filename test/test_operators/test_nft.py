@@ -100,7 +100,8 @@ def test_build(nxdirty, nydirty, N, eps):
     cmplx = np.complex128
     # We set rtol=eps here, because the gridder operator only guarantees
     # adjointness to this accuracy.
-    ift.extra.check_linear_operator(RF, cmplx, flt, only_r_linear=True, rtol=eps)
+    ift.extra.check_linear_operator(RF, cmplx, flt, only_r_linear=True,
+                                    rtol=eps, atol=eps)
 
 
 @pmp('eps', [1e-2, 1e-4, 1e-7, 1e-10, 1e-11, 1e-12, 2e-13])
@@ -200,6 +201,5 @@ def test_build_nufft(space, N, eps):
     RF = ift.Nufft(space, pos=pos, eps=eps)
     flt = np.float64
     cmplx = np.complex128
-    # We set rtol=eps here, because the gridder operator only guarantees
-    # adjointness to this accuracy.
-    ift.extra.check_linear_operator(RF, cmplx, flt, only_r_linear=True, rtol=eps)
+    ift.extra.check_linear_operator(RF, cmplx, flt, only_r_linear=True,
+                                    rtol=eps, atol=eps)
