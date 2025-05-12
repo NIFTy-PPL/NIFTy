@@ -98,7 +98,7 @@ class MultiDomain:
         return len(self._keys)
 
     def __hash__(self):
-        return self._keys.__hash__() ^ self._domains.__hash__()
+        return hash((self._keys, self._domains))
 
     def __eq__(self, x):
         if self is x:
