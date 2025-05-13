@@ -483,7 +483,7 @@ def minisanity(likelihood_energy, samples, terminal_colors=True, return_values=F
     Note
     ----
     For computing the reduced chi^2 values and the normalized residuals, the
-    metric at `mean` is used.
+    metric of each individual sample is used.
 
     """
     from .minimization.sample_list import SampleListBase
