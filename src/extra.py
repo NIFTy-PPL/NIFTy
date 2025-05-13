@@ -551,6 +551,7 @@ def minisanity(likelihood_energy, samples, terminal_colors=True, return_values=F
                 xndof[ii][kk] = lsize
                 xnigndof[ii][kk] = n_isnan + n_iszero
 
+    cplx_mean = False
     for ii in range(2):
         for kk in xredchisq[ii].keys():
             rcs_mean = xredchisq[ii][kk].mean
@@ -561,18 +562,19 @@ def minisanity(likelihood_energy, samples, terminal_colors=True, return_values=F
             except RuntimeError:
                 rcs_std = None
                 sc_std = None
+            cplx_mean |= np.iscomplexobj(sc_mean)
             xredchisq[ii][kk] = {'mean': rcs_mean, 'std': rcs_std}
             xscmean[ii][kk] = {'mean': sc_mean, 'std': sc_std}
 
     s0 = _tableentries(xredchisq[0], xscmean[0], xndof[0], xnigndof[0], keylen,
-                       terminal_colors)
+                       cplx_mean, terminal_colors)
     s1 = _tableentries(xredchisq[1], xscmean[1], xndof[1], xnigndof[1], keylen,
-                       terminal_colors)
+                       cplx_mean, terminal_colors)
 
-    n = 38 + keylen
+    n = 49+12+keylen if cplx_mean else 49+keylen
     s = [n * "=",
          ((keylen + 2) * " " + "{:>11}".format("reduced χ²")
-          + "{:>14}".format("mean")
+          + ("{:>26}".format("mean") if cplx_mean else "{:>14}".format("mean"))
           +"{:>11}".format("# dof") + "{:>11}".format("# ign. dof")),
          n * "-", "Data residuals", s0, "Latent space", s1, n * "="]
 
@@ -602,7 +604,7 @@ def minisanity(likelihood_energy, samples, terminal_colors=True, return_values=F
         return res_string, res_dict
 
 
-def _tableentries(redchisq, scmean, ndof, nigndof, keylen, colors):
+def _tableentries(redchisq, scmean, ndof, nigndof, keylen, cplx_mean, colors):
     class _bcolors:
         WARNING = "\033[33m" if colors else ""
         FAIL = "\033[31m" if colors else ""
@@ -628,7 +630,10 @@ def _tableentries(redchisq, scmean, ndof, nigndof, keylen, colors):
         foo = f"{scmean[kk]['mean']:.1f}"
         if scmean[kk]['std'] is not None:
             foo += f" ± {scmean[kk]['std']:.1f}"
-        out += f"{foo:>14}"
+        if cplx_mean:
+            out += f"{foo:>26}"
+        else:
+            out += f"{foo:>14}"
         out += f"{ndof[kk]:>11}"
         out += f"{'-' if nigndof[kk] == 0 else nigndof[kk]:>11}"
         out += "\n"
