@@ -49,13 +49,13 @@ def testOperatorCombinations(sp, dtype):
     a = ift.DiagonalOperator(ift.Field.from_random(sp, "normal", dtype=dtype))
     b = ift.DiagonalOperator(ift.Field.from_random(sp, "normal", dtype=dtype))
     op = ift.SandwichOperator.make(a, b)
-    ift.extra.check_linear_operator(op, dtype, dtype)
+    ift.extra.check_linear_operator(op, dtype, dtype, rtol=1e-13)
     op = a(b)
-    ift.extra.check_linear_operator(op, dtype, dtype)
+    ift.extra.check_linear_operator(op, dtype, dtype, rtol=1e-13)
     op = a + b
-    ift.extra.check_linear_operator(op, dtype, dtype)
+    ift.extra.check_linear_operator(op, dtype, dtype, rtol=1e-13)
     op = a - b
-    ift.extra.check_linear_operator(op, dtype, dtype)
+    ift.extra.check_linear_operator(op, dtype, dtype, rtol=1e-13)
 
 
 def testLinearInterpolator():

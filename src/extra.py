@@ -25,21 +25,20 @@ from .field import Field
 from .linearization import Linearization
 from .multi_domain import MultiDomain
 from .multi_field import MultiField
-from .operators.adder import Adder
 from .operators.endomorphic_operator import EndomorphicOperator
 from .operators.energy_operators import (EnergyOperator,
                                          LikelihoodEnergyOperator)
 from .operators.linear_operator import LinearOperator
 from .operators.operator import Operator
 from .probing import StatCalculator
-from .sugar import from_random, is_fieldlike, is_operator
+from .sugar import from_random
 from .utilities import issingleprec, myassert
 
 __all__ = ["check_linear_operator", "check_operator", "assert_allclose", "minisanity"]
 
 
 def check_linear_operator(op, domain_dtype=np.float64, target_dtype=np.float64,
-                          atol=1e-12, rtol=1e-12, only_r_linear=False):
+                          atol=1e-14, rtol=1e-14, only_r_linear=False):
     """Checks an operator for algebraic consistency of its capabilities.
 
     Checks whether times(), adjoint_times(), inverse_times() and
@@ -90,10 +89,10 @@ def check_linear_operator(op, domain_dtype=np.float64, target_dtype=np.float64,
                          only_r_linear)
     _full_implementation(op.adjoint.inverse, domain_dtype, target_dtype, atol,
                          rtol, only_r_linear)
-    _check_sqrt(op, domain_dtype)
-    _check_sqrt(op.adjoint, target_dtype)
-    _check_sqrt(op.inverse, target_dtype)
-    _check_sqrt(op.adjoint.inverse, domain_dtype)
+    _check_sqrt(op, domain_dtype, atol, rtol)
+    _check_sqrt(op.adjoint, target_dtype, atol, rtol)
+    _check_sqrt(op.inverse, target_dtype, atol, rtol)
+    _check_sqrt(op.adjoint.inverse, domain_dtype, atol, rtol)
 
 
 def check_operator(op, loc, tol=1e-12, ntries=100, perf_check=True,
@@ -212,7 +211,7 @@ def _domain_check_linear(op, domain_dtype=None, inp=None):
     myassert(op(inp).domain is op.target)
 
 
-def _check_sqrt(op, domain_dtype):
+def _check_sqrt(op, domain_dtype, atol, rtol):
     if not isinstance(op, EndomorphicOperator):
         try:
             op.get_sqrt()
@@ -226,7 +225,7 @@ def _check_sqrt(op, domain_dtype):
     fld = from_random(op.domain, dtype=domain_dtype)
     a = op(fld)
     b = (sqop.adjoint @ sqop)(fld)
-    return assert_allclose(a, b, rtol=1e-15)
+    return assert_allclose(a, b, atol=atol, rtol=rtol)
 
 
 def _domain_check_nonlinear(op, loc):
