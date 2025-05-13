@@ -38,8 +38,7 @@ class Domain(metaclass=NiftyMeta):
             return self._hash
         except AttributeError:
             v = vars(self)
-            self._hash = reduce(lambda x, y: x ^ y, (hash(v[key])
-                                for key in self._needed_for_hash), 0)
+            self._hash = hash(tuple(v[key] for key in self._needed_for_hash))
         return self._hash
 
     def __eq__(self, x):

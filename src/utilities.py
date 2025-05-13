@@ -215,10 +215,7 @@ class frozendict(collections.abc.Mapping):
 
     def __hash__(self):
         if self._hash is None:
-            h = 0
-            for key, value in self._dict.items():
-                h ^= hash((key, value))
-            self._hash = h
+            self._hash = hash(frozenset(self._dict.items()))
         return self._hash
 
 
