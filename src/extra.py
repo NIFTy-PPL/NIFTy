@@ -25,14 +25,13 @@ from .field import Field
 from .linearization import Linearization
 from .multi_domain import MultiDomain
 from .multi_field import MultiField
-from .operators.adder import Adder
 from .operators.endomorphic_operator import EndomorphicOperator
 from .operators.energy_operators import (EnergyOperator,
                                          LikelihoodEnergyOperator)
 from .operators.linear_operator import LinearOperator
 from .operators.operator import Operator
 from .probing import StatCalculator
-from .sugar import from_random, is_fieldlike, is_operator
+from .sugar import from_random
 from .utilities import issingleprec, myassert
 
 __all__ = ["check_linear_operator", "check_operator", "assert_allclose", "minisanity"]

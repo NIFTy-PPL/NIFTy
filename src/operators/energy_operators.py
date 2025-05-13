@@ -93,7 +93,7 @@ class LikelihoodEnergyOperator(EnergyOperator):
     likelihood.
     """
     def __init__(self, data_residual, sqrt_data_metric_at):
-        from ..extra import is_operator
+        from ..sugar import is_operator
         if data_residual is not None and not is_operator(data_residual):
             raise TypeError(f"{data_residual} is not an operator")
         self._res = data_residual
