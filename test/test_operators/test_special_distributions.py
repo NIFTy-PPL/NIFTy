@@ -19,6 +19,7 @@
 import nifty8 as ift
 import numpy as np
 import pytest
+from scipy.stats import beta, ks_2samp
 
 from ..common import list2fixture, setup_function, teardown_function
 
@@ -53,3 +54,24 @@ def test_init_parameter_equality(alpha, q, mode, mean):
     pos4 = op4(f)
     ift.extra.assert_allclose(pos1, pos2)
     ift.extra.assert_allclose(pos3, pos4)
+
+
+@pmp("a", [2.31, 172.13])
+@pmp("b", [0.627, 787.0])
+def test_beta_operator(a, b):
+    n_samples = 10000
+    dom = ift.UnstructuredDomain(n_samples)
+    op = ift.BetaOperator(dom, a=a, b=b)
+
+    # Consistency
+    ift.extra.check_operator(op, ift.from_random(op.domain), ntries=5)
+
+    # Value
+    samples = op(ift.from_random(op.domain)).val
+    assert np.min(samples) >= 0
+    assert np.max(samples) <= 1
+
+    # Statistical properties
+    samples0 = beta.rvs(a, b, size=n_samples)
+    _, p_value = ks_2samp(samples0, samples)
+    assert p_value >= 0.05

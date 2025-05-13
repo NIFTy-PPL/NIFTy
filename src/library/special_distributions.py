@@ -18,7 +18,7 @@
 
 import numpy as np
 from scipy.interpolate import CubicSpline
-from scipy.stats import gamma, invgamma, laplace, norm
+from scipy.stats import beta, gamma, invgamma, laplace, norm
 
 from .. import random
 from ..domain_tuple import DomainTuple
@@ -26,7 +26,7 @@ from ..domains.unstructured_domain import UnstructuredDomain
 from ..field import Field
 from ..operators.adder import Adder
 from ..operators.operator import Operator
-from ..sugar import makeOp
+from ..sugar import is_fieldlike, makeOp
 
 
 def _f_on_np(f, arr):
@@ -288,6 +288,13 @@ def LogInverseGammaOperator(domain, alpha, q, delta=1e-2):
                                 -8.2, 8.2, delta)
     q = np.log(q) if np.isscalar(q) else q.log()
     return Adder(q, domain=op.target) @ op
+
+
+def BetaOperator(domain, a, b, delta=1e-2):
+    """Transform a standard normal into a beta distribution.
+    """
+    func = lambda x: beta.ppf(norm._cdf(x), a=float(a), b=float(b))
+    return _InterpolationOperator(domain, func, -8.2, 8.2, delta)
 
 
 class UniformOperator(Operator):
