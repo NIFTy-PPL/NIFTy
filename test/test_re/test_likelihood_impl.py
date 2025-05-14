@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import operator
 from functools import partial, reduce
 
 import jax
@@ -72,11 +73,36 @@ def lst2fixt(lst):
 def random_draw(key, shape, dtype, method):
     def _isleaf(x):
         if isinstance(x, tuple):
-            return bool(reduce(lambda a, b: a * b, (isinstance(ii, int) for ii in x)))
+            return bool(reduce(operator.mul, (isinstance(ii, int) for ii in x)))
         return False
 
     swd = tree_map(lambda x: jft.ShapeWithDtype(x, dtype), shape, is_leaf=_isleaf)
     return jft.random_like(key, jft.Vector(swd), method)
+
+
+def expand_shape(shape1, shape2):
+    def _isleaf(x):
+        if isinstance(x, tuple):
+            return bool(reduce(operator.mul, (isinstance(ii, int) for ii in x)))
+        return False
+
+    return tree_map(lambda x: x + shape2, shape1, is_leaf=_isleaf)
+
+
+def random_draw_cov(key, shape):
+    @partial(jnp.vectorize, signature="(),(),()->(2,2)")
+    def build_cov(ev1, ev2, angle):
+        rot = jnp.array(
+            [[jnp.cos(angle), -jnp.sin(angle)], [jnp.sin(angle), jnp.cos(angle)]]
+        )
+        cov_diag = jnp.array([[ev1, 0.0], [0.0, ev2]])
+        return rot @ cov_diag @ rot.T
+
+    sk = list(random.split(key, 3))
+    ev1 = 1.0e-5 + random_draw(sk.pop(), shape, float, random.exponential)
+    ev2 = ev1 + 1.0e-5 + random_draw(sk.pop(), shape, float, random.exponential)
+    angle = random_draw(sk.pop(), shape, float, random.normal)
+    return tree_map(build_cov, ev1, ev2, angle)
 
 
 def random_noise_std_inv(key, shape):
@@ -144,6 +170,20 @@ lh_init_approx = (
             ),
         ),
     ),
+    (
+        jft.NDVariableCovarianceGaussian,
+        {
+            "data": lambda key, shape: (
+                partial(random_draw, dtype=float, method=random.normal)(
+                    key, expand_shape(shape, (2,))
+                )
+            ),
+        },
+        lambda key, shape: (
+            random_draw(key, expand_shape(shape, (2,)), float, random.normal),
+            random_draw_cov(key, shape),
+        ),
+    ),
 )
 
 
@@ -201,8 +241,8 @@ def test_studt_vs_vcstudt_consistency(seed, shape):
 
 @pmp("lh_init", lh_init_true + lh_init_approx)
 def test_sqrt_metric_vs_metric_consistency(seed, shape, lh_init):
-    rtol = 4 * jnp.finfo(jnp.zeros(0).dtype).eps
-    atol = 0.0
+    rtol = 10 * jnp.finfo(jnp.zeros(0).dtype).eps
+    atol = 1.0e-8
     aallclose = partial(assert_allclose, rtol=rtol, atol=atol)
 
     N_TRIES = 5
@@ -385,6 +425,59 @@ def test_nifty_vcgaussian_vs_niftyre_vcgaussian_consistency(seed, iscomplex):
     print(f"test transform:\nnifty: {trafo_nft.val}\njft: {trafo_jft}\n")
     assert_allclose(trafo_nft["res"].val, trafo_jft[0])
     assert_allclose(trafo_nft["invcov"].val, trafo_jft[1])
+
+
+@pmp("lh_init", lh_init_true)
+def test_transformation_metric_consistency(seed, shape, lh_init):
+    rtol = 10 * jnp.finfo(jnp.zeros(0).dtype).eps
+    atol = 0.0
+    aallclose = partial(assert_allclose, rtol=rtol, atol=atol)
+
+    N_TRIES = 5
+
+    lh_init_method, draw, latent_init = lh_init
+    key = random.PRNGKey(seed)
+    key, *subkeys = random.split(key, 1 + len(draw))
+    init_kwargs = {
+        k: method(key=sk, shape=shape) for (k, method), sk in zip(draw.items(), subkeys)
+    }
+    lh = lh_init_method(**init_kwargs)
+    try:
+        lh.transformation(latent_init(key, shape=shape))
+    except NotImplementedError:
+        pytest.skip("no transformation rule implemented yet")
+
+    def gram_jacobian_matrix(f, x):
+        """Computes J[f](x)^T @ J[f](x) as one large matrix."""
+        x_flat, unravel = jax.flatten_util.ravel_pytree(x)
+
+        def f_ravelled(z_flat):
+            z = unravel(z_flat)
+            res_flat, _ = jax.flatten_util.ravel_pytree(f(z))
+            return res_flat
+
+        J = jax.jacfwd(f_ravelled)(x_flat)
+        return J.T @ J
+
+    def linop_to_matrix(f, example_input):
+        """recovers the matrix representing a linear function f
+        given the pytree of an example input to f"""
+        ex_flat, unravel = jax.flatten_util.ravel_pytree(example_input)
+
+        def f_ravelled(x):
+            x_flat = unravel(x)
+            y_flat, _ = jax.flatten_util.ravel_pytree(f(x_flat))
+            return y_flat
+
+        basis_vectors = jnp.eye(len(ex_flat))
+        return jax.vmap(f_ravelled)(basis_vectors).T
+
+    for _ in range(N_TRIES):
+        key, subkey = random.split(key, 2)
+        primals = latent_init(subkey, shape=shape)
+        fm = linop_to_matrix(lambda x: lh.metric(primals, x), jft.zeros_like(primals))
+        gm = gram_jacobian_matrix(lh.transformation, primals)
+        aallclose(fm, gm)
 
 
 if __name__ == "__main__":

@@ -15,6 +15,7 @@ from .forest_math import (
     unstack,
 )
 from .pytree_string import PyTreeString, hide_strings
+from .util import logm, solve, sqrtm
 from .vector import Vector
 from .vector_math import (
     ShapeWithDtype,
