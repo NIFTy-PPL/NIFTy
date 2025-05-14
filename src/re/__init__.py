@@ -29,6 +29,7 @@ from .likelihood_impl import (
     Poissonian,
     StudentT,
     VariableCovarianceGaussian,
+    NDVariableCovarianceGaussian,
     VariableCovarianceStudentT,
 )
 from .logger import logger

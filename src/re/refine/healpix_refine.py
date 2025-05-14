@@ -11,7 +11,7 @@ import numpy as np
 from jax import numpy as jnp
 from jax.lax import dynamic_slice_in_dim
 
-from ..multi_grid.util import sqrtm
+from ..tree_math.util import sqrtm
 from .util import get_cov_from_loc
 
 

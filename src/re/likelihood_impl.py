@@ -5,13 +5,14 @@ import operator
 from functools import partial
 from typing import Any, Callable, Optional, Tuple, Union
 
+import jax
 from jax import numpy as jnp
 from jax.tree_util import Partial, tree_map
 
 from .likelihood import Likelihood
 from .logger import logger
 from .model import LazyModel
-from .tree_math import ShapeWithDtype, result_type, sum, vdot
+from .tree_math import ShapeWithDtype, logm, result_type, solve, sqrtm, sum, vdot
 
 
 def _standard_t(nwr, dof):
@@ -366,6 +367,116 @@ class VariableCovarianceStudentT(Likelihood):
             / primals[1]
             * ((self.dof + 1) / (self.dof + 3)) ** 0.5
         )
+
+
+_matmul = partial(tree_map, partial(jnp.einsum, "...ij,...j->...i"))
+
+
+class NDVariableCovarianceGaussian(Likelihood):
+    """Gaussian likelihood of the data with a variable covariance/precision matrix.
+
+    Parameters
+    ----------
+    data : tree-like structure of jnp.ndarray and float
+        Data with additive noise following a multivariate Gaussian
+        distribution. Every leaf must have shape (..., d) with d being
+        the dimension of the multivariate Gaussian distribution.
+    covariance : bool
+        If True (default), mat is assumed to be a covariance matrix.
+        If False, mat is assumed to be a precision matrix.
+
+    Notes
+    -----
+    **The likelihood acts on a tuple of (mean, mat)**
+    Every leaf of mean must have shape (..., d).
+    Every leaf of mat must have shape (..., d, d).
+
+    Please ensure that your forward model guarantees a valid
+    (symmetric and positive-definite) covariance or precision matrix.
+
+    See :class:`Likelihood` for details on the properties.
+    """
+
+    data: Any = dataclasses.field(metadata=dict(static=False))
+    covariance: bool = True
+
+    def __init__(self, data, covariance=True):
+        self.data = data
+        self.covariance = covariance
+        dim = jax.tree.leaves(data)[0].shape[-1]
+        shp = (
+            tree_map(lambda x: ShapeWithDtype(x.shape[:-1] + (dim,), x.dtype), data),
+            tree_map(
+                lambda x: ShapeWithDtype(x.shape[:-1] + (dim, dim), x.dtype), data
+            ),
+        )
+        super().__init__(domain=shp, lsm_tangents_shape=shp)
+
+    def energy(self, primals):
+        prim_mean, prim_mat = primals
+        rsdl = self.data - prim_mean
+        if self.covariance:
+            cov_inv_rsdl = solve(prim_mat, rsdl)
+            term_rsdl = 0.5 * vdot(rsdl, cov_inv_rsdl)
+            term_logdet = 0.5 * sum(
+                tree_map(lambda x: jnp.linalg.slogdet(x)[1], prim_mat)
+            )
+        else:
+            prec_rsdl = _matmul(prim_mat, rsdl)
+            term_rsdl = 0.5 * vdot(rsdl, prec_rsdl)
+            term_logdet = -0.5 * sum(
+                tree_map(lambda x: jnp.linalg.slogdet(x)[1], prim_mat)
+            )
+        return term_rsdl + term_logdet
+
+    def metric(self, primals, tangents):
+        prim_mean, prim_mat = primals
+        tan_mean, tan_mat = tangents
+        if self.covariance:
+            res_mean = solve(prim_mat, tan_mean)
+        else:
+            res_mean = _matmul(prim_mat, tan_mean)
+        res_mat = solve(prim_mat, tan_mat, matrix_eqn=True)
+        res_mat = solve(prim_mat, res_mat, matrix_eqn=True, transposed=True)
+        return type(primals)((res_mean, 0.5 * res_mat))
+
+    def left_sqrt_metric(self, primals, tangents):
+        prim_mean, prim_mat = primals
+        tan_mean, tan_mat = tangents
+        sqrt_prim_mat = sqrtm(prim_mat)
+        if self.covariance:
+            res_mean = solve(sqrt_prim_mat, tan_mean)
+        else:
+            res_mean = _matmul(sqrt_prim_mat, tan_mean)
+        res_mat = solve(sqrt_prim_mat, tan_mat, matrix_eqn=True)
+        res_mat = solve(sqrt_prim_mat, res_mat, matrix_eqn=True, transposed=True)
+        return type(primals)((res_mean, res_mat / jnp.sqrt(2)))
+
+    def transformation(self, primals):
+        """
+        Notes
+        -----
+        A global transformation to Euclidean space does not exist. A local
+        approximation invoking the residual is used instead.
+        """
+        prim_mean, prim_mat = primals
+        rsdl = prim_mean - self.data
+
+        if self.covariance:
+            res_mean = solve(sqrtm(prim_mat), rsdl)
+            res_mat = 0.5 * logm(prim_mat)
+        else:
+            res_mean = _matmul(sqrtm(prim_mat), rsdl)
+            res_mat = 0.5 * logm(prim_mat)
+        return type(primals)((res_mean, res_mat))
+
+    def normalized_residual(self, primals):
+        prim_mean, prim_mat = primals
+        rsdl = prim_mean - self.data
+        if self.covariance:
+            return solve(sqrtm(prim_mat), rsdl)
+        else:
+            return _matmul(sqrtm(prim_mat), rsdl)
 
 
 class Categorical(Likelihood):

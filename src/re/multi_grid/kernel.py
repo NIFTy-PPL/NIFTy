@@ -17,7 +17,7 @@ from numpy import typing as npt
 from ..num import amend_unique_
 from .grid import FlatGrid, Grid, OpenGridAtLevel
 from .grid_impl import HEALPixGridAtLevel
-from .util import solve, sqrtm
+from ..tree_math import solve, sqrtm
 
 
 def apply_kernel(x, *, kernel):
@@ -241,7 +241,7 @@ def refinement_matrices(cov, n_fsz: int):
     cov_fc = cov[-n_fsz:, :-n_fsz]
     cov_cc = cov[:-n_fsz, :-n_fsz]
 
-    olf = solve(cov_cc, cov_fc.T)
+    olf = solve(cov_cc, cov_fc.T, matrix_eqn=True)
     return olf.T, sqrtm(cov_ff - cov_fc @ olf)
 
 
