@@ -23,7 +23,7 @@ from ..field import Field
 from .endomorphic_operator import EndomorphicOperator
 
 # TODO: Eventually enforce somewhat modern ducc version (>=0.37.0) as nifty
-# dependency and remove the try statement below
+# dependency and remove the try statement below (also at other places)
 try:
     from ducc0.misc.experimental import mul_conj, div_conj
 except ImportError:
