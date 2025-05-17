@@ -219,7 +219,9 @@ class frozendict(collections.abc.Mapping):
         return self._hash
 
 
-def special_add_at(a, axis, index, b):
+def _special_add_at(a, axis, index, b):
+    if type(a) is not type(b):
+        raise TypeError(f"type mismatch, got {type(a)} and {type(b)}")
     if a.dtype != b.dtype:
         raise TypeError("data type mismatch")
     sz1 = int(np.prod(a.shape[:axis]))
@@ -245,6 +247,12 @@ def iscomplextype(dtype):
     if isinstance(dtype, dict):
         return _getunique(iscomplextype, dtype.values())
     return np.issubdtype(dtype, np.complexfloating)
+
+
+try:
+    from ducc0.misc import special_add_at
+except ImportError:
+    special_add_at = _special_add_at
 
 
 def issingleprec(dtype):
