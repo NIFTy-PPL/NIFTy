@@ -38,7 +38,7 @@ class OperatorAdapter(LinearOperator):
         3) adjoint inverse
     """
 
-    def __init__(self, op, op_transform, domain_dtype=float):
+    def __init__(self, op, op_transform):
         self._op = op
         self._trafo = int(op_transform)
         if self._trafo < 1 or self._trafo > 3:
