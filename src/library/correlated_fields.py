@@ -277,6 +277,7 @@ class _AmplitudeMatern(Operator):
         self.apply = op.apply
         self._domain, self._target = op.domain, op.target
         self._repr_str = "_AmplitudeMatern: " + op.__repr__()
+        self._op = op
 
     @property
     def fluctuation_amplitude(self):
@@ -389,6 +390,7 @@ class _Amplitude(Operator):
         self._domain, self._target = op.domain, op.target
         self._space = space
         self._repr_str = "_Amplitude: " + op.__repr__()
+        self._op = op
 
     @property
     def fluctuation_amplitude(self):
