@@ -56,6 +56,24 @@ def test_exec_time():
             ift.exec_time(oo, wm)
 
 
+def test_recursive_profile():
+    dom = ift.RGSpace(12, harmonic=True)
+    op = ift.HarmonicTransformOperator(dom)
+    op1 = op.ptw("exp")
+    lh = ift.GaussianEnergy(domain=op.target, sampling_dtype=np.float64) @ op1
+    ic = ift.GradientNormController(iteration_limit=2)
+    ham = ift.StandardHamiltonian(lh, ic_samp=ic)
+    ops = [op, op1, lh, ham]
+    for oo in ops:
+        loc = ift.from_random(oo.domain)
+        print(ift.recursive_operator_tree_profile(oo, loc, ntries=3))
+        for kk, vv in ift.full_recursive_operator_tree_profile(oo, loc, ntries=3).items():
+            print(kk)
+            print(vv)
+        print()
+
+
+
 @pmp('mf', [False, True])
 @pmp('cplx', [False, True])
 def test_calc_pos(mf, cplx):
