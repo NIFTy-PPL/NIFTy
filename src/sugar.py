@@ -559,6 +559,82 @@ def plot_priorsamples(op, n_samples=5, common_colorbar=True, **kwargs):
     p.output(**kwargs)
 
 
+def calculate_position(operator, output):
+    """Finds approximate preimage of an operator for a given output."""
+    from .minimization.descent_minimizers import NewtonCG
+    from .minimization.iteration_controllers import GradientNormController
+    from .minimization.kl_energies import SampledKLEnergy
+    from .operators.energy_operators import GaussianEnergy, StandardHamiltonian
+
+    if not isinstance(operator, Operator):
+        raise TypeError
+    if output.domain != operator.target:
+        raise TypeError
+    if isinstance(output, MultiField):
+        cov = 1e-3*max([np.max(np.abs(vv)) for vv in output.asnumpy().values()])**2
+        invcov = ScalingOperator(output.domain, cov).inverse
+        dtype = list(set([ff.dtype for ff in output.values()]))
+        if len(dtype) != 1:
+            raise ValueError('Only MultiFields with one dtype supported.')
+        dtype = dtype[0]
+    else:
+        cov = 1e-3*np.max(np.abs(output.asnumpy()))**2
+        dtype = output.dtype
+    invcov = ScalingOperator(output.domain, cov, output.dtype).inverse
+    d = output + invcov.draw_sample(from_inverse=True)
+    lh = GaussianEnergy(d, invcov) @ operator
+    H = StandardHamiltonian(
+        lh, ic_samp=GradientNormController(iteration_limit=200))
+    pos = 0.1*from_random(operator.domain)
+    minimizer = NewtonCG(GradientNormController(iteration_limit=10, name='findpos'))
+    for ii in range(3):
+        logger.info(f'Start iteration {ii+1}/3')
+        kl = SampledKLEnergy(pos, H, 3, None)
+        kl, _ = minimizer(kl)
+        pos = kl.position
+    return pos
+
+
+def is_likelihood_energy(obj):
+    """Checks if object behaves like a likelihood energy.
+    """
+    return isinstance(obj, Operator) and obj.get_transformation() is not None
+
+
+def is_operator(obj):
+    """Checks if object is operator-like.
+
+    Note
+    ----
+    A simple `isinstance(obj, ift.Operator)` does not give the expected result
+    because, e.g., :class:`~nifty8.field.Field` inherits from
+    :class:`~nifty8.operators.operator.Operator`.
+    """
+    return isinstance(obj, Operator) and obj.val is None
+
+
+def is_linearization(obj):
+    """Checks if object is linearization-like."""
+    return isinstance(obj, Operator) and obj.jac is not None
+
+
+def is_fieldlike(obj):
+    """Checks if object is field-like.
+
+    Note
+    ----
+    A simple `isinstance(obj, ift.Field)` does not give the expected result
+    because users might have implemented another class which behaves field-like
+    but is not an instance of :class:`~nifty8.field.Field`. Also note that
+    instances of :class:`~nifty8.linearization.Linearization` behave
+    field-like.
+    """
+    return isinstance(obj, Operator) and obj.val is not None
+
+
+# -------------------------------------------------------------------------------
+# Profiling Utilities
+# -------------------------------------------------------------------------------
 def exec_time(obj, want_metric=True, verbose=False, domain_dtype=np.float64, ntries=1,
               device_id=-1, dump_prefix=None):
     """Times the execution time of an operator or an energy.
@@ -636,9 +712,7 @@ def exec_time(obj, want_metric=True, verbose=False, domain_dtype=np.float64, ntr
         want_metric = bool(want_metric)
 
         pos = from_random(obj.domain, 'normal', dtype=domain_dtype, device_id=device_id)
-        pos2 = from_random(obj.domain, 'normal', dtype=domain_dtype, device_id=device_id)
         lin = Linearization.make_var(pos, want_metric=want_metric)
-        lin2 = Linearization.make_var(pos, want_metric=want_metric)
         _profile_func(lambda x: x(pos), obj, "Operator call with field\t\t", "apply")
         res = _profile_func(lambda x: x(lin), obj, "Operator call with linearization\t", "apply_lin")
         _profile_func(lambda x: res.jac(x), pos, "Apply linearization\t\t\t", "jac")
@@ -652,76 +726,3 @@ def exec_time(obj, want_metric=True, verbose=False, domain_dtype=np.float64, ntr
         raise TypeError
 
     return timing_results
-
-
-def calculate_position(operator, output):
-    """Finds approximate preimage of an operator for a given output."""
-    from .minimization.descent_minimizers import NewtonCG
-    from .minimization.iteration_controllers import GradientNormController
-    from .minimization.kl_energies import SampledKLEnergy
-    from .operators.energy_operators import GaussianEnergy, StandardHamiltonian
-
-    if not isinstance(operator, Operator):
-        raise TypeError
-    if output.domain != operator.target:
-        raise TypeError
-    if isinstance(output, MultiField):
-        cov = 1e-3*max([np.max(np.abs(vv)) for vv in output.asnumpy().values()])**2
-        invcov = ScalingOperator(output.domain, cov).inverse
-        dtype = list(set([ff.dtype for ff in output.values()]))
-        if len(dtype) != 1:
-            raise ValueError('Only MultiFields with one dtype supported.')
-        dtype = dtype[0]
-    else:
-        cov = 1e-3*np.max(np.abs(output.asnumpy()))**2
-        dtype = output.dtype
-    invcov = ScalingOperator(output.domain, cov, output.dtype).inverse
-    d = output + invcov.draw_sample(from_inverse=True)
-    lh = GaussianEnergy(d, invcov) @ operator
-    H = StandardHamiltonian(
-        lh, ic_samp=GradientNormController(iteration_limit=200))
-    pos = 0.1*from_random(operator.domain)
-    minimizer = NewtonCG(GradientNormController(iteration_limit=10, name='findpos'))
-    for ii in range(3):
-        logger.info(f'Start iteration {ii+1}/3')
-        kl = SampledKLEnergy(pos, H, 3, None)
-        kl, _ = minimizer(kl)
-        pos = kl.position
-    return pos
-
-
-def is_likelihood_energy(obj):
-    """Checks if object behaves like a likelihood energy.
-    """
-    return isinstance(obj, Operator) and obj.get_transformation() is not None
-
-
-def is_operator(obj):
-    """Checks if object is operator-like.
-
-    Note
-    ----
-    A simple `isinstance(obj, ift.Operator)` does not give the expected result
-    because, e.g., :class:`~nifty8.field.Field` inherits from
-    :class:`~nifty8.operators.operator.Operator`.
-    """
-    return isinstance(obj, Operator) and obj.val is None
-
-
-def is_linearization(obj):
-    """Checks if object is linearization-like."""
-    return isinstance(obj, Operator) and obj.jac is not None
-
-
-def is_fieldlike(obj):
-    """Checks if object is field-like.
-
-    Note
-    ----
-    A simple `isinstance(obj, ift.Field)` does not give the expected result
-    because users might have implemented another class which behaves field-like
-    but is not an instance of :class:`~nifty8.field.Field`. Also note that
-    instances of :class:`~nifty8.linearization.Linearization` behave
-    field-like.
-    """
-    return isinstance(obj, Operator) and obj.val is not None
