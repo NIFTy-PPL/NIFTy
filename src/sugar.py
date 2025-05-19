@@ -13,6 +13,7 @@
 #
 # Copyright(C) 2013-2021 Max-Planck-Society
 # Copyright(C) 2022-2025 Philipp Arras
+# Copyright(C) 2025 LambdaFields GmbH
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -21,6 +22,7 @@ import io
 import pstats
 import sys
 from time import time
+from warnings import warn
 
 import numpy as np
 
@@ -46,6 +48,7 @@ __all__ = ['PS_field', 'power_analyze', 'create_power_operator',
            'is_linearization', 'is_operator', 'makeDomain', 'is_likelihood_energy',
            'get_signal_variance', 'makeOp', 'domain_union',
            'get_default_codomain', 'single_plot', 'exec_time',
+           'recursive_operator_tree_profile', 'full_recursive_operator_tree_profile',
            'calculate_position', 'plot_priorsamples'] + list(pointwise.ptw_dict.keys())
 
 
@@ -726,3 +729,188 @@ def exec_time(obj, want_metric=True, verbose=False, domain_dtype=np.float64, ntr
         raise TypeError
 
     return timing_results
+
+
+def operator_tree_traverse(func, op, loc, depth=np.inf):
+    """Recursively traverse a operator tree and apply a function at each leaf
+
+    Parameters
+    ----------
+    func : callable
+        A function to apply at each operator node. Should take two arguments:
+        the operator (`op`) and the associated location (`loc`), and return a
+        result.
+    op : Operator
+        The operator to traverse.
+    loc : Field or MultiField
+        The input data on which the operator acts. Must match the domain of the
+        operator.
+    depth : int
+        The maximum depth to which the tree should be traversed. A depth of 0
+        stops recursion and treats the current operator as a leaf. Default: inf.
+
+    Returns
+    -------
+    dict
+        A dictionary with the following keys:
+        - 'result': The output of `func(op, loc)`.
+        - 'name': The class name of the operator.
+        - 'leaves': A tuple of recursively collected results from child operators, or an
+                    empty tuple if `depth` is 0 or the operator is treated as a leaf.
+    """
+    from .library.correlated_fields import _Amplitude, _AmplitudeMatern
+    from .linearization import Linearization
+    from .operators.chain_operator import ChainOperator
+    from .operators.energy_operators import (StandardHamiltonian,
+                                             _LikelihoodChain)
+    from .operators.operator import _OpChain, _OpProd, _OpSum
+    from .operators.operator_adapter import OperatorAdapter
+    from .operators.sampling_enabler import SamplingEnabler
+    from .operators.sandwich_operator import SandwichOperator
+    from .operators.sum_operator import SumOperator
+
+    if op.domain is not loc.domain:
+        raise ValueError(f"Domain mismatch. Got op.domain:\n"
+                         f"{op.domain}\n\nGot loc.domain:\n{loc.domain}")
+    if not isinstance(op, OperatorAdapter):
+        name = type(op).__name__
+    else:
+        mode = [None, "adjoint", "inverse", "adjoint inverse"][op._trafo]
+        name = f"{type(op._op).__name__}.{mode}"
+
+    out = dict(result=func(op, loc), name=name)
+
+    if depth == 0:
+        out["leaves"] = tuple()
+        return out
+    depth = depth - 1
+
+    def _reset_lin(x):
+        if isinstance(x, Linearization):
+            return Linearization.make_var(x.val)
+        return x
+
+    def _extract(x, domain):
+        if isinstance(x, Linearization):
+            return Linearization.make_var(x.val.extract(domain))
+        return x.extract(domain)
+
+    if isinstance(op, (_LikelihoodChain, _Amplitude, _AmplitudeMatern)):
+        out["leaves"] = (operator_tree_traverse(func, op._op, loc, depth),)
+
+    elif isinstance(op, StandardHamiltonian):
+        out["leaves"] = tuple(operator_tree_traverse(func, oo, loc, depth)
+                              for oo in [op._lh, op._prior])
+
+    elif isinstance(op, SamplingEnabler):
+        out["leaves"] = tuple(operator_tree_traverse(func, oo, loc, depth)
+                              for oo in [op._likelihood, op._prior])
+
+    elif isinstance(op, SandwichOperator):
+        bun = operator_tree_traverse(func, op._bun, loc, depth)
+        bun_adjoint = operator_tree_traverse(func, op._bun.adjoint,
+                                             _reset_lin(op._bun(loc)), depth)
+        cheese = operator_tree_traverse(func, op._cheese,
+                                        _reset_lin(op._bun(loc)), depth)
+        out["leaves"] = (bun_adjoint, cheese, bun)
+
+    elif isinstance(op, (_OpChain, ChainOperator)):
+        # Compute intermediate locations of operator chain
+        locs = [loc]
+        for oo in reversed(op._ops):
+            locs.append(_reset_lin(oo(locs[-1])))
+        locs.pop()  # Final result is not a input
+        assert len(locs) == len(op._ops)
+        locs = list(reversed(locs))
+        for oo, ll in zip(op._ops, locs):
+            assert oo.domain is ll.domain
+
+        # Actually traverse
+        out["leaves"] = tuple(operator_tree_traverse(func, oo, ll, depth)
+                              for oo, ll in zip(op._ops, locs))
+
+    elif isinstance(op, (_OpProd, _OpSum)):
+        newloc = [_extract(loc, op._op1.domain),
+                  _extract(loc, op._op2.domain)]
+        out["leaves"] = tuple(operator_tree_traverse(func, oo, ll, depth) for oo, ll in
+                              zip([op._op1, op._op2], newloc))
+
+    elif isinstance(op, SumOperator):
+        out["leaves"] = tuple(operator_tree_traverse(func, oo, _extract(loc, oo.domain), depth)
+                              for oo in op._ops)
+
+    elif isinstance(op, OperatorAdapter) and isinstance(op._op, SumOperator) and mode == "adjoint":
+        out["leaves"] = tuple(operator_tree_traverse(func, oo.adjoint, _extract(loc, oo.target), depth)
+                              for oo in op._op._ops)
+
+    # Endpoints
+    elif isinstance(op, OperatorAdapter):
+        warn(f"{type(op)} treated as endpoint with children: {op._op}")
+        out["leaves"] = tuple()
+
+    else:
+        warn(f"{type(op)} treated as endpoint")
+        out["leaves"] = tuple()
+
+    return out
+
+
+def recursive_operator_tree_profile(op, loc, ntries, depth=np.inf):
+    if isinstance(loc.domain, DomainTuple):
+        device_id = loc.device_id
+    else:
+        device_id = set(loc.device_id.values())
+        if len(device_id) > 1:
+            raise NotImplementedError("`loc` is distributed across multiple devices")
+        device_id = list(device_id)[0]
+    assert isinstance(device_id, int) and device_id >= -1
+    if op.domain is not loc.domain:
+        raise ValueError("domain mismatch")
+
+    if device_id > -1:
+        import cupy
+        synchronize = cupy.cuda.Device(device_id).synchronize
+    else:
+        synchronize = lambda : None
+
+    def func(op, loc):
+        # Warm up
+        for _ in range(3):
+            op(loc)
+        synchronize()
+        t0 = time()
+        for _ in range(ntries):
+            op(loc)
+        synchronize()
+        return f"{(time()-t0)*1000/ntries:.3f} ms"
+
+    data = operator_tree_traverse(func, op, loc, depth)
+
+    return _format_helper(data)
+
+
+def full_recursive_operator_tree_profile(op, loc, ntries, depth=np.inf):
+    from .linearization import Linearization
+
+    out = dict()
+    out["apply"] = recursive_operator_tree_profile(op, loc, ntries, depth)
+    loc = Linearization.make_var(loc, want_metric=True)
+    out["apply_lin"] = recursive_operator_tree_profile(op, loc, ntries, depth)
+    res = op(loc)
+    out["jac"] = recursive_operator_tree_profile(res.jac, loc, ntries, depth)
+    out["jac.adjoint"] = recursive_operator_tree_profile(res.jac.adjoint, res.val, ntries, depth)
+    if res.metric is not None:
+        out["metric"] = recursive_operator_tree_profile(res.metric, loc, ntries, depth)
+    return out
+
+
+def _format_helper(data, _level=0):
+    assert "result" in data
+    assert "leaves" in data
+    assert "name" in data
+
+    s = f"{data['result']:>12}" + f" {_level:>3} " + _level*"  " + str(data["name"]) + "\n"
+    if data["leaves"] != tuple():
+        for newdata in data["leaves"]:
+            s += _format_helper(newdata, _level=_level+1)
+    return s
