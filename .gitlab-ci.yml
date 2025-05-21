@@ -72,13 +72,13 @@ run_ipynb0:
   stage: demo_runs
   script:
     - jupytext --to ipynb demos/old_nifty/getting_started_0.py
-    - jupyter nbconvert --execute --ExecutePreprocessor.timeout=None --to html demos/old_nifty/getting_started_0.ipynb
+    - jupyter-nbconvert --to markdown --execute --ExecutePreprocessor.timeout=None demos/old_nifty/getting_started_0.ipynb
 
 run_ipynb1:
   stage: demo_runs
   script:
     - jupytext --to ipynb demos/old_nifty/getting_started_4_CorrelatedFields.py
-    - jupyter nbconvert --execute --ExecutePreprocessor.timeout=None --to html demos/old_nifty/getting_started_4_CorrelatedFields.ipynb
+    - jupyter-nbconvert --to markdown --execute --ExecutePreprocessor.timeout=None demos/old_nifty/getting_started_4_CorrelatedFields.ipynb
 
 run_getting_started_1:
   stage: demo_runs
