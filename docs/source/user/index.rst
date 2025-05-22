@@ -22,7 +22,7 @@ The following page provides a demonstration of the Correlated field model in NIF
 .. toctree::
    :maxdepth: 1
 
-   niftyre_getting_started_4_CorrelatedFields
+   a_correlated_field
 
 In-depth discussion of important concepts in NIFTy and details on how to cite NIFTy is provided on the following pages:
 
