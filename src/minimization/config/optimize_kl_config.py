@@ -21,7 +21,7 @@ import os
 from configparser import ConfigParser
 from warnings import warn
 
-from ...utilities import myassert
+from ...utilities import myassert, strtobool
 
 # FIXME point_estimates, constants?
 # FIXME "2**lh0" looks weird. Change syntax? Use "$" for references?
@@ -265,6 +265,8 @@ class OptimizeKLConfig:
             if val == "None":
                 return None
             if dtype is not None:
+                if dtype is bool:
+                    val = strtobool(val)
                 val = dtype(val)
             return val
 
