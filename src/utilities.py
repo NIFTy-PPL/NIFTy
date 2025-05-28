@@ -610,3 +610,13 @@ class Nop:
         return Nop()
     def __getattr__(self, _):
         return self.nop
+
+
+def strtobool(val):
+    val = val.lower().strip()
+    if val in ('y', 'yes', 't', 'true', 'on', '1'):
+        return True
+    elif val in ('n', 'no', 'f', 'false', 'off', '0'):
+        return False
+    else:
+        raise ValueError(f"invalid truth value {val!r}")
