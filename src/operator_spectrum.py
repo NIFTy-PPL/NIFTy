@@ -19,7 +19,6 @@ import scipy.sparse.linalg as ssl
 from .domain_tuple import DomainTuple
 from .domains.unstructured_domain import UnstructuredDomain
 from .extra import myassert
-from .field import Field
 from .multi_domain import MultiDomain
 from .multi_field import MultiField
 from .operators.linear_operator import LinearOperator

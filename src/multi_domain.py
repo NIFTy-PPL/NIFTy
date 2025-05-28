@@ -16,7 +16,7 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 from .domain_tuple import DomainTuple
-from .utilities import check_object_identity, frozendict, indent
+from .utilities import check_object_identity, frozendict
 
 
 class MultiDomain:
