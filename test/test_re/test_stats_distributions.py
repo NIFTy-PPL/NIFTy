@@ -46,28 +46,41 @@ def test_lognormal_roundtrip(mean, std, seed):
 
 
 @pmp(
-    "stats_and_prior",
-    (
-        (stats.norm(), jft.normal_prior(mean=0, std=1)),
-        (stats.laplace(), jft.laplace_prior(alpha=1)),
-        (stats.lognorm(s=1), jft.lognormal_prior(None, None, _log_mean=0, _log_std=1)),
-        (stats.invgamma(a=2), jft.invgamma_prior(a=2, scale=1)),
-        (stats.uniform(), jft.uniform_prior(a_min=0, a_max=1)),
-        (stats.norm(), jft.NormalPrior(mean=0, std=1)),
-        (stats.laplace(), jft.LaplacePrior(alpha=1)),
+    "name, stats_distr, prior_dist",
+    [
+        ('normal_prior call', stats.norm(), jft.normal_prior(mean=0, std=1)),
+        ('laplace_prior call', stats.laplace(), jft.laplace_prior(alpha=1)),
+        ('lognormal_prior call', stats.lognorm(s=1), jft.lognormal_prior(None, None, _log_mean=0, _log_std=1)),
+        ('invgamma_prior call', stats.invgamma(a=2), jft.invgamma_prior(a=2, scale=1)),
+        ('uniform_prior call', stats.uniform(), jft.uniform_prior(a_min=0, a_max=1)),
+        ('NormalPrior model', stats.norm(), jft.NormalPrior(mean=0, std=1)),
+        ('LaplacePrior model', stats.laplace(), jft.LaplacePrior(alpha=1)),
         (
+            'LogNormalPrior model',
             stats.lognorm(s=1),
             jft.LogNormalPrior(np.exp(0.5), np.exp(0.5) * np.sqrt(np.exp(1) - 1)),
         ),
-        (stats.invgamma(a=2), jft.InvGammaPrior(a=2, scale=1)),
-        (stats.uniform(), jft.UniformPrior(a_min=0, a_max=1)),
-    ),
+        ('InvGammaPrior model', stats.invgamma(a=2), jft.InvGammaPrior(a=2, scale=1)),
+        ('UniformPrior model', stats.uniform(), jft.UniformPrior(a_min=0, a_max=1)),
+    ],
 )
-def test_quantiles(stats_and_prior):
-    stats_distr, prior_dist = stats_and_prior
+def test_quantiles(name, stats_distr, prior_dist):
+    pp = np.linspace(-8.2, 8.2, num=100, endpoint=True)
+    q = stats.norm.cdf(pp, loc=0.0, scale=1.0)
+
+    gt = stats_distr.ppf(q)
+    ours = prior_dist(pp)
+
     atol = 0.0
     rtol = 1e-9 if not stats_distr.dist.name == "invgamma" else 1e-5
 
-    q = np.linspace(1e-6, 1 - 1e-6, num=100, endpoint=True)
-    pp = stats.norm.ppf(q, loc=0.0, scale=1.0)
-    assert_allclose(prior_dist(pp), stats_distr.ppf(q), rtol=rtol, atol=atol)
+    # adapt tolerance level for high pp values to account for scipy.norm.cdf becoming somewhat inaccurate
+    rtol = np.full_like(pp, rtol)
+    for i in (5.67, 6, 6.33, 6.67, 7, 7.33, 7.67, 8):
+        rtol[pp > i] *= 10
+
+    # allclose cannot handle per-element tolerance specification
+    # slice arrays by tolerance level of entries
+    for rtol_test in np.unique(rtol):
+        idx = (rtol == rtol_test)
+        assert_allclose(ours[idx], gt[idx], rtol=rtol_test, atol=atol)
