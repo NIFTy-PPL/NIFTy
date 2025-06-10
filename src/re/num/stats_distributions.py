@@ -178,9 +178,13 @@ def interpolator(
         ve = "either but not both of `step` and `num` must be specified"
         raise ValueError(ve)
     if step is not None:
-        xs = jnp.arange(xmin, xmax + step, step)
+        # numpy array to enforce float64
+        import numpy as np
+        xs = np.arange(xmin, xmax + step, step)
     elif num is not None:
-        xs = jnp.linspace(xmin, xmax, num)
+        # numpy array to enforce float64
+        import numpy as np
+        xs = np.linspace(xmin, xmax, num)
     else:
         ve = "either of `step` or `num` must be specified"
         raise ValueError(ve)
@@ -252,9 +256,9 @@ def invgamma_prior(a, scale, loc=0.0, step=1e-2) -> Callable:
         raise TypeError(te)
     if loc == 0.0:
         # Pull out `scale` to interpolate less
-        s2i = lambda x: invgamma.ppf(norm._cdf(x), a=a)
+        s2i = lambda x: invgamma.ppf(norm.cdf(x), a=a)
     elif jnp.isscalar(scale):
-        s2i = lambda x: invgamma.ppf(norm._cdf(x), a=a, loc=loc, scale=scale)
+        s2i = lambda x: invgamma.ppf(norm.cdf(x), a=a, loc=loc, scale=scale)
     else:
         raise TypeError("`scale` may only be array-like for `loc == 0.`")
 
@@ -279,7 +283,7 @@ def invgamma_invprior(a, scale, loc=0.0, step=1e-2) -> Callable:
 
     xmin, xmax = -8.2, 8.2  # (1. - norm.cdf(8.2)) * 2 < 1e-15
     _, invgamma_to_standard = interpolator(
-        lambda x: invgamma.ppf(norm._cdf(x), a=a, loc=loc, scale=scale),
+        lambda x: invgamma.ppf(norm.cdf(x), a=a, loc=loc, scale=scale),
         xmin,
         xmax,
         step=step,
