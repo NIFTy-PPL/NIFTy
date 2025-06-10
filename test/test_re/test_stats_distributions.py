@@ -66,27 +66,38 @@ def test_lognormal_roundtrip(mean, std, seed):
     ],
 )
 def test_quantiles(name, stats_distr, prior_dist, eval_dtype):
+    # test for latent values from -8.2 to 8.2
     pp = np.linspace(-8.2, 8.2, num=100, endpoint=True)
     q = stats.norm.cdf(pp, loc=0.0, scale=1.0)
 
+    # convert to jax numpy array of eval_dtype to test paractical usage scenario
     pp = jax.numpy.array(pp, dtype=eval_dtype)
-    q = jax.numpy.array(q, dtype=eval_dtype)
 
+    # evaluate transfer functions
     gt = stats_distr.ppf(q)
     ours = prior_dist(pp)
 
-    atol = 0.0
-    rtol = 1e-9 if not stats_distr.dist.name == "invgamma" else 1e-5
-
-    # adapt tolerance level for high pp values to account for scipy.norm.cdf becoming somewhat inaccurate
-    rtol = np.full_like(pp, rtol)
-    for i in (5.67, 6, 6.33, 6.67, 7, 7.33, 7.67, 8):
-        rtol[pp > i] *= 10
-
+    # catch NaNs
     assert not np.any(np.isnan(ours))
+
+    # set tolerances based on distributions and eval_dtypes
+    if stats_distr.dist.name == "invgamma":
+        # InverseGamma prior uses interpolation, error independent of dtype
+        rtol = np.full_like(gt, 1e-5)
+        rtol[pp >= 7] = 1e-2   # higher error for pp values >= 7
+    elif stats_distr.dist.name == 'uniform':
+        rtol = 1e-5 if eval_dtype == 'float32' else 1e-12
+        rtol = np.full_like(gt, rtol)
+    else:
+        rtol = 1e-6 if eval_dtype == 'float32' else 1e-9
+        rtol = np.full_like(gt, rtol)
+        # scipy.norm.cdf becomes imprecise for high pp values
+        # dynamically adjust tolerance
+        rtol_dyn = 10 ** (-1.5 - 2 * (8.2 - pp))
+        rtol = np.max([rtol, rtol_dyn], axis=0)
 
     # allclose cannot handle per-element tolerance specification
     # slice arrays by tolerance level of entries
     for rtol_test in np.unique(rtol):
         idx = (rtol == rtol_test)
-        assert_allclose(ours[idx], gt[idx], rtol=rtol_test, atol=atol)
+        assert_allclose(ours[idx], gt[idx], rtol=rtol_test, atol=0.0)
