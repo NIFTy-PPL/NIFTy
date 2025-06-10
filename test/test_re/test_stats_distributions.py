@@ -45,6 +45,7 @@ def test_lognormal_roundtrip(mean, std, seed):
     assert_allclose(n_roundtrip, n_rvs, rtol=1e-6, atol=1e-6)
 
 
+@pmp("eval_dtype", ['float32', 'float64'])
 @pmp(
     "name, stats_distr, prior_dist",
     [
@@ -64,9 +65,12 @@ def test_lognormal_roundtrip(mean, std, seed):
         ('UniformPrior model', stats.uniform(), jft.UniformPrior(a_min=0, a_max=1)),
     ],
 )
-def test_quantiles(name, stats_distr, prior_dist):
+def test_quantiles(name, stats_distr, prior_dist, eval_dtype):
     pp = np.linspace(-8.2, 8.2, num=100, endpoint=True)
     q = stats.norm.cdf(pp, loc=0.0, scale=1.0)
+
+    pp = jax.numpy.array(pp, dtype=eval_dtype)
+    q = jax.numpy.array(q, dtype=eval_dtype)
 
     gt = stats_distr.ppf(q)
     ours = prior_dist(pp)
@@ -78,6 +82,8 @@ def test_quantiles(name, stats_distr, prior_dist):
     rtol = np.full_like(pp, rtol)
     for i in (5.67, 6, 6.33, 6.67, 7, 7.33, 7.67, 8):
         rtol[pp > i] *= 10
+
+    assert not np.any(np.isnan(ours))
 
     # allclose cannot handle per-element tolerance specification
     # slice arrays by tolerance level of entries
