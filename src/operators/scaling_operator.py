@@ -56,8 +56,8 @@ class ScalingOperator(EndomorphicOperator):
     """
 
     def __init__(self, domain, factor, sampling_dtype=None):
-        from ..sugar import makeDomain
         from ..any_array import AnyArray
+        from ..sugar import makeDomain
 
         if isinstance(factor, AnyArray) and factor.shape == tuple():
             factor = factor.at(-1, check_fail=False).val[()]

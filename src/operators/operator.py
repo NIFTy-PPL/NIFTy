@@ -18,8 +18,6 @@
 import numbers
 from functools import reduce
 from operator import add
-from typing import Callable, Optional
-from warnings import warn
 
 import numpy as np
 
@@ -316,7 +314,7 @@ class Operator(metaclass=NiftyMeta):
             return self @ DomainChangerAndReshaper(newdom, self.domain)
 
     def ducktape_left(self, name):
-        from ..sugar import is_fieldlike, is_operator, makeDomain
+        from ..sugar import is_fieldlike, is_operator
         from .simple_linear_operators import DomainChangerAndReshaper, ducktape
 
         if isinstance(name, str):  # convert to MultiDomain
@@ -438,9 +436,9 @@ class _FunctionApplier(Operator):
         self._kwargs = kwargs
 
     def _device_preparation(self, x):
+        from ..any_array import AnyArray
         from ..field import Field
         from ..multi_field import MultiField
-        from ..any_array import AnyArray
         args = list(self._args)
         for i, a in enumerate(args):
             if isinstance(a, (AnyArray, Field, MultiField)):

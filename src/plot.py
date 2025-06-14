@@ -31,7 +31,7 @@ from .domains.rg_space import RGSpace
 from .field import Field
 from .minimization.iteration_controllers import EnergyHistory
 from .multi_field import MultiField
-from .utilities import check_object_identity, myassert
+from .utilities import myassert
 
 # relevant properties:
 # - x/y size
@@ -598,7 +598,7 @@ class Plot:
 
         if isinstance(dom, DomainTuple) \
                 and any(isinstance(dd, RGSpace) for dd in dom) \
-                and not "freq_space_idx" in kwargs \
+                and "freq_space_idx" not in kwargs \
                 and not plottable2D(f[0], kwargs.get("freq_space_idx", 1)):
             from .sugar import makeField
 

@@ -565,13 +565,3 @@ def device_available():
 def assert_device_available():
     if not device_available():
         raise RuntimeError("Cupy not installed or cuda device not available")
-
-
-def strtobool(val):
-    val = val.lower().strip()
-    if val in ('y', 'yes', 't', 'true', 'on', '1'):
-        return True
-    elif val in ('n', 'no', 'f', 'false', 'off', '0'):
-        return False
-    else:
-        raise ValueError(f"invalid truth value {val!r}")

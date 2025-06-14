@@ -23,8 +23,8 @@ class ADVIOptimizer(Minimizer):
     """Provide an implementation of an adaptive step-size sequence optimizer,
     following https://arxiv.org/abs/1603.00788.
 
-    This stochastic optimizer keeps track of the evolution of the gradient over 
-    the last steps to adaptively determine the step-size of the next update. 
+    This stochastic optimizer keeps track of the evolution of the gradient over
+    the last steps to adaptively determine the step-size of the next update.
     It is a variation of the Adam optimizer for Gaussian variational inference
     and it allows to optimizer stochastic loss functions.
 
@@ -43,7 +43,7 @@ class ADVIOptimizer(Minimizer):
     epsilon: positive float
         A small value guarantees Robbins and Monro conditions.
     resample: bool
-        Whether the loss function is resampled for the next iteration. 
+        Whether the loss function is resampled for the next iteration.
         Stochastic losses require resampleing, deterministic ones not.
     """
 
