@@ -115,7 +115,7 @@
             venvShellHook
             python-lsp-server
             python-lsp-ruff
-	    pkgs.ruff
+            pkgs.ruff
           ]);
           venvDir = ".nix-nifty-venv";
 
@@ -133,12 +133,13 @@
             venvShellHook
             python-lsp-server
             python-lsp-ruff
-	    pkgs-cuda.ruff
+            pkgs-cuda.ruff
           ]);
           venvDir = ".nix-nifty-cuda-venv";
 
-	  CUDA_HOME = "/usr/local/cuda";
-          LD_LIBRARY_PATH = "${pkgs-cuda.cudaPackages.cudatoolkit.lib}/lib:/usr/local/cuda/lib64";
+          CUDA_HOME = "/usr/local/cuda";
+          LD_LIBRARY_PATH =
+            "${pkgs-cuda.cudaPackages.cudatoolkit.lib}/lib:/usr/local/cuda/lib64";
 
           shellHook = ''
             export PIP_PREFIX=$(pwd)/_build/pip_packages
