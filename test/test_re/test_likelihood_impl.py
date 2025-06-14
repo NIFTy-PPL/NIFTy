@@ -5,12 +5,12 @@ from functools import partial, reduce
 
 import jax
 import jax.numpy as jnp
+import nifty8.re as jft
+import numpy as np
 import pytest
 from jax import random
 from jax.tree_util import tree_map
 from numpy.testing import assert_allclose
-
-import nifty8.re as jft
 
 jax.config.update("jax_enable_x64", True)
 
@@ -369,7 +369,7 @@ def test_nifty_vcgaussian_vs_niftyre_vcgaussian_consistency(seed, iscomplex):
     def op_jft(x):
         return [val * x["res"], jnp.sqrt(jnp.exp(x["invcov"]))]
 
-    varcov_jft = jft.VariableCovarianceGaussian(data.val, iscomplex).amend(op_jft)
+    varcov_jft = jft.VariableCovarianceGaussian(data.asnumpy(), iscomplex).amend(op_jft)
 
     def shapewithdtype_from_domain(domain, dtype=float):
         if isinstance(dtype, dict):
@@ -394,7 +394,11 @@ def test_nifty_vcgaussian_vs_niftyre_vcgaussian_consistency(seed, iscomplex):
     def random_jft_ift_field(key):
         inp = jft.random_like(key, shapewithdtype_from_domain(op.domain))
         inp_nft = ift.MultiField(
-            op.domain, tree_map(ift.Field, op.domain.values(), tuple(inp.values()))
+            op.domain, tree_map(
+                ift.Field,
+                op.domain.values(),
+                tuple(np.array(v) for v in inp.values()),
+            )
         )
         return inp, inp_nft
 
@@ -403,8 +407,8 @@ def test_nifty_vcgaussian_vs_niftyre_vcgaussian_consistency(seed, iscomplex):
     inp_jft, inp_nft = random_jft_ift_field(sk)
     lh_jft = varcov_jft(inp_jft)
     lh_nft = varcov_nft(inp_nft)
-    print(f"test value :: nifty: {lh_nft.val:.4f} :: jft: {lh_jft:.4f}")
-    assert_allclose(lh_nft.val, lh_jft)
+    print(f"test value :: nifty: {lh_nft.asnumpy():.4f} :: jft: {lh_jft:.4f}")
+    assert_allclose(lh_nft.asnumpy(), lh_jft)
 
     # Test metric
     key, sk = random.split(key)
@@ -414,8 +418,8 @@ def test_nifty_vcgaussian_vs_niftyre_vcgaussian_consistency(seed, iscomplex):
     met_res_nft = met_nft(inp2_nft)
     met_res_jft = varcov_jft.metric(inp_jft, inp2_jft)
     print(f"test metric ::\nnifty: {met_res_nft.val}\njft: {met_res_jft}\n")
-    assert_allclose(met_res_nft["invcov"].val, met_res_jft["invcov"])
-    assert_allclose(met_res_nft["res"].val, met_res_jft["res"])
+    assert_allclose(met_res_nft["invcov"].asnumpy(), met_res_jft["invcov"])
+    assert_allclose(met_res_nft["res"].asnumpy(), met_res_jft["res"])
 
     # Test transform
     key, sk = random.split(key)
@@ -423,8 +427,8 @@ def test_nifty_vcgaussian_vs_niftyre_vcgaussian_consistency(seed, iscomplex):
     trafo_nft = varcov_nft.get_transformation()[1](inp3_nft)
     trafo_jft = varcov_jft.transformation(inp3_jft)
     print(f"test transform:\nnifty: {trafo_nft.val}\njft: {trafo_jft}\n")
-    assert_allclose(trafo_nft["res"].val, trafo_jft[0])
-    assert_allclose(trafo_nft["invcov"].val, trafo_jft[1])
+    assert_allclose(trafo_nft["res"].asnumpy(), trafo_jft[0])
+    assert_allclose(trafo_nft["invcov"].asnumpy(), trafo_jft[1])
 
 
 @pmp("lh_init", lh_init_true)

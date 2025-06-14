@@ -60,7 +60,6 @@
           dependencies = req.minimal ++ req.mpi;
           checkInputs = with myPyPkgs; [ pytestCheckHook pytest-xdist ]
             ++ allreqs;
-          disabledTestPaths = [ "test/test_re" ];
           postCheck = ''
             ${
               pkgs.lib.getExe' pkgs.mpi "mpirun"
@@ -78,7 +77,6 @@
           dependencies = req-cuda.minimal ++ req-cuda.mpi;
           checkInputs = with myPyPkgs-cuda; [ pytestCheckHook pytest-xdist ]
             ++ allreqs;
-          disabledTestPaths = [ "test/test_re" ];
           postCheck = ''
             ${
               pkgs-cuda.lib.getExe' pkgs-cuda.mpi "mpirun"

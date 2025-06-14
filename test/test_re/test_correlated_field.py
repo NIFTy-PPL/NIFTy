@@ -5,6 +5,7 @@ import jax
 import jax.random as random
 import nifty8 as ift
 import nifty8.re as jft
+import numpy as np
 import pytest
 from numpy.testing import assert_allclose
 
@@ -182,11 +183,12 @@ def test_nifty_vs_niftyre_non_parametric_cf(
 
     pos = jft.random_like(key, jcf.domain)
     npos = {
-        k: ift.makeField(cf.domain[k], v if k != "spectrum" else v.T)
+        k: ift.makeField(cf.domain[k],
+                         np.array(v) if k != "spectrum" else np.array(v.T))
         for k, v in pos.items()
     }
     npos = ift.MultiField.from_dict(npos, cf.domain)
-    assert_allclose(cf(npos).val, jcf(pos))
+    assert_allclose(cf(npos).asnumpy(), jcf(pos))
 
 
 @pmp("seed", [0, 42])
@@ -220,9 +222,9 @@ def test_nifty_vs_niftyre_matern_cf(
     cf = cfm.finalize(prior_info=0)
 
     pos = jft.random_like(key, jcf.domain)
-    npos = {k: ift.makeField(cf.domain[k], v) for k, v in pos.items()}
+    npos = {k: ift.makeField(cf.domain[k], np.array(v)) for k, v in pos.items()}
     npos = ift.MultiField.from_dict(npos, cf.domain)
-    assert_allclose(cf(npos).val, jcf(pos))
+    assert_allclose(cf(npos).asnumpy(), jcf(pos))
 
 
 CFG_OFFSET = dict(offset_mean=0, offset_std=(0.1, 0.1))
@@ -271,8 +273,9 @@ def test_nifty_vs_niftyre_product(seed, fluct1, fluct2):
 
     pos = jft.random_like(key, jcf.domain)
     npos = {
-        k: ift.makeField(cf.domain[k], v if not k.endswith("spectrum") else v.T)
+        k: ift.makeField(cf.domain[k],
+                         np.array(v) if not k.endswith("spectrum") else np.array(v.T))
         for k, v in pos.items()
     }
     npos = ift.MultiField.from_dict(npos, cf.domain)
-    assert_allclose(cf(npos).val, jcf(pos))
+    assert_allclose(cf(npos).asnumpy(), jcf(pos))
