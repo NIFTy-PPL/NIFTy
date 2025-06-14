@@ -19,7 +19,6 @@ from functools import reduce
 
 import numpy as np
 
-from . import utilities
 from .domains.domain import Domain
 
 

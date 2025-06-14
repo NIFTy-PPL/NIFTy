@@ -34,7 +34,7 @@ from .operators.linear_operator import LinearOperator
 from .operators.operator import Operator
 from .probing import StatCalculator
 from .sugar import from_random
-from .utilities import issingleprec, myassert, device_available
+from .utilities import device_available, issingleprec, myassert
 
 __all__ = ["check_linear_operator", "check_operator", "assert_allclose", "minisanity"]
 

@@ -27,7 +27,7 @@ from .endomorphic_operator import EndomorphicOperator
 # TODO: Eventually enforce somewhat modern ducc version (>=0.37.0) as nifty
 # dependency and remove the try statement below (also at other places)
 try:
-    from ducc0.misc.experimental import mul_conj, div_conj
+    from ducc0.misc.experimental import div_conj, mul_conj
     def mul_conj2(a, b):
         assert a.device_id == b.device_id
         if a.device_id == -1:

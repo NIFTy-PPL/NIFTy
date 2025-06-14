@@ -27,7 +27,7 @@ from ..domains.unstructured_domain import UnstructuredDomain
 from ..field import Field
 from ..operators.adder import Adder
 from ..operators.operator import Operator
-from ..sugar import is_fieldlike, makeOp
+from ..sugar import makeOp
 
 
 def _f_on_np(f, arr):

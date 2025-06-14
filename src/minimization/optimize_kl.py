@@ -270,7 +270,7 @@ def optimize_kl(likelihood_energy,
                          f"were given.")
     if _number_of_arguments(terminate_callback) !=1:
         raise ValueError(f"Terminate callback takes 1 argument but {_number_of_arguments(terminate_callback)} were given.")
-    if not likelihood_energy(initial_index).target is DomainTuple.scalar_domain():
+    if likelihood_energy(initial_index).target is not DomainTuple.scalar_domain():
         raise TypeError
 
     if sanity_checks:  # Potentially expensive sanity checks
@@ -288,7 +288,7 @@ def optimize_kl(likelihood_energy,
             else:
                 myassert(isinstance(sampling_iteration_controller(iglobal), IterationController))
             myassert(likelihood_energy(iglobal).target is DomainTuple.scalar_domain())
-            if not comm(iglobal) is None:
+            if comm(iglobal) is not None:
                 try:
                     import mpi4py
                     myassert(isinstance(comm(iglobal), mpi4py.MPI.Intracomm))
