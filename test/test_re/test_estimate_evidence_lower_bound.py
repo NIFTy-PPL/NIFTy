@@ -214,7 +214,7 @@ def test_estimate_elbo_nifty_re_vs_nifty(seed):
         n_samples.append(
             ift.MultiField.from_dict(
                 {
-                    k[1:]: ift.makeField(cf.domain[k[1:]], v - samples.pos[k])
+                    k[1:]: ift.makeField(cf.domain[k[1:]], np.array(v - samples.pos[k]))
                     for k, v in sample.tree.items()
                 },
                 cf.domain,
@@ -223,7 +223,8 @@ def test_estimate_elbo_nifty_re_vs_nifty(seed):
         neg.append(False)
 
     n_pos = {
-        k[1:]: ift.makeField(cf.domain[k[1:]], v) if k != "cf_spectrum" else v.T
+        k[1:]: ift.makeField(cf.domain[k[1:]],
+                             np.array(v) if k != "cf_spectrum" else np.array(v.T))
         for k, v in samples.pos.tree.items()
     }
     n_pos = ift.MultiField.from_dict(n_pos, cf.domain)
@@ -233,7 +234,7 @@ def test_estimate_elbo_nifty_re_vs_nifty(seed):
         n_samples_list.append(samp.val)
 
     N_inv = ift.ScalingOperator(cf.target, 1 / noise_level**2)
-    n_like = ift.GaussianEnergy(ift.makeField(cf.target, data), N_inv) @ cf
+    n_like = ift.GaussianEnergy(ift.makeField(cf.target, np.array(data)), N_inv) @ cf
 
     n_ham = ift.StandardHamiltonian(n_like)
 
@@ -242,7 +243,7 @@ def test_estimate_elbo_nifty_re_vs_nifty(seed):
 
     n_elbo_samples = []
     for n_elbo_sample in n_elbo.iterator():
-        n_elbo_samples.append(n_elbo_sample.val)
+        n_elbo_samples.append(n_elbo_sample.asnumpy())
     n_elbo_samples = np.array(n_elbo_samples)
 
     assert np.allclose(elbo, n_elbo_samples, atol=1e-8)
