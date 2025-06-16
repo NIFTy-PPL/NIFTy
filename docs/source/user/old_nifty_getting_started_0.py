@@ -1,1 +1,1 @@
-../../../demos/old_nifty/getting_started_0.py
+../../../demos/cl/getting_started_0.py

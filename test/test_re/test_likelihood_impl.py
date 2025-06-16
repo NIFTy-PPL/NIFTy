@@ -343,7 +343,7 @@ def test_residuals_allfinite(seed, shape, lh_init):
 
 @pmp("iscomplex", [False, True])
 def test_nifty_vcgaussian_vs_niftyre_vcgaussian_consistency(seed, iscomplex):
-    import nifty8 as ift
+    import nifty8.cl as ift
 
     key = random.PRNGKey(seed)
 

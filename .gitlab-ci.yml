@@ -53,7 +53,7 @@ test_mpi:
   variables:
     OMPI_MCA_btl_vader_single_copy_mechanism: none
   script:
-    - mpiexec -n 2 --bind-to none pytest -q test/test_mpi
+    - mpiexec -n 2 --bind-to none pytest -q test/test_cl/test_mpi
 
 pages:
   stage: release
@@ -71,19 +71,19 @@ pages:
 run_ipynb0:
   stage: demo_runs
   script:
-    - jupytext --to ipynb demos/old_nifty/getting_started_0.py
-    - jupyter-nbconvert --to markdown --execute --ExecutePreprocessor.timeout=None demos/old_nifty/getting_started_0.ipynb
+    - jupytext --to ipynb demos/cl/getting_started_0.py
+    - jupyter-nbconvert --to markdown --execute --ExecutePreprocessor.timeout=None demos/cl/getting_started_0.ipynb
 
 run_ipynb1:
   stage: demo_runs
   script:
-    - jupytext --to ipynb demos/old_nifty/getting_started_4_CorrelatedFields.py
-    - jupyter-nbconvert --to markdown --execute --ExecutePreprocessor.timeout=None demos/old_nifty/getting_started_4_CorrelatedFields.ipynb
+    - jupytext --to ipynb demos/cl/getting_started_4_CorrelatedFields.py
+    - jupyter-nbconvert --to markdown --execute --ExecutePreprocessor.timeout=None demos/cl/getting_started_4_CorrelatedFields.ipynb
 
 run_getting_started_1:
   stage: demo_runs
   script:
-    - python3 demos/old_nifty/getting_started_1.py
+    - python3 demos/cl/getting_started_1.py
   artifacts:
     paths:
       - '*.png'
@@ -91,7 +91,7 @@ run_getting_started_1:
 run_getting_started_2:
   stage: demo_runs
   script:
-    - python3 demos/old_nifty/getting_started_2.py
+    - python3 demos/cl/getting_started_2.py
   artifacts:
     paths:
       - 'getting_started_2_results'
@@ -100,7 +100,7 @@ run_getting_started_2:
 run_getting_started_3:
   stage: demo_runs
   script:
-    - python3 demos/old_nifty/getting_started_3.py
+    - python3 demos/cl/getting_started_3.py
   artifacts:
     paths:
       - 'getting_started_3_results'
@@ -109,7 +109,7 @@ run_getting_started_3:
 run_getting_started_3_mpi:
   stage: demo_runs
   script:
-    - mpirun -np 2 --bind-to none python3 demos/old_nifty/getting_started_3.py
+    - mpirun -np 2 --bind-to none python3 demos/cl/getting_started_3.py
   artifacts:
     paths:
       - 'getting_started_3_results'
@@ -118,7 +118,7 @@ run_getting_started_3_mpi:
 run_getting_started_mf:
   stage: demo_runs
   script:
-    - mpiexec -n 2 --bind-to none python3 demos/old_nifty/getting_started_5_mf.py
+    - mpiexec -n 2 --bind-to none python3 demos/cl/getting_started_5_mf.py
   artifacts:
     paths:
       - 'getting_started_mf_results'
@@ -127,7 +127,7 @@ run_getting_started_mf:
 run_getting_started_niftyre_intro:
   stage: demo_runs
   script:
-    - python3 demos/0_intro.py
+    - python3 demos/re/0_intro.py
   artifacts:
     paths:
       - '*.png'
@@ -135,7 +135,7 @@ run_getting_started_niftyre_intro:
 run_getting_started_niftyre_tomography:
   stage: demo_runs
   script:
-    - python3 demos/1_tomography.py
+    - python3 demos/re/1_tomography.py
   artifacts:
     paths:
       - '*.png'
@@ -143,7 +143,7 @@ run_getting_started_niftyre_tomography:
 run_getting_started_niftyre_nonlinear_regression:
   stage: demo_runs
   script:
-    - python3 demos/a_nonlinear_regression.py
+    - python3 demos/re/a_nonlinear_regression.py
   artifacts:
     paths:
       - '*.png'
@@ -151,7 +151,7 @@ run_getting_started_niftyre_nonlinear_regression:
 run_getting_started_niftyre_wiener_filter:
   stage: demo_runs
   script:
-    - python3 demos/a_wiener_filter.py
+    - python3 demos/re/a_wiener_filter.py
   artifacts:
     paths:
       - '*.png'
@@ -159,7 +159,7 @@ run_getting_started_niftyre_wiener_filter:
 run_getting_started_niftyre_icr:
   stage: demo_runs
   script:
-    - python3 demos/a_icr.py
+    - python3 demos/re/a_icr.py
   artifacts:
     paths:
       - '*.png'
@@ -167,7 +167,7 @@ run_getting_started_niftyre_icr:
 run_getting_started_7:
   stage: demo_runs
   script:
-    - python3 demos/old_nifty/getting_started_7_config_file.py demos/old_nifty/getting_started_7_config_file.cfg
+    - python3 demos/cl/getting_started_7_config_file.py demos/cl/getting_started_7_config_file.cfg
   artifacts:
     paths:
       - '*.png'
@@ -175,7 +175,7 @@ run_getting_started_7:
 run_getting_density:
   stage: demo_runs
   script:
-    - python3 demos/old_nifty/density_estimation.py
+    - python3 demos/cl/density_estimation.py
   artifacts:
     paths:
       - '*.png'
@@ -183,7 +183,7 @@ run_getting_density:
 run_model_comparison:
   stage: demo_runs
   script:
-    - python3 demos/old_nifty/model_comparison.py
+    - python3 demos/cl/model_comparison.py
   artifacts:
     paths:
       - '*.png'
@@ -191,7 +191,7 @@ run_model_comparison:
 run_bernoulli:
   stage: demo_runs
   script:
-    - python3 demos/old_nifty/bernoulli_map.py
+    - python3 demos/cl/bernoulli_map.py
   artifacts:
     paths:
       - '*.png'
@@ -199,7 +199,7 @@ run_bernoulli:
 run_curve_fitting:
   stage: demo_runs
   script:
-    - python3 demos/old_nifty/polynomial_fit.py
+    - python3 demos/cl/polynomial_fit.py
   artifacts:
     paths:
       - '*.png'
@@ -207,9 +207,9 @@ run_curve_fitting:
 run_visual_vi:
   stage: demo_runs
   script:
-    - python3 demos/old_nifty/variational_inference_visualized.py
+    - python3 demos/cl/variational_inference_visualized.py
 
 run_meanfield:
   stage: demo_runs
   script:
-    - python3 demos/old_nifty/parametric_variational_inference.py
+    - python3 demos/cl/parametric_variational_inference.py

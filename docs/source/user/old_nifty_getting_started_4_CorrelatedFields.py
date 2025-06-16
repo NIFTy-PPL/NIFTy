@@ -1,1 +1,1 @@
-../../../demos/old_nifty/getting_started_4_CorrelatedFields.py
+../../../demos/cl/getting_started_4_CorrelatedFields.py
