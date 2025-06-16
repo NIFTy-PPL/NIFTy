@@ -17,7 +17,7 @@
 import nifty8.cl as ift
 import numpy as np
 import pytest
-from nifty8.operator_spectrum import _DomRemover
+from nifty8.cl.operator_spectrum import _DomRemover
 
 from .common import setup_function, teardown_function
 
