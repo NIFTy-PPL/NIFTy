@@ -64,7 +64,7 @@ ift.extra.assert_allclose(a, b)
 # `Linearization`s (including the Jacobian), ...
 
 lin = ift.Linearization.make_var(fld)
-a = lin.ptw("myptw").asnumpy()
+a = lin.ptw("myptw").val
 b = ift.makeField(dom, func(fld.asnumpy()))
 ift.extra.assert_allclose(a, b)
 
@@ -86,7 +86,7 @@ def check(func_name, eps=1e-7):
     pos = ift.from_random(ift.UnstructuredDomain(10))
     var0 = ift.Linearization.make_var(pos)
     var1 = ift.Linearization.make_var(pos+eps)
-    df0 = (var1.ptw(func_name).asnumpy() - var0.ptw(func_name).asnumpy())/eps
+    df0 = (var1.ptw(func_name).val - var0.ptw(func_name).val)/eps
     df1 = var0.ptw(func_name).jac(ift.full(lin.domain, 1.))
     # rtol depends on how nonlinear the function is
     ift.extra.assert_allclose(df0, df1, rtol=100*eps)
