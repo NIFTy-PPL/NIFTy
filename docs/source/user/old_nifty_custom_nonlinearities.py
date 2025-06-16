@@ -17,7 +17,7 @@
 # +
 import numpy as np
 
-import nifty8 as ift
+import nifty8.cl as ift
 
 
 # -

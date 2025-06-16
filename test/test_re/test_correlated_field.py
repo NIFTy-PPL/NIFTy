@@ -3,7 +3,7 @@
 
 import jax
 import jax.random as random
-import nifty8 as ift
+import nifty8.cl as ift
 import nifty8.re as jft
 import numpy as np
 import pytest
