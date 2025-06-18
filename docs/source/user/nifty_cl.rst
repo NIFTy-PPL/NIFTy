@@ -1,5 +1,5 @@
-NumPy-Based NIFTy
-==================
+NIFTy.cl
+========
 
 .. toctree::
         :maxdepth: 1

@@ -33,11 +33,14 @@ In-depth discussion of important concepts in NIFTy and details on how to cite NI
    approximate_inference
    citations
 
-In the following are guides to the NumPy-based NIFTy.
-They serve as reference but are likely not relevant anymore for new projects.
+In the following are guides to NIFTy.cl and NIFTy.re.
 
 .. toctree::
    :maxdepth: 1
 
-   old_nifty
+   nifty_cl
 
+.. toctree::
+   :maxdepth: 1
+
+   nifty_re
