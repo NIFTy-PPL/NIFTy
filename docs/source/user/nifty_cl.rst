@@ -4,11 +4,11 @@ NIFTy.cl
 .. toctree::
         :maxdepth: 1
         
-        old_nifty_volume
-        old_nifty_design_principles
-        old_nifty_custom_nonlinearities
-        old_nifty_getting_started_0
-        old_nifty_getting_started_4_CorrelatedFields
+        nifty_cl_volume
+        nifty_cl_design_principles
+        nifty_cl_custom_nonlinearities
+        nifty_cl_getting_started_0
+        nifty_cl_getting_started_4_CorrelatedFields
 
 What is NIFTy?
 --------------
