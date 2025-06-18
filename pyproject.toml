@@ -36,15 +36,21 @@ re = [
     "jaxbind",
     "ducc0>=0.27.0",
 ]
-native = [
+cl_native = [
     "ducc0>=0.27.0",
 ]
-gpu = [
+cl_gpu = [
     "cupy",
     "pyvkfft"
 ]
-parallel = [
+cl_parallel = [
     "mpi4py",
+]
+cl_util = [
+    "astropy",
+    "healpy",
+    "h5py",
+    "matplotlib",
 ]
 doc = [
     "sphinx<8.2",
@@ -55,21 +61,15 @@ doc = [
     "nbconvert",
     "jupytext",
 ]
-util = [
-    "astropy",
-    "healpy",
-    "h5py",
-    "matplotlib",
-]
 test = [
     "pytest",
     "pytest-cov",
     "pytest-xdist",
     "ducc0",
     "nifty8[re]",
-    "nifty8[util]",
+    "nifty8[cl_util]",
 ]
-all = ["nifty8[re,native,parallel,doc,util,test]"]
+all = ["nifty8[re,cl_native,cl_parallel,cl_util,test,doc]"]
 
 [build-system]
 requires = [
