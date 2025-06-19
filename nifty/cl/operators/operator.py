@@ -128,6 +128,17 @@ class Operator(metaclass=NiftyMeta):
         from .simple_linear_operators import ConjugationOperator
         return ConjugationOperator(self.target)(self)
 
+    def broadcast(self, index, space):
+        from .contraction_operator import ContractionOperator
+        from ..multi_field import MultiField
+        if not isinstance(self.target, DomainTuple):
+            raise RuntimeError("Broadcasting works only on DomainTuples")
+        if isinstance(self, MultiField):
+            raise RuntimeError(".broadcast is not implemented for MultiField")
+        tgt = list(self.target)
+        tgt.insert(index, space)
+        return ContractionOperator(tgt, index).adjoint(self)
+
     def sum(self, spaces=None):
         from .contraction_operator import ContractionOperator
         return ContractionOperator(self.target, spaces)(self)

@@ -19,6 +19,10 @@ Change categories:
     `.squeeze(aggressive)` now. If `aggressive` is `True`, it will also squeeze
     sub domains (i.e., squeeze away parts of a `RGSpace` or
     `UnstructuredDomain`). Otherwise it just squeezes trivial subspaces.
+  - Broadcasting: `Operator`, `Linearization` and `Field` support
+    `.broadcast(index, space)` to insert a space at an index. It only works if
+    the target of the `Operator`/`Linearization` or the domain of the `Field` is
+    a `DomainTuple`.
 - Breaking changes
   - `KLEnergy` & `StandardHamiltonian`: Support complex input fields. As a
     consequence `StandardHamiltonian` now takes `prior_sampling_dtype` as
