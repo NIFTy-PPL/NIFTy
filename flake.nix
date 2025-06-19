@@ -24,7 +24,7 @@
         req.dev = with myPyPkgs; [ pytest pytest-cov pytest-xdist matplotlib ];
         req.mpi = [ myPyPkgs.mpi4py pkgs.openmpi pkgs.openssh ];
         req.jax = with myPyPkgs; [ jax jaxlib ];
-        req.rest = with myPyPkgs; [ astropy h5py ];
+        req.rest = with myPyPkgs; [ h5py ];
         req.docs = with myPyPkgs; [
           sphinx
           pkgs.jupyter # python3Packages.jupyter is broken, see https://github.com/NixOS/nixpkgs/issues/299385
@@ -38,7 +38,7 @@
         req-cuda.dev = with myPyPkgs-cuda; [ pytest pytest-cov pytest-xdist matplotlib ];
         req-cuda.mpi = [ myPyPkgs-cuda.mpi4py pkgs-cuda.openmpi pkgs-cuda.openssh ];
         req-cuda.jax = with myPyPkgs-cuda; [ jax jaxlib ];
-        req-cuda.rest = with myPyPkgs-cuda; [ astropy h5py ];
+        req-cuda.rest = with myPyPkgs-cuda; [ h5py ];
         req-cuda.docs = with myPyPkgs-cuda; [
           sphinx
           pkgs-cuda.jupyter # python3Packages.jupyter is broken, see https://github.com/NixOS/nixpkgs/issues/299385

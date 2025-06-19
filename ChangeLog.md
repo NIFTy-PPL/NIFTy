@@ -1,6 +1,12 @@
 Changes since NIFTy 8
 =====================
 
+Remove FITS export
+------------------
+Since the FITS format is really old and dusty, we remove any use of it (incl.
+the dependency on astropy). Please use HDF5 as a widely supported export format.
+
+
 ift.optimize_kl: save_strategy "last" is now called "latest"
 ------------------------------------------------------------
 Just as a language cleanup, we call the save startegy that saves only the latest

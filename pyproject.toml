@@ -56,7 +56,6 @@ doc = [
     "jupytext",
 ]
 util = [
-    "astropy",
     "healpy",
     "h5py",
     "matplotlib",
