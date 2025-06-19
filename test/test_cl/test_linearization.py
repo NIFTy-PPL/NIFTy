@@ -87,3 +87,29 @@ def test_actual_gradients(f, cplxpos, cplxdir, holomorphic, device_id):
     df1 = _lin2grad(var0.ptw(*f))
     df0 = (f1 - f0)/eps
     assert_allclose(df0, df1, rtol=100*np.abs(eps))
+
+
+@pmp('f', [
+    'log', 'exp', 'sqrt', 'sin', 'cos', 'tan', 'sinc', 'sinh', 'cosh', 'tanh',
+    'absolute', 'reciprocal', 'sigmoid', 'log10', 'log1p', 'expm1', 'softplus', 'abs',
+    ('power', 2.), ('exponentiate', 1.1)
+])
+@pmp('dtype', [float, complex])
+def test_actual_gradients2(f, dtype):
+    dom = ift.UnstructuredDomain((10,))
+    fld = ift.from_random(dom, dtype=dtype)
+    only_r_differentiable = False
+
+    if f in ["sqrt", "log", "log10", "log1p"] and dtype is float:
+        fld = fld.exp()
+    if f in ["absolute", "abs"]:
+        if dtype is complex:
+            with pytest.raises(TypeError):
+                ift.ScalingOperator(dom, 1.).ptw(f)(ift.Linearization.make_var(fld))
+            return
+        only_r_differentiable = True
+
+    if not isinstance(f, tuple):
+        f = (f,)
+    ift.extra.check_operator(ift.ScalingOperator(dom, 1.).ptw(*f), fld, ntries=5,
+                             only_r_differentiable=only_r_differentiable)
