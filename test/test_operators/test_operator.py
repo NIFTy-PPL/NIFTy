@@ -45,3 +45,26 @@ def test_ducktape():
     lin0 = lin.ducktape_left(a)
     assert lin0.domain == lin.domain
     assert lin0.target == mdom
+
+
+def test_broadcast():
+    dom = ift.RGSpace((12,2), (0.2,11.))
+
+    op = ift.ScalingOperator(dom, 1.).ducktape("inp").exp()
+
+    # Operator
+    op1 = op.broadcast(0, ift.UnstructuredDomain(3))
+    loc = ift.from_random(op1.domain)
+    ift.extra.check_operator(op1, loc, ntries=3)
+    res = op1(loc).val
+    ref = np.broadcast_to(op(loc).val[None], op1.target.shape)
+    assert_allclose(res, ref)
+
+    # Linearization
+    lin = op(ift.Linearization.make_var(loc))
+    lin1 = lin.broadcast(0, ift.UnstructuredDomain(3))
+    assert_allclose(lin1.val.val, ref)
+
+    # Field
+    fld1 = loc["inp"].exp().broadcast(0, ift.UnstructuredDomain(3))
+    assert_allclose(fld1.val, ref)

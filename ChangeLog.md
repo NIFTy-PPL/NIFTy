@@ -1,6 +1,14 @@
 Changes since NIFTy 8
 =====================
 
+
+Broadcasting
+------------
+`Operator`, `Linearization` and `Field` support `.broadcast(index, space)` to
+insert a space at an index. It only works if the target of the
+`Operator`/`Linearization` or the domain of the `Field` is a `DomainTuple`.
+
+
 Squeezing
 ---------
 `Operator`, `Linearization` and `Field` support `.squeeze(aggressive)` now. If

@@ -416,6 +416,14 @@ class Field(Operator):
             return self
         return factor*self
 
+    def broadcast(self, index, space):
+        from .operators.contraction_operator import ContractionOperator
+        if not isinstance(self.domain, DomainTuple):
+            raise RuntimeError("Broadcasting works only on DomainTuples")
+        tgt = list(self.domain)
+        tgt.insert(index, space)
+        return ContractionOperator(tgt, index).adjoint(self)
+
     def sum(self, spaces=None):
         """Sums up over the sub-domains given by `spaces`.
 
