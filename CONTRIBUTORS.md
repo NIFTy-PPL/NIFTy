@@ -2,20 +2,28 @@
 
 ## NIFTy8
 
+- Ananya Shankar
 - Andrija Kostic
+- Dan F-M
+- David Gorbunov
 - David Outland
 - Gordian Edenhofer
+- Harth-Kitzerow Johannes
+- Jakob Knollmüller
 - Jakob Roth
-- Lukas Platz
-- Margret Westerkamp
+- Julian Rüstig
+- Laurin Söding
+- Lukas Scheel-Platz
 - Martin Reinecke
 - Massin Guerdi
 - Matteo Guardiani
 - [Philipp Arras](https://philipp-arras.de)
 - [Philipp Frank](http://www.ph-frank.de)
-- Reimar Heinrich Leike
+- Reimar Leike
+- Simon Ding
 - [Torsten Enßlin](https://wwwmpa.mpa-garching.mpg.de/~ensslin/)
 - Vincent Eberle
+- Margret Westerkamp
 
 
 ## NIFTy7
@@ -111,4 +119,3 @@
 - Johannes Buchner
 - Marco Selig
 - Theo Steininger
-
