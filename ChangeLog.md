@@ -15,6 +15,10 @@ Change categories:
 - New features
   - CorrelatedFields: support not-sampled zero mode in prior_info
   - minisanity: fixup if whole field==0
+  - Squeezing: `Operator`, `Linearization` and `Field` support
+    `.squeeze(aggressive)` now. If `aggressive` is `True`, it will also squeeze
+    sub domains (i.e., squeeze away parts of a `RGSpace` or
+    `UnstructuredDomain`). Otherwise it just squeezes trivial subspaces.
 - Breaking changes
   - `KLEnergy` & `StandardHamiltonian`: Support complex input fields. As a
     consequence `StandardHamiltonian` now takes `prior_sampling_dtype` as

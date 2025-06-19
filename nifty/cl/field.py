@@ -530,6 +530,14 @@ class Field(Operator):
         tmp = self.weight(1)
         return tmp.s_sum()
 
+    def squeeze(self, aggressive=False):
+        """Squeezes the Field.
+
+        Look at `SqueezeOperator` for further information.
+        """
+        from .operators.simple_linear_operators import SqueezeOperator
+        return SqueezeOperator(self.domain, aggressive)(self)
+
     def prod(self, spaces=None):
         """Computes the product over the sub-domains given by `spaces`.
 
