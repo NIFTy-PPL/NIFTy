@@ -2,6 +2,14 @@ Changes since NIFTy 8
 =====================
 
 
+Shorthand for variables
+-----------------------
+When defining complicated forward models, users often need to write something
+like `ift.ScalingOperator(domain, 1.).ducktape(key)` or
+`ift.FieldAdapter(...).adjoint`. Now, we have the shorthand
+`ift.Variable(domain, key)` for this.
+
+
 Broadcasting
 ------------
 `Operator`, `Linearization` and `Field` support `.broadcast(index, space)` to

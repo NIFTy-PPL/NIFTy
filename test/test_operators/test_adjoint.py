@@ -421,3 +421,13 @@ def test_SqueezeOperator():
             ift.SqueezeOperator(ift.UnstructuredDomain((2, 3)), aggressive)
     with pytest.raises(RuntimeError, match="Nothing found to be squeezed"):
         ift.SqueezeOperator(ift.UnstructuredDomain((2, 1)), aggressive=False)
+
+
+def test_Variable():
+    tgt = ift.makeDomain(ift.RGSpace(12))
+    op = ift.Variable(tgt, "x")
+    assert op.domain == ift.makeDomain({"x": tgt})
+    assert op.target == tgt
+    ift.extra.check_linear_operator(op)
+    loc = ift.from_random(op.domain)
+    ift.extra.assert_allclose(op(loc), loc["x"])
