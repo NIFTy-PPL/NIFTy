@@ -769,6 +769,16 @@ class Field(Operator):
         val, deriv = self._val.ptw_with_deriv(op, *args, **kwargs)
         return Field(self._domain, val), Field(self._domain, deriv)
 
+    def map(self, func):
+        """Applies a function directly on AnyArray-level.
+
+        Note
+        ----
+        The result of the function needs to have the same shape as the original
+        Field.
+        """
+        return Field(self._domain, func(self._val))
+
 
 for op in ["__add__", "__radd__",
            "__sub__", "__rsub__",
