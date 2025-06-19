@@ -142,7 +142,7 @@ def main():
     if True:
         # Load result from disk. May be useful for long inference runs, where
         # inference and posterior analysis are split into two steps
-        samples = ift.ResidualSampleList.load("getting_started_3_results/pickle/last", comm=comm)
+        samples = ift.ResidualSampleList.load("getting_started_3_results/pickle/latest", comm=comm)
 
     # Plotting
     filename_res = filename.format("results")

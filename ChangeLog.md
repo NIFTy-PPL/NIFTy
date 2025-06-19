@@ -31,6 +31,8 @@ Change categories:
   - `SampleListBase`: do not mangle mpi4py Pickle5 Intracomm objects
   - Pin jax version to below 0.6.0 to avoid segfaults
   - CI: use gitlab CI
+  - Just as a language cleanup, we call the save startegy that saves only the
+    latest version of all outputs in `ift.optimize_kl` now "latest".
 
 NIFTy 9.0.0 (July 10, 2025)
 ===========================
