@@ -19,6 +19,9 @@ Change categories:
   - `KLEnergy` & `StandardHamiltonian`: Support complex input fields. As a
     consequence `StandardHamiltonian` now takes `prior_sampling_dtype` as
     argument.
+  - Since the FITS format is really old and dusty, we remove any use of it
+    (incl. the dependency on astropy). Please use HDF5 as a widely supported
+    export format.
 - Changes
   - Various improvements in documentation incl. document need of pkl5 MPI
     communicators for large objects in docstrings and demos
