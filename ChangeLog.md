@@ -23,6 +23,10 @@ Change categories:
     `.broadcast(index, space)` to insert a space at an index. It only works if
     the target of the `Operator`/`Linearization` or the domain of the `Field` is
     a `DomainTuple`.
+  - Shorthand for variables: When defining complicated forward models, users
+    often need to write something like `ift.ScalingOperator(domain,
+    1.).ducktape(key)` or `ift.FieldAdapter(...).adjoint`. Now, we have the
+    shorthand `ift.Variable(domain, key)` for this.
 - Breaking changes
   - `KLEnergy` & `StandardHamiltonian`: Support complex input fields. As a
     consequence `StandardHamiltonian` now takes `prior_sampling_dtype` as

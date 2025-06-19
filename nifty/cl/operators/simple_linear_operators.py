@@ -293,6 +293,26 @@ def ducktape(left, right, name):
     raise ValueError("must not arrive here")
 
 
+def Variable(target, key):
+    """Operator that picks an entry from a MultiDomain and makes it available on
+    a DomainTuple.
+
+    The domain of the operator is a MultiDomain with one entry: {key: target}.
+
+    This operator is often used at the very beginning of a complicated operator
+    chain.
+
+    Parameters
+    ----------
+    target: Domain, tuple of Domain, or DomainTuple
+        The target of the operator.
+    key: str
+        The key of the domain of the operator.
+    """
+    from .scaling_operator import ScalingOperator
+    return ScalingOperator(target, 1.).ducktape(key)
+
+
 class GeometryRemover(LinearOperator):
     """Operator which transforms between a structured and an unstructured
     domain.
