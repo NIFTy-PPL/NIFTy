@@ -349,3 +349,10 @@ def test_field_of_objects():
     sp = ift.RGSpace(3)
     with assert_raises(TypeError):
         ift.Field(sp, arr)
+
+
+def test_map():
+    fld = ift.from_random((ift.RGSpace(12, 1), ift.UnstructuredDomain(2)))
+    ift.extra.assert_allclose(fld.map(np.exp), fld.exp())
+    fld = ift.from_random((ift.RGSpace(12, 1), ift.UnstructuredDomain(2)), dtype=complex)
+    np.testing.assert_allclose(fld.map(np.angle).val, np.angle(fld.val))

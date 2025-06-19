@@ -2,6 +2,14 @@ Changes since NIFTy 8
 =====================
 
 
+Field.map()
+-----------
+Sometimes (especially during plotting) one might want to apply a
+numpy-compatible transformation to a Field. Previsouly, one needed to write,
+e.g., `ift.makeField(fld.domain, np.angle(fld.val))` to apply `np.angle` to the
+`Field`. Now one can write `Field.map(np.angle)` in this case.
+
+
 Shorthand for variables
 -----------------------
 When defining complicated forward models, users often need to write something
