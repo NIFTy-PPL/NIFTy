@@ -1,6 +1,14 @@
 Changes since NIFTy 8
 =====================
 
+Squeezing
+---------
+`Operator`, `Linearization` and `Field` support `.squeeze(aggressive)` now. If
+`aggressive` is `True`, it will also squeeze sub domains (i.e., squeeze away
+parts of a `RGSpace` or `UnstructuredDomain`). Otherwise it just squeezes
+trivial subspaces.
+
+
 General
 -------
 Minimum Python version increased to 3.10

@@ -370,3 +370,54 @@ def test_Multifield2Vector(seed):
     dom = ift.MultiDomain.make(dom)
     op = ift.Multifield2Vector(dom)
     ift.extra.check_linear_operator(op)
+
+
+@pmp("domain", _h_RG_spaces + _p_spaces + _pow_spaces)
+@pmp("mf", [False, True])
+@pmp("cplx", [False, True])
+def test_VdotOperator(domain, mf, cplx):
+    if mf:
+        domain = {"a": domain, "b": ift.UnstructuredDomain((1, 4))}
+    dtype = np.complex128 if cplx else np.float64
+    fld = ift.from_random(domain, dtype=dtype)
+    ift.extra.check_linear_operator(ift.VdotOperator(fld), dtype, dtype)
+
+
+def test_SqueezeOperator():
+    dom = [ift.UnstructuredDomain((1, 3, 1, 4)),
+           ift.UnstructuredDomain(1),
+           ift.RGSpace((12, 1), (0.2, 1))]
+
+    for aggressive in [False, True]:
+        op = ift.SqueezeOperator(dom, aggressive=aggressive)
+        if aggressive:
+            assert op.target.shape == (3, 4, 12)
+        else:
+            assert op.target.shape == (1, 3, 1, 4, 12, 1)
+        x = ift.from_random(op.domain)
+
+        # Field
+        y = op(x)
+        if aggressive:
+            np.testing.assert_allclose(x.val.squeeze(), y.val)
+        else:
+            np.testing.assert_allclose(x.val[:, :, :, :, 0], y.val)
+        np.testing.assert_allclose(x.squeeze(aggressive).val, y.val)
+        ift.extra.check_linear_operator(op)
+
+        # Operator
+        op1 = ift.ScalingOperator(dom, 2.).squeeze(aggressive)
+        z = op1(x)*0.5
+        np.testing.assert_allclose(z.val, y.val)
+        ift.extra.check_linear_operator(op1)
+
+        # Linearization
+        ylin = op(ift.Linearization.make_var(x))
+        np.testing.assert_allclose(ylin.val.val, y.val)
+        ift.extra.check_linear_operator(ylin.jac)
+
+        # Errors
+        with pytest.raises(RuntimeError, match="Nothing found to be squeezed"):
+            ift.SqueezeOperator(ift.UnstructuredDomain((2, 3)), aggressive)
+    with pytest.raises(RuntimeError, match="Nothing found to be squeezed"):
+        ift.SqueezeOperator(ift.UnstructuredDomain((2, 1)), aggressive=False)

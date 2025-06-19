@@ -12,6 +12,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Copyright(C) 2013-2022 Max-Planck-Society
+# Copyright(C) 2025 LambdaFields GmbH
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -134,6 +135,10 @@ class Operator(metaclass=NiftyMeta):
     def integrate(self, spaces=None):
         from .contraction_operator import IntegrationOperator
         return IntegrationOperator(self.target, spaces)(self)
+
+    def squeeze(self, aggressive=False):
+        from .simple_linear_operators import SqueezeOperator
+        return SqueezeOperator(self.target, aggressive)(self)
 
     def vdot(self, other):
         from ..sugar import makeOp
