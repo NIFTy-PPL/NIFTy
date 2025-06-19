@@ -1,6 +1,11 @@
 Changes since NIFTy 8
 =====================
 
+ift.optimize_kl: save_strategy "last" is now called "latest"
+------------------------------------------------------------
+Just as a language cleanup, we call the save startegy that saves only the latest
+version of all outputs in `ift.optimize_kl` now "latest".
+
 
 Field.map()
 -----------

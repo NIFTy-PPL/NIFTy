@@ -67,7 +67,7 @@ def optimize_kl(likelihood_energy,
                 terminate_callback=None,
                 plot_energy_history=True,
                 plot_minisanity_history=True,
-                save_strategy="last",
+                save_strategy="latest",
                 return_final_position=False,
                 resume=False,
                 sanity_checks=True,
@@ -168,12 +168,12 @@ def optimize_kl(likelihood_energy,
         Determine if the reduced chi-square values computed by minisanity shall
         be plotted or not. Default: True.
     save_strategy : str
-        If "last", the samples are saved after each global iteration and
+        If "latest", the samples are saved after each global iteration and
         overwrite older saved samples so that only the latest ones are kept.
         If "all", all intermediate samples are written to disk and the filename
         contains the `global_iteration` so that nothing is overwritten.
         `save_strategy` is only applicable if `output_directory` is not None.
-        Default: "last".
+        Default: "latest".
     return_final_position : bool
         Determine if the final position of the minimization shall be return.
         May be useful to feed it as `initial_position` into another
@@ -234,7 +234,7 @@ def optimize_kl(likelihood_energy,
         raise ValueError("The key `pickle` in `export_operator_outputs` is reserved.")
     if not isinstance(initial_index, int):
         raise TypeError
-    if save_strategy not in ["all", "last"]:
+    if save_strategy not in ["all", "latest"]:
         raise ValueError(f"Save strategy '{save_strategy}' not supported.")
     if output_directory is None and resume:
         raise ValueError("Can only resume minimization if output_directory is not None")
@@ -465,8 +465,8 @@ def _file_name_by_strategy(iglobal, save_strategy='global_strategy'):
         save_strategy = _save_strategy
     if save_strategy == "all":
         return f"iteration_{iglobal}"
-    elif save_strategy == "last":
-        return "last"
+    elif save_strategy == "latest":
+        return "latest"
     raise RuntimeError
 
 
