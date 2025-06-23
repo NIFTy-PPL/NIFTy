@@ -7,15 +7,15 @@
 # # Demonstration of a non-linear regression using NIFTy.re
 
 # %%
+import operator as op
+from functools import partial
+
 import jax
 import matplotlib.pyplot as plt
-from jax import numpy as jnp
-import numpy as np
-from jax import random
-from functools import partial
-import operator as op
-
 import nifty8.re as jft
+import numpy as np
+from jax import numpy as jnp
+from jax import random
 
 jax.config.update("jax_enable_x64", True)
 
@@ -96,5 +96,5 @@ ax.fill_between(
 ax.set_xlabel("x")
 ax.set_ylabel("y")
 fig.tight_layout()
-fig.savefig("nonlinear_regression_posterior.png")
+fig.savefig("nonlinear_regression_posterior.png", dpi=400)
 plt.show()

@@ -17,9 +17,11 @@
 import nifty8 as ift
 import numpy as np
 import pytest
+from nifty8.operator_spectrum import _DomRemover
+
+from .common import setup_function, teardown_function
 
 pmp = pytest.mark.parametrize
-from nifty8.operator_spectrum import _DomRemover
 
 
 def _explicify(operator):
@@ -128,7 +130,7 @@ def test_estimate_evidence_lower_bound():
     minimizer_sampling = None
 
     n_iterations = 2
-    n_samples = 2
+    n_samples = 3
 
     samples = ift.optimize_kl(likelihood_energy, n_iterations, n_samples, minimizer, ic_sampling, minimizer_sampling)
 

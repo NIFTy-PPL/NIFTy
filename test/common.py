@@ -15,9 +15,6 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-from glob import glob
-from os import remove
-
 import pytest
 
 
@@ -33,9 +30,6 @@ def setup_function():
     import nifty8 as ift
     ift.random.push_sseq_from_seed(42)
     comm, _, _, master = ift.utilities.get_MPI_params()
-    if master:
-        for ff in glob("*.pickle") + glob("*.png") + glob("*.h5"):
-            remove(ff)
     if comm is not None:
         comm.Barrier()
 

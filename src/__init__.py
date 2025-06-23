@@ -1,4 +1,6 @@
-from .version import __version__
+from importlib.metadata import version
+
+__version__ = version("nifty8")
 
 from . import config
 from . import random
@@ -82,7 +84,7 @@ from .plot import Plot
 
 from .library.special_distributions import InverseGammaOperator, \
     UniformOperator, LaplaceOperator, LogInverseGammaOperator, \
-    GammaOperator
+    GammaOperator, BetaOperator
 from .library.los_response import LOSResponse
 from .library.dynamic_operator import (dynamic_operator,
                                        dynamic_lightcone_operator)
@@ -111,11 +113,6 @@ from .operator_tree_optimiser import optimise_operator
 
 from .ducc_dispatch import set_nthreads, nthreads
 
-try:
-    from . import re
-    from . import nifty2jax
-except ImportError:
-    pass
 
 # We deliberately don't set __all__ here, because we don't want people to do a
 # "from nifty8 import *"; that would swamp the global namespace.

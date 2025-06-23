@@ -29,26 +29,31 @@ CONSTRUCTOR_CONFIGS = [[(8,), None, False, {
     'distances': (0.125,),
     'harmonic': False,
     'size': 8,
+    'extents': (1,),
 }], [(8,), None, True, {
     'shape': (8,),
     'distances': (1.0,),
     'harmonic': True,
     'size': 8,
+    'extents': (8,),
 }], [(8,), (12,), True, {
     'shape': (8,),
     'distances': (12.0,),
     'harmonic': True,
     'size': 8,
+    'extents': (8*12.,),
 }], [(11, 11), None, False, {
     'shape': (11, 11),
     'distances': (1/11, 1/11),
     'harmonic': False,
     'size': 121,
+    'extents': (1, 1),
 }], [(12, 12), (1.3, 1.3), True, {
     'shape': (12, 12),
     'distances': (1.3, 1.3),
     'harmonic': True,
     'size': 144,
+    'extents': (12*1.3, 12*1.3),
 }]]
 
 
@@ -67,11 +72,14 @@ def get_k_length_array_configs():
 
 
 def get_dvol_configs():
-    return [[(11, 11), None, False, 1], [(11, 11), None, False, 1],
-            [(11, 11), (1.3, 1.3), False, 1], [(11, 11), (1.3, 1.3), False,
-                                               1], [(11, 11), None, True, 1],
-            [(11, 11), None, True, 1], [(11, 11), (1.3, 1.3), True,
-                                        1], [(11, 11), (1.3, 1.3), True, 1]]
+    return [[(11, 11), None, False],
+            [(11, 11), None, False],
+            [(11, 11), (1.3, 1.3), False],
+            [(11, 11), (1.3, 1.3), False],
+            [(11, 11), None, True],
+            [(11, 11), None, True],
+            [(11, 11), (1.3, 1.3), True],
+            [(11, 11), (1.3, 1.3), True]]
 
 
 @pmp('attribute, expected_type', [['distances', tuple]])
@@ -93,10 +101,12 @@ def test_k_length_array(shape, distances, expected):
     assert_allclose(r.get_k_length_array().val, expected)
 
 
-@pmp('shape, distances, harmonic, power', get_dvol_configs())
-def test_dvol(shape, distances, harmonic, power):
+@pmp('shape, distances, harmonic', get_dvol_configs())
+def test_dvol(shape, distances, harmonic):
     r = ift.RGSpace(shape=shape, distances=distances, harmonic=harmonic)
-    assert_allclose(r.dvol, np.prod(r.distances)**power)
+    assert_allclose(r.dvol, np.prod(r.distances))
+    assert_allclose(r.scalar_dvol, np.prod(r.distances))
+    assert_allclose(r.scalar_dvol*r.size, np.prod(r.extents))
 
 
 def test_codomain():

@@ -5,6 +5,7 @@ import operator
 from functools import partial, reduce
 from typing import Any, List, Optional, Tuple, Union
 
+from jax import dtypes
 from jax import numpy as jnp
 from jax.tree_util import (
     all_leaves,
@@ -14,8 +15,10 @@ from jax.tree_util import (
     tree_structure,
 )
 
+from ..misc import deprecated
 
-class ShapeWithDtype():
+
+class ShapeWithDtype:
     """Minimal helper class storing the shape and dtype of an object.
 
     Notes
@@ -23,9 +26,8 @@ class ShapeWithDtype():
     This class may not be transparent to JAX as it shall not be flattened
     itself. If used in a tree-like structure. It should only be used as leave.
     """
-    def __init__(
-        self, shape: Union[Tuple[()], Tuple[int], List[int], int], dtype=None
-    ):
+
+    def __init__(self, shape: Union[Tuple[()], Tuple[int], List[int], int], dtype=None):
         """Instantiates a storage unit for shape and dtype.
 
         Parameters
@@ -39,7 +41,7 @@ class ShapeWithDtype():
         from ..misc import is_iterable_of_non_iterables
 
         if isinstance(shape, int):
-            shape = (shape, )
+            shape = (shape,)
         if isinstance(shape, list):
             shape = tuple(shape)
         if not is_iterable_of_non_iterables(shape):
@@ -47,7 +49,7 @@ class ShapeWithDtype():
             raise TypeError(ve)
 
         self._shape = shape
-        self._dtype = jnp.float64 if dtype is None else dtype
+        self._dtype = dtypes.canonicalize_dtype(float).type if dtype is None else dtype
         self._size = None
 
     @classmethod
@@ -70,7 +72,7 @@ class ShapeWithDtype():
         swd : instance of ShapeWithDtype
             Instance storing the shape and data-type of `element`.
         """
-        if not all_leaves((element, )):
+        if not all_leaves((element,)):
             ve = "tree is not flat and still contains leaves"
             raise ValueError(ve)
         return cls(jnp.shape(element), _get_dtype(element))
@@ -127,10 +129,7 @@ def result_type(*trees):
     from numpy import result_type as result_type_np
 
     common_dtp = result_type_np(
-        *(
-            result_type_np(*(_get_dtype(v) for v in tree_leaves(tr)))
-            for tr in trees
-        )
+        *(result_type_np(*(_get_dtype(v) for v in tree_leaves(tr))) for tr in trees)
     )
     return common_dtp
 
@@ -142,11 +141,11 @@ def _size(x):
 def size(a, axis: Optional[int] = None) -> int:
     if axis is not None:
         raise TypeError("axis of an arbitrary tree is ill defined")
-    return tree_reduce(operator.add, tree_map(_size, a))
+    return tree_reduce(operator.add, tree_map(_size, a), 0)
 
 
 def shape(a):
-    return (size(a), )
+    return (size(a),)
 
 
 def _like(x, dtype, shape, like, new):
@@ -159,13 +158,11 @@ def _like(x, dtype, shape, like, new):
 
 
 zeros_like = partial(
-    tree_map,
-    partial(_like, dtype=None, shape=None, like=jnp.zeros_like, new=jnp.zeros)
+    tree_map, partial(_like, dtype=None, shape=None, like=jnp.zeros_like, new=jnp.zeros)
 )
 
 ones_like = partial(
-    tree_map,
-    partial(_like, dtype=None, shape=None, like=jnp.ones_like, new=jnp.ones)
+    tree_map, partial(_like, dtype=None, shape=None, like=jnp.ones_like, new=jnp.ones)
 )
 
 
@@ -191,8 +188,14 @@ def norm(tree, ord=2):
     return norm(jnp.array(tree_leaves(tree_map(el_norm, tree))), ord=ord)
 
 
+@deprecated("`nifty.re.dot` is deprecated. Consider using `nifty.re.vdot`.")
 def dot(a, b, *, precision=None):
     """Returns the dot product of the two vectors.
+
+    Notes
+    -----
+    This method is deprecated, please use the `vdot` method and be careful with
+    complex conjugation.
 
     Parameters
     ----------
@@ -209,7 +212,7 @@ def dot(a, b, *, precision=None):
     tree_of_dots = tree_map(
         lambda x, y: jnp.dot(_ravel(x), _ravel(y), precision=precision), a, b
     )
-    return tree_reduce(operator.add, tree_of_dots, 0.)
+    return tree_reduce(operator.add, tree_of_dots, 0.0)
 
 
 matmul = dot
@@ -217,7 +220,7 @@ matmul = dot
 
 def vdot(a, b, *, precision=None):
     tree_of_vdots = tree_map(partial(jnp.vdot, precision=precision), a, b)
-    return tree_reduce(jnp.add, tree_of_vdots, 0.)
+    return tree_reduce(jnp.add, tree_of_vdots, 0.0)
 
 
 def _conj(x):
@@ -258,9 +261,9 @@ def where(condition, x, y):
     ts_c = tree_structure(condition)
     ts_x = tree_structure(x)
     ts_y = tree_structure(y)
-    ts_max = (ts_c, ts_x, ts_y)[np.argmax(
-        [ts_c.num_nodes, ts_x.num_nodes, ts_y.num_nodes]
-    )]
+    ts_max = (ts_c, ts_x, ts_y)[
+        np.argmax([ts_c.num_nodes, ts_x.num_nodes, ts_y.num_nodes])
+    ]
 
     if ts_x.num_nodes < ts_max.num_nodes:
         if ts_x.num_nodes > 1:

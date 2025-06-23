@@ -17,6 +17,7 @@
 
 import numpy as np
 
+from .multi_domain import MultiDomain
 from .operators.operator import Operator
 from .sugar import makeOp
 from .utilities import check_object_identity
@@ -65,10 +66,16 @@ class Linearization(Operator):
         return self.make_var(self._val, self._want_metric)
 
     def prepend_jac(self, jac):
+        if jac.isIdentity():
+            return self
         if self._metric is None:
+            if self._jac.isIdentity():
+                return self.new(self._val, jac)
             return self.new(self._val, self._jac @ jac)
         from .operators.sandwich_operator import SandwichOperator
         metric = SandwichOperator.make(jac, self._metric)
+        if self._jac.isIdentity():
+            return self.new(self._val, jac, metric)
         return self.new(self._val, self._jac @ jac, metric)
 
     @property
@@ -118,6 +125,8 @@ class Linearization(Operator):
         return self._metric
 
     def __getitem__(self, name):
+        if not isinstance(self.domain, MultiDomain):
+            raise TypeError(f"'{type(self)}' object is not subscriptable")
         return self.new(self._val[name], self._jac.ducktape_left(name))
 
     def __neg__(self):

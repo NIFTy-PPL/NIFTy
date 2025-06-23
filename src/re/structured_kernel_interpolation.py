@@ -36,7 +36,7 @@ def matmul_toeplitz(c, x):
     toepl_shp = (len(c), len(c))
     x_shp = x.shape
     if x.shape[0] != r.shape[0] or x.ndim > 2:
-        raise ValueError('invalid matrix product dimensions')
+        raise ValueError("invalid matrix product dimensions")
     x = x.reshape(-1, 1) if x.ndim == 1 else x.reshape(x.shape[0], -1)
     m = x.shape[1]
 
@@ -51,9 +51,9 @@ def matmul_toeplitz(c, x):
     ht_mat = ht(embedded_col, axis=0).reshape(-1, 1)
     ht_x = ht(x, n=p, axis=0)
 
-    toepl_times_x = iht(ht_mat * ht_x, axis=0, n=p)[:toepl_shp[0], :]
+    toepl_times_x = iht(ht_mat * ht_x, axis=0, n=p)[: toepl_shp[0], :]
 
-    out_shp = (toepl_shp[0], ) if len(x_shp) == 1 else (toepl_shp[0], m)
+    out_shp = (toepl_shp[0],) if len(x_shp) == 1 else (toepl_shp[0], m)
     return toepl_times_x.reshape(*out_shp)
 
 
@@ -82,8 +82,9 @@ def interp_mat(grid_shape, grid_bounds, sampling_points, *, distances=None):
         )
         raise ValueError(ve)
     distances = np.asarray(distances) if distances is not None else None
-    if (distances is not None and grid_bounds
-        is not None) or (distances is None and grid_bounds is None):
+    if (distances is not None and grid_bounds is not None) or (
+        distances is None and grid_bounds is None
+    ):
         raise ValueError("exactly one of `distances` or `grid_shape` expected")
     elif grid_bounds is not None:
         distances = np.array(
@@ -92,7 +93,7 @@ def interp_mat(grid_shape, grid_bounds, sampling_points, *, distances=None):
     if distances is None:
         raise AssertionError()
 
-    mg = np.mgrid[(slice(0, 2), ) * ndim].reshape(ndim, -1)
+    mg = np.mgrid[(slice(0, 2),) * ndim].reshape(ndim, -1)
     pos = (sampling_points - offset.reshape(-1, 1)) / distances.reshape(-1, 1)
     excess, pos = np.modf(pos)
     pos = pos.astype(np.int64)
@@ -101,16 +102,14 @@ def interp_mat(grid_shape, grid_bounds, sampling_points, *, distances=None):
     ii = np.zeros((2**ndim, n_points), dtype=np.int64)
     jj = np.zeros((2**ndim, n_points), dtype=np.int64)
     for i in range(2**ndim):
-        weights[i, :] = np.prod(
-            np.abs(1 - mg[:, i].reshape(-1, 1) - excess), axis=0
-        )
-        fromi = (pos + mg[:, i].reshape(-1, 1))  # % max_index
+        weights[i, :] = np.prod(np.abs(1 - mg[:, i].reshape(-1, 1) - excess), axis=0)
+        fromi = pos + mg[:, i].reshape(-1, 1)  # % max_index
         ii[i, :] = np.arange(n_points)
         jj[i, :] = np.ravel_multi_index(fromi, grid_shape)
 
     mat = coo_matrix(
         (weights.ravel(), (ii.ravel(), jj.ravel())),
-        shape=(n_points, np.prod(grid_shape))
+        shape=(n_points, np.prod(grid_shape)),
     )
     # BCOO(
     #     (weights.ravel(), jnp.stack((ii.ravel(), jj.ravel()), axis=1)),
@@ -119,7 +118,7 @@ def interp_mat(grid_shape, grid_bounds, sampling_points, *, distances=None):
     return BCOO.from_scipy_sparse(mat).sort_indices()
 
 
-class HarmonicSKI():
+class HarmonicSKI:
     def __init__(
         self,
         grid_shape: Tuple[int],
@@ -128,7 +127,7 @@ class HarmonicSKI():
         harmonic_kernel: Optional[Callable] = None,
         padding: float = 0.5,
         subslice=None,
-        jitter: Union[bool, float, None] = True
+        jitter: Union[bool, float, None] = True,
     ):
         """Instantiate a KISS-GP model of the covariance using a harmonic
         representation of the kernel.
@@ -169,20 +168,21 @@ class HarmonicSKI():
 
         self.grid_unpadded_shape = np.asarray(grid_shape)
         self.grid_unpadded_bounds = np.asarray(grid_bounds)
-        self.grid_unpadded_distances = jnp.diff(
-            self.grid_unpadded_bounds, axis=1
-        ).ravel() / self.grid_unpadded_shape
+        self.grid_unpadded_distances = (
+            jnp.diff(self.grid_unpadded_bounds, axis=1).ravel()
+            / self.grid_unpadded_shape
+        )
         self.grid_unpadded_total_volume = jnp.prod(
             self.grid_unpadded_shape * self.grid_unpadded_distances
         )
         self.w = interp_mat(grid_shape, grid_bounds, sampling_points)
 
-        if padding is not None and padding != 0.:
-            pad = 1. + padding
+        if padding is not None and padding != 0.0:
+            pad = 1.0 + padding
             grid_shape = np.asarray(grid_shape)
             grid_shape_wpad = np.ceil(grid_shape * pad).astype(int)
             scl = grid_shape_wpad / grid_shape
-            p = jnp.diff(jnp.asarray(grid_bounds), axis=1).ravel() * (1. - scl)
+            p = jnp.diff(jnp.asarray(grid_bounds), axis=1).ravel() * (1.0 - scl)
             grid_bounds_wpad = jnp.asarray(grid_bounds)
             grid_bounds_wpad = grid_bounds_wpad.at[:, 0].set(
                 grid_bounds_wpad[:, 0].ravel() - p
@@ -196,19 +196,20 @@ class HarmonicSKI():
             grid_bounds = grid_bounds_wpad
         self.grid_shape = np.asarray(grid_shape)
         self.grid_bounds = np.asarray(grid_bounds)
-        self.grid_distances = jnp.diff(self.grid_bounds,
-                                       axis=1).ravel() / self.grid_shape
+        self.grid_distances = (
+            jnp.diff(self.grid_bounds, axis=1).ravel() / self.grid_shape
+        )
         self.grid_total_volume = jnp.prod(self.grid_shape * self.grid_distances)
 
-        self.power_distributor, self.unique_mode_lengths, _ = get_fourier_mode_distributor(
-            self.grid_shape, self.grid_distances
+        self.power_distributor, self.unique_mode_lengths, _ = (
+            get_fourier_mode_distributor(self.grid_shape, self.grid_distances)
         )
 
         if subslice is not None:
             if isinstance(subslice, slice):
-                subslice = (subslice, ) * len(self.grid_shape)
+                subslice = (subslice,) * len(self.grid_shape)
             elif isinstance(subslice, int):
-                subslice = (slice(subslice), ) * len(self.grid_shape)
+                subslice = (slice(subslice),) * len(self.grid_shape)
             elif isinstance(subslice, tuple):
                 if all(isinstance(el, slice) for el in subslice):
                     pass
@@ -248,7 +249,7 @@ class HarmonicSKI():
         return jnp.sqrt(power)
 
     def harmonic_transform(self, x) -> NDArray:
-        return 1. / self.grid_total_volume * hartley(x)
+        return 1.0 / self.grid_total_volume * hartley(x)
 
     def correlated_field(self, x, harmonic_kernel=None) -> NDArray:
         amp = self.amplitude(harmonic_kernel)
@@ -277,7 +278,7 @@ class HarmonicSKI():
     def __call__(self, x, harmonic_kernel=None) -> NDArray:
         """Applies the Covariance matrix."""
         x_shp = x.shape
-        jitter = 0. if self.jitter is None else self.jitter * x
+        jitter = 0.0 if self.jitter is None else self.jitter * x
 
         x = (self.w.T @ x.ravel()).reshape(tuple(self.grid_unpadded_shape))
         x = self.sandwich(x, harmonic_kernel=harmonic_kernel)
@@ -291,37 +292,39 @@ class HarmonicSKI():
 
         return jax.lax.map(
             lambda idx: self(
-                probe.at[tuple(idx)].set(1.), harmonic_kernel=harmonic_kernel
-            ).ravel(), indices.T
+                probe.at[tuple(idx)].set(1.0), harmonic_kernel=harmonic_kernel
+            ).ravel(),
+            indices.T,
         ).T  # vmap over `indices` w/ `in_axes=1, out_axes=-1`
 
     def evaluate_(self, kernel) -> NDArray:
         from scipy.spatial import distance_matrix
 
         if self.jitter is None:
-            jitter = 0.
+            jitter = 0.0
         else:
             jitter = self.jitter * jnp.eye(self.w.shape[0])
 
         p = [
-            np.linspace(*b, num=sz, endpoint=True) for b, sz in
-            zip(self.grid_unpadded_bounds, self.grid_unpadded_shape)
+            np.linspace(*b, num=sz, endpoint=True)
+            for b, sz in zip(self.grid_unpadded_bounds, self.grid_unpadded_shape)
         ]
-        p = np.stack(np.meshgrid(*p, indexing="ij"),
-                     axis=-1).reshape(-1, len(self.grid_unpadded_shape))
+        p = np.stack(np.meshgrid(*p, indexing="ij"), axis=-1).reshape(
+            -1, len(self.grid_unpadded_shape)
+        )
         kernel_inducing = kernel(distance_matrix(p, p))
 
         return self.w @ kernel_inducing @ self.w.T + jitter
 
 
-class ToeplitzSKI():
+class ToeplitzSKI:
     def __init__(
         self,
         grid_shape: Tuple[int],
         grid_bounds: Tuple[Tuple[float, float]],
         sampling_points: NDArray,
         kernel: Optional[Callable] = None,
-        jitter: Union[bool, float, None] = True
+        jitter: Union[bool, float, None] = True,
     ):
         """Instantiate a KISS-GP model of the covariance using a Toeplitz matrix
         representation of the kernel.
@@ -356,12 +359,13 @@ class ToeplitzSKI():
 
         self.grid_shape = np.asarray(grid_shape)
         self.grid_bounds = np.asarray(grid_bounds)
-        self.grid_distances = jnp.diff(self.grid_bounds,
-                                       axis=1).ravel() / self.grid_shape
+        self.grid_distances = (
+            jnp.diff(self.grid_bounds, axis=1).ravel() / self.grid_shape
+        )
         self.ndim = len(grid_shape)
 
         d = jnp.mgrid[tuple(slice(s) for s in grid_shape)]
-        d *= self.grid_distances.reshape((-1, ) + (1, ) * self.ndim)
+        d *= self.grid_distances.reshape((-1,) + (1,) * self.ndim)
         self.grid_distances_to_zero = jnp.linalg.norm(d, axis=0)
 
         self.w = interp_mat(grid_shape, grid_bounds, sampling_points)
@@ -385,7 +389,7 @@ class ToeplitzSKI():
         """Applies the Covariance matrix."""
         kernel = self.kernel if kernel is None else kernel
         x_shp = x.shape
-        jitter = 0. if self.jitter is None else self.jitter * x
+        jitter = 0.0 if self.jitter is None else self.jitter * x
 
         x = (self.w.T @ x.ravel()).reshape(tuple(self.grid_shape))
         cov_row = kernel(self.grid_distances_to_zero)
@@ -399,8 +403,8 @@ class ToeplitzSKI():
         indices = jnp.arange(self.w.shape[0]).reshape(1, -1)
 
         return jax.lax.map(
-            lambda idx: self(probe.at[tuple(idx)].set(1.), kernel=kernel).ravel(
-            ), indices.T
+            lambda idx: self(probe.at[tuple(idx)].set(1.0), kernel=kernel).ravel(),
+            indices.T,
         ).T  # vmap over `indices` w/ `in_axes=1, out_axes=-1`
 
     def evaluate_(self, kernel=None) -> NDArray:
@@ -409,7 +413,7 @@ class ToeplitzSKI():
         kernel = self.kernel if kernel is None else kernel
 
         if self.jitter is None:
-            jitter = 0.
+            jitter = 0.0
         else:
             jitter = self.jitter * jnp.eye(self.w.shape[0])
 
@@ -417,8 +421,9 @@ class ToeplitzSKI():
             np.linspace(*b, num=sz, endpoint=True)
             for b, sz in zip(self.grid_bounds, self.grid_shape)
         ]
-        p = np.stack(np.meshgrid(*p, indexing="ij"),
-                     axis=-1).reshape(-1, len(self.grid_shape))
+        p = np.stack(np.meshgrid(*p, indexing="ij"), axis=-1).reshape(
+            -1, len(self.grid_shape)
+        )
         kernel_inducing = kernel(distance_matrix(p, p))
 
         return self.w @ kernel_inducing @ self.w.T + jitter

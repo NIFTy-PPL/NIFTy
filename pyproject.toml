@@ -1,5 +1,6 @@
 [project]
 name = "nifty8"
+version = "8.5.7"
 description = "Probabilistic programming framework for signal inference algorithms that operate regardless of the underlying grids and their resolutions"
 readme = "README.md"
 authors = [
@@ -10,20 +11,16 @@ dependencies = [
     "numpy >= 1.17.0",
     "scipy >= 1.9.0",
 ]
-license = {file = "LICENSE"}
+license.text = "GPL-3.0-or-later"
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Science/Research",
     "Topic :: Scientific/Engineering :: Mathematics",
     "Topic :: Scientific/Engineering :: Physics",
-    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
     "Operating System :: OS Independent",
     "Programming Language :: Python",
 ]
-dynamic = ["version"]
 
-[tool.setuptools.dynamic]
-version = {attr = "nifty8.__version__"}
 
 [project.urls]
 Homepage = "https://github.com/nifty-ppl/nifty"
@@ -34,10 +31,8 @@ Homepage = "https://github.com/nifty-ppl/nifty"
 
 [project.optional-dependencies]
 re = [
-    "jax",
-    "jaxlib",
-]
-re_sht = [
+    "jax>=0.4.20,!=0.4.31,!=0.4.32,!=0.4.33,!=0.4.34,!=0.4.35,!=0.4.36,!=0.4.37,!=0.4.38,!=0.6.0",
+    "jaxlib>=0.4.20,!=0.4.31,!=0.4.32,!=0.4.33,!=0.4.34,!=0.4.35,!=0.4.36,!=0.4.37,!=0.4.38,!=0.6.0",
     "jaxbind",
     "ducc0>=0.27.0",
 ]
@@ -48,8 +43,9 @@ parallel = [
     "mpi4py",
 ]
 doc = [
-    "sphinx",
+    "sphinx<8.2",
     "pydata-sphinx-theme",
+    "sphinxcontrib-bibtex",
     "myst-parser",
     "jupyter",
     "nbconvert",
@@ -64,10 +60,12 @@ util = [
 test = [
     "pytest",
     "pytest-cov",
+    "pytest-xdist",
     "ducc0",
-    "jaxbind",
+    "nifty8[re]",
+    "nifty8[util]",
 ]
-all = ["nifty8[re,re_sht,native,parallel,doc,util,test]"]
+all = ["nifty8[re,native,parallel,doc,util,test]"]
 
 [build-system]
 requires = [

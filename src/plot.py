@@ -176,25 +176,6 @@ def _find_closest(A, target):
     return idx
 
 
-def _makeplot(name, block=True, dpi=None):
-    import matplotlib.pyplot as plt
-
-    if name is None:
-        plt.show(block=block)
-        if block:
-            plt.close()
-        return
-    extension = os.path.splitext(name)[1]
-    if extension in (".pdf", ".png", ".svg"):
-        args = {}
-        if dpi is not None:
-            args['dpi'] = float(dpi)
-        plt.savefig(name, **args)
-        plt.close()
-    else:
-        raise ValueError("file format not understood")
-
-
 def _limit_xy(**kwargs):
     import matplotlib.pyplot as plt
 
@@ -463,10 +444,13 @@ def _plot2D(f, ax, **kwargs):
                 rgb, extent=[0, nx*dx, 0, ny*dy], origin="lower", **norm,
                 **aspect)
         else:
+            alpha = kwargs.get("alpha", None)
+            if isinstance(alpha, Field):
+                alpha = alpha.val.T
             im = ax.imshow(
                 f.val.T, extent=[0, nx*dx, 0, ny*dy],
                 vmin=kwargs.get("vmin"), vmax=kwargs.get("vmax"),
-                cmap=cmap, origin="lower", **norm, **aspect)
+                cmap=cmap, origin="lower", alpha=alpha, **norm, **aspect)
             cax = make_axes_locatable(ax).append_axes("right", size="5%", pad=0.05)
             plt.colorbar(im, cax=cax)
         _limit_xy(**kwargs)
@@ -631,13 +615,20 @@ class Plot:
                         arr = f[ifield].val[tuple(multi_index)]
                         myassert(arr.ndim == 2)
                         self._plots.append([makeField(dom[twod_index], arr)])
+                        if isinstance(kwargs.get("alpha", None), Field) and len(kwargs["alpha"].shape) > 2:
+                            arr = kwargs["alpha"].val[tuple(multi_index)]
+                            myassert(arr.ndim == 2)
+                            kwargs["alpha"] = makeField(dom[twod_index], arr)
                         self._kwargs.append(kwargs)
                 return
         self._plots.append(f)
         self._kwargs.append(kwargs)
 
-    def output(self, **kwargs):
-        """Plot the accumulated list of figures.
+    def prepare(self, **kwargs):
+        """Prepare the Plot the accumulated list of figures.
+
+        This function returns a figure object and may be used for custom plot
+        saving routines.
 
         Parameters
         ----------
@@ -648,13 +639,11 @@ class Plot:
             Default: square root of the numer of plots, rounded up.
         xsize, ysize: float
             Dimensions of the full plot in inches. Default: 6.
-        name: string
-            If left empty, the plot will be shown on the screen,
-            otherwise it will be written to a file with the given name.
-            Supported extensions: .png and .pdf. Default: None.
-        block: bool
-            Override the blocking behavior of the non-interactive plotting
-            mode. The plot will not be closed in this case but is left open!
+
+        Note
+        ----
+        It is the responsibility of the user to call `plt.close()` after they
+        are done with processing the figure.
         """
         try:
             import matplotlib.pyplot as plt
@@ -692,6 +681,50 @@ class Plot:
             ax = fig.add_subplot(ny, nx, i+1)
             _plot(self._plots[i], ax, **self._kwargs[i])
         fig.tight_layout()
-        _makeplot(kwargs.pop("name", None),
-                  block=kwargs.pop("block", True),
-                  dpi=kwargs.pop("dpi", None))
+        return fig
+
+    def output(self, **kwargs):
+        """Plot the accumulated list of figures.
+
+        Parameters
+        ----------
+        title: string
+            Title of the full plot.
+        nx, ny: int
+            Number of subplots to use in x- and y-direction.
+            Default: square root of the numer of plots, rounded up.
+        xsize, ysize: float
+            Dimensions of the full plot in inches. Default: 6.
+        name: string
+            If left empty, the plot will be shown on the screen,
+            otherwise it will be written to a file with the given name.
+            Supported extensions: .png and .pdf. Default: None.
+        block: bool
+            Override the blocking behavior of the non-interactive plotting
+            mode. The plot will not be closed in this case but is left open!
+        """
+        try:
+            import matplotlib.pyplot as plt
+        except ImportError:
+            warn("Since matplotlib is not installed, NIFTy will not generate any plots.")
+            return
+
+        self.prepare(**kwargs)
+
+        name = kwargs.pop("name", None)
+        if name is None:
+            block = kwargs.pop("block", None)
+            plt.show(block=block)
+            if block:
+                plt.close()
+            return
+        extension = os.path.splitext(name)[1]
+        if extension in (".pdf", ".png", ".svg"):
+            args = {}
+            dpi = kwargs.pop("dpi", None)
+            if dpi is not None:
+                args['dpi'] = float(dpi)
+            plt.savefig(name, **args)
+            plt.close()
+        else:
+            raise ValueError("file format not understood")

@@ -81,7 +81,7 @@ class OptimizeKLConfig:
     `optionxform` to `str` before parsing.
     """
 
-    def __init__(self, config_parser, builders):
+    def __init__(self, config_parser, builders={}):
         if not isinstance(config_parser, ConfigParser):
             raise TypeError
         if config_parser.optionxform != str:
@@ -128,10 +128,10 @@ class OptimizeKLConfig:
         """
         from ..optimize_kl import optimize_kl
 
-        dct = dict(self)
+        dct = {**dict(self), **kwargs}
         os.makedirs(dct["output_directory"], exist_ok=True)
         self.to_file(os.path.join(dct["output_directory"], "optimization.cfg"))
-        return optimize_kl(**dct, **kwargs)
+        return optimize_kl(**dct)
 
     def _interpret_base(self):
         """Replace `base` entry in every section by the content of the section it points to."""
@@ -251,7 +251,8 @@ class OptimizeKLConfig:
             del c[fst_key]
 
     def _to_callable(self, s, dtype=None):
-        """Turn list separated by `,` into function that takes the index and returns the respective entry.
+        """Turn list separated by `,` into function that takes the index and
+        returns the respective entry.
 
         Additionally all references indicated by `*` are instantiated.
         """
@@ -284,6 +285,11 @@ class OptimizeKLConfig:
         default all values have type `str`. If `bool`, `float` or `int` shall be
         passed, the syntax `type :: value`, e.g. `float :: 1.2`, needs to be
         used in the config file.
+
+        Note
+        ----
+        Especially for expensive functions like data loading functions, it might
+        be sensible to cache the function (e.g., via `functools.lru_cache`).
         """
         dct = dict(self._cfg[sec])
 
@@ -341,8 +347,10 @@ class OptimizeKLConfig:
 
         # static
         copt = self._cfg["optimization"]
-        yield "output_directory", copt["output directory"]
-        yield "save_strategy", copt["save strategy"]
+        if "output directory" in copt:
+            yield "output_directory", copt["output directory"]
+        if "save strategy" in copt:
+            yield "save_strategy", copt["save strategy"]
         yield "plot_energy_history", True
         yield "plot_minisanity_history", True
 
@@ -355,10 +363,13 @@ class OptimizeKLConfig:
             "kl_minimizer",
             "sampling_iteration_controller",
             "nonlinear_sampling_minimizer",
+            "fresh_stochasticity",
         ]:
             key1 = key.replace("_", " ")
             if key == "n_samples":
                 yield key, self._to_callable(cdyn[key1], int)
+            elif key == "fresh_stochasticity":
+                yield key, self._to_callable(cdyn[key1], bool)
             else:
                 yield key, self._to_callable(cdyn[key1])
 

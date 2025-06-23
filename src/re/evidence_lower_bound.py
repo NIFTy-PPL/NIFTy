@@ -2,12 +2,14 @@
 
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 
+from functools import partial
+
 import jax.flatten_util
 import numpy as np
 import scipy.linalg as slg
 import scipy.sparse.linalg as ssl
 
-from .evi import Samples
+from .evi import Samples, _parse_jit
 from .likelihood import Likelihood
 from .logger import logger
 from .optimize_kl import _StandardHamiltonian as StandardHamiltonian
@@ -22,11 +24,6 @@ class _Projector(ssl.LinearOperator):
     ----------
     eigenvectors : ndarray
         The eigenvectors representing the directions to project out.
-
-    Returns
-    -------
-    Projector : LinearOperator
-        Operator representing the projection.
     """
 
     def __init__(self, eigenvectors):
@@ -44,35 +41,36 @@ class _Projector(ssl.LinearOperator):
 
 
 def _explicify(M):
-    n = M.shape[0]
-    m = []
-    for i in range(n):
-        basis_vector = np.zeros(n)
-        basis_vector[i] = 1
-        m.append(M @ basis_vector)
-    return np.stack(m, axis=1)
+    identity = np.identity(M.shape[0], dtype=np.float64)
+    return np.column_stack([M.matvec(v) for v in identity])
 
 
-def _ravel_metric(metric, position, dtype):
-    shape = 2 * (size(metric(position, position)),)
+def _ravel_metric(metric, position, dtype, metric_jit):
+    def ravel(x):
+        return jax.flatten_util.ravel_pytree(x)[0]
 
-    ravel = lambda x: jax.flatten_util.ravel_pytree(x)[0]
-    unravel = lambda x: jax.linear_transpose(ravel, position)(x)[0]
-    met = lambda x: ravel(metric(position, unravel(x)))
+    shp, unravel = jax.flatten_util.ravel_pytree(position)
+    shape = 2 * (shp.size,)
+
+    def met(x, *, position):
+        return ravel(metric(position, unravel(x)))
+
+    metric_jit = _parse_jit(metric_jit)
+    met = partial(metric_jit(met), position=position)
 
     return ssl.LinearOperator(shape=shape, dtype=dtype, matvec=met)
 
 
 def _eigsh(
     metric,
+    metric_size,
     n_eigenvalues,
     tot_dofs,
     min_lh_eval=1e-4,
-    batch_size=10,
+    n_batches=10,
     tol=0.0,
     verbose=True,
 ):
-    metric_size = metric.shape[0]
     eigenvectors = None
     if n_eigenvalues > tot_dofs:
         raise ValueError(
@@ -92,14 +90,12 @@ def _eigsh(
         eigenvalues = np.flip(eigenvalues)
     else:
         # Set up batches
-        batch_size = n_eigenvalues // batch_size
-        batches = [
-            batch_size,
-        ] * (batch_size - 1)
-        batches += [
-            n_eigenvalues - batch_size * (batch_size - 1),
-        ]
+        batch_size = n_eigenvalues // n_batches
+        remainder = n_eigenvalues % batch_size
+        batches = [batch_size] * n_batches
+        batches += [remainder] if remainder > 0 else []
         eigenvalues, projected_metric = None, metric
+
         for batch in batches:
             if verbose:
                 logger.info(f"\nNumber of eigenvalues being computed: {batch}")
@@ -130,10 +126,12 @@ def estimate_evidence_lower_bound(
     likelihood,
     samples,
     n_eigenvalues,
+    *,
     min_lh_eval=1e-3,
-    batch_size=10,
+    n_batches=10,
     tol=0.0,
     verbose=True,
+    metric_jit=True,
 ):
     """Provides an estimate for the Evidence Lower Bound (ELBO).
 
@@ -171,7 +169,6 @@ def estimate_evidence_lower_bound(
     utilize the ELBO (as a proxy for the actual evidences) and calculate the
     Bayes factors for model comparison.
 
-
     Parameters
     ----------
     likelihood : :class:`nifty8.re.likelihood.Likelihood`
@@ -190,7 +187,7 @@ def estimate_evidence_lower_bound(
         eigenvalue estimation terminates and uses the smallest eigenvalue as a
         proxy for all remaining eigenvalues in the trace-log estimation.
         Default is 1e-3.
-    batch_size : int
+    n_batches : int
         Number of batches into which the eigenvalue estimation gets subdivided
         into. Only after completing one batch the early stopping criterion
         based on `min_lh_eval` is checked for.
@@ -200,6 +197,8 @@ def estimate_evidence_lower_bound(
     verbose : Optional[bool]
         Print list of eigenvalues and summary of evidence calculation. Default
         is True.
+    metric_jit : bool or callable
+        Whether to jit the metric. Default is True.
 
     Returns
     -------
@@ -240,9 +239,9 @@ def estimate_evidence_lower_bound(
     --------
     For further details we refer to:
 
-    * Analytic geoVI parametrization: P. Frank et al., Geometric Variational Inference
-    <https://arxiv.org/pdf/2105.10470.pdf> (Sec. 5.1)
-    * Conceptualization: A. Kostić et al. (manuscript in preparation).
+    - Analytic geoVI parametrization: P. Frank et al., Geometric Variational
+        Inference <https://arxiv.org/pdf/2105.10470.pdf> (Sec. 5.1)
+    - Conceptualization: A. Kostić et al. (manuscript in preparation).
     """
     if not isinstance(samples, Samples):
         raise TypeError("samples attribute should be of type `Samples`.")
@@ -251,28 +250,29 @@ def estimate_evidence_lower_bound(
 
     hamiltonian = StandardHamiltonian(likelihood)
     metric = hamiltonian.metric
-    metric = _ravel_metric(metric, samples.pos, dtype=likelihood.target.dtype)
-    metric_size = metric.shape[0]
-    n_data_points = likelihood.lsm_tangents_shape.size if not None else metric_size
-    n_relevant_dofs = min(
-        n_data_points, metric_size
-    )  # Number of metric eigenvalues that are not 1
+    metric_size = jax.flatten_util.ravel_pytree(samples.pos)[0].size
+    metric = _ravel_metric(
+        metric, samples.pos, dtype=likelihood.target.dtype, metric_jit=metric_jit
+    )
+    n_data_points = size(likelihood.lsm_tangents_shape) if not None else metric_size
+    n_relevant_dofs = min(n_data_points, metric_size)
 
     eigenvalues, _ = _eigsh(
         metric,
+        metric_size,
         n_eigenvalues,
         tot_dofs=n_relevant_dofs,
         min_lh_eval=min_lh_eval,
-        batch_size=batch_size,
+        n_batches=n_batches,
         tol=tol,
         verbose=verbose,
     )
     if verbose:
         logger.info(
-            f"\nComputed {eigenvalues.size} largest eigenvalues (out of {n_relevant_dofs} "
-            f"relevant degrees of freedom)."
-            f"\nThe remaining {metric_size - n_relevant_dofs} metric eigenvalues "
-            f"(out of {metric_size}) are equal to "
+            f"\nComputed {eigenvalues.size} largest eigenvalues "
+            f"(out of {n_relevant_dofs} relevant degrees of freedom)."
+            f"\nThe remaining {metric_size - n_relevant_dofs} metric "
+            f"eigenvalues (out of {metric_size}) are equal to "
             f"1.\n\n{eigenvalues}."
         )
 
@@ -292,11 +292,16 @@ def estimate_evidence_lower_bound(
     elbo_std = np.std(elbo_samples, ddof=1)
     elbo_up = elbo_mean + elbo_std
     elbo_lw = elbo_mean - elbo_std - stats["lower_error"]
-    stats["elbo_mean"], stats["elbo_up"], stats["elbo_lw"] = elbo_mean, elbo_up, elbo_lw
+    stats["elbo_mean"], stats["elbo_up"], stats["elbo_lw"] = (
+        elbo_mean,
+        elbo_up,
+        elbo_lw,
+    )
     if verbose:
         s = (
             f"\nELBO decomposition (in log units)"
-            f"\nELBO mean : {elbo_mean:.4e} (upper: {elbo_up:.4e}, lower: {elbo_lw:.4e})"
+            f"\nELBO mean : {elbo_mean:.4e} (upper: {elbo_up:.4e}, "
+            f"lower: {elbo_lw:.4e})"
         )
         logger.info(s)
 

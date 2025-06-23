@@ -15,11 +15,18 @@ import jax
 import numpy as np
 from jax import numpy as jnp
 from jax import random
+from jax.experimental.shard_map import shard_map
+from jax.sharding import Mesh, NamedSharding
+from jax.sharding import PartitionSpec as Pspec
 from jax.tree_util import Partial, tree_map
 
 from . import optimize
 from .evi import (
-    Samples, _parse_jit, draw_linear_residual, nonlinearly_update_residual
+    Samples,
+    _parse_jit,
+    concatenate_zip,
+    draw_linear_residual,
+    nonlinearly_update_residual,
 )
 from .likelihood import Likelihood
 from .logger import logger
@@ -30,9 +37,7 @@ from .tree_math import get_map, hide_strings, vdot
 P = TypeVar("P")
 
 
-def get_status_message(
-    samples, state, residual=None, *, name="", map="lmap"
-) -> str:
+def get_status_message(samples, state, residual=None, *, name="", map="lmap") -> str:
     energy = state.minimization_state.fun
     msg_smpl = ""
     if isinstance(state.sample_state, optimize.OptimizeResults):
@@ -63,6 +68,7 @@ class _StandardHamiltonian(LazyModel):
     """Joined object storage composed of a user-defined likelihood and a
     standard normal prior.
     """
+
     likelihood: Likelihood = field(metadata=dict(static=False))
 
     def __init__(self, likelihood: Likelihood, /):
@@ -72,13 +78,10 @@ class _StandardHamiltonian(LazyModel):
         return self.energy(primals, **primals_kw)
 
     def energy(self, primals, **primals_kw):
-        return self.likelihood(primals, **
-                               primals_kw) + 0.5 * vdot(primals, primals)
+        return self.likelihood(primals, **primals_kw) + 0.5 * vdot(primals, primals)
 
     def metric(self, primals, tangents, **primals_kw):
-        return self.likelihood.metric(
-            primals, tangents, **primals_kw
-        ) + tangents
+        return self.likelihood.metric(primals, tangents, **primals_kw) + tangents
 
 
 def _kl_vg(
@@ -88,6 +91,8 @@ def _kl_vg(
     *,
     map=jax.vmap,
     reduce=_reduce,
+    named_sharding=None,
+    kl_device_map="shard_map",
 ):
     assert isinstance(primals_samples, Samples)
     map = get_map(map)
@@ -95,7 +100,30 @@ def _kl_vg(
 
     if len(primals_samples) == 0:
         return jax.value_and_grad(ham)(primals)
-    vvg = map(jax.value_and_grad(ham))
+
+    if named_sharding is None:
+        vvg = map(jax.value_and_grad(ham))
+    else:
+        if kl_device_map == "shard_map":
+            vvg = map(jax.value_and_grad(ham))
+            spec_tree = tree_map(lambda x: named_sharding.spec, primals)
+            out_spec = (named_sharding.spec, spec_tree)
+            in_spec = (spec_tree,)
+            vvg = shard_map(
+                vvg, mesh=named_sharding.mesh, in_specs=in_spec, out_specs=out_spec
+            )
+        elif kl_device_map == "jit":
+            vvg = map(jax.value_and_grad(ham))
+            sharding_tree = tree_map(lambda x: named_sharding, primals)
+            out_sharding = (named_sharding, sharding_tree)
+            in_sharding = (sharding_tree,)
+            vvg = jax.jit(vvg, in_shardings=in_sharding, out_shardings=out_sharding)
+        elif kl_device_map == "pmap":
+            vvg = jax.pmap(jax.value_and_grad(ham))
+        else:
+            ve = f"`kl_device_map` need to be `pmap`, `shard_map`, or `jit`, not {kl_device_map}"
+            raise ValueError(ve)
+
     s = vvg(primals_samples.at(primals).samples)
     return reduce(s)
 
@@ -107,7 +135,9 @@ def _kl_met(
     primals_samples,
     *,
     map=jax.vmap,
-    reduce=_reduce
+    reduce=_reduce,
+    named_sharding=None,
+    kl_device_map="shard_map",
 ):
     assert isinstance(primals_samples, Samples)
     map = get_map(map)
@@ -115,17 +145,35 @@ def _kl_met(
 
     if len(primals_samples) == 0:
         return ham.metric(primals, tangents)
-    vmet = map(ham.metric, in_axes=(0, None))
-    s = vmet(primals_samples.at(primals).samples, tangents)
+    met = Partial(ham.metric, tangents=tangents)
+
+    if named_sharding is None:
+        vmet = map(met)
+    else:
+        if kl_device_map == "shard_map":
+            vmet = map(met)
+            spec_tree = tree_map(lambda x: named_sharding.spec, primals)
+            out_spec = spec_tree
+            in_spec = (spec_tree,)
+            vmet = shard_map(
+                vmet,
+                mesh=named_sharding.mesh,
+                in_specs=in_spec,
+                out_specs=out_spec,
+            )
+        elif kl_device_map == "jit":
+            vmet = map(met)
+            sharding_tree = tree_map(lambda x: named_sharding, primals)
+            out_sharding = sharding_tree
+            in_sharding = (sharding_tree,)
+            vmet = jax.jit(vmet, in_shardings=in_sharding, out_shardings=out_sharding)
+        elif kl_device_map == "pmap":
+            vmet = jax.pmap(met)
+        else:
+            ve = f"`kl_device_map` need to be `pmap`, `shard_map`, or `jit`, not {kl_device_map}"
+            raise ValueError(ve)
+    s = vmet(primals_samples.at(primals).samples)
     return reduce(s)
-
-
-@jax.jit
-def concatenate_zip(*arrays):
-    return tree_map(
-        lambda *x: jnp.stack(x, axis=1).reshape((-1, ) + x[0].shape[1:]),
-        *arrays
-    )
 
 
 SMPL_MODE_TYP = Literal[
@@ -208,6 +256,7 @@ class OptimizeVI:
     `Metric Gaussian Variational Inference`, Jakob Knollmüller,
     Torsten A. Enßlin, `<https://arxiv.org/abs/1901.11033>`_
     """
+
     def __init__(
         self,
         likelihood: Likelihood,
@@ -219,6 +268,9 @@ class OptimizeVI:
         residual_map="lmap",
         kl_reduce=_reduce,
         mirror_samples=True,
+        devices: Optional[list] = None,
+        kl_device_map="shard_map",
+        residual_device_map="pmap",
         _kl_value_and_grad: Optional[Callable] = None,
         _kl_metric: Optional[Callable] = None,
         _draw_linear_residual: Optional[Callable] = None,
@@ -247,6 +299,26 @@ class OptimizeVI:
             Reduce function used for the KL minimization.
         mirror_samples: bool
             Whether to mirror the samples or not.
+        devices : list of devices or None
+            Devices over which the samples are mapped. If `None` only the
+            default device is used. To use all detected devices pass
+            jax.devices(). Generally the samples needs to be evenly
+            distributable over the devices. For details see the descriptions of
+            the `kl_device_map` and `residual_device_map` arguments.
+        kl_device_map : str
+            Map function used for mapping KL minimization over the devices
+            listed in `devices`. `kl_device_map` can be 'shard_map', 'pmap', or
+            'jit'. If set to 'pmap', 2*n_samples need to be equal to the number
+            of devices. For all other maps the samples needs to be equally
+            distributable over the devices.
+        residual_device_map : str
+            Map function used for mapping sampling over the devices listed in
+            `devices`. `residual_device_map` can be 'shard_map', 'pmap', or
+            'jit'. If set to 'pmap', 2*n_samples need to be equal to the number
+            of devices. If only linear samples are drawn ,'pmap' also works if
+            n_samples equals the number of devices. For the other maps it is
+            sufficient if 2*n_samples equals the number of devices, or
+            n_samples can be evenly divided by the number of devices.
 
         Notes
         -----
@@ -265,41 +337,57 @@ class OptimizeVI:
         kl_jit = _parse_jit(kl_jit)
         residual_jit = _parse_jit(residual_jit)
         residual_map = get_map(residual_map)
+        self.named_sharding = None
+        if (not devices is None) and len(devices) > 1:
+            mesh = Mesh(devices, ("x",))
+            pspec = Pspec("x")
+            self.named_sharding = NamedSharding(mesh, pspec)
+        self.residual_device_map = residual_device_map
 
         if mirror_samples is False:
             raise NotImplementedError()
 
         if _kl_value_and_grad is None:
             _kl_value_and_grad = partial(
-                kl_jit(_kl_vg, static_argnames=("map", "reduce")),
+                kl_jit(
+                    _kl_vg,
+                    static_argnames=(
+                        "map",
+                        "reduce",
+                        "named_sharding",
+                        "kl_device_map",
+                    ),
+                ),
                 likelihood,
                 map=kl_map,
-                reduce=kl_reduce
+                reduce=kl_reduce,
+                named_sharding=self.named_sharding,
+                kl_device_map=kl_device_map,
             )
         if _kl_metric is None:
             _kl_metric = partial(
-                kl_jit(_kl_met, static_argnames=("map", "reduce")),
+                kl_jit(
+                    _kl_met,
+                    static_argnames=(
+                        "map",
+                        "reduce",
+                        "named_sharding",
+                        "kl_device_map",
+                    ),
+                ),
                 likelihood,
                 map=kl_map,
-                reduce=kl_reduce
+                reduce=kl_reduce,
+                named_sharding=self.named_sharding,
+                kl_device_map=kl_device_map,
             )
         if _draw_linear_residual is None:
             _draw_linear_residual = partial(
                 residual_jit(draw_linear_residual), likelihood
             )
         if _nonlinearly_update_residual is None:
-            # TODO: Pull out `jit` from `nonlinearly_update_residual` once NCG
-            # is jit-able
-            from .evi import _nonlinearly_update_residual_functions
-
-            _nonlin_funcs = _nonlinearly_update_residual_functions(
-                likelihood=likelihood,
-                jit=residual_jit,
-            )
             _nonlinearly_update_residual = partial(
-                nonlinearly_update_residual,
-                None, # Explicify no likelihood dependency
-                _nonlinear_update_funcs=_nonlin_funcs,
+                residual_jit(nonlinearly_update_residual), likelihood
             )
         if _get_status_message is None:
             _get_status_message = partial(
@@ -320,29 +408,122 @@ class OptimizeVI:
         # NOTE, use `Partial` in favor of `partial` to allow the (potentially)
         # re-jitting `residual_map` to trace the kwargs
         kwargs = hide_strings(kwargs)
-        sampler = Partial(self.draw_linear_residual, **kwargs)
-        sampler = self.residual_map(sampler, in_axes=(None, 0))
-        smpls, smpls_states = sampler(primals, keys)
-        # zip samples such that the mirrored-counterpart always comes right
-        # after the original sample
-        smpls = Samples(
-            pos=primals, samples=concatenate_zip(smpls, -smpls), keys=keys
-        )
+        if self.named_sharding is None:
+            sampler = Partial(self.draw_linear_residual, **kwargs)
+            sampler = self.residual_map(sampler, in_axes=(None, 0))
+            smpls, smpls_states = sampler(primals, keys)
+            # zip samples such that the mirrored-counterpart always comes right
+            # after the original sample
+            smpls = concatenate_zip(smpls, -smpls)
+        else:
+            n_samples = len(keys)
+            if n_samples == self.named_sharding.mesh.size / 2:
+                keys = jnp.repeat(keys, 2, axis=0)
+            keys = jax.device_put(keys, self.named_sharding)
+
+            # zip samples such that the mirrored-counterpart always comes right
+            # after the original sample. out_shardings is need for telling JAX
+            # not to move all samples to a single device.
+            @partial(jax.jit, out_shardings=self.named_sharding)
+            def concatenate_zip_pmap(*arrays):
+                return tree_map(
+                    lambda *x: jnp.stack(x, axis=1).reshape((-1,) + x[0].shape[1:]),
+                    *arrays,
+                )
+
+            @partial(jax.jit, out_shardings=self.named_sharding)
+            def _special_mirror_samples(samples):
+                return samples.at[1::2].set(-samples[1::2])
+
+            if self.residual_device_map == "pmap":
+                sampler = Partial(self.draw_linear_residual, **kwargs)
+                sampler = jax.pmap(sampler, in_axes=(None, 0))
+                keys = jax.device_put(keys, self.named_sharding)
+                smpls, smpls_states = sampler(primals, keys)
+            elif self.residual_device_map == "jit":
+                sampler = Partial(self.draw_linear_residual, primals, **kwargs)
+                sampler = self.residual_map(sampler)
+                sampler = jax.jit(
+                    sampler,
+                    in_shardings=self.named_sharding,
+                    out_shardings=self.named_sharding,
+                )
+                smpls, smpls_states = sampler(keys)
+            elif self.residual_device_map == "shard_map":
+                sampler = Partial(self.draw_linear_residual, primals, **kwargs)
+                out_spec = (
+                    tree_map(lambda x: self.named_sharding.spec, primals),
+                    self.named_sharding.spec,
+                )
+                sampler = shard_map(
+                    self.residual_map(sampler),
+                    mesh=self.named_sharding.mesh,
+                    in_specs=self.named_sharding.spec,
+                    out_specs=out_spec,
+                    check_rep=False,  # FIXME Maybe enable in future JAX releases
+                )
+                smpls, smpls_states = sampler(keys)
+            else:
+                ve = f"`residual_device_map` need to be `pmap`, `shard_map`, or `jit`, not {self.residual_device_map}"
+                raise ValueError(ve)
+            if n_samples == self.named_sharding.mesh.size / 2:
+                smpls = tree_map(_special_mirror_samples, smpls)
+                keys = keys[::2]  # undo jnp.repeat
+            else:
+                smpls = concatenate_zip_pmap(smpls, -smpls)
+
+        smpls = Samples(pos=primals, samples=smpls, keys=keys)
         return smpls, smpls_states
 
     def nonlinearly_update_samples(self, samples: Samples, **kwargs):
         # NOTE, use `Partial` in favor of `partial` to allow the (potentially)
         # re-jitting `residual_map` to trace the kwargs
         kwargs = hide_strings(kwargs)
-        curver = Partial(self.nonlinearly_update_residual, **kwargs)
-        curver = self.residual_map(curver, in_axes=(None, 0, 0, 0))
         assert len(samples.keys) == len(samples) // 2
-        metric_sample_key = concatenate_zip(*((samples.keys, ) * 2))
+        metric_sample_key = concatenate_zip(*((samples.keys,) * 2))
         sgn = jnp.ones(len(samples.keys))
         sgn = concatenate_zip(sgn, -sgn)
-        smpls, smpls_states = curver(
-            samples.pos, samples._samples, metric_sample_key, sgn
-        )
+        if self.named_sharding is None:
+            curver = Partial(self.nonlinearly_update_residual, **kwargs)
+            curver = self.residual_map(curver, in_axes=(None, 0, 0, 0))
+            smpls, smpls_states = curver(
+                samples.pos, samples._samples, metric_sample_key, sgn
+            )
+        else:
+            curver = Partial(self.nonlinearly_update_residual, samples.pos, **kwargs)
+            if self.residual_device_map == "shard_map":
+                spec_tree = tree_map(lambda x: self.named_sharding.spec, samples.pos)
+                out_spec = (spec_tree, self.named_sharding.spec)
+                in_spec = (
+                    spec_tree,
+                    self.named_sharding.spec,
+                    self.named_sharding.spec,
+                )
+                curver = shard_map(
+                    self.residual_map(curver, in_axes=(0, 0, 0)),
+                    mesh=self.named_sharding.mesh,
+                    in_specs=in_spec,
+                    out_specs=out_spec,
+                    check_rep=False,
+                )
+            elif self.residual_device_map == "jit":
+                sharding_tree = tree_map(lambda x: self.named_sharding, samples.pos)
+                out_sharding = (sharding_tree, self.named_sharding)
+                in_sharding = (sharding_tree, self.named_sharding, self.named_sharding)
+                curver = self.residual_map(curver)
+                curver = jax.jit(
+                    curver, in_shardings=in_sharding, out_shardings=out_sharding
+                )
+                metric_sample_key = jax.device_put(
+                    metric_sample_key, self.named_sharding
+                )
+            elif self.residual_device_map == "pmap":
+                curver = jax.pmap(curver, in_axes=(0, 0, 0))
+            else:
+                ve = f"`residual_device_map` need to be `pmap`, `shard_map`, or `jit`, not {self.residual_device_map}"
+                raise ValueError(ve)
+            smpls, smpls_states = curver(samples._samples, metric_sample_key, sgn)
+
         smpls = Samples(pos=samples.pos, samples=smpls, keys=samples.keys)
         return smpls, smpls_states
 
@@ -356,7 +537,7 @@ class OptimizeVI:
         point_estimates,
         draw_linear_kwargs={},
         nonlinearly_update_kwargs={},
-        **kwargs
+        **kwargs,
     ):
         # Always resample if `n_samples` increased
         n_keys = 0 if samples.keys is None else len(samples.keys)
@@ -368,8 +549,10 @@ class OptimizeVI:
             sample_mode = sample_mode.replace("_sample", "_resample")
 
         if sample_mode.lower() in (
-            "linear_resample", "linear_sample", "nonlinear_resample",
-            "nonlinear_sample"
+            "linear_resample",
+            "linear_sample",
+            "nonlinear_resample",
+            "nonlinear_sample",
         ):
             k_smpls = samples.keys  # Re-use the keys if not re-sampling
             if sample_mode.lower().endswith("_resample"):
@@ -380,14 +563,14 @@ class OptimizeVI:
                 k_smpls,
                 point_estimates=point_estimates,
                 **draw_linear_kwargs,
-                **kwargs
+                **kwargs,
             )
             if sample_mode.lower().startswith("nonlinear"):
                 samples, st_smpls = self.nonlinearly_update_samples(
                     samples,
                     point_estimates=point_estimates,
                     **nonlinearly_update_kwargs,
-                    **kwargs
+                    **kwargs,
                 )
             elif not sample_mode.lower().startswith("linear"):
                 ve = f"invalid sampling mode {sample_mode!r}"
@@ -397,7 +580,7 @@ class OptimizeVI:
                 samples,
                 point_estimates=point_estimates,
                 **nonlinearly_update_kwargs,
-                **kwargs
+                **kwargs,
             )
         elif sample_mode == "":
             samples, st_smpls = samples, 0  # Do nothing for MAP
@@ -409,21 +592,54 @@ class OptimizeVI:
     def kl_minimize(
         self,
         samples: Samples,
-        minimize: Callable[..., optimize.OptimizeResults] = optimize._newton_cg,
+        minimize: Callable[..., optimize.OptimizeResults] = optimize._static_newton_cg,
         minimize_kwargs={},
-        **kwargs
+        constants=(),
+        **kwargs,
     ) -> optimize.OptimizeResults:
         fun_and_grad = Partial(
             self.kl_value_and_grad, primals_samples=samples, **kwargs
         )
         hessp = Partial(self.kl_metric, primals_samples=samples, **kwargs)
+        pl = samples.pos
+        if constants:
+            from .likelihood import _parse_point_estimates, partial_insert_and_remove
+            from .tree_math import Vector, zeros_like
+
+            insert_axes, pl, primals_frozen = _parse_point_estimates(constants, pl)
+            unflatten = Vector if insert_axes else None
+            fun_and_grad = partial_insert_and_remove(
+                fun_and_grad,
+                insert_axes=(insert_axes,),
+                flat_fill=(primals_frozen,),
+                remove_axes=(False, insert_axes),
+                unflatten=lambda x: (x[0], unflatten(x[1:])),
+            )
+            hessp = partial_insert_and_remove(
+                hessp,
+                insert_axes=(insert_axes, insert_axes),
+                flat_fill=(primals_frozen, zeros_like(primals_frozen)),
+                remove_axes=insert_axes,
+                unflatten=unflatten,
+            )
         kl_opt_state = minimize(
             None,
-            x0=samples.pos,
+            x0=pl,
             fun_and_grad=fun_and_grad,
             hessp=hessp,
-            **minimize_kwargs
+            **minimize_kwargs,
         )
+        if constants:
+            insert = partial_insert_and_remove(
+                lambda x: x,
+                insert_axes=(insert_axes,),
+                flat_fill=(primals_frozen,),
+                remove_axes=None,
+                unflatten=None,
+            )
+            kl_opt_state = kl_opt_state._replace(
+                x=insert(kl_opt_state.x), jac=insert(kl_opt_state.jac)
+            )
         return kl_opt_state
 
     def init_state(
@@ -443,13 +659,13 @@ class OptimizeVI:
         ),
         sample_mode: SMPL_MODE_GENERIC_TYP = "nonlinear_resample",
         point_estimates=(),
-        constants=(),  # TODO
+        constants=(),
     ) -> OptimizeVIState:
         """Initialize the state of the (otherwise state-less) VI approximation.
 
         Parameters
         ----------
-        key : jax random number generataion key
+        key : jax random number generation key
         nit : int
             Current iteration number.
         n_samples : int or callable
@@ -478,8 +694,11 @@ class OptimizeVI:
             inputs, a tuple of strings is also valid. From these the boolean
             indicator pytree is automatically constructed.
         constants: tree-like structure or tuple of str
-            Not implemented yet, sorry :( Do bug me (Gordian) at
-            edh@mpa-garching.mpg.de if you wanted to run with this option.
+            Pytree of same structure as likelihood input but with boolean
+            leaves indicating whether to keep these values constant during the
+            KL minimization. As a convenience method, for dict-like inputs, a
+            tuple of strings is also valid. From these the boolean indicator
+            pytree is automatically constructed.
 
         Most of the parameters can be callable, in which case they are called
         with the current iteration number as argument and should return the
@@ -518,12 +737,9 @@ class OptimizeVI:
         assert isinstance(state, OptimizeVIState)
         nit, key, config = state.nit, state.key, state.config
 
-        constants = _getitem_at_nit(config, "constants", nit)
-        if not (constants == () or constants is None):
-            raise NotImplementedError()
-
         sample_mode = _getitem_at_nit(config, "sample_mode", nit)
         point_estimates = _getitem_at_nit(config, "point_estimates", nit)
+        constants = _getitem_at_nit(config, "constants", nit)
         n_samples = _getitem_at_nit(config, "n_samples", nit)
         draw_linear_kwargs = _getitem_at_nit(config, "draw_linear_kwargs", nit)
         nonlinearly_update_kwargs = _getitem_at_nit(
@@ -539,16 +755,16 @@ class OptimizeVI:
             n_samples=n_samples,
             draw_linear_kwargs=draw_linear_kwargs,
             nonlinearly_update_kwargs=nonlinearly_update_kwargs,
-            **kwargs
+            **kwargs,
         )
 
         kl_kwargs = _getitem_at_nit(config, "kl_kwargs", nit).copy()
-        kl_opt_state = self.kl_minimize(samples, **kl_kwargs, **kwargs)
+        kl_opt_state = self.kl_minimize(
+            samples, constants=constants, **kl_kwargs, **kwargs
+        )
         samples = samples.at(kl_opt_state.x)
         # Remove unnecessary references
-        kl_opt_state = kl_opt_state._replace(
-            x=None, jac=None, hess=None, hess_inv=None
-        )
+        kl_opt_state = kl_opt_state._replace(x=None, jac=None, hess=None, hess_inv=None)
 
         state = state._replace(
             nit=nit + 1,
@@ -562,7 +778,7 @@ class OptimizeVI:
         state = self.init_state(*args, **kwargs)
         nm = self.__class__.__name__
         for i in range(state.nit, self.n_total_iterations):
-            logger.info(f"{nm}: Starting {i+1:04d}")
+            logger.info(f"{nm}: Starting {i + 1:04d}")
             samples, state = self.update(samples, state)
             msg = self.get_status_message(
                 samples, state, map=self.residual_map, name=nm
@@ -595,6 +811,9 @@ def optimize_kl(
     resume: Union[str, bool] = False,
     callback: Optional[Callable[[Samples, OptimizeVIState], None]] = None,
     odir: Optional[str] = None,
+    devices: Optional[list] = None,
+    kl_device_map="shard_map",
+    residual_device_map="pmap",
     _optimize_vi=None,
     _optimize_vi_state=None,
 ) -> tuple[Samples, OptimizeVIState]:
@@ -631,14 +850,15 @@ def optimize_kl(
             kl_map=kl_map,
             residual_map=residual_map,
             kl_reduce=kl_reduce,
-            mirror_samples=mirror_samples
+            mirror_samples=mirror_samples,
+            devices=devices,
+            kl_device_map=kl_device_map,
+            residual_device_map=residual_device_map,
         )
 
     last_fn = os.path.join(odir, LAST_FILENAME) if odir is not None else None
     resume_fn = resume if os.path.isfile(resume) else last_fn
-    sanity_fn = os.path.join(
-        odir, MINISANITY_FILENAME
-    ) if odir is not None else None
+    sanity_fn = os.path.join(odir, MINISANITY_FILENAME) if odir is not None else None
 
     samples = None
     if isinstance(position_or_samples, Samples):
@@ -646,13 +866,12 @@ def optimize_kl(
     else:
         samples = Samples(pos=position_or_samples, samples=None, keys=None)
     opt_vi_st = None
-    if resume:
-        if not os.path.isfile(resume_fn):
-            raise ValueError(f"unable to resume from {resume_fn!r}")
+    if resume and os.path.isfile(resume_fn):
         if samples.pos is not None:
             logger.warning("overwriting `position_or_samples` with `resume`")
         with open(resume_fn, "rb") as f:
             samples, opt_vi_st = pickle.load(f)
+
     opt_vi_st_init = opt_vi.init_state(
         key,
         n_samples=n_samples,
@@ -673,13 +892,10 @@ def optimize_kl(
     if not resume and sanity_fn is not None:
         with open(sanity_fn, "w"):
             pass
-    if not resume and last_fn is not None:
-        with open(last_fn, "wb"):
-            pass
 
     nm = "OPTIMIZE_KL"
     for i in range(opt_vi_st.nit, opt_vi.n_total_iterations):
-        logger.info(f"{nm}: Starting {i+1:04d}")
+        logger.info(f"{nm}: Starting {i + 1:04d}")
         samples, opt_vi_st = opt_vi.update(samples, opt_vi_st)
         msg = opt_vi.get_status_message(samples, opt_vi_st, name=nm)
         logger.info(msg)

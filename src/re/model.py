@@ -216,6 +216,11 @@ class Model(LazyModel):
         if domain is NoValue and init is not NoValue:
             domain = eval_shape(init, Initializer.domain)
         if target is NoValue and domain is not NoValue:
+            # Set attributes as to allow references back from self.__call__
+            # They will be set to the correct value in `super().__init__`
+            self._domain = domain
+            self._target = None
+            self._init = None
             target = eval_shape(self, domain)  # Honor overloaded `__call__`
         super().__init__(domain=domain, init=init, target=target)
 

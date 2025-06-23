@@ -22,7 +22,7 @@ MAX_SIZE0 = 1024
 NEST = True
 
 
-class CoordinateChart():
+class CoordinateChart:
     def __init__(
         self,
         min_shape: Optional[Iterable[int]] = None,
@@ -32,12 +32,22 @@ class CoordinateChart():
         _coarse_size: int = 5,
         _fine_size: int = 4,
         _fine_strategy: Literal["jump", "extend"] = "extend",
-        rg2cart: Optional[Callable[[
-            Iterable,
-        ], Iterable]] = None,
-        cart2rg: Optional[Callable[[
-            Iterable,
-        ], Iterable]] = None,
+        rg2cart: Optional[
+            Callable[
+                [
+                    Iterable,
+                ],
+                Iterable,
+            ]
+        ] = None,
+        cart2rg: Optional[
+            Callable[
+                [
+                    Iterable,
+                ],
+                Iterable,
+            ]
+        ] = None,
         regular_axes: Optional[Union[Iterable[int], Tuple]] = None,
         irregular_axes: Optional[Union[Iterable[int], Tuple]] = None,
         distances: Optional[Union[Iterable[float], float]] = None,
@@ -107,7 +117,7 @@ class CoordinateChart():
                     ceil_sizes=True,
                     _coarse_size=_coarse_size,
                     _fine_size=_fine_size,
-                    _fine_strategy=_fine_strategy
+                    _fine_strategy=_fine_strategy,
                 )
                 if np.prod(shape0, dtype=int) <= MAX_SIZE0:
                     break
@@ -125,17 +135,17 @@ class CoordinateChart():
                 ceil_sizes=True,
                 _coarse_size=_coarse_size,
                 _fine_size=_fine_size,
-                _fine_strategy=_fine_strategy
+                _fine_strategy=_fine_strategy,
             )
         elif shape0 is None:
             raise ValueError("either `shape0` or `min_shape` must be specified")
-        self._shape0 = (shape0, ) if isinstance(shape0, int) else tuple(shape0)
+        self._shape0 = (shape0,) if isinstance(shape0, int) else tuple(shape0)
         self._shape = coarse2fine_shape(
             shape0,
             depth,
             _coarse_size=_coarse_size,
             _fine_size=_fine_size,
-            _fine_strategy=_fine_strategy
+            _fine_strategy=_fine_strategy,
         )
 
         if _fine_strategy not in ("jump", "extend"):
@@ -147,7 +157,7 @@ class CoordinateChart():
             self.shape0,
             _coarse_size=_coarse_size,
             _fine_size=_fine_size,
-            _fine_strategy=_fine_strategy
+            _fine_strategy=_fine_strategy,
         )
 
         self._coarse_size = int(_coarse_size)
@@ -160,41 +170,37 @@ class CoordinateChart():
 
         if rg2cart is None and cart2rg is None:
             if distances0 is None and distances is None:
-                distances = jnp.ones((self.ndim, ))
+                distances = jnp.ones((self.ndim,))
                 distances0 = fine2coarse_distances(
                     distances,
                     depth,
                     _fine_size=_fine_size,
-                    _fine_strategy=_fine_strategy
+                    _fine_strategy=_fine_strategy,
                 )
             elif distances0 is not None:
-                distances0 = jnp.broadcast_to(
-                    jnp.atleast_1d(distances0), (self.ndim, )
-                )
+                distances0 = jnp.broadcast_to(jnp.atleast_1d(distances0), (self.ndim,))
                 distances = coarse2fine_distances(
                     distances0,
                     depth,
                     _fine_size=_fine_size,
-                    _fine_strategy=_fine_strategy
+                    _fine_strategy=_fine_strategy,
                 )
             else:
-                distances = jnp.broadcast_to(
-                    jnp.atleast_1d(distances), (self.ndim, )
-                )
+                distances = jnp.broadcast_to(jnp.atleast_1d(distances), (self.ndim,))
                 distances0 = fine2coarse_distances(
                     distances,
                     depth,
                     _fine_size=_fine_size,
-                    _fine_strategy=_fine_strategy
+                    _fine_strategy=_fine_strategy,
                 )
 
             def _rg2cart(x):
                 x = jnp.asarray(x)
-                return x * distances0.reshape((-1, ) + (1, ) * (x.ndim - 1))
+                return x * distances0.reshape((-1,) + (1,) * (x.ndim - 1))
 
             def _cart2rg(x):
                 x = jnp.asarray(x)
-                return x / distances0.reshape((-1, ) + (1, ) * (x.ndim - 1))
+                return x / distances0.reshape((-1,) + (1,) * (x.ndim - 1))
 
             if regular_axes is None and irregular_axes is None:
                 regular_axes = tuple(range(self.ndim))
@@ -202,9 +208,7 @@ class CoordinateChart():
             self._cart2rg = _cart2rg
         elif rg2cart is not None and cart2rg is not None:
             c0 = jnp.mgrid[tuple(slice(s) for s in self.shape0)]
-            if not all(
-                jnp.allclose(r, c) for r, c in zip(cart2rg(rg2cart(c0)), c0)
-            ):
+            if not all(jnp.allclose(r, c) for r, c in zip(cart2rg(rg2cart(c0)), c0)):
                 raise ValueError("`cart2rg` is not the inverse of `rg2cart`")
             self._rg2cart = rg2cart
             self._cart2rg = cart2rg
@@ -219,7 +223,7 @@ class CoordinateChart():
             coarse2fine_distances,
             self.distances0,
             _fine_size=_fine_size,
-            _fine_strategy=_fine_strategy
+            _fine_strategy=_fine_strategy,
         )
 
         if regular_axes is None and irregular_axes is not None:
@@ -372,28 +376,28 @@ class CoordinateChart():
         csz = self.coarse_size  # abbreviations for readability
         fsz = self.fine_size
 
-        leftmost_center = 0.
+        leftmost_center = 0.0
         # Assume the indices denote the center of the pixels, i.e. the pixel
         # with index 0 is at (0., ) * ndim
         if self.fine_strategy == "jump":
             # for i in range(lvl):
             #     leftmost_center += ((csz - 1) / 2 - 0.5 + 0.5 / fsz) / fsz**i
             lm0 = (csz - 1) / 2 - 0.5 + 0.5 / fsz
-            geo = (1. - fsz**
-                   -lvl) / (1. - 1. / fsz)  # sum(fsz**-i for i in range(lvl))
+            geo = (1.0 - fsz**-lvl) / (
+                1.0 - 1.0 / fsz
+            )  # sum(fsz**-i for i in range(lvl))
             leftmost_center = lm0 * geo
         elif self.fine_strategy == "extend":
             # for i in range(lvl):
             #     leftmost_center += ((csz - 1) / 2 - 0.25 * (fsz - 1)) / 2**i
-            lm0 = ((csz - 1) / 2 - 0.25 * (fsz - 1))
-            geo = (1. - 2.**-lvl) * 2.  # sum(fsz**-i for i in range(lvl))
+            lm0 = (csz - 1) / 2 - 0.25 * (fsz - 1)
+            geo = (1.0 - 2.0**-lvl) * 2.0  # sum(fsz**-i for i in range(lvl))
             leftmost_center = lm0 * geo
         else:
             raise AssertionError()
-        return tuple((leftmost_center, ) * self.ndim)
+        return tuple((leftmost_center,) * self.ndim)
 
-    def ind2rg(self, indices: Iterable[Union[float, int]],
-               lvl: int) -> Tuple[float]:
+    def ind2rg(self, indices: Iterable[Union[float, int]], lvl: int) -> Tuple[float]:
         """Converts pixel indices to a continuous regular Euclidean grid
         coordinates.
 
@@ -427,10 +431,7 @@ class CoordinateChart():
         return tuple(off + idx * dvol for off, idx in zip(offset, indices))
 
     def rg2ind(
-        self,
-        positions: Iterable[Union[float, int]],
-        lvl: int,
-        discretize: bool = True
+        self, positions: Iterable[Union[float, int]], lvl: int, discretize: bool = True
     ) -> Union[Tuple[float], Tuple[int]]:
         """Converts continuous regular grid positions to pixel indices.
 
@@ -463,9 +464,7 @@ class CoordinateChart():
             dvol = 1 / 2**lvl
         else:
             raise AssertionError()
-        indices = tuple(
-            (pos - off) / dvol for off, pos in zip(offset, positions)
-        )
+        indices = tuple((pos - off) / dvol for off, pos in zip(offset, positions))
         if discretize:
             indices = tuple(jnp.rint(idx).astype(jnp.int32) for idx in indices)
         return indices
@@ -545,19 +544,29 @@ def _is_integer(maybe_int):
     return np.asarray(maybe_int, dtype=float).item().is_integer()
 
 
-class HEALPixChart():
+class HEALPixChart:
     def __init__(
         self,
         *,
         min_shape: Optional[Iterable[int]],
         depth: int = -1,
         shape0: Optional[Iterable[int]] = None,
-        nonhp_rg2cart: Optional[Callable[[
-            Iterable,
-        ], Iterable]],
-        nonhp_cart2rg: Optional[Callable[[
-            Iterable,
-        ], Iterable]],
+        nonhp_rg2cart: Optional[
+            Callable[
+                [
+                    Iterable,
+                ],
+                Iterable,
+            ]
+        ],
+        nonhp_cart2rg: Optional[
+            Callable[
+                [
+                    Iterable,
+                ],
+                Iterable,
+            ]
+        ],
         _coarse_size: int = 3,
         _fine_size: int = 2,
         _fine_strategy: Literal["jump", "extend"] = "extend",
@@ -608,7 +617,7 @@ class HEALPixChart():
         self._fine_size = int(_fine_size)
         self._fine_strategy = _fine_strategy
 
-        min_shape = (min_shape, ) if isinstance(min_shape, int) else min_shape
+        min_shape = (min_shape,) if isinstance(min_shape, int) else min_shape
         if shape0 is None and min_shape is not None:
             nonhp_shape0 = fine2coarse_shape(
                 min_shape[1:],
@@ -616,9 +625,9 @@ class HEALPixChart():
                 ceil_sizes=True,
                 _coarse_size=_coarse_size,
                 _fine_size=_fine_size,
-                _fine_strategy=_fine_strategy
+                _fine_strategy=_fine_strategy,
             )
-            shape0 = (12 * self.nside0**2, ) + nonhp_shape0
+            shape0 = (12 * self.nside0**2,) + nonhp_shape0
         elif shape0 is None:
             raise ValueError("either `shape0` or `min_shape` must be specified")
         self._shape0 = shape0
@@ -631,8 +640,7 @@ class HEALPixChart():
         c0 = np.mgrid[tuple(slice(s) for s in self.shape0[1:])]
         if nonhp_cart2rg is not None and nonhp_rg2cart is not None:
             if not all(
-                np.allclose(r, c)
-                for r, c in zip(nonhp_cart2rg(nonhp_rg2cart(c0)), c0)
+                np.allclose(r, c) for r, c in zip(nonhp_cart2rg(nonhp_rg2cart(c0)), c0)
             ):
                 raise ValueError(
                     "`nonhp_cart2rg` is not the inverse of `nonhp_rg2cart`"
@@ -649,9 +657,7 @@ class HEALPixChart():
             irregular_axes = tuple(range(self.ndim))
         self._regular_axes = tuple(regular_axes)
         self._irregular_axes = tuple(irregular_axes)
-        if set(self.regular_axes) | set(self.irregular_axes) != set(
-            range(self.ndim)
-        ):
+        if set(self.regular_axes) | set(self.irregular_axes) != set(range(self.ndim)):
             ve = "`regular_axes` and `irregular_axes` do not span the full axes"
             raise ValueError(ve)
         if set(self.regular_axes) & set(self.irregular_axes) != set():
@@ -672,25 +678,17 @@ class HEALPixChart():
         for lvl in range(self.depth):
             nside = self.nside_at(lvl)
             pix_idx = np.arange(12 * nside**2)
-            self._hp_neighbors_idx[lvl] = get_1st_hp_nbrs_idx(
-                nside, pix_idx, nest=NEST
-            )
+            self._hp_neighbors_idx[lvl] = get_1st_hp_nbrs_idx(nside, pix_idx, nest=NEST)
             self._hp_neighbors[lvl] = np.stack(
-                pixelfunc.pix2vec(
-                    nside, self._hp_neighbors_idx[lvl], nest=NEST
-                ),
-                axis=-1
+                pixelfunc.pix2vec(nside, self._hp_neighbors_idx[lvl], nest=NEST),
+                axis=-1,
             )
-            i = pixelfunc.ring2nest(
-                nside, pix_idx
-            ) if NEST is False else pix_idx
+            i = pixelfunc.ring2nest(nside, pix_idx) if NEST is False else pix_idx
             self._hp_children[lvl] = np.stack(
                 pixelfunc.pix2vec(
-                    2 * nside,
-                    4 * i[:, None] + np.arange(0, 4)[None, :],
-                    nest=True
+                    2 * nside, 4 * i[:, None] + np.arange(0, 4)[None, :], nest=True
                 ),
-                axis=-1
+                axis=-1,
             )
             # Cast to JAX arrays to allow jit-able indexing
             self._hp_neighbors_idx[lvl] = jnp.array(self._hp_neighbors_idx[lvl])
@@ -767,33 +765,34 @@ class HEALPixChart():
             lvl,
             _coarse_size=self.coarse_size,
             _fine_size=self.fine_size,
-            _fine_strategy=self.fine_strategy
+            _fine_strategy=self.fine_strategy,
         )
-        return (12 * self.nside_at(lvl)**2, ) + nonhp_shape
+        return (12 * self.nside_at(lvl) ** 2,) + nonhp_shape
 
     def rgoffset(self, lvl: int) -> Tuple[float]:
         csz = self.coarse_size  # abbreviations for readability
         fsz = self.fine_size
 
-        leftmost_center = 0.
+        leftmost_center = 0.0
         # Assume the indices denote the center of the pixels, i.e. the pixel
         # with index 0 is at (0., ) * ndim
         if self.fine_strategy == "jump":
             # for i in range(lvl):
             #     leftmost_center += ((csz - 1) / 2 - 0.5 + 0.5 / fsz) / fsz**i
             lm0 = (csz - 1) / 2 - 0.5 + 0.5 / fsz
-            geo = (1. - fsz**
-                   -lvl) / (1. - 1. / fsz)  # sum(fsz**-i for i in range(lvl))
+            geo = (1.0 - fsz**-lvl) / (
+                1.0 - 1.0 / fsz
+            )  # sum(fsz**-i for i in range(lvl))
             leftmost_center = lm0 * geo
         elif self.fine_strategy == "extend":
             # for i in range(lvl):
             #     leftmost_center += ((csz - 1) / 2 - 0.25 * (fsz - 1)) / 2**i
-            lm0 = ((csz - 1) / 2 - 0.25 * (fsz - 1))
-            geo = (1. - 2.**-lvl) * 2.  # sum(fsz**-i for i in range(lvl))
+            lm0 = (csz - 1) / 2 - 0.25 * (fsz - 1)
+            geo = (1.0 - 2.0**-lvl) * 2.0  # sum(fsz**-i for i in range(lvl))
             leftmost_center = lm0 * geo
         else:
             raise AssertionError()
-        return (0., ) + tuple((leftmost_center, ) * (self.ndim - 1))
+        return (0.0,) + tuple((leftmost_center,) * (self.ndim - 1))
 
     rgoffset.__doc__ = CoordinateChart.rgoffset.__doc__
 
@@ -821,7 +820,7 @@ class HEALPixChart():
 
     def get_coarse_fine_pair(self, indices, lvl: int):
         if self.ndim == 1:
-            i, = indices
+            (i,) = indices
             return self._hp_neighbors[lvl][i], self._hp_children[lvl][i]
         l = len(indices)
         if l != self.ndim:
@@ -837,11 +836,11 @@ class HEALPixChart():
 
         gc, gf = self._hp_neighbors[lvl][idx_hp], self._hp_children[lvl][idx_hp]
 
-        bc = (1, ) * (self.ndim - 1) + (-1, 1)
-        rc = jnp.array(self.nonhp_ind2cart((idx_r + ciac, ), lvl)).reshape(bc)
+        bc = (1,) * (self.ndim - 1) + (-1, 1)
+        rc = jnp.array(self.nonhp_ind2cart((idx_r + ciac,), lvl)).reshape(bc)
         gc = gc[:, np.newaxis, :] * rc
         gc = gc.reshape(-1, self.ndim + 1)
-        rf = jnp.array(self.nonhp_ind2cart((idx_r + fiac, ), lvl)).reshape(bc)
+        rf = jnp.array(self.nonhp_ind2cart((idx_r + fiac,), lvl)).reshape(bc)
         gf = gf[:, np.newaxis, :] * rf
         gf = gf.reshape(-1, self.ndim + 1)
 

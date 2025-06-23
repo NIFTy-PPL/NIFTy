@@ -16,6 +16,7 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 import nifty8 as ift
+import numpy as np
 from numpy.testing import assert_allclose, assert_equal
 
 from ..common import list2fixture, setup_function, teardown_function
@@ -27,10 +28,12 @@ space = list2fixture([
     ift.HPSpace(4),
     ift.GLSpace(4)
 ])
+dtype = list2fixture([np.float64, np.complex128])
+dtype_inp = list2fixture([np.float64, np.complex128])
 
 
-def test_property(space):
-    diag = ift.Field.from_random(domain=space, random_type='normal')
+def test_property(space, dtype):
+    diag = ift.Field.from_random(domain=space, random_type='normal', dtype=dtype)
     D = ift.DiagonalOperator(diag)
     if D.domain[0] != space:
         raise TypeError
@@ -46,9 +49,9 @@ def test_times_adjoint(space):
     assert_allclose(tt1, tt2)
 
 
-def test_times_inverse(space):
-    rand1 = ift.Field.from_random(domain=space, random_type='normal')
-    diag = ift.Field.from_random(domain=space, random_type='normal')
+def test_times_inverse(space, dtype, dtype_inp):
+    rand1 = ift.Field.from_random(domain=space, random_type='normal', dtype=dtype_inp)
+    diag = ift.Field.from_random(domain=space, random_type='normal', dtype=dtype)
     D = ift.DiagonalOperator(diag)
     tt1 = D.times(D.inverse_times(rand1))
     assert_allclose(rand1.val, tt1.val)

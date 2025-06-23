@@ -1,5 +1,17 @@
+NumPy-Based NIFTy
+==================
+
+.. toctree::
+        :maxdepth: 1
+        
+        old_nifty_volume
+        old_nifty_design_principles
+        old_nifty_custom_nonlinearities
+        old_nifty_getting_started_0
+        old_nifty_getting_started_4_CorrelatedFields
+
 What is NIFTy?
-==============
+--------------
 
 **NIFTy** [1]_ [2]_ [3]_, "\ **N**\umerical **I**\nformation **F**\ield **T**\heor\ **y**\ ", is a versatile library designed to enable the development of signal inference algorithms that are independent of the underlying grids (spatial, spectral, temporal, …) and their resolutions.
 Its object-oriented framework is written in Python, although it accesses libraries written in C++ and C for efficiency.

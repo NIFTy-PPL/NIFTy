@@ -18,7 +18,7 @@
 
 import numpy as np
 from scipy.interpolate import CubicSpline
-from scipy.stats import gamma, invgamma, laplace, norm
+from scipy.stats import beta, gamma, invgamma, laplace, norm
 
 from .. import random
 from ..domain_tuple import DomainTuple
@@ -26,7 +26,7 @@ from ..domains.unstructured_domain import UnstructuredDomain
 from ..field import Field
 from ..operators.adder import Adder
 from ..operators.operator import Operator
-from ..sugar import makeOp
+from ..sugar import is_fieldlike, makeOp
 
 
 def _f_on_np(f, arr):
@@ -77,23 +77,6 @@ class _InterpolationOperator(Operator):
         self._interpolator = CubicSpline(self._xs, self._table)
         self._deriv = self._interpolator.derivative()
         self._inv_table_func = inv_table_func
-
-        try:
-            from jax import numpy as jnp
-
-            def jax_expr(x):
-                res = jnp.interp(x, self._xs, self._table)
-                if inv_table_func is not None:
-                    ve = (
-                        "can not translate arbitrary inverse"
-                        f" table function {inv_table_func!r}"
-                    )
-                    raise ValueError(ve)
-                return res
-
-            self._jax_expr = jax_expr
-        except ImportError:
-            self._jax_expr = None
 
     def apply(self, x):
         self._check_input(x)
@@ -171,14 +154,6 @@ class InverseGammaOperator(Operator):
         else:
             op = makeOp(self._q) @ op
         self._op = op
-
-        try:
-            from ..re.num.stats_distributions import invgamma_prior
-
-            q_val = self._q.val if isinstance(self._q, Field) else self._q
-            self._jax_expr = invgamma_prior(float(self._alpha), q_val)
-        except ImportError:
-            self._jax_expr = None
 
     def apply(self, x):
         return self._op(x)
@@ -313,6 +288,13 @@ def LogInverseGammaOperator(domain, alpha, q, delta=1e-2):
                                 -8.2, 8.2, delta)
     q = np.log(q) if np.isscalar(q) else q.log()
     return Adder(q, domain=op.target) @ op
+
+
+def BetaOperator(domain, a, b, delta=1e-2):
+    """Transform a standard normal into a beta distribution.
+    """
+    func = lambda x: beta.ppf(norm._cdf(x), a=float(a), b=float(b))
+    return _InterpolationOperator(domain, func, -8.2, 8.2, delta)
 
 
 class UniformOperator(Operator):

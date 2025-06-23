@@ -14,16 +14,15 @@
 # Copyright(C) 2021 Max-Planck-Society
 # Author: Philipp Arras
 
-import nifty8 as ift
 import numpy as np
 import pytest
 
-try:
-    import jax.numpy as jnp
-except ImportError:
-    pass
+import nifty8 as ift
 
-from ..common import setup_function, teardown_function
+jax = pytest.importorskip("jax")
+jnp = pytest.importorskip("jax.numpy")
+
+jax.config.update("jax_enable_x64", True)
 
 pmp = pytest.mark.parametrize
 

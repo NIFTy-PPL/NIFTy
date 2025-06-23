@@ -15,11 +15,15 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-import h5py
+import os
+from tempfile import TemporaryDirectory
+
 import astropy.io.fits as ast
+import h5py
+import nifty8 as ift
 from numpy.testing import assert_array_equal
 
-import nifty8 as ift
+from .common import list2fixture, setup_function, teardown_function
 
 
 def test_optimize_kl_operator_output():
@@ -29,14 +33,15 @@ def test_optimize_kl_operator_output():
         tmp = ift.from_random(dom)
         sam_list.append(tmp)
     samples = ift.SampleList(sam_list)
-    fname = "test_consistency"
+    direc = TemporaryDirectory()
+    fname = os.path.join(direc.name, "test")
     samples.save_to_fits(file_name_base=fname,
                          op=None,
                          samples=True,
                          mean=True,
                          std=True,
                          overwrite=True)
-    samples.save_to_hdf5(file_name=fname+'.hdf5',
+    samples.save_to_hdf5(file_name=fname+'.h5',
                          op=None,
                          samples=True,
                          mean=True,
@@ -51,7 +56,7 @@ def test_optimize_kl_operator_output():
         mean_fits = f[0].data
     with ast.open(fname+"_std.fits") as f:
         std_fits = f[0].data
-    with h5py.File(fname+".hdf5", "r") as g:
+    with h5py.File(fname+".h5", "r") as g:
         mean_hdf5 = g["stats"]["mean"][:]
         std_hdf5 = g["stats"]["standard deviation"][:]
 
@@ -63,7 +68,6 @@ def test_optimize_kl_operator_output():
 
 def test_optimize_kl_domain_expansion():
     import numpy as np
-    from tempfile import TemporaryDirectory
 
     dom = ift.RGSpace(10)
 
@@ -84,4 +88,3 @@ def test_optimize_kl_domain_expansion():
         output_directory=TemporaryDirectory().name,
         plot_minisanity_history=True,
     )
-

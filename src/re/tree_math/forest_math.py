@@ -9,16 +9,36 @@ from typing import Callable, Tuple, TypeVar, Union
 from jax import lax
 from jax import numpy as jnp
 from jax import random
-from jax.tree_util import (tree_leaves, tree_map, tree_structure,
-                           tree_transpose, tree_unflatten)
+from jax.tree_util import (
+    tree_leaves,
+    tree_map,
+    tree_structure,
+    tree_transpose,
+    tree_unflatten,
+)
 
 T = TypeVar("T")
 
 CORE_ARITHMETIC_ATTRIBUTES = (
-    "__neg__", "__pos__", "__abs__", "__add__", "__radd__", "__sub__",
-    "__rsub__", "__mul__", "__rmul__", "__truediv__", "__rtruediv__",
-    "__floordiv__", "__rfloordiv__", "__pow__", "__rpow__", "__mod__",
-    "__rmod__", "__matmul__", "__rmatmul__"
+    "__neg__",
+    "__pos__",
+    "__abs__",
+    "__add__",
+    "__radd__",
+    "__sub__",
+    "__rsub__",
+    "__mul__",
+    "__rmul__",
+    "__truediv__",
+    "__rtruediv__",
+    "__floordiv__",
+    "__rfloordiv__",
+    "__pow__",
+    "__rpow__",
+    "__mod__",
+    "__rmod__",
+    "__matmul__",
+    "__rmatmul__",
 )
 
 
@@ -100,14 +120,15 @@ def unstack(stack, axis=0):
     element_count = tree_leaves(stack)[0].shape[0]
     split = partial(jnp.split, indices_or_sections=element_count, axis=axis)
     unstacked = tree_transpose(
-        tree_structure(stack), tree_structure((0., ) * element_count),
-        tree_map(split, stack)
+        tree_structure(stack),
+        tree_structure((0.0,) * element_count),
+        tree_map(split, stack),
     )
     return tree_map(partial(jnp.squeeze, axis=axis), unstacked)
 
 
 def _lax_map(fun, in_axes=0, out_axes=0):
-    if in_axes not in (0, (0, )) or out_axes not in (0, (0, )):
+    if in_axes not in (0, (0,)) or out_axes not in (0, (0,)):
         raise ValueError("`lax.map` maps only along first axis")
     return partial(lax.map, fun)
 
@@ -118,13 +139,13 @@ def get_map(map) -> Callable:
     from ..custom_map import smap, lmap
 
     if isinstance(map, str):
-        if map in ('vmap', 'v'):
+        if map in ("vmap", "v"):
             m = vmap
-        elif map in ('pmap', 'p'):
+        elif map in ("pmap", "p"):
             m = pmap
-        elif map in ('lmap', 'l'):
+        elif map in ("lmap", "l"):
             m = lmap
-        elif map in ('smap', 's'):
+        elif map in ("smap", "s"):
             m = smap
         else:
             raise ValueError(f"unknown `map` {map!r}")
@@ -141,11 +162,11 @@ def map_forest(
     out_axes: Union[int, Tuple] = 0,
     tree_transpose_output: bool = True,
     map: Union[str, Callable] = "vmap",
-    **kwargs
+    **kwargs,
 ) -> Callable:
     if out_axes != 0:
         raise NotImplementedError("`out_axis` not yet supported")
-    in_axes = in_axes if isinstance(in_axes, tuple) else (in_axes, )
+    in_axes = in_axes if isinstance(in_axes, tuple) else (in_axes,)
     i = None
     for idx, el in enumerate(in_axes):
         if el is not None and i is None:
@@ -168,7 +189,7 @@ def map_forest(
             raise TypeError(te)
         x_T = stack(xs[i])
 
-        out_T = map_f(*xs[:i], x_T, *xs[i + 1:])
+        out_T = map_f(*xs[:i], x_T, *xs[i + 1 :])
         # Since `out_axes` is forced to be `0`, we don't need to worry about
         # transposing only part of the output
         if not tree_transpose_output:
@@ -193,7 +214,7 @@ def mean(forest):
     from functools import reduce
     from .vector import Vector
 
-    norm = 1. / len(forest)
+    norm = 1.0 / len(forest)
     if isinstance(forest[0], Vector):
         m = norm * reduce(Vector.__add__, forest)
         return m
@@ -210,10 +231,10 @@ def mean_and_std(forest, correct_bias=True):
         mean_of_sq = mean(tuple(t**2 for t in forest))
     else:
         m = Vector(mean(forest))
-        mean_of_sq = mean(tuple(Vector(t)**2 for t in forest))
+        mean_of_sq = mean(tuple(Vector(t) ** 2 for t in forest))
 
     n = len(forest)
-    scl = jnp.sqrt(n / (n - 1)) if correct_bias else 1.
+    scl = jnp.sqrt(n / (n - 1)) if correct_bias else 1.0
     std = scl * tree_map(jnp.sqrt, mean_of_sq - m**2)
     if isinstance(forest[0], Vector):
         return m, std

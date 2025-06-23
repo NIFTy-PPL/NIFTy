@@ -49,13 +49,13 @@ def testOperatorCombinations(sp, dtype):
     a = ift.DiagonalOperator(ift.Field.from_random(sp, "normal", dtype=dtype))
     b = ift.DiagonalOperator(ift.Field.from_random(sp, "normal", dtype=dtype))
     op = ift.SandwichOperator.make(a, b)
-    ift.extra.check_linear_operator(op, dtype, dtype)
+    ift.extra.check_linear_operator(op, dtype, dtype, rtol=1e-13)
     op = a(b)
-    ift.extra.check_linear_operator(op, dtype, dtype)
+    ift.extra.check_linear_operator(op, dtype, dtype, rtol=1e-13)
     op = a + b
-    ift.extra.check_linear_operator(op, dtype, dtype)
+    ift.extra.check_linear_operator(op, dtype, dtype, rtol=1e-13)
     op = a - b
-    ift.extra.check_linear_operator(op, dtype, dtype)
+    ift.extra.check_linear_operator(op, dtype, dtype, rtol=1e-13)
 
 
 def testLinearInterpolator():
@@ -174,6 +174,17 @@ def testMask(sp, dtype):
     mask[f > 0] = 1
     mask = ift.Field.from_raw(sp, mask)
     op = ift.MaskOperator(mask)
+    ift.extra.check_linear_operator(op, dtype, dtype)
+
+
+@pmp('sp', _h_spaces + _p_spaces)
+@pmp('multi', (False, True))
+def testScaling(sp, dtype, multi):
+    dom = sp
+    if multi:
+        dom = {"foo": dom}
+    fct = ift.from_random(ift.DomainTuple.scalar_domain()).val[()]
+    op = ift.ScalingOperator(dom, fct)
     ift.extra.check_linear_operator(op, dtype, dtype)
 
 

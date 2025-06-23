@@ -12,9 +12,11 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Copyright(C) 2013-2020 Max-Planck-Society
+# Copyright(C) 2024 Philipp Arras
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
+import ducc0
 import nifty8 as ift
 import numpy as np
 import pytest
@@ -71,6 +73,24 @@ def test_gaussian_energy(space, nonlinearity, noise, seed):
         energy = ift.GaussianEnergy(d, N, sampling_dtype=float) @ d_model()
         ift.extra.check_operator(
             energy, xi0, ntries=ntries, tol=1e-6)
+
+
+@pmp('space', [ift.GLSpace(5),
+               ift.RGSpace(5, distances=.789),
+               ift.RGSpace([2, 2], distances=.789)])
+@pmp('with_data', [False, True])
+@pmp('seed', [4, 78])
+@pmp('dtype', [np.float64, np.complex128])
+def test_gaussian_value(space, seed, dtype, with_data):
+    with ift.random.Context(seed):
+        invvar = ift.from_random(space, dtype=np.float64)
+        N = ift.makeOp(invvar)
+        d = ift.from_random(space, dtype=dtype) if with_data else None
+        op = ift.GaussianEnergy(d, N)
+        inp = ift.from_random(op.domain, dtype=dtype)
+        diff = d.val-inp.val if with_data else inp.val
+        ref = 0.5*ducc0.misc.vdot(diff, invvar.val*diff)
+        ift.extra.assert_allclose(op(inp), ift.Field.scalar(ref))
 
 
 @pmp('cplx', [True, False])

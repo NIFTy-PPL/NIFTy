@@ -11,6 +11,8 @@ import pytest
 import nifty8 as ift
 import nifty8.re as jft
 
+jax.config.update("jax_enable_x64", True)
+
 pmp = pytest.mark.parametrize
 
 
@@ -22,10 +24,7 @@ def _explicify(M, position):
     unravel = lambda x: jax.linear_transpose(ravel, position)(x)[0]
     mat = lambda x: M(unravel(x))
     identity = np.identity(dim, dtype=np.float64)
-    m = []
-    for v in identity:
-        m.append(mat(v))
-    return np.vstack(m).T
+    return np.column_stack([mat(v) for v in identity])
 
 
 def get_linear_response(slope_op, intercept_op, sampling_points):
@@ -238,10 +237,8 @@ def test_estimate_elbo_nifty_re_vs_nifty(seed):
 
     n_ham = ift.StandardHamiltonian(n_like)
 
-    elbo, stats = jft.estimate_evidence_lower_bound(like, samples, 4, batch_size=2)
-    n_elbo, nstats = ift.estimate_evidence_lower_bound(
-        n_ham, n_samples, 4, batch_number=2
-    )
+    elbo, stats = jft.estimate_evidence_lower_bound(like, samples, 4, n_batches=2)
+    n_elbo, nstats = ift.estimate_evidence_lower_bound(n_ham, n_samples, 4, n_batches=2)
 
     n_elbo_samples = []
     for n_elbo_sample in n_elbo.iterator():

@@ -26,7 +26,7 @@ class ScalingOperator(EndomorphicOperator):
 
     Parameters
     ----------
-    domain : Domain or tuple of Domain or DomainTuple
+    domain : Domain or tuple of Domain or DomainTuple or MultiDomain
         The domain on which the Operator's input Field is defined.
     factor : scalar
         The multiplication factor
@@ -66,14 +66,8 @@ class ScalingOperator(EndomorphicOperator):
         check_dtype_or_none(sampling_dtype, self._domain)
         self._dtype = sampling_dtype
 
-        try:
-            from functools import partial
-
-            from jax import numpy as jnp
-
-            self._jax_expr = partial(jnp.multiply, factor)
-        except ImportError:
-            self._jax_expr = None
+    def isIdentity(self):
+        return self._factor == 1
 
     def apply(self, x, mode):
         from ..sugar import full

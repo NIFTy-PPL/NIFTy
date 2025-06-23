@@ -3,18 +3,22 @@
 
 from .model import WrappedCall
 from .num import (
-    invgamma_prior, laplace_prior, lognormal_prior, normal_prior, uniform_prior
+    invgamma_prior,
+    laplace_prior,
+    lognormal_prior,
+    normal_prior,
+    uniform_prior,
 )
 
 _doc_shared = """name : hashable, optional
-            Name within the new `input` on which `call` acts.
-        shape : tuple or tree-like structure of ShapeWithDtype
-            Shape of the latent parameter(s) that are transformed to the desired
-            distribution. This can also be an arbitrary shape-dtype structure in
-            which case `dtype` is ignored. Defaults to a scalar.
-        dtype : dtype
-            Data type of the latent parameter(s) that are transformed to the
-            desired distribution."""
+    Name within the new `input` on which `call` acts.
+shape : tuple or tree-like structure of ShapeWithDtype
+    Shape of the latent parameter(s) that are transformed to the desired
+    distribution. This can also be an arbitrary shape-dtype structure in
+    which case `dtype` is ignored. Defaults to a scalar.
+dtype : dtype
+    Data type of the latent parameter(s) that are transformed to the
+    desired distribution."""
 
 
 def _format_doc(func):
@@ -101,7 +105,7 @@ class UniformPrior(WrappedCall):
 
 class InvGammaPrior(WrappedCall):
     @_format_doc
-    def __init__(self, a, scale, loc=0., step=1e-2, **kwargs):
+    def __init__(self, a, scale, loc=0.0, step=1e-2, **kwargs):
         """Transforms standard normally distributed random variables to an
         inverse gamma distribution.
 
