@@ -288,7 +288,7 @@ def invgamma_invprior(a, scale, loc=0.0, step=1e-2) -> Callable:
 
     xmin, xmax = -8.2, 8.2  # (1. - norm.cdf(8.2)) * 2 < 1e-15
     _, invgamma_to_standard = interpolator(
-        lambda x: invgamma.ppf(norm.cdf(x), a=a, loc=loc, scale=scale),
+        lambda x: invgamma.ppf(norm._cdf(x), a=a, loc=loc, scale=scale),
         xmin,
         xmax,
         step=step,
