@@ -2,6 +2,8 @@
 
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 
+import numpy as np
+
 from functools import partial
 from typing import Callable, Optional
 
@@ -178,18 +180,21 @@ def interpolator(
         ve = "either but not both of `step` and `num` must be specified"
         raise ValueError(ve)
     if step is not None:
-        # numpy array to enforce float64
-        import numpy as np
+        # numpy array to enforce evaluating `func` with float64 inputs
         xs = np.arange(xmin, xmax + step, step)
     elif num is not None:
-        # numpy array to enforce float64
-        import numpy as np
+        # numpy array to enforce evaluating `func` with float64 inputs
         xs = np.linspace(xmin, xmax, num)
     else:
         ve = "either of `step` or `num` must be specified"
         raise ValueError(ve)
 
     ys = func(xs)
+
+    # cast back to jax.numpy after calling `func`
+    xs = jnp.array(xs)
+    ys = jnp.array(ys)
+
     if table_func is not None:
         if inv_table_func is None:
             raise ValueError("no `inv_table_func` specified")
@@ -256,9 +261,9 @@ def invgamma_prior(a, scale, loc=0.0, step=1e-2) -> Callable:
         raise TypeError(te)
     if loc == 0.0:
         # Pull out `scale` to interpolate less
-        s2i = lambda x: invgamma.ppf(norm.cdf(x), a=a)
+        s2i = lambda x: invgamma.ppf(norm._cdf(x), a=a)
     elif jnp.isscalar(scale):
-        s2i = lambda x: invgamma.ppf(norm.cdf(x), a=a, loc=loc, scale=scale)
+        s2i = lambda x: invgamma.ppf(norm._cdf(x), a=a, loc=loc, scale=scale)
     else:
         raise TypeError("`scale` may only be array-like for `loc == 0.`")
 
