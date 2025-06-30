@@ -17,7 +17,7 @@
 
 from types import LambdaType
 
-import nifty8.cl as ift
+import nifty.cl as ift
 import pytest
 
 from ..common import setup_function, teardown_function

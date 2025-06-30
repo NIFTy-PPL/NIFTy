@@ -17,7 +17,7 @@
 
 import tempfile
 
-import nifty8.cl as ift
+import nifty.cl as ift
 
 
 def sky(

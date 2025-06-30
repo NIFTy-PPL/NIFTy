@@ -11,7 +11,7 @@ import numpy as np
 from jax import random
 from jax.scipy.ndimage import map_coordinates
 
-from nifty8.re import SamplingCartesianGridLOS
+from nifty.re import SamplingCartesianGridLOS
 
 jax.config.update("jax_enable_x64", True)
 

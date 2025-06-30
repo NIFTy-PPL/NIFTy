@@ -1,7 +1,7 @@
 import sys
 
 import jax
-import nifty8.re as jft
+import nifty.re as jft
 import pytest
 import scipy
 from jax import numpy as jnp

@@ -15,10 +15,10 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-import nifty8.cl as ift
+import nifty.cl as ift
 import numpy as np
 import pytest
-from nifty8.cl import myassert
+from nifty.cl import myassert
 from numpy.testing import assert_allclose, assert_raises
 
 from .common import setup_function, teardown_function
@@ -77,7 +77,7 @@ def test_kl(constants, point_estimates, mirror_samples, mf, geo):
         invariant = None
     ift.extra.assert_equal(samp._m, tmpmean)
 
-    from nifty8.cl.minimization.kl_energies import SampledKLEnergyClass
+    from nifty.cl.minimization.kl_energies import SampledKLEnergyClass
     klpure = SampledKLEnergyClass(samp, tmph, constants, invariant, False)
     # Test number of samples
     expected_nsamps = 2*nsamps if mirror_samples else nsamps

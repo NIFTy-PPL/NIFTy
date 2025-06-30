@@ -4,7 +4,7 @@ import pytest
 from numpy.testing import assert_allclose
 from scipy import stats
 
-import nifty8.re as jft
+import nifty.re as jft
 
 jax.config.update("jax_enable_x64", True)
 

@@ -26,7 +26,7 @@
 
 # %matplotlib inline
 import jax
-import nifty8.re as jft
+import nifty.re as jft
 import matplotlib.pyplot as plt
 from jax import numpy as jnp
 from typing import Tuple

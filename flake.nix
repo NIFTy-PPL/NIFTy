@@ -52,7 +52,7 @@
         allreqs-cuda = pkgs.lib.attrValues req-cuda;
 
         nifty = myPyPkgs.buildPythonPackage {
-          pname = "nifty8";
+          pname = "nifty";
           inherit version;
           src = ./.;
           pyproject = true;
@@ -65,10 +65,10 @@
               pkgs.lib.getExe' pkgs.mpi "mpirun"
             } -n 2 --bind-to none python3 -m pytest test/test_mpi
           '';
-          pythonImportsCheck = [ "nifty8" ];
+          pythonImportsCheck = [ "nifty" ];
         };
         nifty-cuda = myPyPkgs-cuda.buildPythonPackage {
-          pname = "nifty8";
+          pname = "nifty";
           inherit version;
           src = ./.;
 
@@ -82,7 +82,7 @@
               pkgs-cuda.lib.getExe' pkgs-cuda.mpi "mpirun"
             } -n 2 --bind-to none python3 -m pytest test/test_mpi
           '';
-          pythonImportsCheck = [ "nifty8" ];
+          pythonImportsCheck = [ "nifty" ];
         };
 
         nifty-docs = pkgs.stdenv.mkDerivation {

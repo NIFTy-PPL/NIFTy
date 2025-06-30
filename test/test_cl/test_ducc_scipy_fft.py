@@ -1,7 +1,7 @@
-import nifty8.cl as ift
+import nifty.cl as ift
 import numpy as np
 import pytest
-from nifty8.cl.ducc_dispatch import (_scipy_fftn, _scipy_hartley, _scipy_ifftn,
+from nifty.cl.ducc_dispatch import (_scipy_fftn, _scipy_hartley, _scipy_ifftn,
                                   _scipy_vdot, fftn, hartley, ifftn, vdot)
 from numpy.testing import assert_allclose
 

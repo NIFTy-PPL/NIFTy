@@ -17,7 +17,7 @@
 
 from itertools import chain, product
 
-import nifty8.cl as ift
+import nifty.cl as ift
 import numpy as np
 import pytest
 from numpy.testing import assert_allclose, assert_equal, assert_raises

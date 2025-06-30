@@ -107,13 +107,13 @@ python demos/re/0_intro.py
 
 ## Run the tests
 
-To run the tests, install all optional requirements `'nifty8[all]'` and afterwards run pytest (and create a coverage report) via
+To run the tests, install all optional requirements `'nifty[all]'` and afterwards run pytest (and create a coverage report) via
 
 ```
-pytest -n auto --cov=nifty8 test
+pytest -n auto --cov=nifty test
 ```
 
-If you are writing your own tests, it is often sufficient to just install the optional test dependencies `'nifty8[test]'`. However, to run the full test suit including tests of optional functionality, it is assumed that all optional dependencies are installed.
+If you are writing your own tests, it is often sufficient to just install the optional test dependencies `'nifty[test]'`. However, to run the full test suit including tests of optional functionality, it is assumed that all optional dependencies are installed.
 
 
 

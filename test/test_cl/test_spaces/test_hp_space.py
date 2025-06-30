@@ -17,7 +17,7 @@
 
 import numpy as np
 import pytest
-from nifty8.cl import HPSpace, myassert
+from nifty.cl import HPSpace, myassert
 from numpy.testing import assert_almost_equal, assert_equal, assert_raises
 
 from ..common import setup_function, teardown_function

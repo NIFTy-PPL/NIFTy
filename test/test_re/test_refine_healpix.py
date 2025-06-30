@@ -13,7 +13,7 @@ from jax import random
 from jax.tree_util import Partial
 from numpy.testing import assert_allclose, assert_array_equal
 
-import nifty8.re as jft
+import nifty.re as jft
 
 pytest.importorskip("healpy")
 

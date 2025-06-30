@@ -146,7 +146,7 @@ In the implementation in \texttt{NIFTy.re} and \texttt{NIFTy}, the user can choo
 A code example that initializes a non-parametric GP prior for a $128 \times 128$ space with unit volume is shown in the following.
 
 ```python
-from nifty8 import re as jft
+from nifty import re as jft
 
 dims = (128, 128)
 cfm = jft.CorrelatedFieldMaker("cf")

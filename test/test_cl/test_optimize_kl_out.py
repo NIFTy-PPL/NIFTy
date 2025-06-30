@@ -20,7 +20,7 @@ from tempfile import TemporaryDirectory
 
 import astropy.io.fits as ast
 import h5py
-import nifty8.cl as ift
+import nifty.cl as ift
 from numpy.testing import assert_array_equal
 
 from .common import list2fixture, setup_function, teardown_function

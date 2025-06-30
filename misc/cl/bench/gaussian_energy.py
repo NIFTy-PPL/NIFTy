@@ -15,7 +15,7 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-import nifty8 as ift
+import nifty.cvl as ift
 import numpy as np
 import argparse
 
@@ -71,7 +71,7 @@ if __name__ == "__main__":
 
     elif args.method == "jax":
         import jax
-        import nifty8.re as jft
+        import nifty.re as jft
         import jax.numpy as jnp
 
         if dtype_real == np.float64:
@@ -93,7 +93,7 @@ if __name__ == "__main__":
                 return jnp.fft.fftn(self._c * self._mod0(x)[..., None])
 
 
-        from nifty8.operators.jax_operator import _anyarray2jax
+        from nifty.cl.operators.jax_operator import _anyarray2jax
         lh = jft.Gaussian(_anyarray2jax(data.val), _anyarray2jax(invcov_fld.val)).amend(Signal(signal, coilsens_fld.asnumpy()))
         dom = dict(op.domain)
         dom["spectrum"] = ift.makeDomain(ift.UnstructuredDomain(dom["spectrum"].shape[::-1]))

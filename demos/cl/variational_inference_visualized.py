@@ -28,7 +28,7 @@ import numpy as np
 import pylab as plt
 from matplotlib.colors import LogNorm
 
-import nifty8.cl as ift
+import nifty.cl as ift
 
 
 def main():

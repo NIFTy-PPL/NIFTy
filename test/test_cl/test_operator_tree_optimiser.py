@@ -18,7 +18,7 @@
 
 from copy import deepcopy
 
-import nifty8.cl as ift
+import nifty.cl as ift
 import numpy as np
 from numpy.testing import assert_allclose
 

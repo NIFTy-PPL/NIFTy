@@ -5,7 +5,7 @@ from functools import partial, reduce
 
 import jax
 import jax.numpy as jnp
-import nifty8.re as jft
+import nifty.re as jft
 import numpy as np
 import pytest
 from jax import random
@@ -343,7 +343,7 @@ def test_residuals_allfinite(seed, shape, lh_init):
 
 @pmp("iscomplex", [False, True])
 def test_nifty_vcgaussian_vs_niftyre_vcgaussian_consistency(seed, iscomplex):
-    import nifty8.cl as ift
+    import nifty.cl as ift
 
     key = random.PRNGKey(seed)
 

@@ -15,7 +15,7 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-import nifty8.cl as ift
+import nifty.cl as ift
 import numpy as np
 import pytest
 from mpi4py import MPI
@@ -93,7 +93,7 @@ def test_kl(constants, point_estimates, mirror_samples, mf, geo, nsamps):
         samp = ift.minimization.sample_list.ResidualSampleList(
                     tmpmean, locsamp, locneg, comm)
 
-    from nifty8.cl.minimization.kl_energies import SampledKLEnergyClass
+    from nifty.cl.minimization.kl_energies import SampledKLEnergyClass
     kl1 = SampledKLEnergyClass(samp, tmph, constants, invariant, False)
 
     # Test number of samples
