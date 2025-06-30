@@ -28,7 +28,7 @@ class Adder(Operator):
 
     Parameters
     ----------
-    a : :class:`nifty.field.Field` or :class:`nifty.multi_field.MultiField` or Scalar
+    a : :class:`nifty.cl.field.Field` or :class:`nifty.cl.multi_field.MultiField` or Scalar
         The field by which the input is shifted.
     """
     def __init__(self, a, neg=False, domain=None):

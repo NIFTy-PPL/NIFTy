@@ -46,7 +46,7 @@ class EndomorphicOperator(LinearOperator):
 
         Returns
         -------
-        :class:`nifty.field.Field` or :class:`nifty.multi_field.MultiField`
+        :class:`nifty.cl.field.Field` or :class:`nifty.cl.multi_field.MultiField`
             A sample from the Gaussian of given covariance.
         """
         raise NotImplementedError

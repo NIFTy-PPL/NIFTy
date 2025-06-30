@@ -161,7 +161,7 @@ class JaxLinearOperator(LinearOperator):
     ----
     It is the user's responsibility that func is actually a linear function. The
     user can double check this with the help of
-    `nifty.extra.check_linear_operator`.
+    `nifty.cl.extra.check_linear_operator`.
     """
     def __init__(self, domain, target, func, domain_dtype=None, func_T=None):
         import jax

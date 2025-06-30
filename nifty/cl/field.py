@@ -326,7 +326,7 @@ class Field(Operator):
 
         Parameters
         ----------
-        x : :class:`nifty.field.Field`
+        x : :class:`nifty.cl.field.Field`
 
         Returns
         -------
@@ -344,7 +344,7 @@ class Field(Operator):
 
         Parameters
         ----------
-        x : :class:`nifty.field.Field`
+        x : :class:`nifty.cl.field.Field`
             x must be defined on the same domain as `self`.
 
         spaces : None, int or tuple of int
@@ -376,7 +376,7 @@ class Field(Operator):
 
         Parameters
         ----------
-        x : :class:`nifty.field.Field`
+        x : :class:`nifty.cl.field.Field`
             x must be defined on the same domain as `self`.
 
         Returns
@@ -714,10 +714,10 @@ class Field(Operator):
         return np.sqrt(self.s_var())
 
     def __repr__(self):
-        return "<nifty.Field>"
+        return "<nifty.cl.Field>"
 
     def __str__(self):
-        return "\n".join(["nifty.Field instance",
+        return "\n".join(["nifty.cl.Field instance",
                           f"- domain      = {self._domain.__str__()}",
                           f"- val         = {repr(self._val)}",
                           f"- nbytes      = {self._val.nbytes*1e-6:.3f} MB"])

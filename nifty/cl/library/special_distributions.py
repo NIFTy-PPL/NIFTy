@@ -143,7 +143,7 @@ class InverseGammaOperator(Operator):
         time the domain and the target of the operator.
     alpha : float
         The alpha-parameter of the inverse-gamma distribution.
-    q : float or :class:`nifty.field.Field`
+    q : float or :class:`nifty.cl.field.Field`
         The q-parameter of the inverse-gamma distribution.
     mode: float
         The mode of the inverse-gamma distribution.
@@ -232,9 +232,9 @@ class GammaOperator(Operator):
         time the domain and the target of the operator.
     alpha : float
         The shape parameter of the gamma distribution.
-    beta : float or :class:`nifty.field.Field`
+    beta : float or :class:`nifty.cl.field.Field`
         The rate parameter of the gamma distribution.
-    theta : float or :class:`nifty.field.Field`
+    theta : float or :class:`nifty.cl.field.Field`
         The scale parameter of the gamma distribution.
     mean : float
         Mean of the gamma distribution.

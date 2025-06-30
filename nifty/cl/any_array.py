@@ -473,7 +473,7 @@ class AnyArray(np.lib.mixins.NDArrayOperatorsMixin):
         """Performs an element-wise operation on the array.
 
         This method applies a specified pointwise operation to the array, using
-        the corresponding function from :mod:`nifty.pointwise`.
+        the corresponding function from :mod:`nifty.cl.pointwise`.
 
         Parameters
         ----------
@@ -499,7 +499,7 @@ class AnyArray(np.lib.mixins.NDArrayOperatorsMixin):
 
         This method applies a specified pointwise operation to the array and
         also computes its derivative, using the corresponding function from
-        :mod:`nifty.pointwise`.
+        :mod:`nifty.cl.pointwise`.
 
         Parameters
         ----------
@@ -656,10 +656,10 @@ class AnyArray(np.lib.mixins.NDArrayOperatorsMixin):
 
     # ---Printing functions---
     def __repr__(self):
-        return f"<nifty.AnyArray: device_id={self._device_id}>"
+        return f"<nifty.cl.AnyArray: device_id={self._device_id}>"
 
     def __str__(self):
-        return "\n".join(["nifty.AnyArray instance",
+        return "\n".join(["nifty.cl.AnyArray instance",
                           f"- device_id = {self.device_id}",
                           f"- shape     = {self.shape}",
                           f"- strides   = {self.strides}",

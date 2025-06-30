@@ -45,11 +45,11 @@ def SimpleCorrelatedField(
     prefix="",
     harmonic_partner=None,
 ):
-    """Simplified version of :class:`~nifty.library.correlated_fields.CorrelatedFieldMaker`.
+    """Simplified version of :class:`~nifty.cl.library.correlated_fields.CorrelatedFieldMaker`.
 
     Assumes `total_N = 0`, `dofdex = None` and the presence of only one power
     spectrum, i.e. only one call of
-    :func:`~nifty.library.correlated_fields.CorrelatedFieldMaker.add_fluctuations`.
+    :func:`~nifty.cl.library.correlated_fields.CorrelatedFieldMaker.add_fluctuations`.
 
     See also
     --------

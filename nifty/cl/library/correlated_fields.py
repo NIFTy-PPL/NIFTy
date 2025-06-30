@@ -411,11 +411,11 @@ class CorrelatedFieldMaker:
     applying fluctuations around this offset is parametrized.
 
     The resulting correlated field model operator has a
-    :class:`~nifty.multi_domain.MultiDomain` as its domain and
+    :class:`~nifty.cl.multi_domain.MultiDomain` as its domain and
     expects its input values to be univariately gaussian.
 
     The target of the constructed operator will be a
-    :class:`~nifty.domain_tuple.DomainTuple` containing the
+    :class:`~nifty.cl.domain_tuple.DomainTuple` containing the
     `target_subdomains` of the added fluctuations in the order of
     the `add_fluctuations` calls.
 
@@ -424,7 +424,7 @@ class CorrelatedFieldMaker:
 
     An operator representing an array of correlated field models
     can be constructed by setting the `total_N` parameter of. It will
-    have an :class:`~nifty.domains.unstructured_domain.UnstructuredDomain`
+    have an :class:`~nifty.cl.domains.unstructured_domain.UnstructuredDomain`
     of shape `(total_N,)` prepended to its target domain and represent
     `total_N` correlated fields simulataneously.
     The degree of information sharing between the correlated field
@@ -457,7 +457,7 @@ class CorrelatedFieldMaker:
         total_N : integer, optional
             Number of field models to create.
             If not 0, the first entry of the operators target will be an
-            :class:`~nifty.domains.unstructured_domain.UnstructuredDomain`
+            :class:`~nifty.cl.domains.unstructured_domain.UnstructuredDomain`
             with length `total_N`.
         """
         self._azm = None
@@ -496,8 +496,8 @@ class CorrelatedFieldMaker:
 
         Parameters
         ----------
-        target_subdomain : :class:`~nifty.domain.Domain`, \
-                           :class:`~nifty.domain_tuple.DomainTuple`
+        target_subdomain : :class:`~nifty.cl.domain.Domain`, \
+                           :class:`~nifty.cl.domain_tuple.DomainTuple`
             Target subdomain on which the correlation structure defined
             in this call should hold.
         fluctuations : tuple of float (mean, std)
@@ -526,8 +526,8 @@ class CorrelatedFieldMaker:
             field model and the second one is used for the third field model.
             *If not given*, use the same power spectrum model for all
             constructed field models.
-        harmonic_partner : :class:`~nifty.domain.Domain`, \
-                           :class:`~nifty.domain_tuple.DomainTuple`
+        harmonic_partner : :class:`~nifty.cl.domain.Domain`, \
+                           :class:`~nifty.cl.domain_tuple.DomainTuple`
             In which harmonic space to define the power spectrum
         """
         if harmonic_partner is None:
@@ -610,8 +610,8 @@ class CorrelatedFieldMaker:
 
         Parameters
         ----------
-        target_subdomain : :class:`~nifty.domains.domain.Domain`, \
-                           :class:`~nifty.domain_tuple.DomainTuple`
+        target_subdomain : :class:`~nifty.cl.domains.domain.Domain`, \
+                           :class:`~nifty.cl.domain_tuple.DomainTuple`
             Target subdomain on which the correlation structure defined
             in this call should hold.
         scale : tuple of float (mean, std)
@@ -631,8 +631,8 @@ class CorrelatedFieldMaker:
             Whether to implicitly adjust the scale parameter of the Matern
             kernel and the zero-mode of the overall model for the volume in the
             target subdomain or assume them to be adjusted already.
-        harmonic_partner : :class:`~nifty.domains.domain.Domain`, \
-                           :class:`~nifty.domain_tuple.DomainTuple`
+        harmonic_partner : :class:`~nifty.cl.domains.domain.Domain`, \
+                           :class:`~nifty.cl.domain_tuple.DomainTuple`
             Harmonic space in which to define the power spectrum.
 
         Notes
@@ -641,7 +641,7 @@ class CorrelatedFieldMaker:
         unit-less power spectrum, i.e. the parameters are assumed to be
         agnostic to changes in the volume of the target subdomain. This is in
         steep contrast to the non-parametric amplitude operator in
-        :class:`~nifty.library.correlated_fields.CorrelatedFieldMaker.add_fluctuations`.
+        :class:`~nifty.cl.library.correlated_fields.CorrelatedFieldMaker.add_fluctuations`.
 
         Up to the Matern amplitude only works for `total_N == 0`.
         """
@@ -678,7 +678,7 @@ class CorrelatedFieldMaker:
         offset_mean : float
             Mean offset from zero of the correlated field to be made.
         offset_std : tuple of float, instance of \
-                :class:`~nifty.operators.operator.Operator` acting on scalar \
+                :class:`~nifty.cl.operators.operator.Operator` acting on scalar \
                 domain, scalar or None
             Mean standard deviation and standard deviation of the standard
             deviation of the offset. No, this is not a word duplication.

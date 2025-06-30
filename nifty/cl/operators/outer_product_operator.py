@@ -28,7 +28,7 @@ class OuterProduct(LinearOperator):
     Parameters
     ---------
     domain : DomainTuple, the domain of the input field
-    field : :class:`nifty.field.Field`
+    field : :class:`nifty.cl.field.Field`
     ---------
     """
     def __init__(self, domain, field):

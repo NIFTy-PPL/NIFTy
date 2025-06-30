@@ -33,7 +33,7 @@ class EnergyAdapter(Energy):
 
     Parameters
     -----------
-    position : :class:`nifty.field.Field` or :class:`nifty.multi_field.MultiField`
+    position : :class:`nifty.cl.field.Field` or :class:`nifty.cl.multi_field.MultiField`
         The position where the minimization process is started.
     op : EnergyOperator
         The expression computing the energy from the input data.
@@ -170,7 +170,7 @@ class StochasticEnergyAdapter(Energy):
 
         Parameters
         ----------
-        position : :class:`nifty.multi_field.MultiField`
+        position : :class:`nifty.cl.multi_field.MultiField`
             Values of the optimization parameters
         op : Operator
             The objective function of the optimization problem. Must have a

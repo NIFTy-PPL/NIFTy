@@ -152,7 +152,7 @@ class LinearOperator(Operator):
 
         Parameters
         ----------
-        x : :class:`nifty.field.Field`
+        x : :class:`nifty.cl.field.Field`
             The input Field, defined on the Operator's domain or target,
             depending on mode.
 
@@ -165,7 +165,7 @@ class LinearOperator(Operator):
 
         Returns
         -------
-        :class:`nifty.field.Field`
+        :class:`nifty.cl.field.Field`
             The processed Field defined on the Operator's target or domain,
             depending on mode.
         """
@@ -186,12 +186,12 @@ class LinearOperator(Operator):
 
         Parameters
         ----------
-        x : :class:`nifty.field.Field`
+        x : :class:`nifty.cl.field.Field`
             The input Field, defined on the Operator's domain.
 
         Returns
         -------
-        :class:`nifty.field.Field`
+        :class:`nifty.cl.field.Field`
             The processed Field defined on the Operator's target domain.
         """
         return self.apply(x, self.TIMES)
@@ -201,12 +201,12 @@ class LinearOperator(Operator):
 
         Parameters
         ----------
-        x : :class:`nifty.field.Field`
+        x : :class:`nifty.cl.field.Field`
             The input Field, defined on the Operator's target domain
 
         Returns
         -------
-        :class:`nifty.field.Field`
+        :class:`nifty.cl.field.Field`
             The processed Field defined on the Operator's domain.
         """
         return self.apply(x, self.INVERSE_TIMES)
@@ -216,12 +216,12 @@ class LinearOperator(Operator):
 
         Parameters
         ----------
-        x : :class:`nifty.field.Field`
+        x : :class:`nifty.cl.field.Field`
             The input Field, defined on the Operator's target domain
 
         Returns
         -------
-        :class:`nifty.field.Field`
+        :class:`nifty.cl.field.Field`
             The processed Field defined on the Operator's domain.
         """
         return self.apply(x, self.ADJOINT_TIMES)
@@ -231,12 +231,12 @@ class LinearOperator(Operator):
 
         Parameters
         ----------
-        x : :class:`nifty.field.Field`
+        x : :class:`nifty.cl.field.Field`
             The input Field, defined on the Operator's domain.
 
         Returns
         -------
-        :class:`nifty.field.Field`
+        :class:`nifty.cl.field.Field`
             The processed Field defined on the Operator's target domain.
 
         Notes

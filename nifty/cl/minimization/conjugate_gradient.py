@@ -29,7 +29,7 @@ class ConjugateGradient(Minimizer):
 
     Parameters
     ----------
-    controller : :py:class:`nifty.IterationController`
+    controller : :py:class:`nifty.cl.IterationController`
         Object that decides when to terminate the minimization.
     nreset : int
         every `nreset` CG steps the residual will be recomputed accurately
