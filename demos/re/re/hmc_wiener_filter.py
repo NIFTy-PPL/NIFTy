@@ -11,7 +11,7 @@ from jax.config import config
 import matplotlib
 import matplotlib.pyplot as plt
 
-import nifty8.re as jft
+import nifty.re as jft
 
 config.update("jax_enable_x64", True)
 

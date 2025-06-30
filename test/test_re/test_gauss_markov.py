@@ -8,7 +8,7 @@ import pytest
 from jax import random, vmap
 from numpy.testing import assert_allclose
 
-import nifty8.re as jft
+import nifty.re as jft
 
 jax.config.update("jax_enable_x64", True)
 

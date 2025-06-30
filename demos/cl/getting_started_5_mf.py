@@ -29,7 +29,7 @@ import sys
 
 import numpy as np
 
-import nifty8.cl as ift
+import nifty.cl as ift
 
 try:
     from mpi4py import MPI

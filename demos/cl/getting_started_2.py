@@ -12,7 +12,7 @@
 # define the likelihood and finally retrieve (an approximation to) the posterior.
 
 # %%
-import nifty8.cl as ift
+import nifty.cl as ift
 
 # %% [markdown]
 # ## Prior

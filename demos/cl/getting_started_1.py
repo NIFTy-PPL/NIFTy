@@ -25,7 +25,7 @@ import sys
 
 import numpy as np
 
-import nifty8.cl as ift
+import nifty.cl as ift
 
 
 def make_checkerboard_mask(position_space):

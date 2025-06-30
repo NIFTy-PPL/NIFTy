@@ -34,7 +34,7 @@
 
 # +
 # %matplotlib inline
-import nifty8.cl as ift
+import nifty.cl as ift
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -47,7 +47,7 @@ ift.random.push_sseq_from_seed(1)
 # +
 # Plotting routine
 def plot(fields, spectra, title=None):
-    # Plotting preparation is normally handled by nifty8.Plot
+    # Plotting preparation is normally handled by nifty.Plot
     # It is done manually here to be able to tweak details
     # Fields are assumed to have identical domains
     fig = plt.figure(tight_layout=True, figsize=(10, 3))

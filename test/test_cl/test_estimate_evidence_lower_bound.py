@@ -14,10 +14,10 @@
 # Copyright(C) 2022 Max-Planck-Society
 # Author: Matteo Guardiani
 
-import nifty8.cl as ift
+import nifty.cl as ift
 import numpy as np
 import pytest
-from nifty8.cl.operator_spectrum import _DomRemover
+from nifty.cl.operator_spectrum import _DomRemover
 
 from .common import setup_function, teardown_function
 

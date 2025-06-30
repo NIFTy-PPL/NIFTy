@@ -1,5 +1,5 @@
 import jax
-import nifty8.re as jft
+import nifty.re as jft
 import pytest
 
 jax.config.update("jax_enable_x64", True)

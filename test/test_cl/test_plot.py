@@ -17,7 +17,7 @@
 
 from itertools import count
 
-import nifty8.cl as ift
+import nifty.cl as ift
 import numpy as np
 
 from .common import setup_function, teardown_function

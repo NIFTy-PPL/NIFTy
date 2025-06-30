@@ -58,7 +58,7 @@ The default debugging level for output to `stdout` has been increased from
 
 ```
 import logging
-import nifty8 as ift
+import nifty as ift
 
 ch = logging.StreamHandler()
 ch.setLevel(logging.DEBUG)
@@ -408,7 +408,7 @@ In order to dive into those subtleties I suggest running the following code and
 playing around with the dtypes.
 
 ```
-import nifty8 as ift
+import nifty as ift
 import numpy as np
 
 dom = ift.UnstructuredDomain(5)
@@ -449,7 +449,7 @@ The code now uses `numpy`'s new `SeedSequence` and `Generator` classes for the
 production of random numbers (introduced in numpy 1.17. This greatly simplifies
 the generation of reproducible random numbers in the presence of MPI parallelism
 and leads to cleaner code overall. Please see the documentation of
-`nifty8.random` for details.
+`nifty.random` for details.
 
 
 Interface Change for from_random and OuterProduct

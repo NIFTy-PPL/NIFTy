@@ -18,7 +18,7 @@
 from functools import reduce
 from operator import add
 
-import nifty8.cl as ift
+import nifty.cl as ift
 import numpy as np
 import pytest
 

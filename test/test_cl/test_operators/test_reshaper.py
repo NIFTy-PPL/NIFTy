@@ -15,9 +15,9 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-import nifty8.cl as ift
+import nifty.cl as ift
 import pytest
-from nifty8.cl import DomainChangerAndReshaper
+from nifty.cl import DomainChangerAndReshaper
 
 from ..common import list2fixture, setup_function, teardown_function
 

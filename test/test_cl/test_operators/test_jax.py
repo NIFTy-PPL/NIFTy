@@ -17,7 +17,7 @@
 import numpy as np
 import pytest
 
-import nifty8.cl as ift
+import nifty.cl as ift
 
 jax = pytest.importorskip("jax")
 jnp = pytest.importorskip("jax.numpy")

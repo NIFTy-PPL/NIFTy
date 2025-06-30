@@ -18,7 +18,7 @@
 
 import os
 
-import nifty8.cl as ift
+import nifty.cl as ift
 import numpy as np
 import pytest
 

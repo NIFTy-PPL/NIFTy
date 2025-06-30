@@ -8,8 +8,8 @@ import jax
 import numpy as np
 import pytest
 
-import nifty8.re as jft
-from nifty8.re.refine import util
+import nifty.re as jft
+from nifty.re.refine import util
 
 jax.config.update("jax_enable_x64", True)
 

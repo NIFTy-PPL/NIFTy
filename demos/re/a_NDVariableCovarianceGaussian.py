@@ -5,8 +5,8 @@ import jax.numpy as jnp
 import matplotlib.pyplot as plt
 from jax import random
 
-import nifty8.re as jft
-from nifty8.re.tree_math.util import sqrtm
+import nifty.re as jft
+from nifty.re.tree_math.util import sqrtm
 
 jax.config.update("jax_enable_x64", True)
 

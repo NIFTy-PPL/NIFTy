@@ -16,7 +16,7 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-import nifty8.cl as ift
+import nifty.cl as ift
 import numpy as np
 import pytest
 
@@ -76,7 +76,7 @@ def energy_tester(pos, get_noisy_data, energy_initializer, assume_diagonal=False
                 FA = ift.FieldAdapter(dom, k)
                 ops.append(FA.adjoint @ FA)
         realizer = ift.utilities.my_sum(ops)
-        from nifty8.cl.operator_spectrum import _DomRemover
+        from nifty.cl.operator_spectrum import _DomRemover
         flattener = _DomRemover(realizer.target)
         op = flattener @ realizer
     pos = op(pos)

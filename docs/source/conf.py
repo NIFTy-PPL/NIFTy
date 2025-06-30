@@ -1,4 +1,4 @@
-import nifty8
+import nifty
 
 needs_sphinx = "3.2.0"
 
@@ -46,7 +46,7 @@ project = "NIFTy8"
 copyright = "2013-2022, Max-Planck-Society"
 author = "Martin Reinecke"
 
-version = nifty8.__version__[:-2]
+version = nifty.__version__[:-2]
 
 language = "en"
 exclude_patterns = []
@@ -64,7 +64,7 @@ html_theme_options = {
     "icon_links": [
         {
             "name": "PyPI",
-            "url": "https://pypi.org/project/nifty8",
+            "url": "https://pypi.org/project/nifty",
             "icon": "fas fa-box",
         },
         {
@@ -79,4 +79,4 @@ html_theme_options = {
 
 html_last_updated_fmt = "%b %d, %Y"
 
-exclude_patterns = ["mod/modules.rst", "mod/nifty8.logger.rst"]
+exclude_patterns = ["mod/modules.rst", "mod/nifty.logger.rst"]

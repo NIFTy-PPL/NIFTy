@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 from numpy.testing import assert_allclose, assert_array_equal
 
-from nifty8.re.minisanity import reduced_residual_stats
+from nifty.re.minisanity import reduced_residual_stats
 
 jax.config.update("jax_enable_x64", True)
 

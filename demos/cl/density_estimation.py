@@ -26,7 +26,7 @@
 # Demo takes a while to compute
 #############################################################
 
-import nifty8.cl as ift
+import nifty.cl as ift
 
 if __name__ == "__main__":
     filename = "getting_started_density_{}.png"

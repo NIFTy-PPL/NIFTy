@@ -27,7 +27,7 @@ def list2fixture(lst):
 
 
 def setup_function():
-    import nifty8.cl as ift
+    import nifty.cl as ift
     ift.random.push_sseq_from_seed(42)
     comm, _, _, master = ift.utilities.get_MPI_params()
     if comm is not None:
@@ -35,5 +35,5 @@ def setup_function():
 
 
 def teardown_function():
-    import nifty8.cl as ift
+    import nifty.cl as ift
     ift.random.pop_sseq()
