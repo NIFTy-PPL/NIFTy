@@ -3,7 +3,7 @@ NIFTy user guide
 ================
 
 This guide is an overview and explains the main conceptual idea behind NIFTy (Numerical Information Field Theory).
-More details on the API can be found at the `API reference <../mod/nifty8.html>`_.
+More details on the API can be found at the `API reference <../mod/nifty.html>`_.
 In-depth discussion of important concepts in NIFTy and details on how to cite NIFTy is provided on the following pages:
 
 .. toctree::
