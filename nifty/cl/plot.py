@@ -544,7 +544,7 @@ class Plot:
 
         Parameters
         ----------
-        f : :class:`nifty.field.Field` or list of :class:`nifty.field.Field` or None
+        f : :class:`nifty.cl.field.Field` or list of :class:`nifty.cl.field.Field` or None
             If `f` is a single Field, it must be defined on a single `RGSpace`,
             `PowerSpace`, `HPSpace`, `GLSpace`.
             If it is a list, all list members must be Fields defined over the

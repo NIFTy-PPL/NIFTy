@@ -103,7 +103,7 @@ class Nufft(LinearOperator):
         try:
             from ducc0.nufft import nu2u, u2nu
         except ImportError:
-            raise ImportError("ducc0 needs to be installed for nifty.Nufft()")
+            raise ImportError("ducc0 needs to be installed for nifty.cl.Nufft()")
         self._capability = self.TIMES | self.ADJOINT_TIMES
         self._target = makeDomain(target)
         if not isinstance(self._target[0], RGSpace):

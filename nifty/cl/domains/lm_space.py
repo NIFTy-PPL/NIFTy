@@ -24,8 +24,8 @@ from .structured_domain import StructuredDomain
 class LMSpace(StructuredDomain):
     """Represents a set of spherical harmonic coefficients.
 
-    Its harmonic partner spaces are :class:`~nifty.domains.hp_space.HPSpace`
-    and :class:`~nifty.domains.gl_space.GLSpace`.
+    Its harmonic partner spaces are :class:`~nifty.cl.domains.hp_space.HPSpace`
+    and :class:`~nifty.cl.domains.gl_space.GLSpace`.
 
     Parameters
     ----------
@@ -155,7 +155,7 @@ class LMSpace(StructuredDomain):
         return self._mmax
 
     def get_default_codomain(self):
-        """Returns a :class:`~nifty.domains.gl_space.GLSpace` object, which is
+        """Returns a :class:`~nifty.cl.domains.gl_space.GLSpace` object, which is
         capable of storing an accurate representation of data residing on
         `self`.
 

@@ -70,7 +70,7 @@ class StructuredDomain(Domain):
 
         Returns
         -------
-        :class:`nifty.field.Field`
+        :class:`nifty.cl.field.Field`
             An array containing the k vector lengths
         """
         raise NotImplementedError

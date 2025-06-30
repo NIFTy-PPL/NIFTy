@@ -33,7 +33,7 @@ class VdotOperator(LinearOperator):
 
     Parameters
     ----------
-    field : :class:`nifty.field.Field` or :class:`nifty.multi_field.MultiField`
+    field : :class:`nifty.cl.field.Field` or :class:`nifty.cl.multi_field.MultiField`
         The field used to build the scalar product with the operator input
     """
     def __init__(self, field):

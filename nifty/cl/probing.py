@@ -87,7 +87,7 @@ def probe_with_posterior_samples(op, post_op, nprobes, dtype):
 
     Returns
     -------
-    List of :class:`nifty.field.Field`
+    List of :class:`nifty.cl.field.Field`
         List of two fields: the mean and the variance.
     '''
     if not isinstance(op, EndomorphicOperator):
@@ -129,7 +129,7 @@ def probe_diagonal(op, nprobes, random_type="pm1"):
 
     Returns
     -------
-    :class:`nifty.field.Field`
+    :class:`nifty.cl.field.Field`
         The estimated diagonal.
     '''
     sc = StatCalculator()

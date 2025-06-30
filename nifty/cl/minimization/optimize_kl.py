@@ -138,7 +138,7 @@ def optimize_kl(likelihood_energy,
     output_directory : str or None
         Directory in which all output files are saved. If None, no output is
         stored.  Default: None.
-    initial_position : :class:`nifty.field.Field`, :class:`nifty.multi_field.MultiField` or None
+    initial_position : :class:`nifty.cl.field.Field`, :class:`nifty.cl.multi_field.MultiField` or None
         Position in the definition space of `likelihood_energy` from which the
         optimization is started. If `None`, it starts at a random, normal
         distributed position with standard deviation 0.1. The `initial_position`
@@ -208,7 +208,7 @@ def optimize_kl(likelihood_energy,
     -------
     sl : SampleList
 
-    mean : :class:`nifty.field.Field` or :class:`nifty.multi_field.MultiField` (optional)
+    mean : :class:`nifty.cl.field.Field` or :class:`nifty.cl.multi_field.MultiField` (optional)
 
     Note
     ----

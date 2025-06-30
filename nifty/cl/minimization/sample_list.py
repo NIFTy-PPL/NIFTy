@@ -118,14 +118,14 @@ class SampleListBase:
         groups: `samples` and `stats`. `samples` contain the sublabels `0`,
         `1`, ... that number the labels and `stats` contains the sublabels
         `mean` and `standard deviation`. If `self.domain` is an instance of
-        :class:`~nifty.multi_domain.MultiDomain`, these sublabels refer
-        themselves to subgroups. For :class:`~nifty.field.Field`, the sublabel
+        :class:`~nifty.cl.multi_domain.MultiDomain`, these sublabels refer
+        themselves to subgroups. For :class:`~nifty.cl.field.Field`, the sublabel
         refers to an HDF5 data set.
 
         If quanitities are not requested (e.g. by setting `mean=False`), the
         respective sublabels are not present in the HDF5 file.
 
-        If `op` is an :class:`~nifty.operators.operator.Operator`, the operator
+        If `op` is an :class:`~nifty.cl.operators.operator.Operator`, the operator
         string representation, its domain and its target are written to the
         attributes of the HDF5 file.
 
@@ -136,8 +136,8 @@ class SampleListBase:
         op : callable or None
             Callable that is applied to each item in the :class:`SampleListBase`
             before it is returned. Can be an
-            :class:`~nifty.operators.operator.Operator` or any other callable
-            that takes a :class:`~nifty.field.Field` as an input. Default:
+            :class:`~nifty.cl.operators.operator.Operator` or any other callable
+            that takes a :class:`~nifty.cl.field.Field` as an input. Default:
             None.
         samples : bool
             If True, samples are written into hdf5 file.
@@ -207,8 +207,8 @@ class SampleListBase:
         op : callable or None
             Callable that is applied to each item in the :class:`SampleListBase`
             before it is returned. Can be an
-            :class:`~nifty.operators.operator.Operator` or any other callable
-            that takes a :class:`~nifty.field.Field` as an input. Default:
+            :class:`~nifty.cl.operators.operator.Operator` or any other callable
+            that takes a :class:`~nifty.cl.field.Field` as an input. Default:
             None.
         samples : bool
             If True, samples are written into hdf5 file.
@@ -270,8 +270,8 @@ class SampleListBase:
         op : callable or None
             Callable that is applied to each item in the :class:`SampleListBase`
             before it is returned. Can be an
-            :class:`~nifty.operators.operator.Operator` or any other callable
-            that takes a :class:`~nifty.field.Field` as an input. Default:
+            :class:`~nifty.cl.operators.operator.Operator` or any other callable
+            that takes a :class:`~nifty.cl.field.Field` as an input. Default:
             None.
 
         Note
@@ -307,8 +307,8 @@ class SampleListBase:
         Calling this function involves allocating arrays for all samples and
         averaging them afterwards. If the number of local samples is big and
         `op` is not None, this leads to much temporary memory usage. If the
-        output of `op` is just a :class:`~nifty.field.Field` or
-        :class:`~nifty.multi_field.MultiField`, :attr:`sample_stat()`
+        output of `op` is just a :class:`~nifty.cl.field.Field` or
+        :class:`~nifty.cl.multi_field.MultiField`, :attr:`sample_stat()`
         can be used in order to compute the average memory efficiently.
         """
         res = self._prepare_average(op)
@@ -472,9 +472,9 @@ class ResidualSampleList(SampleListBase):
 
         Parameters
         ----------
-        mean : :class:`nifty.field.Field` or :class:`nifty.multi_field.MultiField`
+        mean : :class:`nifty.cl.field.Field` or :class:`nifty.cl.multi_field.MultiField`
             Mean of the sample list.
-        residuals : list of :class:`nifty.field.Field` or list of :class:`nifty.multi_field.MultiField`
+        residuals : list of :class:`nifty.cl.field.Field` or list of :class:`nifty.cl.multi_field.MultiField`
             List of residuals from the mean. If it is a list of `MultiField`,
             the domain of the residuals can be a subdomain of the domain of
             mean. This results in adding just a zero in respective `MultiField`
@@ -519,9 +519,9 @@ class ResidualSampleList(SampleListBase):
 
         Note
         ----
-        If `self.domain` is a :class:`~nifty.multi_domain.MultiDomain`, the old
+        If `self.domain` is a :class:`~nifty.cl.multi_domain.MultiDomain`, the old
         and new mean are combined with
-        :attr:`~nifty.multi_field.MultiField.union` beforehand. This means that
+        :attr:`~nifty.cl.multi_field.MultiField.union` beforehand. This means that
         only the multi field entries present in `mean` are updated.
 
         Returns
@@ -587,7 +587,7 @@ class SampleList(SampleListBase):
 
         Parameters
         ----------
-        samples : list of :class:`nifty.field.Field` or list of :class:`nifty.multi_field.MultiField`
+        samples : list of :class:`nifty.cl.field.Field` or list of :class:`nifty.cl.multi_field.MultiField`
             List of samples.
         comm : MPI communicator or None
             If not `None`, samples can be gathered across multiple MPI tasks. If

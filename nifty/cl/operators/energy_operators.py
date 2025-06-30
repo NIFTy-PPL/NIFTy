@@ -146,7 +146,7 @@ class LikelihoodEnergyOperator(EnergyOperator):
     def get_metric_at(self, x):
         """Compute the Fisher information metric for a `LikelihoodEnergyOperator`
         at `x` using the Jacobian of the coordinate transformation given by
-        :func:`~nifty.operators.operator.Operator.get_transformation`. """
+        :func:`~nifty.cl.operators.operator.Operator.get_transformation`. """
         dtp, f = self.get_transformation()
         bun = f(Linearization.make_var(x)).jac
         return SandwichOperator.make(bun, sampling_dtype=dtp)
@@ -495,7 +495,7 @@ class GaussianEnergy(LikelihoodEnergyOperator):
 
     Parameters
     ----------
-    data : :class:`nifty.field.Field` or None
+    data : :class:`nifty.cl.field.Field` or None
         Observed data of the Gaussian likelihood. If `inverse_covariance` is
         `None`, the `dtype` of `data` is used for sampling. Default is
         0.
@@ -609,7 +609,7 @@ class PoissonianEnergy(LikelihoodEnergyOperator):
 
     Parameters
     ----------
-    d : :class:`nifty.field.Field`
+    d : :class:`nifty.cl.field.Field`
         Data field with counts. Needs to have integer dtype and all field
         values need to be non-negative.
     """
@@ -650,14 +650,14 @@ class InverseGammaEnergy(LikelihoodEnergyOperator):
         \\sum_i (\\alpha_i+1)*\\ln(x_i) + \\beta_i/x_i
 
     This is the likelihood for the variance :math:`x=S_k` given data
-    :math:`\\beta = 0.5 |s_k|^2` where the :class:`nifty.field.Field`
+    :math:`\\beta = 0.5 |s_k|^2` where the :class:`nifty.cl.field.Field`
     :math:`s` is known to have the covariance :math:`S_k`.
 
     Parameters
     ----------
-    beta : :class:`nifty.field.Field`
+    beta : :class:`nifty.cl.field.Field`
         beta parameter of the inverse gamma distribution
-    alpha : Scalar, :class:`nifty.field.Field`, optional
+    alpha : Scalar, :class:`nifty.cl.field.Field`, optional
         alpha parameter of the inverse gamma distribution
     """
 
@@ -715,7 +715,7 @@ class StudentTEnergy(LikelihoodEnergyOperator):
     ----------
     domain : `Domain` or `DomainTuple`
         Domain of the operator
-    theta : Scalar or :class:`nifty.field.Field`
+    theta : Scalar or :class:`nifty.cl.field.Field`
         Degree of freedom parameter for the student t distribution
     """
 
@@ -759,7 +759,7 @@ class BernoulliEnergy(LikelihoodEnergyOperator):
 
     Parameters
     ----------
-    d : :class:`nifty.field.Field`
+    d : :class:`nifty.cl.field.Field`
         Data field with events (1) or non-events (0).
     """
 
@@ -870,7 +870,7 @@ class AveragedEnergy(EnergyOperator):
     ----------
     h: Hamiltonian
        The energy to be averaged.
-    res_samples : iterable of :class:`nifty.field.Field`
+    res_samples : iterable of :class:`nifty.cl.field.Field`
        Set of residual sample points to be added to mean field for
        approximate estimation of the KL.
 

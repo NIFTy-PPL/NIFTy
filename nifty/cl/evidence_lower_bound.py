@@ -191,7 +191,7 @@ def estimate_evidence_lower_bound(
 
     Parameters
     ----------
-    hamiltonian : :class:`nifty.operators.energy_operators.StandardHamiltonian`
+    hamiltonian : :class:`nifty.cl.operators.energy_operators.StandardHamiltonian`
         Hamiltonian of the approximated probability distribution.
     samples : ResidualSampleList
         Collection of samples from the posterior distribution.
