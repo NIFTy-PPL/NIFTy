@@ -1,10 +1,10 @@
 NIFTy Manual
 ============
 
-Welcome to the nifty8 documentation!
+Welcome to the nifty documentation!
 
 .. toctree::
    :maxdepth: 1
 
    User Guide <user/index>
-   API reference <mod/nifty8>
+   API reference <mod/nifty>

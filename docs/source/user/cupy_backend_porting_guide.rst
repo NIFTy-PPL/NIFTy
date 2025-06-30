@@ -1,8 +1,6 @@
 Cupy backend porting guide
 ==========================
 
-Check out the nifty branch `cupy_backend` and install it.
-
 If you have a GPU, also install the python packages `cupy` and optionally
 `pyvkfft`:
 
@@ -44,7 +42,7 @@ enable debug logging which tells you about every CPU <-> GPU copy.
 .. code-block:: python
 
   import logging
-  import nifty8 as ift
+  import nifty.cl. as ift
 
   ch = logging.StreamHandler()
   ch.setLevel(logging.DEBUG)
@@ -58,7 +56,7 @@ The last debugging helpers are:
 
 .. code-block:: python
 
-  import nifty8 as ift
+  import nifty.cl. as ift
 
   ift.config.update("fail_on_device_copy", True)
 
@@ -69,7 +67,7 @@ There is also:
 
 .. code-block:: python
 
-  import nifty8 as ift
+  import nifty.cl. as ift
 
   ift.config.update("break_on_device_copy", True)
   ift.config.update("fail_on_nontrivial_anyarray_creation_on_host", True)
