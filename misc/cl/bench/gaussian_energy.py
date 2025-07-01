@@ -15,7 +15,7 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-import nifty.cvl as ift
+import nifty.cl as ift
 import numpy as np
 import argparse
 
