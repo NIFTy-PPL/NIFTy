@@ -242,7 +242,7 @@ fig.write_html("minimal_reconstruction_data_mean_std.html")
 fig.write_image("minimal_reconstruction_data_mean_std.png", scale=4)
 
 # %%
-import nifty as ift
+import nifty.cl as ift
 
 dims = (128, 128)
 dom = ift.RGSpace(dims, distances=tuple(1.0 / d for d in dims))

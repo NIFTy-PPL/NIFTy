@@ -28,7 +28,7 @@ def _check(a, b):
     assert rel_error < 1e-6
 
 
-# When this is fixed in numpy, the warning in src/ducc_dispath.py is no longer
+# When this is fixed in numpy, the warning in nifty/cl/ducc_dispath.py is no longer
 # necessary
 @pytest.mark.xfail(reason="np.vdot inaccurate for single precision", strict=True)
 def test_vdot():
