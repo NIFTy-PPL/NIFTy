@@ -18,7 +18,7 @@
         myPyPkgs = pkgs.python3Packages;
         myPyPkgs-cuda = pkgs-cuda.python3Packages;
 
-        version = "8.5.7";
+        version = "9.0.0";
 
         req.minimal = with myPyPkgs; [ numpy scipy ducc0 ];
         req.dev = with myPyPkgs; [ pytest pytest-cov pytest-xdist matplotlib ];
@@ -63,7 +63,7 @@
           postCheck = ''
             ${
               pkgs.lib.getExe' pkgs.mpi "mpirun"
-            } -n 2 --bind-to none python3 -m pytest test/test_mpi
+            } -n 2 --bind-to none python3 -m pytest test/test_cl/test_mpi
           '';
           pythonImportsCheck = [ "nifty" ];
         };
