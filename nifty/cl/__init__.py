@@ -1,7 +1,3 @@
-from importlib.metadata import version
-
-__version__ = version("nifty")
-
 from .. import config
 from . import random
 
