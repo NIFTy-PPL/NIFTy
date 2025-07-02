@@ -189,6 +189,8 @@ class StochasticEnergyAdapter(Energy):
             If not None, samples will be distributed as evenly as possible
             across this communicator. If `mirror_samples` is set, then a sample
             and its mirror image will always reside on the same task.
+            To enable transferring large objects (>2 GiB) via MPI, wrap the `comm`
+            object with `mpi4py.utils.pkl5.Intracomm` before passing it.
         nanisinf : bool
             If true, nan energies, which can occur due to overflows in the
             forward model, are interpreted as inf which can be interpreted by

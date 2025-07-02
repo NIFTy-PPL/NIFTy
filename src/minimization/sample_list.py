@@ -48,6 +48,8 @@ class SampleListBase:
     comm : MPI communicator or None
         If not `None`, :class:`SampleListBase` can gather samples across multiple
         MPI tasks. If `None`, :class:`SampleListBase` is not a distributed object.
+        To enable transferring large objects (>2 GiB) via MPI, wrap the `comm`
+        object with `mpi4py.utils.pkl5.Intracomm` before passing it.
     domain : Domainoid (can be DomainTuple, MultiDomain, dict, Domain or list of Domains)
         The domain on which the samples are defined.
     n_local_samples : int
@@ -493,6 +495,8 @@ class ResidualSampleList(SampleListBase):
         comm : MPI communicator or None
             If not `None`, samples can be gathered across multiple MPI tasks. If
             `None`, :class:`ResidualSampleList` is not a distributed object.
+            To enable transferring large objects (>2 GiB) via MPI, wrap the `comm`
+            object with `mpi4py.utils.pkl5.Intracomm` before passing it.
         """
         self._m = mean
         self._r = tuple(residuals)
@@ -600,6 +604,8 @@ class SampleList(SampleListBase):
         comm : MPI communicator or None
             If not `None`, samples can be gathered across multiple MPI tasks. If
             `None`, :class:`ResidualSampleList` is not a distributed object.
+            To enable transferring large objects (>2 GiB) via MPI, wrap the `comm`
+            object with `mpi4py.utils.pkl5.Intracomm` before passing it.
         domain : DomainTuple, MultiDomain or None
             Sets the domain of the `SampleList`. If `samples` is non-empty and
             `domain` is not None, `domain` has to coincide with the domain of
