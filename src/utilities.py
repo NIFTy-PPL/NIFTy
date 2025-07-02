@@ -363,6 +363,7 @@ def allreduce_sum(obj, comm):
         nobj = len(vals)
         who = np.zeros(nobj, dtype=np.int32)
         rank = 0
+        dtype = type(vals[0])
     else:
         rank = comm.Get_rank()
         nobj_list = comm.allgather(len(vals))
@@ -373,6 +374,11 @@ def allreduce_sum(obj, comm):
         lo, hi = rank_lo_hi[rank]
         vals = [None]*lo + vals + [None]*(nobj-hi)
         who = [t for t, (l, h) in enumerate(rank_lo_hi) for cnt in range(h-l)]
+        # Determine dtype of elements
+        dtype = comm.allreduce([type(x) for x in vals if x is not None])
+        dtype = list(set(dtype))
+        assert len(dtype) == 1
+        dtype = dtype[0]
 
     step = 1
     while step < nobj:
@@ -383,14 +389,101 @@ def allreduce_sum(obj, comm):
                         vals[j] = vals[j] + vals[j+step]
                         vals[j+step] = None
                     else:
-                        vals[j] = vals[j] + comm.recv(source=who[j+step])
+                        vals[j] = vals[j] + _recv(comm, source=who[j+step], dtype=dtype)
                 elif rank == who[j+step]:
-                    comm.send(vals[j+step], dest=who[j])
+                    _send(comm, vals[j+step], dest=who[j], dtype=dtype)
                     vals[j+step] = None
         step *= 2
     if comm is None:
         return vals[0]
-    return comm.bcast(vals[0], root=who[0])
+    return _bcast(comm, vals[0], root=who[0])
+
+
+# TODO: Later make sure that all this also works directly with GPU arrays https://mpi4py.readthedocs.io/en/stable/tutorial.html#gpu-aware-mpi-python-gpu-arrays
+def _send(comm, obj, dest, dtype):
+    from .field import Field
+    from .multi_field import MultiField
+
+    assert isinstance(obj, dtype)
+    if dtype is np.ndarray:
+        obj = np.ascontiguousarray(obj)
+        comm.send((obj.shape, obj.dtype), dest=dest, tag=77)
+        return comm.Send(obj, dest=dest)
+    elif dtype is Field:
+        comm.send(obj.domain, dest=dest, tag=79)
+        comm.send(type(obj.val), dest=dest, tag=80)
+        return _send(comm, obj.val, dest, type(obj.val))
+    elif dtype is MultiField:
+        dct = obj.to_dict()
+        keys = tuple(dct.keys())
+        _send(comm, keys, dest, tuple)
+        for kk, vv in dct.items():
+            _send(comm, vv, dest, Field)
+        return
+    return comm.send(obj, dest=dest)
+
+def _recv(comm, source, dtype):
+    from .field import Field
+    from .multi_field import MultiField
+
+    if dtype is np.ndarray:
+        shape, dtype = comm.recv(source=source, tag=77)
+        buf = np.empty(shape, dtype)  # assume C-style contiguous arrays
+        comm.Recv(buf, source)
+        return buf
+    elif dtype is Field:
+        dom = comm.recv(source=source, tag=79)
+        dtype = comm.recv(source=source, tag=80)
+        return Field(dom, _recv(comm, source, dtype))
+    elif dtype is MultiField:
+        dct = {}
+        keys = _recv(comm, source, tuple)
+        for kk in keys:
+            dct[kk] = _recv(comm, source, Field)
+        return MultiField.from_dict(dct)
+    return comm.recv(source=source)
+
+def _bcast(comm, obj, root):
+    from .field import Field
+    from .multi_field import MultiField
+
+    dtype = comm.bcast(type(obj), root=root)
+    if dtype is np.ndarray:
+        if comm.Get_rank() == root:
+            shape, dtype = obj.shape, obj.dtype
+        else:
+            shape, dtype = None, None
+        shape = comm.bcast(shape, root=root)
+        dtype = comm.bcast(dtype, root=root)
+        if comm.Get_rank() == root:
+            data = obj
+        else:
+            data = np.empty(shape, dtype)
+        comm.Bcast(data, root=root)
+        return data
+    elif dtype is Field:
+        if comm.Get_rank() == root:
+            dom, val, dtype = obj.domain, obj.val, obj.dtype
+        else:
+            dom, val, dtype = None, None, None
+        dom = comm.bcast(dom, root=root)
+        dtype = comm.bcast(dtype, root=root)
+        return Field(dom, _bcast(comm, val, root))
+    elif dtype is MultiField:
+        if comm.Get_rank() == root:
+            keys = tuple(obj.keys())
+        else:
+            keys = None
+        keys = comm.bcast(keys, root=root)
+        dct = {}
+        for kk in keys:
+            if comm.Get_rank() == root:
+                val = obj[kk]
+            else:
+                val = None
+            dct[kk] = _bcast(comm, val, root)
+        return MultiField.from_dict(dct)
+    return comm.bcast(obj, root=root)
 
 
 def value_reshaper(x, N):
