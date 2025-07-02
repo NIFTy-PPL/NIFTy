@@ -5,6 +5,7 @@
 from functools import partial
 from typing import Callable, Optional
 
+import numpy as np
 from jax import numpy as jnp
 from jax.tree_util import Partial, tree_map
 
@@ -178,14 +179,21 @@ def interpolator(
         ve = "either but not both of `step` and `num` must be specified"
         raise ValueError(ve)
     if step is not None:
-        xs = jnp.arange(xmin, xmax + step, step)
+        # numpy array to enforce evaluating `func` with float64 inputs
+        xs = np.arange(xmin, xmax + step, step)
     elif num is not None:
-        xs = jnp.linspace(xmin, xmax, num)
+        # numpy array to enforce evaluating `func` with float64 inputs
+        xs = np.linspace(xmin, xmax, num)
     else:
         ve = "either of `step` or `num` must be specified"
         raise ValueError(ve)
 
     ys = func(xs)
+
+    # cast back to jax.numpy after calling `func`
+    xs = jnp.array(xs)
+    ys = jnp.array(ys)
+
     if table_func is not None:
         if inv_table_func is None:
             raise ValueError("no `inv_table_func` specified")
