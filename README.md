@@ -32,10 +32,10 @@ The major differences between them are:
 
 - Philosophy: `nifty.cl` provides hackable transparent building blocks to
   explore discretization-independent Bayesian inference algorithms with minimal
-  dependencies. On the other hand, `nifty.re` is built around jax, provides a
+  dependencies. On the other hand, `nifty.re` is built around JAX, provides a
   more direct numpy-like interface and aims for high performance out of the box.
-- Backend: numpy/cupy (`nifty.cl`) vs jax (`nifty.re`).
-- Performance: `nifty.re` leverages JIT from jax and thereby runs generally
+- Backend: numpy/cupy (`nifty.cl`) vs JAX (`nifty.re`).
+- Performance: `nifty.re` leverages JIT from JAX and thereby runs generally
   faster than `nifty.cl`.
 - Functionality: `nifty.re` supports HMC and Multi Grids. `nifty.cl` does not
   (yet).
