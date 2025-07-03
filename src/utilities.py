@@ -302,6 +302,10 @@ def get_MPI_params_from_comm(comm):
 def get_MPI_params():
     """Returns basic information about the MPI setup of the running script.
 
+    To enable transferring large objects (>2 GiB) via MPI, wrap the returned `comm`
+    object with `mpi4py.utils.pkl5.Intracomm` before passing it to nifty
+    functions.
+
     Returns
     -------
     comm: MPI communicator or None

@@ -144,6 +144,8 @@ def optimize_kl(likelihood_energy,
     comm : MPI communicator or None
         MPI communicator for distributing samples over MPI tasks. If `None`,
         the samples are not distributed. Default: None.
+        To enable transferring large objects (>2 GiB) via MPI, wrap the `comm`
+        object with `mpi4py.utils.pkl5.Intracomm` before passing it.
     inspect_callback : callable or None
         Function that is called after every global iteration. It can be either a
         function with one argument (then the latest sample list is passed), a
@@ -314,18 +316,20 @@ def optimize_kl(likelihood_energy,
             fname = reduce(join, [output_directory, "pickle", fname])
             if isfile(fname + ".mean.pickle"):
                 mean = ResidualSampleList.load_mean(fname)
-                sl = ResidualSampleList.load(fname)
+                sl = ResidualSampleList.load(fname, comm=comm(last_finished_index))
             else:
                 sl = SampleList.load(fname)
+                # no `comm` object passed to `load` since we expect to find only one sample
+                # (a point estimate), which has to be available in all threads.
                 myassert(sl.n_samples == 1)
                 mean = sl.local_item(0)
+
+            if initial_index == total_iterations:
+                return (sl, mean) if return_final_position else sl
+
             _load_random_state()
             energy_history = _pickle_load_values(last_finished_index, 'energy_history')
 
-            if initial_index == total_iterations:
-                if isfile(fname + ".mean.pickle"):
-                    sl = ResidualSampleList.load(fname)
-                return (sl, mean) if return_final_position else sl
         # No resume
         else:
             check_MPI_synced_random_state(comm(iglobal))
