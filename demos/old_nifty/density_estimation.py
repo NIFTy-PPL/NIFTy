@@ -84,7 +84,7 @@ if __name__ == "__main__":
 
     # Set up likelihood energy and information Hamiltonian
     likelihood_energy = ift.PoissonianEnergy(data) @ signal
-    ham = ift.StandardHamiltonian(likelihood_energy, ic_sampling)
+    ham = ift.StandardHamiltonian(likelihood_energy, ic_sampling, float)
 
     # Start minimization
     initial_mean = 1e-2 * ift.from_random(ham.domain)

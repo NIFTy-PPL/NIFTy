@@ -53,7 +53,7 @@ def test_kl(constants, point_estimates, mirror_samples, mf, geo, nsamps):
     lh = ift.GaussianEnergy(domain=op.target, sampling_dtype=np.float64) @ op
     ic = ift.GradientNormController(iteration_limit=5)
     ic2 = ift.GradientNormController(iteration_limit=5)
-    h = ift.StandardHamiltonian(lh, ic_samp=ic)
+    h = ift.StandardHamiltonian(lh, ic_samp=ic, prior_sampling_dtype=float)
     mean0 = ift.from_random(h.domain, 'normal')
     args = {'constants': constants,
             'point_estimates': point_estimates,
@@ -121,7 +121,8 @@ def test_mirror(n_samples, seed, geo):
     ift.random.push_sseq_from_seed(seed)
     a = ift.FieldAdapter(ift.UnstructuredDomain(2), 'a').exp()
     lh = ift.GaussianEnergy(domain=a.target, sampling_dtype=float) @ a
-    H = ift.StandardHamiltonian(lh, ic_samp=ift.AbsDeltaEnergyController(1E-10, iteration_limit=2))
+    H = ift.StandardHamiltonian(lh, ic_samp=ift.AbsDeltaEnergyController(1E-10, iteration_limit=2),
+                                prior_sampling_dtype=float)
     mini = None
     if geo:
         mini = ift.NewtonCG(ift.AbsDeltaEnergyController(1E-10, iteration_limit=0))
@@ -130,3 +131,41 @@ def test_mirror(n_samples, seed, geo):
     sams = list([s-KL.position for s in KL.samples.iterator()])
     for i in range(len(sams)//2):
         ift.extra.assert_allclose(sams[2*i], -sams[2*i+1])
+
+
+def test_complex_sampling():
+    position_space = ift.RGSpace([10, 10])
+    args = {
+        'offset_mean': 0,
+        'offset_std': (1e-3, 1e-6),
+        'fluctuations': (1., 0.8),
+        'loglogavgslope': (-3., 1),
+        'flexibility': (2, 1.),
+        'asperity': (0.5, 0.4),
+    }
+    correlated_field = ift.SimpleCorrelatedField(position_space, **args)
+    signal = ift.sigmoid(correlated_field)
+    n_los = 100
+    LOS_starts = list(ift.random.current_rng().random((n_los, 2)).T)
+    LOS_ends = list(ift.random.current_rng().random((n_los, 2)).T)
+    R = ift.LOSResponse(position_space, starts=LOS_starts, ends=LOS_ends)
+    signal_response = R(signal)
+    data_space = R.target
+    noise = .001
+    N = ift.ScalingOperator(data_space, noise, np.float64)
+    mock_position = ift.from_random(signal_response.domain, 'normal')
+    data = signal_response(mock_position) + N.draw_sample()
+    ic_sampling = ift.AbsDeltaEnergyController(deltaE=0.05, iteration_limit=0)
+    likelihood_energy = (ift.GaussianEnergy(data, inverse_covariance=N.inverse) @
+                         signal_response)
+    dtype = {kk: float for kk in likelihood_energy.domain.keys()}
+    dtype["xi"] = complex
+    pos = ift.from_random(likelihood_energy.domain, dtype=dtype)
+    ham = ift.StandardHamiltonian(likelihood_energy, ic_sampling, dtype)
+    e = ift.SampledKLEnergy(pos, ham, 100, None)
+
+    ref, tol = 1., 1e-1
+    val = np.std(list(e.samples.iterator(lambda x: x["xi"].val.real[0, 0])))
+    assert abs(ref-val)/(abs(ref)+abs(val)) < tol
+    val = np.std(list(e.samples.iterator(lambda x: x["xi"].val.imag[0, 0])))
+    assert abs(ref-val)/(abs(ref)+abs(val)) < tol
