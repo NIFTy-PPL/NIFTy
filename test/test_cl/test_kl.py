@@ -41,8 +41,8 @@ def test_kl(constants, point_estimates, mirror_samples, mf, geo):
     lh = ift.GaussianEnergy(domain=op.target, sampling_dtype=np.float64) @ op
     ic = ift.GradientNormController(iteration_limit=5)
     ic.enable_logging()
-    h = ift.StandardHamiltonian(lh, ic_samp=ic)
-    mean0 = ift.from_random(h.domain, 'normal')
+    mean0 = ift.from_random(lh.domain, 'normal')
+    h = ift.StandardHamiltonian(lh, ic_samp=ic, prior_sampling_dtype=mean0.dtype)
 
     nsamps = 2
     args = {'constants': constants,
@@ -109,8 +109,9 @@ def test_ParametricVI(mirror_samples, fc):
     lh = ift.GaussianEnergy(domain=op.target, sampling_dtype=np.float64) @ op
     ic = ift.GradientNormController(iteration_limit=5)
     ic.enable_logging()
-    h = ift.StandardHamiltonian(lh, ic_samp=ic)
-    initial_mean = ift.from_random(h.domain, 'normal')
+    initial_mean = ift.from_random(lh.domain, 'normal')
+    h = ift.StandardHamiltonian(lh, ic_samp=ic,
+                                prior_sampling_dtype=initial_mean.dtype)
     nsamps = 10
     args = initial_mean, h, nsamps, mirror_samples, 0.01
     model = (ift.FullCovarianceVI if fc else ift.MeanFieldVI)(*args)

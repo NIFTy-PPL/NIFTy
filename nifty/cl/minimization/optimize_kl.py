@@ -370,9 +370,10 @@ def optimize_kl(likelihood_energy,
         # /Transform mean
 
         count = CountingOperator(lh.domain)
-        ham = StandardHamiltonian(lh @ count, sampling_iteration_controller(iglobal))
         minimizer = kl_minimizer(iglobal)
-        mean_iter = mean.extract(ham.domain)
+        mean_iter = mean.extract(lh.domain)
+        ham = StandardHamiltonian(lh @ count, sampling_iteration_controller(iglobal),
+                                  prior_sampling_dtype=mean_iter.dtype)
 
         if dry_run:
             from ..logger import logger

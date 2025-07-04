@@ -819,6 +819,9 @@ class StandardHamiltonian(EnergyOperator):
     ic_samp : IterationController
         Tells an internal :class:`SamplingEnabler` which convergence criterion
         to use to draw Gaussian samples.
+    prior_sampling_dtype : dtype of dict of dtypes
+        The dtype with which the prior shall draw its samples. Typically this is
+        float but it can also be, e.g., complex. Default is None.
 
     See also
     --------
@@ -827,9 +830,11 @@ class StandardHamiltonian(EnergyOperator):
     `<https://arxiv.org/abs/1812.04403>`_
     """
 
-    def __init__(self, lh, ic_samp=None):
+    def __init__(self, lh, ic_samp=None, prior_sampling_dtype=None):
         self._lh = lh
-        self._prior = GaussianEnergy(data=None, domain=lh.domain, sampling_dtype=float)
+        self._prior = GaussianEnergy(data=None, domain=lh.domain,
+                                     sampling_dtype=prior_sampling_dtype)
+        self._prior_sampling_dtype = prior_sampling_dtype
         self._ic_samp = ic_samp
         self._domain = lh.domain
 
@@ -860,7 +865,13 @@ class StandardHamiltonian(EnergyOperator):
 
     def _simplify_for_constant_input_nontrivial(self, c_inp):
         out, lh1 = self._lh.simplify_for_constant_input(c_inp)
-        return out, StandardHamiltonian(lh1, self._ic_samp)
+        psdt = self._prior_sampling_dtype
+        if psdt is not None:
+            if isinstance(psdt, dict):
+                psdt = {kk: vv for kk, vv in psdt.items() if kk in lh1.domain.keys()}
+            else:
+                psdt = {kk: psdt for kk in lh1.domain.keys()}
+        return out, StandardHamiltonian(lh1, self._ic_samp, psdt)
 
 
 class AveragedEnergy(EnergyOperator):
