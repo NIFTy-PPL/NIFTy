@@ -42,3 +42,10 @@ def test_numpy_operations_with_out(op, args, device_id):
 
     expected = op(arr1.val, arr2.val)
     np.testing.assert_array_equal(out.val, expected)
+
+
+def test_stack():
+    a = ift.AnyArray(np.array([[1, 2, 3], [4, 5, 6]]))
+    res = np.stack([a, a], axis=0).asnumpy()
+    ref = np.stack([a.asnumpy(), a.asnumpy()], axis=0)
+    np.testing.assert_array_equal(res, ref)

@@ -570,7 +570,7 @@ class AnyArray(np.lib.mixins.NDArrayOperatorsMixin):
                 if device_id is None:
                     device_id = vv._device_id
                 vv = vv.at(device_id)._val
-            if isinstance(vv, tuple):
+            if isinstance(vv, (tuple, list)):
                 tmp = []
                 for ww in vv:
                     if isinstance(ww, AnyArray):
@@ -593,7 +593,7 @@ class AnyArray(np.lib.mixins.NDArrayOperatorsMixin):
                 if device_id is None:
                     device_id = vv._device_id
                 vv = vv.at(device_id)._val
-            if isinstance(vv, tuple):
+            if isinstance(vv, (tuple, list)):
                 tmp = []
                 for ww in vv:
                     if isinstance(ww, AnyArray):
@@ -625,7 +625,7 @@ class AnyArray(np.lib.mixins.NDArrayOperatorsMixin):
     @staticmethod
     def _wrap_result(obj, out=None):
         if obj is NotImplemented:
-            warn("Falling back to ineffient way to determine responsibility "
+            warn("Falling back to inefficient way to determine responsibility "
                  "for AnyArray operations. Please report.")
             return NotImplemented
         # TODO: Add make_scalar_if_scalar here
