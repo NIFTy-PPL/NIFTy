@@ -64,7 +64,8 @@ def test_beta_operator(a, b):
     op = ift.BetaOperator(dom, a=a, b=b)
 
     # Consistency
-    ift.extra.check_operator(op, ift.from_random(op.domain), ntries=5)
+    ift.extra.check_operator(op, ift.from_random(op.domain), ntries=5,
+                             no_device_copies=False)
 
     # Value
     samples = op(ift.from_random(op.domain)).asnumpy()

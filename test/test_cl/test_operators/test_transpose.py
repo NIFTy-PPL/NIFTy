@@ -51,7 +51,7 @@ def test_transpose_operator(index_pairs):
     assert np_indices == np_indices1
 
     op = ift.ScalingOperator(dom, 1.).transpose(space_indices)
-    ift.extra.check_linear_operator(op)
+    ift.extra.check_linear_operator(op, atol=1e-13, rtol=1e-13)
     fld = ift.from_random(op.domain)
     res0 = op(fld)
     res1 = ift.makeField(op.target, np.transpose(fld.asnumpy(), np_indices))
