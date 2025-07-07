@@ -656,8 +656,15 @@ def minisanity(likelihood_energy, samples, terminal_colors=True, return_values=F
                 n_isnan = np.sum(np.isnan(sskk))
                 n_iszero = np.sum(sskk == 0)
                 lsize = sskk.size - n_isnan - n_iszero
-                xredchisq[ii][kk].add(np.nansum(abs(sskk) ** 2) / lsize)
-                xscmean[ii][kk].add(np.nansum(sskk) / lsize)
+
+                if (tmp:=np.nansum(abs(sskk) ** 2)) == 0 and lsize == 0:
+                    xredchisq[ii][kk].add(tmp)
+                else:
+                    xredchisq[ii][kk].add(tmp / lsize)
+                if (tmp:=np.nansum(sskk)) == 0 and lsize == 0:
+                    xscmean[ii][kk].add(tmp)
+                else:
+                    xscmean[ii][kk].add(tmp / lsize)
                 xndof[ii][kk] = lsize
                 xnigndof[ii][kk] = n_isnan + n_iszero
 
