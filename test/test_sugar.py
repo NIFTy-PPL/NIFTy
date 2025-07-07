@@ -47,7 +47,7 @@ def test_exec_time():
     op1 = op.ptw("exp")
     lh = ift.GaussianEnergy(domain=op.target, sampling_dtype=np.float64) @ op1
     ic = ift.GradientNormController(iteration_limit=2)
-    ham = ift.StandardHamiltonian(lh, ic_samp=ic)
+    ham = ift.StandardHamiltonian(lh, ic_samp=ic, prior_sampling_dtype=float)
     ham1 = ift.EnergyAdapter(ift.full(ham.domain, 0.), ham)
     kl = ift.SampledKLEnergy(ift.full(ham.domain, 0.), ham, 1, None, mirror_samples=False)
     ops = [op, op1, lh, ham, ham1, kl]
