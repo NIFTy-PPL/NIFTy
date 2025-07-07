@@ -36,7 +36,7 @@
 
         req-cuda.minimal = with myPyPkgs-cuda; [ numpy scipy ducc0 cupy pkgs-cuda.cudaPackages.cudatoolkit ];
         req-cuda.dev = with myPyPkgs-cuda; [ pytest pytest-cov pytest-xdist matplotlib ];
-        req-cuda.mpi = [ myPyPkgs-cuda.mpi4py pkgs.openmpi pkgs.openssh ];
+        req-cuda.mpi = [ myPyPkgs-cuda.mpi4py pkgs-cuda.openmpi pkgs-cuda.openssh ];
         req-cuda.jax = with myPyPkgs-cuda; [ jax jaxlib ];
         req-cuda.rest = with myPyPkgs-cuda; [ astropy h5py ];
         req-cuda.docs = with myPyPkgs-cuda; [
