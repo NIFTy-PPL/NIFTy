@@ -20,6 +20,7 @@ import os
 from itertools import chain
 
 import nifty8 as ift
+import numpy as np
 import pytest
 from mpi4py import MPI
 
@@ -104,6 +105,13 @@ def test_sample_list(comm, cls):
             assert len(samples) == sl.n_samples
         else:
             assert len(samples) <= sl.n_samples
+
+        def dummy_energy(sample):
+            return sample.s_sum(), 2*sample
+
+        val, grad = sl._average_2tuple(dummy_energy)
+        np.testing.assert_allclose(val, sl.average(lambda x: x.s_sum()))
+        ift.extra.assert_allclose(grad, sl.average(lambda x: 2*x))
 
 
 @pmp("cls", all_cls)
@@ -216,8 +224,6 @@ def test_save_to_hdf5(comm, cls, mean, std, samples):
 
                 dom1 = eval(domain_repr)
                 assert dom1 is flddom
-
-
 
 
 @pmp("cls", all_cls)
