@@ -793,7 +793,10 @@ class CorrelatedFieldMaker:
                                 self.slice_fluctuation(ii)))
                 except NotImplementedError:  # AZM mustn't be set to get stats
                     pass
-
+        # Remove everything from list that is not sampled and therefore not an
+        # operator (e.g. for the case that `cfm.set_amplitude_total_offset(0., None)`
+        # has been set
+        lst = [(kk, op) for kk, op in lst if isinstance(op, Operator)]
         for kk, op in lst:
             sc = StatCalculator()
             for _ in range(prior_info):

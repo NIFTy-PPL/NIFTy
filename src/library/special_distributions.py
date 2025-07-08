@@ -26,7 +26,7 @@ from ..domains.unstructured_domain import UnstructuredDomain
 from ..field import Field
 from ..operators.adder import Adder
 from ..operators.operator import Operator
-from ..sugar import is_fieldlike, makeOp
+from ..sugar import makeOp
 
 
 def _f_on_np(f, arr):
@@ -194,11 +194,11 @@ class GammaOperator(Operator):
     The pdf of the gamma distribution is defined as follows:
 
     .. math::
-        \\frac{1}{\\Gamma(k)\\theta^k} x^{k-1}
+        \\frac{1}{\\Gamma(k)\\theta^\\alpha} x^{\\alpha-1}
         \\exp \\left( -\\frac{x}{\\theta} \\right)
 
-    This transformation is implemented as a linear interpolation which maps a
-    Gaussian onto a gamma distribution.
+    This transformation is implemented using linear interpolation to map a
+    Gaussian distribution onto a gamma distribution.
 
     Parameters
     ----------
@@ -208,15 +208,20 @@ class GammaOperator(Operator):
     alpha : float
         The shape parameter of the gamma distribution.
     beta : float or :class:`nifty8.field.Field`
-        The rate parameter of the gamma distribution.
+        The rate parameter of the gamma distribution. Equals 1/theta.
     theta : float or :class:`nifty8.field.Field`
-        The scale parameter of the gamma distribution.
+        The scale parameter of the gamma distribution. Equals 1/beta.
     mean : float
         Mean of the gamma distribution.
     var : float
         Variance of the gamma distribution.
     delta : float
         Distance between sampling points for linear interpolation.
+
+    Note
+    ----
+    To specify the Gamma distribution, you can either specify (alpha, beta),
+    (alpha, theta) or (mean, var).
     """
     def __init__(self, domain, alpha=None, beta=None, theta=None, mean=None, var=None, delta=1e-2):
         self._domain = self._target = DomainTuple.make(domain)

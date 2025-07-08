@@ -44,7 +44,7 @@ class NonlinearCG(Minimizer):
     def __init__(self, controller, beta_heuristics='Polak-Ribiere'):
         valid_beta_heuristics = ['Polak-Ribiere', 'Fletcher-Reeves',
                                  'Hestenes-Stiefel', "5.49"]
-        if not (beta_heuristics in valid_beta_heuristics):
+        if beta_heuristics not in valid_beta_heuristics:
             raise ValueError("beta heuristics must be either 'Polak-Ribiere', "
                              "'Fletcher-Reeves', 'Hestenes-Stiefel, or '5.49'")
         self._beta_heuristic = beta_heuristics

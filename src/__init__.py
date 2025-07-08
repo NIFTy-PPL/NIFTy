@@ -102,7 +102,7 @@ from . import extra
 
 from .utilities import memo, frozendict, myassert
 
-from .logger import logger
+from .logger import logger, logger_init
 
 from .linearization import Linearization
 

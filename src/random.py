@@ -77,7 +77,6 @@ objects, generate new ones via :func:`spawn_sseq()`.
 
 import numpy as np
 
-
 # Stack of SeedSequence objects. Will always start out with a well-defined
 # default. Users can change the "random seed" used by a calculation by pushing
 # a different SeedSequence before invoking any other nifty8.random calls

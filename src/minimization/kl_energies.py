@@ -35,7 +35,7 @@ from ..utilities import get_MPI_params_from_comm, myassert, shareRange
 from .descent_minimizers import DescentMinimizer
 from .energy import Energy
 from .energy_adapter import EnergyAdapter
-from .sample_list import ResidualSampleList, SampleListBase
+from .sample_list import ResidualSampleList
 
 
 def _reduce_field(field, keys):
