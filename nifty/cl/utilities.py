@@ -422,7 +422,7 @@ def _send(comm, obj, dest, dtype):
         obj = np.ascontiguousarray(obj).reshape(shp_orig)
         comm.send((obj.shape, obj.dtype), dest=dest)
         comm.Send(obj, dest=dest)
-        return 
+        return
     elif dtype is Field:
         comm.send((obj.domain, type(obj.val)), dest=dest)
         _send(comm, obj.val, dest, type(obj.val))
