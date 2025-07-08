@@ -35,7 +35,9 @@
 # + [markdown] slideshow={"slide_type": "subslide"}
 # ## Introduction to Information Field Theory(IFT)
 # We start with the measurement equation
+#
 # $$d_i = (Rs)_i+n_i$$
+#
 # Here, $s$ is a continuous field, $d$ a discrete data vector, $n$ is the discrete noise on each data point and $R$ is the instrument response.
 # In most cases, $R$ is not analytically invertible.
 # IFT aims at **inverting** the above uninvertible problem in the **best possible way** using Bayesian statistics.
@@ -54,7 +56,7 @@
 #
 # ### Assumptions
 # - We consider a linear response R in the measurement equation $d=Rs+n$.
-# - We assume the **signal** and the **noise** prior to be **Gaussian**  $\mathcal P (s) = \mathcal G (s,S)$, $\mathcal P (n) = \mathcal G (n,N)$
+# - We assume the **signal** and the **noise** prior to be **Gaussian**  $\mathcal P (s) = \mathcal G (s,S)$, $\mathcal P (n) = \mathcal G (n,N)$.
 # - Here $S, N$ are signal and noise covariances. Therefore they are positive definite matrices.
 #
 # ### Wiener filter solution
@@ -63,10 +65,12 @@
 # $$\mathcal P (s|d) \propto P(s,d) = \mathcal G(d-Rs,N) \,\mathcal G(s,S) \propto \mathcal G (s-m,D)$$
 #
 # - Here, $m$ is the posterior mean , $D$ is the information propagator and are defined as follows:
-# $$m = Dj, \quad D = (S^{-1} +R^\dagger N^{-1} R)^{-1} $$
-# - There, $j$ is the information source defined as $$ j = R^\dagger N^{-1} d.$$
 #
-# Let us implement this in **NIFTy!** So let's import all the packages we need.
+# $$m = Dj, \quad D = (S^{-1} +R^\dagger N^{-1} R)^{-1} $$
+#
+# - There, $j$ is the information source defined as $j = R^\dagger N^{-1} d$.
+#
+# Let us implement this in **NIFTy!**
 # -
 
 # %matplotlib inline
@@ -80,8 +84,8 @@ plt.rcParams['figure.dpi'] = 100
 # ### Implementation in NIFTy
 #
 # We assume statistical **homogeneity** and **isotropy**, so the signal covariance $S$ is **translation invariant** and only depends on the **absolute value** of the distance.
-# According to Wiener-Khinchin theorem, the signal covariance $S$ is diagonal in harmonic space, $$S_{kk^{\prime}} = 2 \pi \delta(k-k^{\prime}) P(k)= \text{diag}(S) \equiv \widehat{S_k}$$ and is described by a one-dimensional power spectrum.
-# We assume the power spectrum to follow a power-law, $$P(k) = P_0\,\left(1+\left(\frac{k}{k_0}\right)^2\right)^{-\gamma /2},$$ with $P_0 = 2 \cdot 10^4, \ k_0 = 5, \ \gamma = 4$, thus the reconstruction starts in harmonic space.
+# According to Wiener-Khinchin theorem, the signal covariance $S$ is diagonal in harmonic space, $S_{kk^{\prime}} = 2 \pi \delta(k-k^{\prime}) P(k)= \text{diag}(S) \equiv \widehat{S_k}$ and is described by a one-dimensional power spectrum.
+# We assume the power spectrum to follow a power-law, $P(k) = P_0\,\left(1+\left(\frac{k}{k_0}\right)^2\right)^{-\gamma /2},$ with $P_0 = 2 \cdot 10^4, \ k_0 = 5, \ \gamma = 4$, thus the reconstruction starts in harmonic space.
 
 # + slideshow={"slide_type": "-"}
 def pow_spec(k):
@@ -94,7 +98,7 @@ def pow_spec(k):
 # ### Spaces and harmonic transformations
 # - We define our non-harmonic signal space to be Cartesian with $N_{pix} = 512$ being the number of grid cells.
 # - To connect harmonic and non-harmonic spaces we introduce the Hartley transform $H$ that is closely related to the Fourier transform but maps $\mathbb{R}\rightarrow\mathbb{R}$.
-# - The covariance S in non-harmonic space is given by $$S = H^{\dagger}\widehat{S_k} H \ .$$
+# - The covariance S in non-harmonic space is given by $S = H^{\dagger}\widehat{S_k} H \ .$
 
 # Signal space is a regular Cartesian grid space
 N_pix = 512
@@ -104,9 +108,11 @@ s_space = ift.RGSpace(N_pix)
 HT = ift.HartleyOperator(s_space)
 k_space = HT.target
 
-S_k = ift.create_power_operator(k_space, power_spectrum=pow_spec, sampling_dtype=float)
+S_k = ift.create_power_operator(k_space, power_spectrum=pow_spec,
+                                sampling_dtype=float)
 
-# Sandwich Operator implements S = HT.adjoint @ S_k @ HT and enables NIFTy to sample from S
+# The Sandwich Operator implements S = HT.adjoint @ S_k @ HT and enables NIFTy
+# to sample from S
 S = ift.SandwichOperator.make(bun=HT, cheese=S_k)
 
 # ### Synthetic Data
@@ -117,13 +123,17 @@ S = ift.SandwichOperator.make(bun=HT, cheese=S_k)
 
 # ### Sampling
 #
-# - Assuming we have a distribution $\mathcal{G}(b,B)$ we can sample from and we want to draw a sample from a distritbution $\mathcal{G}(c,C)$ with covariance $C$. The two distributions are connected via the relation $C = ABA^{\dagger}.$ One can show that $c= Ab$ with $b \curvearrowleft \mathcal{G}(b,B)$	has a probability distribution with covariance $C$ as desired.
+# - Assuming we have a distribution $\mathcal{G}(b,B)$ we can sample from and we want to draw a sample from a distritbution $\mathcal{G}(c,C)$ with covariance $C$. The two distributions are connected via the relation $C = ABA^{\dagger}.$ One can show that $c= Ab$ with $b \curvearrowleft \mathcal{G}(b,B)$ has a probability distribution with covariance $C$ as desired.
+#
 # $$ \langle cc^\dagger\rangle_{\mathcal{G}(c,C)} = \langle Ab(Ab)^\dagger\rangle_{\mathcal{G}(b,B)} = \langle Abb^\dagger A^\dagger \rangle =  A \langle bb^\dagger  \rangle A^\dagger = ABA^\dagger = C$$
+#
 # - This is also true for the case that $B = \mathbb{1}$, meaning that $\mathcal{G}(b,\mathbb{1})$ Thus $C = AA^{\dagger}$ .
 # - Note that, if $C$ is diagonal, $A$ is diagonal as well.
 # - It can be shown that if $C = A + B$, then $c = a + b$ with $b \curvearrowleft \mathcal{G}(b,B)$ and $a \curvearrowleft \mathcal{G}(a,A)$ has a probability distribution with covariance $C$ as desired.
 # - If we can draw samples from $\mathcal{G}(a,A)$, and we want to draw a sample with the covariance $A^{-1}$, one can simply show that $c = A^{-1}a$ has a  a probability distribution with covariance $A^{-1}$.
+#
 # $$\langle c c^{\dagger} \rangle = \langle A^{-1}aa^{\dagger}(A^{-1})^{\dagger} \rangle =  A^{-1}\langle aa^{\dagger}\rangle(A^{-1})^{\dagger} = A^{-1} A(A^{-1})^{\dagger} =A^{-1}$$
+#
 # as we assume $A^{-1}$ to be Hermitian.
 #
 # By this brief introduction to sampling, we apply it in order to get the synthetic data.
@@ -132,7 +142,8 @@ S = ift.SandwichOperator.make(bun=HT, cheese=S_k)
 # Draw a sample from signal with covariance S.
 s = S.draw_sample()
 
-# Define the responce operator that removes the geometry meaning it removes distances and volumes.
+# Define the responce operator that removes the geometry meaning it removes
+# distances and volumes.
 R = ift.GeometryRemover(s_space)
 # Define the data space that has an unstructured domain.
 d_space = R.target
@@ -248,7 +259,8 @@ d = R(s) + n
 
 # + slideshow={"slide_type": "skip"}
 # This implements the rule how to sample from a sum of covariances
-D_inv = ift.SamplingEnabler(ift.SandwichOperator.make(cheese=N.inverse, bun=R), S.inverse, ic, S.inverse)
+D_inv = ift.SamplingEnabler(ift.SandwichOperator.make(cheese=N.inverse, bun=R),
+                            S.inverse, ic, S.inverse)
 # Allow for numerical inversion
 D_inv = ift.InversionEnabler(D_inv, ic)
 D = D_inv.inverse
@@ -260,7 +272,8 @@ m = D(j)
 # Number of samples to calculate the posterior standard deviation
 n_samples = 200
 
-# Helper function that calculates the mean and the variance from a set of samples efficiently
+# Helper function that calculates the mean and the variance from a set of
+# samples efficiently
 sc = ift.StatCalculator()
 for _ in range(n_samples):
     # Draw a sample of G(s,D) and shifting it by m -> G(s-m,D)
@@ -278,9 +291,9 @@ samples_mean = sc.mean
 # Since the data lives in data space, we first need to project it back into the signal space via $R^{\dagger}d$.
 
 # + slideshow={"slide_type": "skip"}
-plt.axvspan(l, h, facecolor='0.8',alpha=0.3, label="masked area") # Shading the masked interval
+plt.axvspan(l, h, facecolor='0.8',alpha=0.3, label="masked area")
 
-plt.plot(s.asnumpy(), '#f28109', label="Signal (ground truth)", alpha=1, linewidth=2) #
+plt.plot(s.asnumpy(), '#f28109', label="Signal (ground truth)", alpha=1, linewidth=2)
 plt.plot(m.asnumpy(), 'k', label="Posterior mean (reconstruction)", linewidth=2)
 plt.fill_between(range(m.size), (m - samples_std).asnumpy(), (m + samples_std).asnumpy(),
                  facecolor='#8592ff', alpha=0.8, label="Posterior std (samples)")
@@ -300,26 +313,28 @@ plt.show()
 # ## Wiener Filter standardized
 # This problem can be solved in various coordinates and thus we can also choose the coordinate system, in which the prior $\mathcal{P}(s)=\mathcal{G}(0,\mathbb{1})$. And therefore the coordinate transformation from this to our original space is part of the prior description.
 # +
-# Coordinate transformation from Gaussian white noise to our prior from above (G(0,1)) to G(s,S)).
+# Coordinate transformation from Gaussian white noise to our prior from above
+# (G(0,1)) to G(s,S)).
 sqrt_pspec = S_k(ift.full(S_k.domain, 1.)).sqrt()
 coord_trafo = HT.adjoint @ ift.makeOp(sqrt_pspec)
 
-# The full Response from the standardized space to data space is a concatenation of R and the transformation
-standardized_R = R @ coord_trafo
-standardized_j = standardized_R.adjoint(N.inverse(d))
+# The full Response from the standardized space to data space is a concatenation
+# of R and the transformation
+R_std = R @ coord_trafo
+j_std = R_std.adjoint(N.inverse(d))
 
 # standard_prior is now a indenty or unit matrix.
-standardized_S = ift.Operator.identity_operator(standardized_R.domain)
+S_std = ift.Operator.identity_operator(R_std.domain)
 
 # the new D
-standardized_Dinv = ift.InversionEnabler(standardized_S + standardized_R.adjoint @ N.inverse @standardized_R, ic)
-standardized_D = standardized_Dinv.inverse
-standardized_m = standardized_D(standardized_j)
+Dinv_std = ift.InversionEnabler(S_std + R_std.adjoint @ N.inverse @ R_std, ic)
+D_std = Dinv_std.inverse
+m_std = D_std(j_std)
 # -
 
 # We can see that we get to the same result.
 
-posterior_mean_s_space = coord_trafo(standardized_m)
+posterior_mean_s_space = coord_trafo(m_std)
 plt.axvspan(l, h, facecolor='0.8',alpha=0.5)
 plt.plot(s.asnumpy(), 'r', label="Signal", alpha=1, linewidth=2)
 plt.plot(data_s_space, 'k.', label="Data")
