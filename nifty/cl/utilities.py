@@ -422,8 +422,7 @@ def _send(comm, obj, dest, dtype):
         comm.send((obj.shape, obj.dtype), dest=dest, tag=77)
         return comm.Send(obj, dest=dest)
     elif dtype is Field:
-        comm.send(obj.domain, dest=dest, tag=79)
-        comm.send(type(obj.val), dest=dest, tag=80)
+        comm.send((obj.domain, type(obj.val)), dest=dest, tag=79)
         return _send(comm, obj.val, dest, type(obj.val))
     elif dtype is MultiField:
         dct = obj.to_dict()
@@ -444,8 +443,7 @@ def _recv(comm, source, dtype):
         comm.Recv(buf, source)
         return buf
     elif dtype is Field:
-        dom = comm.recv(source=source, tag=79)
-        dtype = comm.recv(source=source, tag=80)
+        dom, dtype = comm.recv(source=source, tag=79)
         return Field(dom, _recv(comm, source, dtype))
     elif dtype is MultiField:
         dct = {}
@@ -459,41 +457,24 @@ def _bcast(comm, obj, root):
     from .field import Field
     from .multi_field import MultiField
 
+    master = comm.Get_rank() == root
     dtype = comm.bcast(type(obj), root=root)
     if dtype is np.ndarray:
-        if comm.Get_rank() == root:
-            shape, dtype = obj.shape, obj.dtype
-        else:
-            shape, dtype = None, None
-        shape = comm.bcast(shape, root=root)
-        dtype = comm.bcast(dtype, root=root)
-        if comm.Get_rank() == root:
-            data = obj
-        else:
-            data = np.empty(shape, dtype)
+        shape, dtype = (obj.shape, obj.dtype) if master else (None, None)
+        shape, dtype = comm.bcast((shape, dtype), root=root)
+        data = obj if master else np.empty(shape, dtype)
         comm.Bcast(data, root=root)
         return data
     elif dtype is Field:
-        if comm.Get_rank() == root:
-            dom, val, dtype = obj.domain, obj.val, obj.dtype
-        else:
-            dom, val, dtype = None, None, None
-        dom = comm.bcast(dom, root=root)
-        dtype = comm.bcast(dtype, root=root)
+        dom, val, dtype = (obj.domain, obj.val, obj.dtype) if master else (None, None, None)
+        dom, dtype = comm.bcast((dom, dtype), root=root)
         return Field(dom, _bcast(comm, val, root))
     elif dtype is MultiField:
-        if comm.Get_rank() == root:
-            keys = tuple(obj.keys())
-        else:
-            keys = None
+        keys = tuple(obj.keys()) if master else None
         keys = comm.bcast(keys, root=root)
         dct = {}
         for kk in keys:
-            if comm.Get_rank() == root:
-                val = obj[kk]
-            else:
-                val = None
-            dct[kk] = _bcast(comm, val, root)
+            dct[kk] = _bcast(comm, obj[kk] if master else None, root)
         return MultiField.from_dict(dct)
     return comm.bcast(obj, root=root)
 
