@@ -28,14 +28,16 @@ def _check(a, b):
     assert rel_error < 1e-6
 
 
-# When this is fixed in numpy, the warning in src/ducc_dispath.py is no longer
-# necessary
-@pytest.mark.xfail(reason="np.vdot inaccurate for single precision", strict=True)
+# Apparently has been fixed on modern numpy versions. Keep the xfail for
+# compatibility for older numpy versions
+@pytest.mark.xfail(reason="np.vdot inaccurate for single precision", strict=False)
 def test_vdot():
     a = 100*np.ones((1000000,)).astype(dt)
     _check(a, a)
 
 
+# When this is fixed in numpy, the warning in src/ducc_dispath.py is no longer
+# necessary
 @pytest.mark.xfail(reason="np.vdot inaccurate for single precision", strict=True)
 def test_vdot_extreme():
     a = np.array([1e8, 1, -1e8]).astype(dt)
