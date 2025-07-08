@@ -418,12 +418,15 @@ def _send(comm, obj, dest, dtype):
 
     assert isinstance(obj, dtype)
     if dtype is np.ndarray:
-        obj = np.ascontiguousarray(obj)
-        comm.send((obj.shape, obj.dtype), dest=dest, tag=77)
-        return comm.Send(obj, dest=dest)
+        shp_orig = obj.shape
+        obj = np.ascontiguousarray(obj).reshape(shp_orig)
+        comm.send((obj.shape, obj.dtype), dest=dest)
+        comm.Send(obj, dest=dest)
+        return 
     elif dtype is Field:
-        comm.send((obj.domain, type(obj.val)), dest=dest, tag=79)
-        return _send(comm, obj.val, dest, type(obj.val))
+        comm.send((obj.domain, type(obj.val)), dest=dest)
+        _send(comm, obj.val, dest, type(obj.val))
+        return
     elif dtype is MultiField:
         dct = obj.to_dict()
         keys = tuple(dct.keys())
@@ -438,12 +441,12 @@ def _recv(comm, source, dtype):
     from .multi_field import MultiField
 
     if dtype is np.ndarray:
-        shape, dtype = comm.recv(source=source, tag=77)
+        shape, dtype = comm.recv(source=source)
         buf = np.empty(shape, dtype)  # assume C-style contiguous arrays
         comm.Recv(buf, source)
         return buf
     elif dtype is Field:
-        dom, dtype = comm.recv(source=source, tag=79)
+        dom, dtype = comm.recv(source=source)
         return Field(dom, _recv(comm, source, dtype))
     elif dtype is MultiField:
         dct = {}
