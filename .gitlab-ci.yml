@@ -1,63 +1,43 @@
-image: $CONTAINER_TEST_IMAGE
+image: python:latest
 
 variables:
-  CONTAINER_TEST_IMAGE: gitlab-registry.mpcdf.mpg.de/$CI_PROJECT_PATH:$CI_COMMIT_REF_NAME
   MPLBACKEND: agg
   OMP_NUM_THREADS: 1
 
 stages:
-  - static_checks
-  - build_docker
   - test
   - release
   - demo_runs
 
-before_script:
-  - python3 -m pip install --user --break-system-packages .
-
-build_docker_from_scratch:
-  only:
-    - schedules
-  image: docker
-  stage: build_docker
+default:
   before_script:
-    - ls
-  script:
-    - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN gitlab-registry.mpcdf.mpg.de
-    - docker build -t $CONTAINER_TEST_IMAGE --no-cache .
-    - docker push $CONTAINER_TEST_IMAGE
-
-build_docker_from_cache:
-  except:
-    - schedules
-  image: docker
-  stage: build_docker
-  before_script:
-    - ls
-  script:
-    - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN gitlab-registry.mpcdf.mpg.de
-    - docker build -t $CONTAINER_TEST_IMAGE .
-    - docker push $CONTAINER_TEST_IMAGE
+    - apt-get update && apt-get install -y libopenmpi-dev
+    - pip install .[test,parallel]
 
 test_serial:
   stage: test
+  tags:
+    - docker
   script:
     - pytest -n auto -q --cov=nifty8 --ignore test/test_re/test_optimize_kl.py test
     - env XLA_FLAGS="--xla_force_host_platform_device_count=4" pytest -n auto -q --cov=nifty8 --cov-append test/test_re/test_optimize_kl.py
     - >
-      python3 -m coverage report --omit "*plot*" | tee coverage.txt
+      coverage report --omit "*plot*" | tee coverage.txt
   coverage: '/(?i)total.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)$/'
 
 test_mpi:
   stage: test
+  tags:
+    - docker
   variables:
     OMPI_MCA_btl_vader_single_copy_mechanism: none
   script:
-    - mpiexec -n 2 --bind-to none pytest -q test/test_mpi
+    - mpirun --allow-run-as-root -np 2 --bind-to none pytest -q test/test_mpi
 
 pages:
   stage: release
   script:
+    - pip install .[doc]
     - git config --global --add safe.directory /builds/ift/nifty
     - git clean -xfd docs/source
     - sh docs/generate.sh
@@ -71,12 +51,14 @@ pages:
 run_ipynb0:
   stage: demo_runs
   script:
+    - pip install .[doc]
     - jupytext --to ipynb demos/old_nifty/getting_started_0.py
     - jupyter-nbconvert --to markdown --execute --ExecutePreprocessor.timeout=None demos/old_nifty/getting_started_0.ipynb
 
 run_ipynb1:
   stage: demo_runs
   script:
+    - pip install .[doc]
     - jupytext --to ipynb demos/old_nifty/getting_started_4_CorrelatedFields.py
     - jupyter-nbconvert --to markdown --execute --ExecutePreprocessor.timeout=None demos/old_nifty/getting_started_4_CorrelatedFields.ipynb
 
@@ -109,7 +91,7 @@ run_getting_started_3:
 run_getting_started_3_mpi:
   stage: demo_runs
   script:
-    - mpirun -np 2 --bind-to none python3 demos/old_nifty/getting_started_3.py
+    - mpirun --allow-run-as-root -np 2 --bind-to none python3 demos/old_nifty/getting_started_3.py
   artifacts:
     paths:
       - 'getting_started_3_results'
@@ -118,7 +100,7 @@ run_getting_started_3_mpi:
 run_getting_started_mf:
   stage: demo_runs
   script:
-    - mpiexec -n 2 --bind-to none python3 demos/old_nifty/getting_started_5_mf.py
+    - mpirun --allow-run-as-root -np 2 --bind-to none python3 demos/old_nifty/getting_started_5_mf.py
   artifacts:
     paths:
       - 'getting_started_mf_results'
