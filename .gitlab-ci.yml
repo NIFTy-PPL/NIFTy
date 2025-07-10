@@ -20,7 +20,7 @@ test_serial:
     - docker
   script:
     - pytest -n auto -q --cov=nifty --ignore test/test_re/test_optimize_kl.py test
-    # TEMPORARY - env XLA_FLAGS="--xla_force_host_platform_device_count=4" pytest -n auto -q --cov=nifty --cov-append test/test_re/test_optimize_kl.py
+    - env XLA_FLAGS="--xla_force_host_platform_device_count=4" pytest -n auto -q --cov=nifty --cov-append test/test_re/test_optimize_kl.py
     - >
       coverage report --omit "*plot*" | tee coverage.txt
   coverage: '/(?i)total.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)$/'
