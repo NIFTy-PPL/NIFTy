@@ -19,7 +19,6 @@ import numpy as np
 
 from ..domain_tuple import DomainTuple
 from ..domains.unstructured_domain import UnstructuredDomain
-from ..operators.adder import Adder
 from ..operators.diagonal_operator import DiagonalOperator
 from ..operators.simple_linear_operators import ducktape
 from ..sugar import makeField
@@ -46,14 +45,10 @@ def NormalTransform(mean, sigma, key, N_copies=0):
     if N_copies == 0:
         domain = DomainTuple.scalar_domain()
         mean, sigma = np.asarray(mean, dtype=float), np.asarray(sigma, dtype=float)
-        mean_adder = Adder(makeField(domain, mean))
-        return mean_adder @ (sigma * ducktape(domain, None, key))
-
-    domain = UnstructuredDomain(N_copies)
-    mean, sigma = (value_reshaper(param, N_copies) for param in (mean, sigma))
-    mean_adder = Adder(makeField(domain, mean))
-    sigma_op = DiagonalOperator(makeField(domain, sigma))
-    return mean_adder @ sigma_op @ ducktape(domain, None, key)
+    else:
+        domain = UnstructuredDomain(N_copies)
+        mean, sigma = (makeField(domain, value_reshaper(param, N_copies)) for param in (mean, sigma))
+    return mean + sigma * ducktape(domain, None, key)
 
 
 def LognormalTransform(mean, sigma, key, N_copies):
