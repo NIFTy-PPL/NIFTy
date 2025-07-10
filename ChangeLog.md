@@ -1,5 +1,42 @@
-Changes since list tagged version
-=================================
+Unreleased
+==========
+
+<!--
+Get a list of all commits since the last tag:
+git log --oneline --no-decorate --no-merges <last tag>..
+
+Change categories:
+- New features
+- Breaking changes
+- Changes
+- Deprecations
+-->
+
+- New features
+  - CorrelatedFields: support not-sampled zero mode in prior_info
+  - minisanity: fixup if whole field==0
+- Breaking changes
+  - `KLEnergy` & `StandardHamiltonian`: Support complex input fields. As a
+    consequence `StandardHamiltonian` now takes `prior_sampling_dtype` as
+    argument.
+- Changes
+  - Various improvements in documentation incl. document need of pkl5 MPI
+    communicators for large objects in docstrings and demos
+  - `utilities.allreduce_sum`: omit pickling for ndarrays & refactor averaging
+    logic in SampleListBase
+  - `optimize_kl`: fix regression for case where `optimize_kl` is used for
+    maximum-a-poseriori reconstruction
+  - `optimize_kl`: include MPI communicator when loading samples from previous
+    step
+  - `SampleListBase`: do not mangle mpi4py Pickle5 Intracomm objects
+  - Pin jax version to below 0.6.0 to avoid segfaults
+  - CI: use gitlab CI
+
+NIFTy 9.0.0 (July 10, 2025)
+===========================
+
+NIFTy has been cleanly separated into two sub-packages: `nifty.cl` (previously
+`nifty8`) and `nifty.re` (previously `nifty8.re`).
 
 
 Changes since NIFTy 8
