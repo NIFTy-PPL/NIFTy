@@ -46,7 +46,7 @@ pages:
     paths:
     - public
   only:
-  - NIFTy_8
+  - main
 
 run_ipynb0:
   stage: demo_runs
