@@ -215,9 +215,7 @@ def optimize_kl(likelihood_energy,
     Note
     ----
     If `h5py` is available, the output of all plotted operators is saved as hdf5
-    file as well.  If `astropy` is available, the mean and standard deviation of
-    all plotted operators, that have a single 2d-RGSpace as target, are exported
-    as FITS files.
+    file as well.
 
     Note
     ----
@@ -512,11 +510,6 @@ def _export_operators(index, export_operator_outputs, sample_list, comm):
     except ImportError:
         h5py = False
 
-    try:
-        import astropy
-    except ImportError:
-        astropy = False
-
     for name, op in export_operator_outputs.items():
         if not _is_subdomain(op.domain, sample_list.domain):
             continue
@@ -530,13 +523,6 @@ def _export_operators(index, export_operator_outputs, sample_list, comm):
         if h5py:
             file_name = join(op_direc, _file_name_by_strategy(index) + ".hdf5")
             sample_list.save_to_hdf5(file_name, op=op, overwrite=True, **cfg)
-
-        if astropy:
-            try:
-                file_name_base = join(op_direc, _file_name_by_strategy(index))
-                sample_list.save_to_fits(file_name_base, op=op, overwrite=True, **cfg)
-            except ValueError:
-                pass
 
 
 def _plot_energy_history(index, energy_history):

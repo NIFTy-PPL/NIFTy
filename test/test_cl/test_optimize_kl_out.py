@@ -18,7 +18,6 @@
 import os
 from tempfile import TemporaryDirectory
 
-import astropy.io.fits as ast
 import h5py
 import nifty.cl as ift
 from numpy.testing import assert_array_equal
@@ -35,12 +34,6 @@ def test_optimize_kl_operator_output():
     samples = ift.SampleList(sam_list)
     direc = TemporaryDirectory()
     fname = os.path.join(direc.name, "test")
-    samples.save_to_fits(file_name_base=fname,
-                         op=None,
-                         samples=True,
-                         mean=True,
-                         std=True,
-                         overwrite=True)
     samples.save_to_hdf5(file_name=fname+'.h5',
                          op=None,
                          samples=True,
@@ -52,16 +45,10 @@ def test_optimize_kl_operator_output():
     mean = mean.asnumpy()
     std = var.sqrt().asnumpy()
 
-    with ast.open(fname+"_mean.fits") as f:
-        mean_fits = f[0].data
-    with ast.open(fname+"_std.fits") as f:
-        std_fits = f[0].data
     with h5py.File(fname+".h5", "r") as g:
         mean_hdf5 = g["stats"]["mean"][:]
         std_hdf5 = g["stats"]["standard deviation"][:]
 
-    assert_array_equal(mean, mean_fits.T)
-    assert_array_equal(std, std_fits.T)
     assert_array_equal(mean, mean_hdf5)
     assert_array_equal(std, std_hdf5)
 

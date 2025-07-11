@@ -48,7 +48,6 @@ cl_parallel = [
     "mpi4py",
 ]
 cl_util = [
-    "astropy",
     "h5py",
     "matplotlib",
 ]
