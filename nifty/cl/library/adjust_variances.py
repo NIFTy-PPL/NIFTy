@@ -75,7 +75,7 @@ def make_adjust_variances_hamiltonian(a,
         x = ScalingOperator(x.target, scaling)(x)
 
     return StandardHamiltonian(InverseGammaEnergy(d_eval/2.)(x),
-                               ic_samp=ic_samp)
+                               ic_samp=ic_samp, sampling_dtype=position.dtype)
 
 
 def do_adjust_variances(position, A, minimizer, xi_key='xi', samples=[]):

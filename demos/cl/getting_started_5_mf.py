@@ -34,6 +34,9 @@ import nifty.cl as ift
 try:
     from mpi4py import MPI
     comm = MPI.COMM_WORLD
+    # for models with latent vectors > 2 GiB use `pkl5` communicators:
+    #from mpi4py.util import pkl5
+    #comm = pkl5.Intracomm(comm)
     master = comm.Get_rank() == 0
 except ImportError:
     comm = None

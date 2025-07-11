@@ -275,7 +275,7 @@ def estimate_evidence_lower_bound(
         n_data_points, hamiltonian.domain.size
     )  # Number of metric eigenvalues that are not one
 
-    metric = hamiltonian(Linearization.make_var(samples._m, want_metric=True)).metric
+    metric = hamiltonian(Linearization.make_var(samples.mean, want_metric=True)).metric
     metric_size = metric.domain.size
 
     eigenvalues, _ = _eigsh(

@@ -104,7 +104,7 @@ def main():
 
     IC = ift.DeltaEnergyController(tol_rel_deltaE=1e-12, iteration_limit=200)
     likelihood_energy = ift.GaussianEnergy(d, N.inverse) @ R
-    Ham = ift.StandardHamiltonian(likelihood_energy, IC)
+    Ham = ift.StandardHamiltonian(likelihood_energy, IC, float)
     H = ift.EnergyAdapter(params, Ham, want_metric=True)
 
     # Minimize KL

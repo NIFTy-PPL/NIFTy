@@ -586,9 +586,12 @@ def calculate_position(operator, output):
     invcov = ScalingOperator(output.domain, cov, output.dtype).inverse
     d = output + invcov.draw_sample(from_inverse=True)
     lh = GaussianEnergy(d, invcov) @ operator
-    H = StandardHamiltonian(
-        lh, ic_samp=GradientNormController(iteration_limit=200))
     pos = 0.1*from_random(operator.domain)
+    H = StandardHamiltonian(
+        lh,
+        ic_samp=GradientNormController(iteration_limit=200),
+        prior_sampling_dtype=pos.dtype,
+    )
     minimizer = NewtonCG(GradientNormController(iteration_limit=10, name='findpos'))
     for ii in range(3):
         logger.info(f'Start iteration {ii+1}/3')

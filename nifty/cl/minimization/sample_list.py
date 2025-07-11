@@ -48,6 +48,8 @@ class SampleListBase:
     comm : MPI communicator or None
         If not `None`, :class:`SampleListBase` can gather samples across multiple
         MPI tasks. If `None`, :class:`SampleListBase` is not a distributed object.
+        To enable transferring large objects (>2 GiB) via MPI, wrap the `comm`
+        object with `mpi4py.utils.pkl5.Intracomm` before passing it.
     domain : Domainoid (can be DomainTuple, MultiDomain, dict, Domain or list of Domains)
         The domain on which the samples are defined.
     n_local_samples : int
@@ -64,17 +66,6 @@ class SampleListBase:
         self._domain = makeDomain(domain)
         utilities.check_MPI_equality(self._domain, comm)
         self.local_indices = _compute_local_indices(n_local_samples, comm)
-
-        self._active_comm = comm
-        if comm is not None:
-            # 0 corresponds to empty tasks
-            # 1 corresponds to tasks with samples
-            color = 0 if len(self.local_indices) == 0 else 1
-            # If the same key is assigned to multiple processes, the conflict is
-            # resolved according to the rank in the original communicator
-            key = 0
-            self._active_comm = comm.Split(color, key)
-
         self._n_samples = utilities.allreduce_sum([self.n_local_samples], self.comm)
 
     @property
@@ -315,7 +306,7 @@ class SampleListBase:
         n = self.n_samples
         return utilities.allreduce_sum(res, self.comm) / n
 
-    def _average_tuple(self, op):
+    def _average_2tuple(self, op):
         """Compute simultaneous average over all potentially distributed samples.
 
         Parameters
@@ -331,20 +322,17 @@ class SampleListBase:
         Calling this function involves MPI communication if `comm != None`.
         """
         n = self.n_samples
-        res = None
         if len(self.local_indices) > 0:
             res = self._prepare_average(op)
             res = _list_transpose(res)
-            res = tuple(utilities.allreduce_sum(rr, self._active_comm) / n for rr in res)
-        if self._active_comm is None and self._comm is None:
-            return res
-
-        if len(self.local_indices) > 0:
-            task_list = self._comm.allgather(self._comm.Get_rank())
+            if len(res) != 2:
+                raise NotImplementedError(
+                    "This function can only work with tuples of length 2. "
+                    "Could be easily extended."
+                )
         else:
-            task_list = self._comm.allgather(-1)
-        root = next(filter((-1).__ne__, task_list))
-        return self._comm.bcast(res, root=root)
+            res = [[], []]
+        return tuple(utilities.allreduce_sum(rr, self._comm) / n for rr in res)
 
     def _prepare_average(self, op):
         op = _none_to_id(op)
@@ -485,6 +473,8 @@ class ResidualSampleList(SampleListBase):
         comm : MPI communicator or None
             If not `None`, samples can be gathered across multiple MPI tasks. If
             `None`, :class:`ResidualSampleList` is not a distributed object.
+            To enable transferring large objects (>2 GiB) via MPI, wrap the `comm`
+            object with `mpi4py.utils.pkl5.Intracomm` before passing it.
         """
         self._m = mean
         self._r = tuple(residuals)
@@ -592,6 +582,8 @@ class SampleList(SampleListBase):
         comm : MPI communicator or None
             If not `None`, samples can be gathered across multiple MPI tasks. If
             `None`, :class:`ResidualSampleList` is not a distributed object.
+            To enable transferring large objects (>2 GiB) via MPI, wrap the `comm`
+            object with `mpi4py.utils.pkl5.Intracomm` before passing it.
         domain : DomainTuple, MultiDomain or None
             Sets the domain of the `SampleList`. If `samples` is non-empty and
             `domain` is not None, `domain` has to coincide with the domain of

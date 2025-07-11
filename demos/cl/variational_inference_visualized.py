@@ -40,7 +40,7 @@ def main():
     lh = (a.adjoint @ a).scale(scale) + (b.adjoint @ b).scale(-1.35*2).exp()
     lh = ift.VariableCovarianceGaussianEnergy(dom, 'a', 'b', np.float64) @ lh
     icsamp = ift.AbsDeltaEnergyController(deltaE=0.1, iteration_limit=2)
-    ham = ift.StandardHamiltonian(lh, icsamp)
+    ham = ift.StandardHamiltonian(lh, icsamp, float)
 
     x_limits = [-8/scale, 8/scale]
     x_limits_scaled = [-8, 8]

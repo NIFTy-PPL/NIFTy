@@ -215,6 +215,8 @@ def SampledKLEnergy(position, hamiltonian, n_samples, minimizer_sampling,
         across this communicator. If `mirror_samples` is set, then a sample
         and its mirror image will preferably reside on the same task if
         necessary.
+        To enable transferring large objects (>2 GiB) via MPI, wrap the `comm`
+        object with `mpi4py.utils.pkl5.Intracomm` before passing it.
     nanisinf : bool
         If true, nan energies which can happen due to overflows in the
         forward model are interpreted as inf. Thereby, the code does not
@@ -322,7 +324,7 @@ class SampledKLEnergyClass(Energy):
             tmp = tmp(Linearization.make_var(inp))
             return _make_scalar_if_scalar(tmp.val.val.val), tmp.gradient
 
-        self._val, self._grad = sample_list._average_tuple(_func)
+        self._val, self._grad = sample_list._average_2tuple(_func)
         if np.isnan(self._val) and self._nanisinf:
             self._val = np.inf
 
