@@ -27,9 +27,10 @@ from ..operators.einsum import MultiLinearEinsum
 from ..operators.energy_operators import EnergyOperator
 from ..operators.linear_operator import LinearOperator
 from ..operators.multifield2vector import Multifield2Vector
+from ..operators.operator import is_fieldlike
 from ..operators.sandwich_operator import SandwichOperator
 from ..operators.simple_linear_operators import FieldAdapter
-from ..sugar import from_random, full, is_fieldlike, makeDomain, makeField
+from ..sugar import from_random, full, makeDomain, makeField
 from ..utilities import myassert
 
 

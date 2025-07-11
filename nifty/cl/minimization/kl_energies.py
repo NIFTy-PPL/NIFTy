@@ -27,6 +27,7 @@ from ..multi_domain import MultiDomain
 from ..multi_field import MultiField
 from ..operators.endomorphic_operator import EndomorphicOperator
 from ..operators.energy_operators import GaussianEnergy, StandardHamiltonian
+from ..operators.operator import is_fieldlike, is_operator
 from ..operators.sampling_enabler import SamplingEnabler
 from ..operators.sandwich_operator import SandwichOperator
 from ..operators.scaling_operator import ScalingOperator
@@ -64,7 +65,6 @@ def _reduce_by_keys(field, operator, keys):
     list
         The variable part of the field and the contracted operator.
     """
-    from ..sugar import is_fieldlike, is_operator
     myassert(is_fieldlike(field))
     myassert(is_operator(operator))
     if isinstance(field, MultiField):

@@ -19,7 +19,6 @@ from functools import reduce
 
 import numpy as np
 
-from ..field import Field
 from .structured_domain import StructuredDomain
 
 
@@ -115,6 +114,7 @@ class RGSpace(StructuredDomain):
         return tuple(x*y for x,y in zip(self._shape, self.distances))
 
     def _get_dist_array(self):
+        from ..field import Field
         res = np.arange(self.shape[0], dtype=np.float64)
         res = np.minimum(res, self.shape[0]-res)*self.distances[0]
         if len(self.shape) == 1:
@@ -184,6 +184,7 @@ class RGSpace(StructuredDomain):
             and return the kernel amplitude at that distance.
         """
         from ..operators.harmonic_operators import HarmonicTransformOperator
+        from ..field import Field
         if (not self.harmonic):
             raise NotImplementedError
         op = HarmonicTransformOperator(self, self.get_default_codomain())

@@ -23,9 +23,12 @@ from warnings import warn
 import numpy as np
 
 from ..any_array import AnyArray, device_available
+from ..domain_tuple import DomainTuple
+from ..multi_domain import MultiDomain
 from .energy_operators import LikelihoodEnergyOperator
 from .linear_operator import LinearOperator
-from .operator import Operator
+from .operator import Operator, is_linearization
+from .simple_linear_operators import VdotOperator
 
 __all__ = ["JaxOperator", "JaxLikelihoodEnergyOperator", "JaxLinearOperator"]
 
@@ -86,8 +89,7 @@ class JaxOperator(Operator):
         self._fwd = jax.jit(lambda x, y: jax.jvp(self._func, (x,), (y,))[1])
 
     def apply(self, x):
-        from ..multi_domain import MultiDomain
-        from ..sugar import is_linearization, makeField
+        from ..sugar import makeField
         self._check_input(x)
         if is_linearization(x):
             # TODO: Adapt the Linearization class to handle value_and_grad
@@ -166,7 +168,6 @@ class JaxLinearOperator(LinearOperator):
     def __init__(self, domain, target, func, domain_dtype=None, func_T=None):
         import jax
 
-        from ..domain_tuple import DomainTuple
         from ..sugar import makeDomain
         domain = makeDomain(domain)
         if domain_dtype is not None and func_T is None:
@@ -239,9 +240,7 @@ class JaxLikelihoodEnergyOperator(LikelihoodEnergyOperator):
         return self._dt, self._trafo
 
     def apply(self, x):
-        from ..sugar import is_linearization, makeField
-        from .simple_linear_operators import VdotOperator
-
+        from ..sugar import makeField
         self._check_input(x)
         lin = is_linearization(x)
         val = x.val.val if lin else x.val

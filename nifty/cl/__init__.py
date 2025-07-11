@@ -1,17 +1,22 @@
 from .. import config
 from . import random
 
-from .domains import *
+from .logger import logger, logger_init
+from .utilities import memo, frozendict, myassert, device_available
 
+from .domains import *
 from .domain_tuple import DomainTuple
 from .multi_domain import MultiDomain
+
+from .operators.operator import (
+    Operator, is_likelihood_energy, is_operator, is_linearization, is_fieldlike
+)
+from .operators.linear_operator import LinearOperator
+
 from .any_array import AnyArray
 from .field import Field
 from .multi_field import MultiField
 
-
-from .operators.operator import Operator
-from .operators.linear_operator import LinearOperator
 
 from .operators.adder import Adder
 from .operators.diagonal_operator import DiagonalOperator
@@ -97,9 +102,6 @@ from .library.variational_models import MeanFieldVI, FullCovarianceVI
 
 from . import extra
 
-from .utilities import memo, frozendict, myassert, device_available
-
-from .logger import logger, logger_init
 
 from .linearization import Linearization
 

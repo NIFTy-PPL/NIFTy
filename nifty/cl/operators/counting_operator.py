@@ -14,7 +14,7 @@
 # Copyright(C) 2022 Max-Planck-Society, Philipp Arras
 
 from .endomorphic_operator import EndomorphicOperator
-from .operator import Operator
+from .operator import Operator, is_linearization
 
 
 class CountingOperator(Operator):
@@ -27,8 +27,6 @@ class CountingOperator(Operator):
         self._derivative = _JacCountingOperator(self._domain)
 
     def apply(self, x):
-        from ..sugar import is_linearization
-
         self._check_input(x)
         if is_linearization(x):
             self._count_apply_lin += 1

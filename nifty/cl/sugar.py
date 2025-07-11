@@ -44,8 +44,7 @@ from .plot import Plot, plottable2D
 
 __all__ = ['PS_field', 'power_analyze', 'create_power_operator',
            'density_estimator', 'create_harmonic_smoothing_operator',
-           'from_random', 'full', 'makeField', 'is_fieldlike',
-           'is_linearization', 'is_operator', 'makeDomain', 'is_likelihood_energy',
+           'from_random', 'full', 'makeField', 'makeDomain',
            'get_signal_variance', 'makeOp', 'domain_union',
            'get_default_codomain', 'single_plot', 'exec_time',
            'recursive_operator_tree_profile', 'full_recursive_operator_tree_profile',
@@ -599,43 +598,6 @@ def calculate_position(operator, output):
         kl, _ = minimizer(kl)
         pos = kl.position
     return pos
-
-
-def is_likelihood_energy(obj):
-    """Checks if object behaves like a likelihood energy.
-    """
-    return isinstance(obj, Operator) and obj.get_transformation() is not None
-
-
-def is_operator(obj):
-    """Checks if object is operator-like.
-
-    Note
-    ----
-    A simple `isinstance(obj, ift.Operator)` does not give the expected result
-    because, e.g., :class:`~nifty.cl.field.Field` inherits from
-    :class:`~nifty.cl.operators.operator.Operator`.
-    """
-    return isinstance(obj, Operator) and obj.val is None
-
-
-def is_linearization(obj):
-    """Checks if object is linearization-like."""
-    return isinstance(obj, Operator) and obj.jac is not None
-
-
-def is_fieldlike(obj):
-    """Checks if object is field-like.
-
-    Note
-    ----
-    A simple `isinstance(obj, ift.Field)` does not give the expected result
-    because users might have implemented another class which behaves field-like
-    but is not an instance of :class:`~nifty.cl.field.Field`. Also note that
-    instances of :class:`~nifty.cl.linearization.Linearization` behave
-    field-like.
-    """
-    return isinstance(obj, Operator) and obj.val is not None
 
 
 # -------------------------------------------------------------------------------

@@ -251,7 +251,6 @@ class Operator(metaclass=NiftyMeta):
         return self.ptw("power", power)
 
     def __getitem__(self, key):
-        from ..sugar import is_operator
         from .simple_linear_operators import ducktape
 
         if not is_operator(self):
@@ -301,7 +300,7 @@ class Operator(metaclass=NiftyMeta):
         return self @ x
 
     def ducktape(self, name):
-        from ..sugar import is_operator, makeDomain
+        from ..sugar import makeDomain
         from .simple_linear_operators import DomainChangerAndReshaper, ducktape
 
         if not is_operator(self):
@@ -314,7 +313,6 @@ class Operator(metaclass=NiftyMeta):
             return self @ DomainChangerAndReshaper(newdom, self.domain)
 
     def ducktape_left(self, name):
-        from ..sugar import is_fieldlike, is_operator
         from .simple_linear_operators import DomainChangerAndReshaper, ducktape
 
         if isinstance(name, str):  # convert to MultiDomain
@@ -335,7 +333,6 @@ class Operator(metaclass=NiftyMeta):
             [0,1,..,N-1] where N is the number of domains in the target of the
             Operator (or the Field).
         """
-        from ..sugar import is_fieldlike
         from .transpose_operator import TransposeOperator
 
         dom = self.domain if is_fieldlike(self) else self.target
@@ -602,3 +599,40 @@ class _OpSum(Operator):
     def __repr__(self):
         subs = "\n".join(sub.__repr__() for sub in (self._op1, self._op2))
         return "_OpSum:\n"+indent(subs)
+
+
+def is_likelihood_energy(obj):
+    """Checks if object behaves like a likelihood energy.
+    """
+    return isinstance(obj, Operator) and obj.get_transformation() is not None
+
+
+def is_operator(obj):
+    """Checks if object is operator-like.
+
+    Note
+    ----
+    A simple `isinstance(obj, ift.Operator)` does not give the expected result
+    because, e.g., :class:`~nifty.cl.field.Field` inherits from
+    :class:`~nifty.cl.operators.operator.Operator`.
+    """
+    return isinstance(obj, Operator) and obj.val is None
+
+
+def is_linearization(obj):
+    """Checks if object is linearization-like."""
+    return isinstance(obj, Operator) and obj.jac is not None
+
+
+def is_fieldlike(obj):
+    """Checks if object is field-like.
+
+    Note
+    ----
+    A simple `isinstance(obj, ift.Field)` does not give the expected result
+    because users might have implemented another class which behaves field-like
+    but is not an instance of :class:`~nifty.cl.field.Field`. Also note that
+    instances of :class:`~nifty.cl.linearization.Linearization` behave
+    field-like.
+    """
+    return isinstance(obj, Operator) and obj.val is not None
