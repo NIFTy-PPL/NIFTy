@@ -239,7 +239,8 @@ class Operator(metaclass=NiftyMeta):
         return BlockDiagonalOperator(dom, idops)
 
     def __mul__(self, x):
-        if isinstance(x, Operator):
+        from ..sugar import is_operator
+        if is_operator(x):
             return _OpProd(self, x)
         if np.isscalar(x):
             return self.scale(x)
@@ -249,14 +250,16 @@ class Operator(metaclass=NiftyMeta):
         return self.__mul__(x)
 
     def __add__(self, x):
-        if not isinstance(x, Operator):
-            return NotImplemented
-        return _OpSum(self, x)
+        from ..sugar import is_operator
+        if is_operator(x):
+            return _OpSum(self, x)
+        return NotImplemented
 
     def __sub__(self, x):
-        if not isinstance(x, Operator):
-            return NotImplemented
-        return _OpSum(self, -x)
+        from ..sugar import is_operator
+        if is_operator(x):
+            return _OpSum(self, -x)
+        return NotImplemented
 
     def __abs__(self):
         return self.ptw("abs")
