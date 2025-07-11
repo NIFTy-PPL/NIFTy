@@ -23,7 +23,8 @@ from ..linearization import Linearization
 from ..minimization.energy import Energy
 from ..multi_domain import MultiDomain
 from ..sugar import from_random
-from ..utilities import allreduce_sum, myassert
+from ..utilities import (allreduce_sum, get_MPI_params_from_comm, myassert,
+                         shareRange)
 
 
 class EnergyAdapter(Energy):
@@ -32,16 +33,16 @@ class EnergyAdapter(Energy):
 
     Parameters
     -----------
-    position: Field or MultiField
+    position : :class:`nifty8.field.Field` or :class:`nifty8.multi_field.MultiField`
         The position where the minimization process is started.
-    op: EnergyOperator
+    op : EnergyOperator
         The expression computing the energy from the input data.
-    constants: list of strings
+    constants : list of strings
         The component names of the operator's input domain which are assumed
         to be constant during the minimization process.
         If the operator's input domain is not a MultiField, this must be empty.
         Default: [].
-    want_metric: bool
+    want_metric : bool
         If True, the class will provide a `metric` property. This should only
         be enabled if it is required, because it will most likely consume
         additional resources. Default: False.
@@ -169,7 +170,7 @@ class StochasticEnergyAdapter(Energy):
 
         Parameters
         ----------
-        position : MultiField
+        position : :class:`nifty8.multi_field.MultiField`
             Values of the optimization parameters
         op : Operator
             The objective function of the optimization problem. Must have a
@@ -204,8 +205,9 @@ class StochasticEnergyAdapter(Energy):
         samdom = MultiDomain.make(samdom)
         noise = []
         sseq = random.spawn_sseq(n_samples)
-        from .kl_energies import _get_lo_hi
-        for i in range(*_get_lo_hi(comm, n_samples)):
+
+        ntask, rank, _ = get_MPI_params_from_comm(comm)
+        for i in range(*shareRange(n_samples, ntask, rank)):
             with random.Context(sseq[i]):
                 rnd = from_random(samdom)
                 noise.append(rnd)

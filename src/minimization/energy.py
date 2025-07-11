@@ -26,7 +26,7 @@ class Energy(metaclass=NiftyMeta):
 
     Parameters
     ----------
-    position : Field
+    position : :class:`nifty8.field.Field`
         The input parameter of the scalar function.
 
     Notes
@@ -51,7 +51,7 @@ class Energy(metaclass=NiftyMeta):
 
         Parameters
         ----------
-        position : Field
+        position : :class:`nifty8.field.Field`
             Location in parameter space for the new Energy object.
 
         Returns
@@ -64,7 +64,7 @@ class Energy(metaclass=NiftyMeta):
     @property
     def position(self):
         """
-        Field : selected location in parameter space.
+        field : selected location in parameter space.
 
         The Field location in parameter space where value, gradient and
         metric are evaluated.
@@ -83,7 +83,7 @@ class Energy(metaclass=NiftyMeta):
     @property
     def gradient(self):
         """
-        Field : The gradient at given `position`.
+        field : The gradient at given `position`.
         """
         raise NotImplementedError
 
@@ -109,12 +109,12 @@ class Energy(metaclass=NiftyMeta):
         """
         Parameters
         ----------
-        x: Field or MultiField
+        x : :class:`nifty8.field.Field` or :class:`nifty8.multi_field.MultiField`
             Argument for the metric operator
 
         Returns
         -------
-        Field or MultiField:
+        :class:`nifty8.field.Field` or :class:`nifty8.multi_field.MultiField`
             Output of the metric operator
         """
         raise NotImplementedError
@@ -124,7 +124,7 @@ class Energy(metaclass=NiftyMeta):
 
         Parameters
         ----------
-        direction : Field
+        direction : :class:`nifty8.field.Field`
             the search direction
 
         Returns

@@ -15,10 +15,13 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
+from functools import partial
+
 import numpy as np
 
 from ..domain_tuple import DomainTuple
 from ..field import Field
+from ..multi_field import MultiField
 from .linear_operator import LinearOperator
 
 
@@ -27,8 +30,8 @@ class OuterProduct(LinearOperator):
 
     Parameters
     ---------
-    domain: DomainTuple, the domain of the input field
-    field: Field
+    domain : DomainTuple, the domain of the input field
+    field : :class:`nifty8.field.Field`
     ---------
     """
     def __init__(self, domain, field):

@@ -15,6 +15,8 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
+from operator import add, sub
+
 import numpy as np
 
 from ..field import Field
@@ -28,7 +30,7 @@ class Adder(Operator):
 
     Parameters
     ----------
-    a : Field or MultiField or Scalar
+    a : :class:`nifty8.field.Field` or :class:`nifty8.multi_field.MultiField` or Scalar
         The field by which the input is shifted.
     """
     def __init__(self, a, neg=False, domain=None):

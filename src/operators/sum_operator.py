@@ -11,13 +11,12 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2019 Max-Planck-Society
+# Copyright(C) 2013-2021 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
+import operator
 from collections import defaultdict
-
-import numpy as np
 
 from ..sugar import domain_union
 from ..utilities import indent
@@ -81,26 +80,39 @@ class SumOperator(LinearOperator):
             opsnew = []
             negnew = []
 
+            dtype = []
             for op, ng in opset:
                 if isinstance(op, ScalingOperator):
                     sum += op._factor * (-1 if ng else 1)
+                    dtype.append(op._dtype)
                 else:
                     opsnew.append(op)
                     negnew.append(ng)
-
             lastdom = opset[0][0].domain
+            del(opset)
+
+            if len(dtype) > 0:
+                # Propagate sampling dtypes only if they are all the same
+                if all(dtype[0] == ss for ss in dtype):
+                    dtype = dtype[0]
+                else:
+                    dtype = None
+
             if sum != 0.:
                 # try to absorb the factor into a DiagonalOperator
                 for i in range(len(opsnew)):
                     if isinstance(opsnew[i], DiagonalOperator):
+                        if opsnew[i]._dtype != dtype:
+                            continue
                         sum *= (-1 if negnew[i] else 1)
                         opsnew[i] = opsnew[i]._add(sum)
                         sum = 0.
                         break
             if sum != 0 or len(opsnew) == 0:
                 # have to add the scaling operator at the end
-                opsnew.append(ScalingOperator(lastdom, sum))
+                opsnew.append(ScalingOperator(lastdom, sum, dtype))
                 negnew.append(False)
+            del(dtype, sum, lastdom)
 
             ops = opsnew
             neg = negnew
@@ -114,7 +126,7 @@ class SumOperator(LinearOperator):
                         op = ops[i]
                         opneg = neg[i]
                         for j in range(i+1, len(ops)):
-                            if isinstance(ops[j], DiagonalOperator):
+                            if isinstance(ops[j], DiagonalOperator) and ops[i]._dtype == ops[j]._dtype:
                                 op = op._combine_sum(ops[j], opneg, neg[j])
                                 opneg = False
                                 processed[j] = True
@@ -162,7 +174,7 @@ class SumOperator(LinearOperator):
             Individual operators of the sum.
         neg: list of bool
             Same length as ops.
-            If True then the equivalent operator gets a minus in the sum.
+            If True then the corresponding operator gets a minus in the sum.
         """
         ops = tuple(ops)
         neg = tuple(neg)

@@ -14,8 +14,8 @@
 # Copyright(C) 2021 Max-Planck-Society
 
 import numpy as np
-from ducc0.misc import vdot
 import pytest
+from ducc0.misc import vdot
 
 from .common import setup_function, teardown_function
 

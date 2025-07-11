@@ -38,7 +38,7 @@ class OperatorAdapter(LinearOperator):
         3) adjoint inverse
     """
 
-    def __init__(self, op, op_transform):
+    def __init__(self, op, op_transform, domain_dtype=float):
         self._op = op
         self._trafo = int(op_transform)
         if self._trafo < 1 or self._trafo > 3:
@@ -60,11 +60,6 @@ class OperatorAdapter(LinearOperator):
         if self._trafo & self.INVERSE_BIT:
             return self._op.draw_sample(not from_inverse)
         return self._op.draw_sample(from_inverse)
-
-    def draw_sample_with_dtype(self, dtype, from_inverse=False):
-        if self._trafo & self.INVERSE_BIT:
-            return self._op.draw_sample_with_dtype(dtype, not from_inverse)
-        return self._op.draw_sample_with_dtype(dtype, from_inverse)
 
     def __repr__(self):
         from ..utilities import indent

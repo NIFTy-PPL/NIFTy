@@ -15,10 +15,9 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
+import nifty8 as ift
 import numpy as np
 import pytest
-
-import nifty8 as ift
 
 from ..common import list2fixture, setup_function, teardown_function
 
@@ -154,6 +153,14 @@ def testDiagonal(sp, dtype):
 @pmp('sp', _h_spaces + _p_spaces + _pow_spaces)
 def testGeometryRemover(sp, dtype):
     _check_repr(ift.GeometryRemover(sp))
+
+
+@pmp('sp', _h_spaces + _p_spaces + _pow_spaces)
+def testExtractAtIndices(sp, dtype):
+    min_ax = np.min(sp.shape)
+    n_ax = len(sp.shape)
+    inds = (list(range(min_ax//2))+list(range(min_ax//3)), )*n_ax
+    _check_repr(ift.ExtractAtIndices(sp, inds))
 
 
 @pmp('spaces', [0, 1, 2, 3, (0, 1), (0, 2), (0, 1, 2), (0, 2, 3), (1, 3)])

@@ -15,10 +15,9 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
+import nifty8 as ift
 import pytest
 from mpi4py import MPI
-
-import nifty8 as ift
 
 from ..common import setup_function, teardown_function
 
@@ -42,11 +41,11 @@ def test_MPI_equality():
     with pytest.raises(RuntimeError):
         ift.utilities.check_MPI_equality(obj, comm)
 
-    sseqs = ift.random.spawn_sseq(2)
+    sseqs = ift.random.spawn_sseq(ntask)
     for obj in [12., None, (29, 30), [1, 2, 3], sseqs[0], sseqs]:
         ift.utilities.check_MPI_equality(obj, comm)
 
-    obj = ift.random.spawn_sseq(2, parent=sseqs[comm.rank])
+    obj = ift.random.spawn_sseq(ntask, parent=sseqs[comm.rank])
     with pytest.raises(RuntimeError):
         ift.utilities.check_MPI_equality(obj, comm)
 
@@ -60,14 +59,10 @@ def test_MPI_synced_random_state():
 
 
 @pms(not mpi, reason="requires at least two mpi tasks")
-@pmp("kl", [lambda a, b, c, d: ift.MetricGaussianKL(a, b, c, d, comm=comm),
-            lambda a, b, c, d: ift.GeoMetricKL(a, b, c,
-                ift.NewtonCG(ift.AbsDeltaEnergyController(0.1, iteration_limit=2)),
-                d, comm=comm)
-            ])
+@pmp("geo", [False, True])
 @pmp("mirror", [False, True])
 @pmp("n_samples", [2, 3])
-def test_MPI_synced_random_state_kl_energies(kl, mirror, n_samples):
+def test_MPI_synced_random_state_kl_energies(geo, mirror, n_samples):
     ic = ift.AbsDeltaEnergyController(0.1, iteration_limit=2)
     lh = ift.GaussianEnergy(ift.full(ift.UnstructuredDomain(2), 2.)).ducktape("a")
     ham = ift.StandardHamiltonian(lh, ic)
@@ -75,7 +70,10 @@ def test_MPI_synced_random_state_kl_energies(kl, mirror, n_samples):
     with ift.random.Context(123 if master else 111):
         mean = ift.from_random(ham.domain)
         with pytest.raises(RuntimeError):
-            kl(mean, ham, n_samples, mirror)
+            mini = None
+            if geo:
+                mini = ift.NewtonCG(ift.AbsDeltaEnergyController(0.1, iteration_limit=2))
+            ift.SampledKLEnergy(mean, ham, n_samples, mini, comm=comm)
 
 
 @pms(not mpi, reason="requires at least two mpi tasks")

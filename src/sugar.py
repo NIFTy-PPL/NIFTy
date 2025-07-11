@@ -11,10 +11,14 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2020 Max-Planck-Society
+# Copyright(C) 2013-2021 Max-Planck-Society
+# Copyright(C) 2022 Philipp Arras
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
+import cProfile
+import io
+import pstats
 import sys
 from time import time
 
@@ -31,10 +35,9 @@ from .operators.block_diagonal_operator import BlockDiagonalOperator
 from .operators.diagonal_operator import DiagonalOperator
 from .operators.distributors import PowerDistributor
 from .operators.operator import Operator
-from .operators.sampling_enabler import SamplingDtypeSetter
 from .operators.scaling_operator import ScalingOperator
 from .operators.selection_operators import SliceOperator
-from .plot import Plot
+from .plot import Plot, plottable2D
 
 __all__ = ['PS_field', 'power_analyze', 'create_power_operator',
            'density_estimator', 'create_harmonic_smoothing_operator',
@@ -42,27 +45,27 @@ __all__ = ['PS_field', 'power_analyze', 'create_power_operator',
            'is_linearization', 'is_operator', 'makeDomain', 'is_likelihood_energy',
            'get_signal_variance', 'makeOp', 'domain_union',
            'get_default_codomain', 'single_plot', 'exec_time',
-           'calculate_position'] + list(pointwise.ptw_dict.keys())
+           'calculate_position', 'plot_priorsamples'] + list(pointwise.ptw_dict.keys())
 
 
-def PS_field(pspace, func):
+def PS_field(pspace, function):
     """Convenience function sampling a power spectrum
 
     Parameters
     ----------
     pspace : PowerSpace
         space at whose `k_lengths` the power spectrum function is evaluated
-    func : function taking and returning a numpy.ndarray(float)
+    function : function taking and returning a numpy.ndarray(float)
         the power spectrum function
 
     Returns
     -------
-    Field
+    :class:`nifty8.field.Field`
         A field defined on (pspace,) containing the computed function values
     """
     if not isinstance(pspace, PowerSpace):
         raise TypeError
-    data = func(pspace.k_lengths)
+    data = function(pspace.k_lengths)
     return Field(DomainTuple.make(pspace), data)
 
 
@@ -116,7 +119,7 @@ def power_analyze(field, spaces=None, binbounds=None,
 
     Parameters
     ----------
-    field : Field
+    field : :class:`nifty8.field.Field`
         The field to be analyzed
     spaces : None or int or tuple of int, optional
         The indices of subdomains for which the power spectrum shall be
@@ -139,7 +142,7 @@ def power_analyze(field, spaces=None, binbounds=None,
 
     Returns
     -------
-    Field
+    :class:`nifty8.field.Field`
         The output object. Its domain is a PowerSpace and it contains
         the power spectrum of `field`.
     """
@@ -190,7 +193,8 @@ def _create_power_field(domain, power_spectrum):
     return PowerDistributor(domain, power_domain)(fp)
 
 
-def create_power_operator(domain, power_spectrum, space=None):
+def create_power_operator(domain, power_spectrum, space=None,
+                          sampling_dtype=None):
     """Creates a diagonal operator with the given power spectrum.
 
     Constructs a diagonal operator that is defined on the specified domain.
@@ -199,10 +203,14 @@ def create_power_operator(domain, power_spectrum, space=None):
     ----------
     domain : Domain, tuple of Domain or DomainTuple
         Domain on which the power operator shall be defined.
-    power_spectrum : callable or Field
+    power_spectrum : callable or :class:`nifty8.field.Field`
         An object that contains the power spectrum as a function of k.
     space : int
         the domain index on which the power operator will work
+    sampling_dtype : dtype or dict of dtype
+        Specifies the dtype of the underlying Gaussian distribution.  Gaussian.
+        If `sampling_dtype` is `None`, the operator cannot be used as a
+        covariance, i.e. no samples can be drawn. Default: None.
 
     Returns
     -------
@@ -212,11 +220,11 @@ def create_power_operator(domain, power_spectrum, space=None):
     domain = DomainTuple.make(domain)
     space = utilities.infer_space(domain, space)
     field = _create_power_field(domain[space], power_spectrum)
-    return DiagonalOperator(field, domain, space)
+    return DiagonalOperator(field, domain, space, sampling_dtype)
 
 
 def density_estimator(domain, pad=1.0, cf_fluctuations=None,
-                      cf_azm_uniform=None):
+                      cf_azm_uniform=None, prefix=""):
     from .domains.rg_space import RGSpace
     from .library.correlated_fields import CorrelatedFieldMaker
     from .library.special_distributions import UniformOperator
@@ -247,7 +255,7 @@ def density_estimator(domain, pad=1.0, cf_fluctuations=None,
 
     # Set up the signal model
     azm_offset_mean = 0.0  # The zero-mode should be inferred only from the data
-    cfmaker = CorrelatedFieldMaker("")
+    cfmaker = CorrelatedFieldMaker(prefix)
     for i, d in enumerate(domain_padded):
         if isinstance(cf_fluctuations, (list, tuple)):
             cf_fl = cf_fluctuations[i]
@@ -310,7 +318,7 @@ def full(domain, val):
 
     Returns
     -------
-    Field or MultiField
+    :class:`nifty8.field.Field` or:class:`nifty8.mulit_field.MultiField`
         The newly created uniform field
     """
     if isinstance(domain, (dict, MultiDomain)):
@@ -336,7 +344,7 @@ def from_random(domain, random_type='normal', dtype=np.float64, **kwargs):
 
     Returns
     -------
-    Field or MultiField
+    :class:`nifty8.field.Field` or:class:`nifty8.mulit_field.MultiField`
         The newly created random field
 
     Notes
@@ -364,7 +372,7 @@ def makeField(domain, arr):
 
     Returns
     -------
-    Field or MultiField
+    :class:`nifty8.field.Field` or:class:`nifty8.mulit_field.MultiField`
         The newly created random field
     """
     if isinstance(domain, (dict, MultiDomain)):
@@ -392,12 +400,12 @@ def makeDomain(domain):
     return DomainTuple.make(domain)
 
 
-def makeOp(input, dom=None):
+def makeOp(inp, dom=None, sampling_dtype=None):
     """Converts a Field or MultiField to a diagonal operator.
 
     Parameters
     ----------
-    input : None, Field or MultiField
+    inp : None, :class:`nifty8.field.Field` or :class:`nifty8.multi_field.MultiField`
         - if None, None is returned.
         - if Field on scalar-domain, a ScalingOperator with the coefficient
             given by the Field is returned.
@@ -407,27 +415,39 @@ def makeOp(input, dom=None):
             MultiField is returned.
 
     dom : DomainTuple or MultiDomain
-        if `input` is a scalar, this is used as the operator's domain
+        if `inp` is a scalar, this is used as the operator's domain
+
+    sampling_dtype : dtype or dict of dtypes
+        If `inp` shall represent the diagonal covariance of a Gaussian
+        probabilty distribution, `sampling_dtype` specifies if it is real or
+        complex Gaussian. If `sampling_dtype` is `None`, the operator cannot be
+        used as a covariance, i.e. no samples can be drawn. Default: None.
 
     Notes
     -----
     No volume factors are applied.
     """
-    if input is None:
+    if inp is None:
         return None
-    if np.isscalar(input):
+    if np.isscalar(inp):
         if not isinstance(dom, (DomainTuple, MultiDomain)):
             raise TypeError("need proper `dom` argument")
-        return ScalingOperator(dom, input)
+        return ScalingOperator(dom, inp, sampling_dtype=sampling_dtype)
     if dom is not None:
-        utilities.check_domain_equality(dom, input.domain)
-    if input.domain is DomainTuple.scalar_domain():
-        return ScalingOperator(input.domain, input.val[()])
-    if isinstance(input, Field):
-        return DiagonalOperator(input)
-    if isinstance(input, MultiField):
-        return BlockDiagonalOperator(
-            input.domain, {key: makeOp(val) for key, val in input.items()})
+        utilities.check_object_identity(dom, inp.domain)
+    if inp.domain is DomainTuple.scalar_domain():
+        return ScalingOperator(inp.domain, inp.val[()], sampling_dtype=sampling_dtype)
+    if isinstance(inp, Field):
+        return DiagonalOperator(inp, sampling_dtype=sampling_dtype)
+    if isinstance(inp, MultiField):
+        dct = {}
+        for key, val in inp.items():
+            if isinstance(sampling_dtype, dict):
+                sdt = sampling_dtype[key]
+            else:
+                sdt = sampling_dtype
+            dct[key] = makeOp(val, sampling_dtype=sdt)
+        return BlockDiagonalOperator(inp.domain, dct)
     raise NotImplementedError
 
 
@@ -442,7 +462,7 @@ def domain_union(domains):
     """
     if isinstance(domains[0], DomainTuple):
         for dom in domains[1:]:
-            utilities.check_domain_equality(dom, domains[0])
+            utilities.check_object_identity(dom, domains[0])
         return domains[0]
     return MultiDomain.union(domains)
 
@@ -502,54 +522,99 @@ def single_plot(field, **kwargs):
     p.output(**kwargs)
 
 
-def exec_time(obj, want_metric=True):
-    """Times the execution time of an operator or an energy."""
+def plot_priorsamples(op, n_samples=5, common_colorbar=True, **kwargs):
+    """Create a number of prior sample plots using `Plot`
+
+    Parameters
+    ----------
+    op:
+        Operator that mapping from standard Gaussian with covariance 1 to the prior distribution
+
+    n_samples: int
+        Number of prior samples for plotting
+
+    Note
+    ----
+    Keyword arguments are passed to both `Plot.add` and `Plot.output`.
+    """
+    p = Plot()
+    samples = list(op(from_random(op.domain)) for _ in range(n_samples))
+    if common_colorbar:
+        vmin = min(np.min(samples[i].val) for i in range(n_samples))
+        vmax = max(np.max(samples[i].val) for i in range(n_samples))
+    else:
+        vmin = vmax = None
+    if plottable2D(samples[0]):
+        for i in range(n_samples):
+            p.add(samples[i], vmin=vmin, vmax=vmax, **kwargs)
+            if 'title' in kwargs:
+                del(kwargs['title'])
+    else:
+        p.add(samples, **kwargs)
+    p.output(**kwargs)
+
+
+def exec_time(obj, want_metric=True, verbose=False, domain_dtype=np.float64, ntries=1):
+    """Times the execution time of an operator or an energy.
+
+    Parameters
+    ----------
+
+    obj : Operator or Energy
+        Operator or Energy that shall be profiled.
+    want_metric : bool, optional
+        Determine if Operator shall be called with `want_metric=True`. Only
+        applicable for EnergyOperators. Default: True.
+    verbose : bool, optional
+        If True, more profiling information is printed. Default: False.
+    domain_dtype : dtype or dict of dtype
+
+    ntries : int
+        Number of times the operator shall be called. Default: 1.
+
+    """
     from .linearization import Linearization
     from .minimization.energy import Energy
-    from .operators.energy_operators import EnergyOperator
+
+    def _profile_func(func, inp, what):
+        t0 = time()
+        with cProfile.Profile() as pr:
+            for _ in range(ntries):
+                res = func(inp)
+        logger.info(f'{what}: {(time() - t0)*1000/ntries:>8.3f} ms')
+        if verbose:
+            s = io.StringIO()
+            pstats.Stats(pr, stream=s).sort_stats(pstats.SortKey.TIME).print_stats(5)
+            logger.info(s.getvalue())
+        return res
+
+    def _profile_get_attr(obj, attr, what):
+        return _profile_func(lambda x: getattr(obj, x), attr, what)
+
     if isinstance(obj, Energy):
-        t0 = time()
-        obj.at(0.99*obj.position)
-        logger.info('Energy.at(): {}'.format(time() - t0))
+        newpos = 0.99*obj.position
+        _profile_func(lambda x: x.at(newpos), obj, "Energy.at()\t\t\t\t")
+        _profile_get_attr(obj, "value", "Energy.value\t\t\t\t")
+        _profile_get_attr(obj, "gradient", "Energy.gradient\t\t\t\t")
+        _profile_get_attr(obj, "metric", "Energy.metric\t\t\t\t")
+        if obj.metric is not None:
+            _profile_func(lambda x: x.apply_metric(x.position), obj, "Energy.apply_metric\t\t\t")
+            _profile_func(lambda x: x.metric(x.position), obj, "Energy.metric(position)\t\t\t")
 
-        t0 = time()
-        obj.value
-        logger.info('Energy.value: {}'.format(time() - t0))
-        t0 = time()
-        obj.gradient
-        logger.info('Energy.gradient: {}'.format(time() - t0))
-        t0 = time()
-        obj.metric
-        logger.info('Energy.metric: {}'.format(time() - t0))
-
-        t0 = time()
-        obj.apply_metric(obj.position)
-        logger.info('Energy.apply_metric: {}'.format(time() - t0))
-
-        t0 = time()
-        obj.metric(obj.position)
-        logger.info('Energy.metric(position): {}'.format(time() - t0))
     elif isinstance(obj, Operator):
         want_metric = bool(want_metric)
-        pos = from_random(obj.domain, 'normal')
-        t0 = time()
-        obj(pos)
-        logger.info('Operator call with field: {}'.format(time() - t0))
 
+        pos = from_random(obj.domain, 'normal', dtype=domain_dtype)
         lin = Linearization.make_var(pos, want_metric=want_metric)
-        t0 = time()
-        res = obj(lin)
-        logger.info('Operator call with linearization: {}'.format(time() - t0))
+        _profile_func(lambda x: x(pos), obj, "Operator call with field\t\t")
+        res = _profile_func(lambda x: x(lin), obj, "Operator call with linearization\t")
+        _profile_func(lambda x: res.jac(x), pos, "Apply linearization\t\t\t")
+        _profile_func(lambda x: res.jac.adjoint(x), res.val, "Apply linearization (adjoint)\t\t")
 
         if obj.target is DomainTuple.scalar_domain():
-            t0 = time()
-            res.gradient
-            logger.info('Gradient evaluation: {}'.format(time() - t0))
-
+            _profile_get_attr(res, "gradient", "Gradient evaluation\t\t\t")
             if want_metric:
-                t0 = time()
-                res.metric(pos)
-                logger.info('Metric apply: {}'.format(time() - t0))
+                _profile_func(lambda x: res.metric(x), pos, "Metric apply\t\t\t\t")
     else:
         raise TypeError
 
@@ -558,9 +623,9 @@ def calculate_position(operator, output):
     """Finds approximate preimage of an operator for a given output."""
     from .minimization.descent_minimizers import NewtonCG
     from .minimization.iteration_controllers import GradientNormController
-    from .minimization.kl_energies import MetricGaussianKL
+    from .minimization.kl_energies import SampledKLEnergy
     from .operators.energy_operators import GaussianEnergy, StandardHamiltonian
-    from .operators.scaling_operator import ScalingOperator
+
     if not isinstance(operator, Operator):
         raise TypeError
     if output.domain != operator.target:
@@ -575,9 +640,7 @@ def calculate_position(operator, output):
     else:
         cov = 1e-3*np.max(np.abs(output.val))**2
         dtype = output.dtype
-    invcov = ScalingOperator(output.domain, cov).inverse
-    invcov = SamplingDtypeSetter(invcov, output.dtype)
-    invcov = SamplingDtypeSetter(invcov, output.dtype)
+    invcov = ScalingOperator(output.domain, cov, output.dtype).inverse
     d = output + invcov.draw_sample(from_inverse=True)
     lh = GaussianEnergy(d, invcov) @ operator
     H = StandardHamiltonian(
@@ -586,7 +649,7 @@ def calculate_position(operator, output):
     minimizer = NewtonCG(GradientNormController(iteration_limit=10, name='findpos'))
     for ii in range(3):
         logger.info(f'Start iteration {ii+1}/3')
-        kl = MetricGaussianKL(pos, H, 3, True)
+        kl = SampledKLEnergy(pos, H, 3, None)
         kl, _ = minimizer(kl)
         pos = kl.position
     return pos

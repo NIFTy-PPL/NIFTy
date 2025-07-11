@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2020 Max-Planck-Society
+# Copyright(C) 2013-2025 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -21,6 +21,19 @@ from .. import utilities
 from ..domain_tuple import DomainTuple
 from ..field import Field
 from .endomorphic_operator import EndomorphicOperator
+
+# TODO: Eventually enforce somewhat modern ducc version (>=0.37.0) as nifty
+# dependency and remove the try statement below
+try:
+    from ducc0.misc.experimental import mul_conj, div_conj
+except ImportError:
+    def mul_conj(a, b, out=None):
+        out = a*b.conj()
+        return out
+
+    def div_conj(a, b, out=None):
+        out = a/b.conj()
+        return out
 
 
 class DiagonalOperator(EndomorphicOperator):
@@ -32,7 +45,7 @@ class DiagonalOperator(EndomorphicOperator):
 
     Parameters
     ----------
-    diagonal : Field
+    diagonal : :class:`nifty8.field.Field`
         The diagonal entries of the operator.
     domain : Domain, tuple of Domain or DomainTuple, optional
         The domain on which the Operator's input Field is defined.
@@ -40,6 +53,11 @@ class DiagonalOperator(EndomorphicOperator):
     spaces : int or tuple of int, optional
         The elements of "domain" on which the operator acts.
         If None, it acts on all elements.
+    sampling_dtype :
+        If this operator represents the covariance of a Gaussian probabilty
+        distribution, `sampling_dtype` specifies if it is real or complex
+        Gaussian. If `sampling_dtype` is `None`, the operator cannot be used as
+        a covariance, i.e. no samples can be drawn. Default: None.
 
     Notes
     -----
@@ -52,22 +70,32 @@ class DiagonalOperator(EndomorphicOperator):
     This shortcoming will hopefully be fixed in the future.
     """
 
-    def __init__(self, diagonal, domain=None, spaces=None):
+    def __init__(self, diagonal, domain=None, spaces=None, sampling_dtype=None,
+                 _trafo=0):
+# MR: _trafo is more or less deliberately undocumented, since it is not supposed
+# to be necessary for "end users". It describes the type of transform for which
+# the diagonal can be used without modification
+# (0:TIMES, 1:ADJOINT, 2:INVERSE, 3:ADJOINT_INVERSE)
         if not isinstance(diagonal, Field):
             raise TypeError("Field object required")
+        utilities.check_dtype_or_none(sampling_dtype)
+        self._dtype = sampling_dtype
+        self._trafo = _trafo
         if domain is None:
             self._domain = diagonal.domain
         else:
             self._domain = DomainTuple.make(domain)
         if spaces is None:
             self._spaces = None
-            utilities.check_domain_equality(diagonal.domain, self._domain)
+            utilities.check_object_identity(diagonal.domain, self._domain)
         else:
             self._spaces = utilities.parse_spaces(spaces, len(self._domain))
             if len(self._spaces) != len(diagonal.domain):
                 raise ValueError("spaces and domain must have the same length")
             for i, j in enumerate(self._spaces):
-                utilities.check_domain_equality(diagonal.domain[i], self._domain[j])
+                if diagonal.domain[i] != self._domain[j]:
+                    raise ValueError(f"Mismatch between:\n{diagonal.domain[i]}\n"
+                                     f"and:\n{self._domain[j]}")
             if self._spaces == tuple(range(len(self._domain))):
                 self._spaces = None  # shortcut
 
@@ -89,85 +117,124 @@ class DiagonalOperator(EndomorphicOperator):
         self._complex = utilities.iscomplextype(self._ldiag.dtype)
         self._capability = self._all_ops
         if not self._complex:
-            self._diagmin = self._ldiag.min()
+            self._diagmin_cache = None
 
-    def _from_ldiag(self, spc, ldiag):
+    @property
+    def _diagmin(self):
+        if self._complex:
+            raise RuntimeError("complex DiagonalOperator does not have _diagmin")
+        if self._diagmin_cache is None:
+            self._diagmin_cache = self._ldiag.min()
+        return self._diagmin_cache
+
+    def _from_ldiag(self, spc, ldiag, sampling_dtype, trafo):
         res = DiagonalOperator.__new__(DiagonalOperator)
+        res._dtype = sampling_dtype
+        res._trafo = trafo
         res._domain = self._domain
         if self._spaces is None or spc is None:
             res._spaces = None
         else:
             res._spaces = tuple(set(self._spaces) | set(spc))
-        res._ldiag = np.array(ldiag)
+        utilities.myassert(isinstance(ldiag, np.ndarray))
+        res._ldiag = ldiag
         res._fill_rest()
         return res
+
+    def _get_actual_diag(self):
+        if self._trafo == 0:
+            return self._ldiag
+        if self._trafo == 1:
+            return np.conj(self._ldiag) if self._complex else self._ldiag
+        if self._trafo == 2:
+            return 1./self._ldiag
+        if self._trafo == 3:
+            return np.conj(1./self._ldiag) if self._complex else 1./self._ldiag
 
     def _scale(self, fct):
         if not np.isscalar(fct):
             raise TypeError("scalar value required")
-        return self._from_ldiag((), self._ldiag*fct)
+        return self._from_ldiag((), self._get_actual_diag()*fct, self._dtype, 0)
 
-    def _add(self, sum):
-        if not np.isscalar(sum):
+    def _add(self, sum_):
+        if not np.isscalar(sum_):
             raise TypeError("scalar value required")
-        return self._from_ldiag((), self._ldiag+sum)
+        return self._from_ldiag((), self._get_actual_diag()+sum_, self._dtype, 0)
 
     def _combine_prod(self, op):
         if not isinstance(op, DiagonalOperator):
             raise TypeError("DiagonalOperator required")
-        return self._from_ldiag(op._spaces, self._ldiag*op._ldiag)
+        dtype = self._dtype if self._dtype == op._dtype else None
+        return self._from_ldiag(op._spaces, self._get_actual_diag()*op._get_actual_diag(),
+                                dtype, 0)
 
     def _combine_sum(self, op, selfneg, opneg):
         if not isinstance(op, DiagonalOperator):
             raise TypeError("DiagonalOperator required")
-        tdiag = (self._ldiag * (-1 if selfneg else 1) +
-                 op._ldiag * (-1 if opneg else 1))
-        return self._from_ldiag(op._spaces, tdiag)
+        tdiag = (self._get_actual_diag() * (-1 if selfneg else 1) +
+                 op._get_actual_diag() * (-1 if opneg else 1))
+        dtype = self._dtype if self._dtype == op._dtype else None
+        return self._from_ldiag(op._spaces, tdiag, dtype, 0)
 
     def apply(self, x, mode):
         self._check_input(x, mode)
-        # shortcut for most common cases
-        if mode == 1 or (not self._complex and mode == 2):
+        # To save both time and memory, we remap the `mode` (via `self._trafo`)
+        # and do not compute and store a new `self._ldiag`s for adjoint, inverse
+        # or adjoint-inverse DiagonalOperators.
+        trafo = self._ilog[mode] ^ self._trafo
+
+        if trafo == 0:  # straight application
             return Field(x.domain, x.val*self._ldiag)
 
-        xdiag = self._ldiag
-        if self._complex and (mode & 10):  # adjoint or inverse adjoint
-            xdiag = xdiag.conj()
+        if trafo == 1:  # adjoint
+            return Field(x.domain, mul_conj(x.val, self._ldiag)
+                                   if self._complex else x.val*self._ldiag)
 
-        if mode & 3:
-            return Field(x.domain, x.val*xdiag)
-        return Field(x.domain, x.val/xdiag)
+        if trafo == 2:  # inverse
+            return Field(x.domain, x.val/self._ldiag)
+
+        # adjoint inverse
+        return Field(x.domain, div_conj(x.val, self._ldiag)
+            if self._complex else x.val/self._ldiag)
 
     def _flip_modes(self, trafo):
-        if trafo == self.ADJOINT_BIT and not self._complex:  # shortcut
-            return self
-        xdiag = self._ldiag
-        if self._complex and (trafo & self.ADJOINT_BIT):
-            xdiag = xdiag.conj()
-        if trafo & self.INVERSE_BIT:
-            # dividing by zero is OK here, we can deal with infinities
-            with np.errstate(divide='ignore'):
-                xdiag = 1./xdiag
-        return self._from_ldiag((), xdiag)
+        return self._from_ldiag((), self._ldiag, self._dtype, self._trafo ^ trafo)
 
     def process_sample(self, samp, from_inverse):
+        from_inverse2 = from_inverse ^ (self._trafo >= 2)
+        # `from_inverse2` captures if the inverse of `self._ldiag` needs to be
+        # taken or not (can happen for nontrivial `self._trafo`).
         if (self._complex or (self._diagmin < 0.) or
-                (self._diagmin == 0. and from_inverse)):
+                (self._diagmin == 0. and from_inverse2)):
             raise ValueError("operator not positive definite")
-        if from_inverse:
+        if from_inverse2:
             res = samp.val/np.sqrt(self._ldiag)
         else:
             res = samp.val*np.sqrt(self._ldiag)
         return Field(self._domain, res)
 
-    def draw_sample_with_dtype(self, dtype, from_inverse=False):
-        res = Field.from_random(domain=self._domain, random_type="normal", dtype=dtype)
+    def draw_sample(self, from_inverse=False):
+        if self._dtype is None:
+            s = "Need to specify dtype to be able to sample from this operator:\n"
+            s += self.__repr__()
+            raise RuntimeError(s)
+        res = Field.from_random(domain=self._domain, random_type="normal",
+                                dtype=self._dtype)
         return self.process_sample(res, from_inverse)
 
     def get_sqrt(self):
-        if np.iscomplexobj(self._ldiag) or (self._ldiag < 0).any():
+        if self._complex or self._diagmin < 0.:
             raise ValueError("get_sqrt() works only for positive definite operators.")
-        return self._from_ldiag((), np.sqrt(self._ldiag))
+        return self._from_ldiag((), np.sqrt(self._ldiag), self._dtype, self._trafo)
 
     def __repr__(self):
-        return "DiagonalOperator"
+        from ..multi_domain import MultiDomain
+        s = "DiagonalOperator (domain/target "
+        if isinstance(self.domain, MultiDomain):
+            s += f"keys: {self._domain.keys()}"
+        else:
+            s += f"shape: {self._domain.shape}"
+        if self._dtype is not None:
+            s += f", sampling dtype {self._dtype}"
+        s += ")"
+        return s

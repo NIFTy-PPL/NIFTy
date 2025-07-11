@@ -11,13 +11,14 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2021 Max-Planck-Society
+# Copyright(C) 2013-2022 Max-Planck-Society
+# Author: Philipp Arras
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 import numpy as np
 from scipy.interpolate import CubicSpline
-from scipy.stats import invgamma, laplace, norm
+from scipy.stats import beta, gamma, invgamma, laplace, norm
 
 from .. import random
 from ..domain_tuple import DomainTuple
@@ -25,7 +26,7 @@ from ..domains.unstructured_domain import UnstructuredDomain
 from ..field import Field
 from ..operators.adder import Adder
 from ..operators.operator import Operator
-from ..sugar import makeOp
+from ..sugar import is_fieldlike, makeOp
 
 
 def _f_on_np(f, arr):
@@ -90,7 +91,7 @@ class _InterpolationOperator(Operator):
         return res
 
 
-def InverseGammaOperator(domain, alpha, q, delta=1e-2):
+class InverseGammaOperator(Operator):
     """Transform a standard normal into an inverse gamma distribution.
 
     The pdf of the inverse gamma distribution is defined as follows:
@@ -99,9 +100,13 @@ def InverseGammaOperator(domain, alpha, q, delta=1e-2):
         \\frac{q^\\alpha}{\\Gamma(\\alpha)}x^{-\\alpha -1}
         \\exp \\left(-\\frac{q}{x}\\right)
 
-    That means that for large x the pdf falls off like :math:`x^(-\\alpha -1)`.
+    That means that for large x the pdf falls off like :math:`x^{(-\\alpha -1)}`.
     The mean of the pdf is at :math:`q / (\\alpha - 1)` if :math:`\\alpha > 1`.
     The mode is :math:`q / (\\alpha + 1)`.
+
+    The operator can be initialized by setting either alpha and q or mode and mean.
+    In accordance to the statements above the mean must be greater
+    than the mode. Otherwise would get alpha < 0 and so no mean would be defined.
 
     This transformation is implemented as a linear interpolation which maps a
     Gaussian onto an inverse gamma distribution.
@@ -113,16 +118,163 @@ def InverseGammaOperator(domain, alpha, q, delta=1e-2):
         time the domain and the target of the operator.
     alpha : float
         The alpha-parameter of the inverse-gamma distribution.
-    q : float or Field
+    q : float or :class:`nifty8.field.Field`
         The q-parameter of the inverse-gamma distribution.
+    mode: float
+        The mode of the inverse-gamma distribution.
+    mean: float
+        The mean of the inverse-gamma distribution.
     delta : float
         Distance between sampling points for linear interpolation.
     """
-    op = _InterpolationOperator(domain, lambda x: invgamma.ppf(norm._cdf(x), float(alpha)),
-                                -8.2, 8.2, delta, lambda x: x.ptw("log"), lambda x: x.ptw("exp"))
-    if np.isscalar(q):
-        return op.scale(q)
-    return makeOp(q) @ op
+    def __init__(self, domain, alpha=None, q=None, delta=1e-2, mode=None, mean=None):
+        self._domain = self._target = DomainTuple.make(domain)
+
+        if alpha is not None and q is not None:
+            self._alpha = float(alpha)
+            self._q = q if isinstance(q, Field) else float(q)
+            self._mode = self._q / (self._alpha + 1)
+            if self._alpha > 1:
+                self._mean = self._q / (self._alpha - 1)
+        elif mean is not None and mode is not None:
+            if mean < mode:
+                raise ValueError('Mean should be greater than mode, otherwise alpha < 0')
+            self._mean = float(mean)
+            self._mode = float(mode)
+            self._alpha = 2 / (self._mean / self._mode - 1) + 1
+            self._q = self._mode * (self._alpha + 1)
+        else:
+            raise ValueError("Either one pair of arguments (mode, mean or alpha, q) must be given.")
+
+        self._delta = float(delta)
+        op = _InterpolationOperator(self._domain, lambda x: invgamma.ppf(norm._cdf(x), float(self._alpha)),
+                                    -8.2, 8.2, self._delta, lambda x: x.ptw("log"), lambda x: x.ptw("exp"))
+        if np.isscalar(self._q):
+            op = op.scale(self._q)
+        else:
+            op = makeOp(self._q) @ op
+        self._op = op
+
+    def apply(self, x):
+        return self._op(x)
+
+    @property
+    def alpha(self):
+        """float : The value of the alpha-parameter of the inverse-gamma distribution"""
+        return self._alpha
+
+    @property
+    def q(self):
+        """float : The value of q-parameters of the inverse-gamma distribution"""
+        return self._q
+
+    @property
+    def mode(self):
+        """float : The value of the mode of the inverse-gamma distribution"""
+        return self._mode
+
+    @property
+    def mean(self):
+        """float : The value of the mean of the inverse-gamma distribution. Only existing for alpha > 1."""
+        if self._alpha <= 1:
+            raise ValueError('mean only existing for alpha > 1')
+        return self._mean
+
+    @property
+    def var(self):
+        """float : The value of the variance of the inverse-gamma distribution. Only existing for alpha > 2."""
+        if self._alpha <= 2:
+            raise ValueError('variance only existing for alpha > 2')
+        return self._q**2 / ((self._alpha - 1)**2 * (self._alpha - 2))
+
+
+class GammaOperator(Operator):
+    """Transform a standard normal into a gamma distribution.
+
+    The pdf of the gamma distribution is defined as follows:
+
+    .. math::
+        \\frac{1}{\\Gamma(k)\\theta^k} x^{k-1}
+        \\exp \\left( -\\frac{x}{\\theta} \\right)
+
+    This transformation is implemented as a linear interpolation which maps a
+    Gaussian onto a gamma distribution.
+
+    Parameters
+    ----------
+    domain : Domain, tuple of Domain or DomainTuple
+        The domain on which the field shall be defined. This is at the same
+        time the domain and the target of the operator.
+    alpha : float
+        The shape parameter of the gamma distribution.
+    beta : float or :class:`nifty8.field.Field`
+        The rate parameter of the gamma distribution.
+    theta : float or :class:`nifty8.field.Field`
+        The scale parameter of the gamma distribution.
+    mean : float
+        Mean of the gamma distribution.
+    var : float
+        Variance of the gamma distribution.
+    delta : float
+        Distance between sampling points for linear interpolation.
+    """
+    def __init__(self, domain, alpha=None, beta=None, theta=None, mean=None, var=None, delta=1e-2):
+        self._domain = self._target = DomainTuple.make(domain)
+
+        if mean is not None and var is not None:
+            theta = var / mean
+            alpha = mean / theta
+
+        if beta is None and theta is None:
+            raise ValueError("Either beta or theta need to be defined")
+        if beta is not None:
+            theta = 1 / beta
+        self._alpha = float(alpha)
+        self._theta = theta if isinstance(theta, Field) else float(theta)
+
+        self._delta = float(delta)
+        op = _InterpolationOperator(self._domain, lambda x: gamma.ppf(norm._cdf(x), self._alpha),
+                                    -8.2, 8.2, self._delta)
+        if np.isscalar(self._theta):
+            op = op.scale(self._theta)
+        else:
+            op = makeOp(self._theta) @ op
+        self._op = op
+
+    def apply(self, x):
+        return self._op(x)
+
+    @property
+    def alpha(self):
+        """float : The value of the shape-parameter of the gamma distribution"""
+        return self._alpha
+
+    @property
+    def beta(self):
+        """float : The value of rate parameter of the gamma distribution"""
+        return 1 / self._theta
+
+    @property
+    def theta(self):
+        """float : The value of scale parameter of the gamma distribution"""
+        return self._theta
+
+    @property
+    def mode(self):
+        """float : The value of the mode of the gamma distribution. Exists for alpha >= 1 or k >= 1."""
+        if self._alpha < 1:
+            raise ValueError('mode only existing for alpha >= 1 or k >= 1')
+        return (self._alpha - 1) * self._theta
+
+    @property
+    def mean(self):
+        """float : The value of the mean of the gamma distribution."""
+        return self._alpha * self._theta
+
+    @property
+    def var(self):
+        """float : The value of the variance of the gamma distribution."""
+        return self._alpha * self._theta**2
 
 
 def LogInverseGammaOperator(domain, alpha, q, delta=1e-2):
@@ -136,6 +288,13 @@ def LogInverseGammaOperator(domain, alpha, q, delta=1e-2):
                                 -8.2, 8.2, delta)
     q = np.log(q) if np.isscalar(q) else q.log()
     return Adder(q, domain=op.target) @ op
+
+
+def BetaOperator(domain, a, b, delta=1e-2):
+    """Transform a standard normal into a beta distribution.
+    """
+    func = lambda x: beta.ppf(norm._cdf(x), a=float(a), b=float(b))
+    return _InterpolationOperator(domain, func, -8.2, 8.2, delta)
 
 
 class UniformOperator(Operator):
@@ -168,7 +327,7 @@ class UniformOperator(Operator):
         return x.new(res, jac)
 
     def inverse(self, field):
-        res = norm._ppf(field.val/self._scale - self._loc)
+        res = norm._ppf((field.val - self._loc) / self._scale)
         return Field(field.domain, res)
 
 
@@ -202,5 +361,6 @@ class LaplaceOperator(Operator):
         return x.new(res, jac)
 
     def inverse(self, x):
-        res = laplace._cdf(x.val)
+        res = laplace.cdf(x.val, self._loc, self._scale)
+        res = norm._ppf(res)
         return Field(x.domain, res)

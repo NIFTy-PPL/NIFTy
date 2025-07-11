@@ -182,7 +182,7 @@ class DomainTuple:
         return len(self._dom)
 
     def __hash__(self):
-        return self._dom.__hash__()
+        return hash(self._dom)
 
     def __eq__(self, x):
         return (self is x) or (isinstance(x, DomainTuple) and self._dom == x._dom)
@@ -206,8 +206,7 @@ class DomainTuple:
         return DomainTuple._scalarDomain
 
     def __repr__(self):
-        subs = "\n".join(sub.__repr__() for sub in self._dom)
-        return "DomainTuple:\n"+utilities.indent(subs)
+        return f"DomainTuple.make({tuple(self)})"
 
 
 def _unpickleDomainTuple(*args):

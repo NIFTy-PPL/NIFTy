@@ -16,6 +16,8 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
+from warnings import warn
+
 import numpy as np
 
 from ..domain_tuple import DomainTuple
@@ -49,6 +51,15 @@ def SimpleCorrelatedField(
     Assumes `total_N = 0`, `dofdex = None` and the presence of only one power
     spectrum, i.e. only one call of
     :func:`~nifty8.library.correlated_fields.CorrelatedFieldMaker.add_fluctuations`.
+
+    See also
+    --------
+    * The simple correlated field model has first been described in "Comparison
+      of classical and Bayesian imaging in radio interferometry", A&A 646, A84
+      (2021) by P. Arras et al.
+      `<https://doi.org/10.1051/0004-6361/202039258>`_
+
+    Consider citing this paper, if you use the simple correlated field model.
     """
     target = DomainTuple.make(target)
     if len(target) != 1:
@@ -116,9 +127,10 @@ def SimpleCorrelatedField(
     ht = HarmonicTransformOperator(harmonic_partner, target)
     pd = PowerDistributor(harmonic_partner, pspace)
     xi = ducktape(harmonic_partner, None, prefix + 'xi')
-    op = ht(pd(a)*xi)
+    op = ht(pd(a).real*xi)
     if offset_mean is not None:
         op = Adder(full(op.target, float(offset_mean))) @ op
     op.amplitude = a
     op.power_spectrum = a**2
+
     return op

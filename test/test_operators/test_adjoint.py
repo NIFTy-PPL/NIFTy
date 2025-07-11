@@ -15,10 +15,9 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
+import nifty8 as ift
 import numpy as np
 import pytest
-
-import nifty8 as ift
 
 from ..common import list2fixture, setup_function, teardown_function
 
@@ -50,13 +49,13 @@ def testOperatorCombinations(sp, dtype):
     a = ift.DiagonalOperator(ift.Field.from_random(sp, "normal", dtype=dtype))
     b = ift.DiagonalOperator(ift.Field.from_random(sp, "normal", dtype=dtype))
     op = ift.SandwichOperator.make(a, b)
-    ift.extra.check_linear_operator(op, dtype, dtype)
+    ift.extra.check_linear_operator(op, dtype, dtype, rtol=1e-13)
     op = a(b)
-    ift.extra.check_linear_operator(op, dtype, dtype)
+    ift.extra.check_linear_operator(op, dtype, dtype, rtol=1e-13)
     op = a + b
-    ift.extra.check_linear_operator(op, dtype, dtype)
+    ift.extra.check_linear_operator(op, dtype, dtype, rtol=1e-13)
     op = a - b
-    ift.extra.check_linear_operator(op, dtype, dtype)
+    ift.extra.check_linear_operator(op, dtype, dtype, rtol=1e-13)
 
 
 def testLinearInterpolator():
@@ -179,6 +178,17 @@ def testMask(sp, dtype):
 
 
 @pmp('sp', _h_spaces + _p_spaces)
+@pmp('multi', (False, True))
+def testScaling(sp, dtype, multi):
+    dom = sp
+    if multi:
+        dom = {"foo": dom}
+    fct = ift.from_random(ift.DomainTuple.scalar_domain()).val[()]
+    op = ift.ScalingOperator(dom, fct)
+    ift.extra.check_linear_operator(op, dtype, dtype)
+
+
+@pmp('sp', _h_spaces + _p_spaces)
 def testDiagonal(sp, dtype):
     op = ift.DiagonalOperator(ift.Field.from_random(sp, dtype=dtype))
     ift.extra.check_linear_operator(op, dtype, dtype)
@@ -187,6 +197,14 @@ def testDiagonal(sp, dtype):
 @pmp('sp', _h_spaces + _p_spaces + _pow_spaces)
 def testGeometryRemover(sp, dtype):
     op = ift.GeometryRemover(sp)
+    ift.extra.check_linear_operator(op, dtype, dtype)
+
+@pmp('sp', _h_spaces + _p_spaces + _pow_spaces)
+def testExtractAtIndices(sp, dtype):
+    min_ax = np.min(sp.shape)
+    n_ax = len(sp.shape)
+    inds = (list(range(min_ax//2))+list(range(min_ax//3)), )*n_ax
+    op = ift.ExtractAtIndices(sp, inds)
     ift.extra.check_linear_operator(op, dtype, dtype)
 
 

@@ -78,6 +78,3 @@ class InversionEnabler(EndomorphicOperator):
 
     def draw_sample(self, from_inverse=False):
         return self._op.draw_sample(from_inverse)
-
-    def draw_sample_with_dtype(self, dtype, from_inverse=False):
-        return self._op.draw_sample_with_dtype(dtype, from_inverse)

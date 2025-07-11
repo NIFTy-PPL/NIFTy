@@ -17,9 +17,10 @@
 
 import numpy as np
 
+from .multi_domain import MultiDomain
 from .operators.operator import Operator
 from .sugar import makeOp
-from .utilities import check_domain_equality
+from .utilities import check_object_identity
 
 
 class Linearization(Operator):
@@ -29,7 +30,7 @@ class Linearization(Operator):
 
     Parameters
     ----------
-    val : Field or MultiField
+    val : :class:`nifty8.field.Field` or :class:`nifty8.multi_field.MultiField`
         The value of the operator application.
     jac : LinearOperator
         The Jacobian.
@@ -42,7 +43,7 @@ class Linearization(Operator):
     def __init__(self, val, jac, metric=None, want_metric=False):
         self._val = val
         self._jac = jac
-        check_domain_equality(self._val.domain, self._jac.target)
+        check_object_identity(self._val.domain, self._jac.target)
         self._want_metric = want_metric
         self._metric = metric
 
@@ -52,7 +53,7 @@ class Linearization(Operator):
 
         Parameters
         ----------
-        val : Field or MultiField
+        val : :class:`nifty8.field.Field` or :class:`nifty8.multi_field.MultiField`
             the value of the operator application
         jac : LinearOperator
             the Jacobian
@@ -65,10 +66,16 @@ class Linearization(Operator):
         return self.make_var(self._val, self._want_metric)
 
     def prepend_jac(self, jac):
+        if jac.isIdentity():
+            return self
         if self._metric is None:
+            if self._jac.isIdentity():
+                return self.new(self._val, jac)
             return self.new(self._val, self._jac @ jac)
         from .operators.sandwich_operator import SandwichOperator
         metric = SandwichOperator.make(jac, self._metric)
+        if self._jac.isIdentity():
+            return self.new(self._val, jac, metric)
         return self.new(self._val, self._jac @ jac, metric)
 
     @property
@@ -83,7 +90,7 @@ class Linearization(Operator):
 
     @property
     def val(self):
-        """Field or MultiField : the value"""
+        """:class:`nifty8.field.Field` or :class:`nifty8.multi_field.MultiField` : the value"""
         return self._val
 
     @property
@@ -93,7 +100,7 @@ class Linearization(Operator):
 
     @property
     def gradient(self):
-        """Field or MultiField : the gradient
+        """:class:`nifty8.field.Field` or :class:`nifty8.multi_field.MultiField` : the gradient
 
         Notes
         -----
@@ -118,11 +125,14 @@ class Linearization(Operator):
         return self._metric
 
     def __getitem__(self, name):
+        if not isinstance(self.domain, MultiDomain):
+            raise TypeError(f"'{type(self)}' object is not subscriptable")
         return self.new(self._val[name], self._jac.ducktape_left(name))
 
     def __neg__(self):
-        return self.new(-self._val, -self._jac,
-                        None if self._metric is None else -self._metric)
+        if self._metric is not None:
+            raise RuntimeError("Cannot negate operators with metric")
+        return self.new(-self._val, -self._jac, metric=None)
 
     def conjugate(self):
         return self.new(
@@ -180,9 +190,9 @@ class Linearization(Operator):
             met = None if self._metric is None else self._metric.scale(other)
             return self.new(self._val*other, self._jac.scale(other), met)
         if other.jac is None:
-            check_domain_equality(self.target, other.domain)
+            check_object_identity(self.target, other.domain)
             return self.new(self._val*other, makeOp(other)(self._jac))
-        check_domain_equality(self.target, other.target)
+        check_object_identity(self.target, other.target)
         return self.new(
             self.val*other.val,
             (makeOp(other.val)(self.jac))._myadd(
@@ -197,7 +207,7 @@ class Linearization(Operator):
 
         Parameters
         ----------
-        other : Field or MultiField or Linearization
+        other : :class:`nifty8.field.Field` or :class:`nifty8.multi_field.MultiField` or Linearization
 
         Returns
         -------
@@ -222,7 +232,7 @@ class Linearization(Operator):
 
         Parameters
         ----------
-        other : Field or MultiField or Linearization
+        other : :class:`nifty8.field.Field` or :class:`nifty8.multi_field.MultiField` or Linearization
 
         Returns
         -------
@@ -273,7 +283,7 @@ class Linearization(Operator):
             the (partial) integral
         """
         from .operators.contraction_operator import IntegrationOperator
-        return IntegrationOperator(self._target, spaces)(self)
+        return IntegrationOperator(self.target, spaces)(self)
 
     def ptw(self, op, *args, **kwargs):
         t1, t2 = self._val.ptw_with_deriv(op, *args, **kwargs)
@@ -291,7 +301,7 @@ class Linearization(Operator):
 
         Parameters
         ----------
-        field : Field or Multifield
+        field : :class:`nifty8.field.Field` or :class:`nifty8.multi_field.MultiField`
             the field to be converted
         want_metric : bool
             If True, the metric will be computed for other Linearizations
@@ -312,7 +322,7 @@ class Linearization(Operator):
 
         Parameters
         ----------
-        field : Field or Multifield
+        field : :class:`nifty8.field.Field` or :class:`nifty8.multi_field.MultiField`
             the field to be converted
         want_metric : bool
             If True, the metric will be computed for other Linearizations
@@ -337,7 +347,7 @@ class Linearization(Operator):
 
         Parameters
         ----------
-        field : Field or Multifield
+        field : :class:`nifty8.field.Field` or :class:`nifty8.multi_field.MultiField`
             the field to be converted
         want_metric : bool
             If True, the metric will be computed for other Linearizations
@@ -366,7 +376,7 @@ class Linearization(Operator):
 
         Parameters
         ----------
-        field : Multifield
+        field ::class:`nifty8.multi_field.MultiField`
             the field to be converted
         constants : list of string
             the MultiField components for which the Jacobian should be

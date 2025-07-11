@@ -16,7 +16,7 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 from .domain_tuple import DomainTuple
-from .utilities import check_domain_equality, frozendict, indent
+from .utilities import check_object_identity, frozendict, indent
 
 
 class MultiDomain:
@@ -98,7 +98,7 @@ class MultiDomain:
         return len(self._keys)
 
     def __hash__(self):
-        return self._keys.__hash__() ^ self._domains.__hash__()
+        return hash((self._keys, self._domains))
 
     def __eq__(self, x):
         if self is x:
@@ -128,7 +128,7 @@ class MultiDomain:
         for dom in inp:
             for key, subdom in zip(dom._keys, dom._domains):
                 if key in res:
-                    check_domain_equality(res[key], subdom)
+                    check_object_identity(res[key], subdom)
                 else:
                     res[key] = subdom
         return MultiDomain.make(res)
@@ -137,9 +137,7 @@ class MultiDomain:
         return (_unpickleMultiDomain, (dict(self),))
 
     def __repr__(self):
-        subs = "\n".join("{}:\n  {}".format(key, dom.__repr__())
-                         for key, dom in self.items())
-        return "MultiDomain:\n"+indent(subs)
+        return f"MultiDomain.make({dict(self)})"
 
 
 def _unpickleMultiDomain(*args):

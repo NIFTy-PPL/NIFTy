@@ -16,11 +16,10 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-import numpy as np
-from numpy.testing import assert_allclose
-
 import nifty8 as ift
+import numpy as np
 from nifty8.extra import check_linear_operator, check_operator
+from numpy.testing import assert_allclose
 
 from ..common import list2fixture, setup_function, teardown_function
 

@@ -14,30 +14,39 @@
 # Copyright(C) 2021 Max-Planck-Society
 # Author: Philipp Arras
 
-import nifty8 as ift
 import numpy as np
-import matplotlib.pyplot as plt
 import pytest
-try:
-    import jax.numpy as jnp
-except ImportError:
-    pass
 
-from ..common import setup_function, teardown_function
+import nifty8 as ift
+
+jax = pytest.importorskip("jax")
+jnp = pytest.importorskip("jax.numpy")
+
+jax.config.update("jax_enable_x64", True)
 
 pmp = pytest.mark.parametrize
 
 
 @pmp("dom", [ift.RGSpace((10, 8)), (ift.RGSpace(10), ift.RGSpace(8))])
-@pmp("func", [lambda x: x, lambda x: x**2, lambda x: x*x, lambda x: x*x[0, 0],
-              lambda x: jnp.sin(x), lambda x: x*x.sum()])
+@pmp("func", [(lambda x: x, True), (lambda x: x**2, False), (lambda x: x*x, False),
+              (lambda x: x*x[0, 0], False), (lambda x: x+x[0, 0], True),
+              (lambda x: jnp.sin(x), False), (lambda x: x*x.sum(), False),
+              (lambda x: x+x.sum(), True)])
 def test_jax(dom, func):
     pytest.importorskip("jax")
     loc = ift.from_random(dom)
-    res0 = np.array(func(loc.val))
-    op = ift.JaxOperator(dom, dom, func)
+    f, linear = func
+    res0 = np.array(f(loc.val))
+    op = ift.JaxOperator(dom, dom, f)
     np.testing.assert_allclose(res0, op(loc).val)
     ift.extra.check_operator(op, ift.from_random(op.domain))
+
+    op = ift.JaxLinearOperator(dom, dom, f, np.float64)
+    if linear:
+        ift.extra.check_linear_operator(op)
+    else:
+        with pytest.raises(Exception):
+            ift.extra.check_linear_operator(op)
 
 
 def test_mf_jax():
@@ -63,7 +72,7 @@ def test_mf_jax():
 def test_jax_energy(dom):
     pytest.importorskip("jax")
     dom = ift.makeDomain(dom)
-    e0 = ift.GaussianEnergy(domain=dom)
+    e0 = ift.GaussianEnergy(domain=dom, sampling_dtype=np.float64)
     def func(x):
         return 0.5*jnp.vdot(x, x)
     def funcmf(x):
@@ -89,6 +98,7 @@ def test_jax_energy(dom):
 
 
 def test_jax_errors():
+    pytest.importorskip("jax")
     dom = ift.UnstructuredDomain(2)
     mdom = {"a": dom}
     op = ift.JaxOperator(dom, dom, lambda x: {"a": x})
@@ -107,6 +117,7 @@ def test_jax_errors():
 
 
 def test_jax_complex():
+    pytest.importorskip("jax")
     dom = ift.UnstructuredDomain(1)
     a = ift.ducktape(dom, None, "a")
     b = ift.ducktape(dom, None, "b")

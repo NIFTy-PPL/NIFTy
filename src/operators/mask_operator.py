@@ -31,7 +31,7 @@ class MaskOperator(LinearOperator):
 
     Parameters
     ----------
-    flags : Field
+    flags : :class:`nifty8.field.Field`
         Is converted to boolean. Where True, the input field is flagged.
     """
     def __init__(self, flags):

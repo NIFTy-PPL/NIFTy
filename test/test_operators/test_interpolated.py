@@ -11,20 +11,19 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2021 Max-Planck-Society
+# Copyright(C) 2013-2022 Max-Planck-Society
+# Author: Philipp Arras
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
+import nifty8 as ift
 import numpy as np
 import pytest
 from numpy.testing import assert_allclose
-from scipy.stats import invgamma, norm
-
-import nifty8 as ift
+from scipy.stats import gamma, invgamma, norm
 
 from ..common import list2fixture, setup_function, teardown_function
 
-pmp = pytest.mark.parametrize
 pmp = pytest.mark.parametrize
 space = list2fixture([ift.GLSpace(15),
                       ift.RGSpace(64, distances=.789),
@@ -33,6 +32,7 @@ seed = list2fixture([4, 78, 23])
 
 
 def testInterpolationAccuracy(space, seed):
+    ift.random.push_sseq_from_seed(seed)
     pos = ift.from_random(space, 'normal')
     alpha = 1.5
     qs = [0.73, pos.ptw("exp").val]
@@ -47,3 +47,8 @@ def testInterpolationAccuracy(space, seed):
         arr0 = invgamma.ppf(norm.cdf(pos.val), alpha, scale=q)
         assert_allclose(arr0, arr1)
         assert_allclose(arr0, arr2)
+
+        op2 = ift.GammaOperator(space, alpha=alpha, theta=qfld)
+        arr1 = op2(pos).val
+        arr0 = gamma.ppf(norm.cdf(pos.val), alpha, scale=q)
+        assert_allclose(arr0, arr1)

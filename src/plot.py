@@ -17,16 +17,20 @@
 
 import os
 from datetime import datetime as dt
+from itertools import product
+from warnings import warn
 
 import numpy as np
 
+from .domain_tuple import DomainTuple
 from .domains.gl_space import GLSpace
 from .domains.hp_space import HPSpace
 from .domains.power_space import PowerSpace
 from .domains.rg_space import RGSpace
 from .field import Field
 from .minimization.iteration_controllers import EnergyHistory
-from .utilities import check_domain_equality, myassert
+from .multi_field import MultiField
+from .utilities import check_object_identity, myassert
 
 # relevant properties:
 # - x/y size
@@ -172,26 +176,9 @@ def _find_closest(A, target):
     return idx
 
 
-def _makeplot(name, block=True, dpi=None):
-    import matplotlib.pyplot as plt
-    if name is None:
-        plt.show(block=block)
-        if block:
-            plt.close()
-        return
-    extension = os.path.splitext(name)[1]
-    if extension in (".pdf", ".png", ".svg"):
-        args = {}
-        if dpi is not None:
-            args['dpi'] = float(dpi)
-        plt.savefig(name, **args)
-        plt.close()
-    else:
-        raise ValueError("file format not understood")
-
-
 def _limit_xy(**kwargs):
     import matplotlib.pyplot as plt
+
     x1, x2, y1, y2 = plt.axis()
     x1 = kwargs.pop("xmin", x1)
     x2 = kwargs.pop("xmax", x2)
@@ -201,14 +188,15 @@ def _limit_xy(**kwargs):
 
 
 def _register_cmaps():
+    import matplotlib as mpl
+    from matplotlib.colors import LinearSegmentedColormap
+
     try:
         if _register_cmaps._cmaps_registered:
             return
     except AttributeError:
         _register_cmaps._cmaps_registered = True
 
-    import matplotlib.pyplot as plt
-    from matplotlib.colors import LinearSegmentedColormap
     planckcmap = {'red':   ((0., 0., 0.), (.4, 0., 0.), (.5, 1., 1.),
                             (.7, 1., 1.), (.8, .83, .83), (.9, .67, .67),
                             (1., .5, .5)),
@@ -256,17 +244,30 @@ def _register_cmaps():
                          (.7, .64, .64), (.8, .84, .84), (.9, .96, .96),
                          (1., 1., 1.))}
 
-    plt.register_cmap(cmap=LinearSegmentedColormap("Planck-like", planckcmap))
-    plt.register_cmap(cmap=LinearSegmentedColormap("High Energy", he_cmap))
-    plt.register_cmap(cmap=LinearSegmentedColormap("Faraday Map", fd_cmap))
-    plt.register_cmap(cmap=LinearSegmentedColormap("Faraday Uncertainty",
-                                                   fdu_cmap))
-    plt.register_cmap(cmap=LinearSegmentedColormap("Plus Minus", pm_cmap))
+    mpl.colormaps.register(cmap=LinearSegmentedColormap("Planck-like",
+                                                        planckcmap))
+    mpl.colormaps.register(cmap=LinearSegmentedColormap("High Energy",
+                                                        he_cmap))
+    mpl.colormaps.register(cmap=LinearSegmentedColormap("Faraday Map",
+                                                        fd_cmap))
+    mpl.colormaps.register(cmap=LinearSegmentedColormap("Faraday Uncertainty",
+                                                        fdu_cmap))
+    mpl.colormaps.register(cmap=LinearSegmentedColormap("Plus Minus", pm_cmap))
+
+
+def _extract_list_kwargs(kwargs, keys, n):
+    tmp = {}
+    for kk in keys:
+        val = kwargs.pop(kk, None)
+        tmp[kk] = val if isinstance(val, list) else n*[val]
+    with_legend = "label" in keys and any(ll is not None for ll in tmp["label"])
+    return [{kk: vv[i] for kk, vv in tmp.items()} for i in range(n)], with_legend
 
 
 def _plot_history(f, ax, **kwargs):
     import matplotlib.pyplot as plt
     from matplotlib.dates import DateFormatter, date2num
+
     for i, fld in enumerate(f):
         if not isinstance(fld, EnergyHistory):
             raise TypeError
@@ -285,57 +286,59 @@ def _plot_history(f, ax, **kwargs):
     ax.set_title(kwargs.pop("title", ""))
     ax.set_xlabel(kwargs.pop("xlabel", ""))
     ax.set_ylabel(kwargs.pop("ylabel", ""))
+
+    skip_timestamp_conversion = kwargs.pop("skip_timestamp_conversion", False)
+    energy_differences = kwargs.pop("plot_energy_differences", False)
+
     plt.xscale(kwargs.pop("xscale", "linear"))
-    plt.yscale(kwargs.pop("yscale", "linear"))
+    default_yscale = 'linear' if not energy_differences else 'log'
+    plt.yscale(kwargs.pop("yscale", default_yscale))
+
     mi, ma = np.inf, -np.inf
+
     for i, fld in enumerate(f):
-        xcoord = date2num([dt.fromtimestamp(ts) for ts in fld.time_stamps])
-        ycoord = fld.energy_values
-        ax.scatter(xcoord, ycoord, label=label[i], alpha=alpha[i],
-                   color=color[i], s=size[i])
+        kwargs = {'alpha': alpha[i], 's': size[i], 'color': color[i]}
+
+        if skip_timestamp_conversion:
+            xcoord = fld.time_stamps
+        else:
+            xcoord = date2num([dt.fromtimestamp(ts) for ts in fld.time_stamps])
+
+        if not energy_differences:
+            ycoord = fld.energy_values
+            ax.scatter(xcoord, ycoord, label=label[i], **kwargs)
+        else:
+            E = np.array(fld.energy_values)
+            dE = E[1:] - E[:-1]
+            xcoord = np.array(xcoord[1:])
+            idx_pos = (dE > 0)
+            idx_neg = (dE < 0)
+            label_pos = label[i] + ' (pos)' if label[i] is not None else None
+            label_neg = label[i] + ' (neg)' if label[i] is not None else None
+            ax.scatter(xcoord[idx_pos], dE[idx_pos], marker='^',
+                       label=label_pos, **kwargs)
+            ax.scatter(xcoord[idx_neg], dE[idx_neg], marker='v',
+                       label=label_neg, **kwargs)
+
         mi, ma = min([min(xcoord), mi]), max([max(xcoord), ma])
+
     delta = (ma-mi)*0.05
+    if delta == 0.:
+        delta = 1.
     ax.set_xlim((mi-delta, ma+delta))
-    xfmt = DateFormatter('%H:%M')
-    ax.xaxis.set_major_formatter(xfmt)
+    if not skip_timestamp_conversion:
+        xfmt = DateFormatter('%H:%M')
+        ax.xaxis.set_major_formatter(xfmt)
     _limit_xy(**kwargs)
     if label != ([None]*len(f)):
-        plt.legend()
+        plt.legend(loc="upper right")
 
 
 def _plot1D(f, ax, **kwargs):
     import matplotlib.pyplot as plt
 
-    for i, fld in enumerate(f):
-        if not isinstance(fld, Field):
-            raise TypeError("incorrect data type")
-        if i == 0:
-            dom = fld.domain
-            if (len(dom) != 1):
-                raise ValueError("input field must have exactly one domain")
-        else:
-            check_domain_equality(fld.domain, dom)
-    dom = dom[0]
-
-    label = kwargs.pop("label", None)
-    if not isinstance(label, list):
-        label = [label] * len(f)
-
-    linewidth = kwargs.pop("linewidth", 1.)
-    if not isinstance(linewidth, list):
-        linewidth = [linewidth] * len(f)
-
-    alpha = kwargs.pop("alpha", None)
-    if not isinstance(alpha, list):
-        alpha = [alpha] * len(f)
-
-    color = kwargs.pop("color", None)
-    if not isinstance(color, list):
-        color = [color] * len(f)
-
-    ax.set_title(kwargs.pop("title", ""))
-    ax.set_xlabel(kwargs.pop("xlabel", ""))
-    ax.set_ylabel(kwargs.pop("ylabel", ""))
+    dom = f[0].domain[0]
+    add_kwargs, with_legend = _extract_list_kwargs(kwargs, ("label", "alpha", "color", "linewidth"), len(f))
 
     if isinstance(dom, RGSpace):
         plt.yscale(kwargs.pop("yscale", "linear"))
@@ -344,13 +347,7 @@ def _plot1D(f, ax, **kwargs):
         xcoord = np.arange(npoints, dtype=np.float64)*dist
         for i, fld in enumerate(f):
             ycoord = fld.val
-            plt.plot(xcoord, ycoord, label=label[i],
-                     linewidth=linewidth[i], alpha=alpha[i],
-                     color=color[i])
-        _limit_xy(**kwargs)
-        if label != ([None]*len(f)):
-            plt.legend()
-        return
+            plt.plot(xcoord, ycoord, **add_kwargs[i])
     elif isinstance(dom, PowerSpace):
         plt.xscale(kwargs.pop("xscale", "log"))
         plt.yscale(kwargs.pop("yscale", "log"))
@@ -358,48 +355,76 @@ def _plot1D(f, ax, **kwargs):
         for i, fld in enumerate(f):
             ycoord = fld.val_rw()
             ycoord[0] = ycoord[1]
-            plt.plot(xcoord, ycoord, label=label[i],
-                     linewidth=linewidth[i], alpha=alpha[i],
-                     color=color[i])
-        _limit_xy(**kwargs)
-        if label != ([None]*len(f)):
-            plt.legend()
-        return
-    raise ValueError("Field type not(yet) supported")
+            plt.plot(xcoord, ycoord, **add_kwargs[i])
+    else:
+        raise RuntimeError("This point should never be reached")
+
+    _limit_xy(**kwargs)
+    if with_legend:
+        ax.legend(loc="upper right")
+
+
+def plottable1D(f):
+    dom = f[0].domain
+    is_1d_plottable = isinstance(dom[0], (RGSpace, PowerSpace))
+    is_1d_plottable &= (len(dom) == 1) and (len(dom.shape) == 1)
+    is_1d_plottable &= all(dom == el.domain for el in f)
+    return is_1d_plottable
+
+
+def plottable2D(fld, f_space=1):
+    dom = fld.domain
+    if not isinstance(dom, DomainTuple) or len(dom) > 2:
+        return False
+    if f_space not in [0, 1]:
+        return False
+    x_space = 0
+    if len(dom) == 2:
+        x_space = 1 - f_space
+        if (not isinstance(dom[f_space], RGSpace)) or len(dom[f_space].shape) != 1:
+            return False
+    elif len(dom) == 0:
+        return False
+    if not isinstance(dom[x_space], (RGSpace, HPSpace, GLSpace)):
+        return False
+    if isinstance(dom[x_space], RGSpace) and not len(dom[x_space].shape) == 2:
+        return False
+    return True
+
+
+def _plotting_args_2D(fld, f_space=1):
+    from .sugar import makeField
+
+    # check for multifrequency plotting
+    have_rgb, rgb = False, None
+    x_space = 0
+    dom = fld.domain
+    if len(dom) == 1:
+        x_space = 0
+    elif len(dom) == 2:
+        x_space = 1 - f_space
+        # Only one frequency?
+        if dom[f_space].shape[0] == 1:
+            fld = makeField(fld.domain[x_space], fld.val.squeeze(axis=dom.axes[f_space]))
+        else:
+            val = fld.val
+            if f_space == 0:
+                val = np.moveaxis(val, 0, -1)
+            rgb = _rgb_data(val)
+            have_rgb = True
+    else:  # "DomainTuple can only have one or two entries.
+        raise ValueError('check plottable2D before using this function')
+    return fld, x_space, have_rgb, rgb
 
 
 def _plot2D(f, ax, **kwargs):
     import matplotlib.pyplot as plt
     from mpl_toolkits.axes_grid1 import make_axes_locatable
 
+    f = f[0]
     dom = f.domain
 
-    if len(dom) > 2:
-        raise ValueError("DomainTuple can have at most two entries.")
-
-    # check for multifrequency plotting
-    have_rgb = False
-    x_space = 0
-    if len(dom) == 2:
-        f_space = kwargs.pop("freq_space_idx", 1)
-        if f_space not in [0, 1]:
-            raise ValueError("Invalid frequency space index")
-        if (not isinstance(dom[f_space], RGSpace)) \
-           or len(dom[f_space].shape) != 1:
-            raise TypeError("Need 1D RGSpace as frequency space domain")
-        x_space = 1 - f_space
-
-        # Only one frequency?
-        if dom[f_space].shape[0] == 1:
-            from .sugar import makeField
-            f = makeField(f.domain[x_space],
-                          f.val.squeeze(axis=dom.axes[f_space]))
-        else:
-            val = f.val
-            if f_space == 0:
-                val = np.moveaxis(val, 0, -1)
-            rgb = _rgb_data(val)
-            have_rgb = True
+    f, x_space, have_rgb, rgb = _plotting_args_2D(f, kwargs.pop("freq_space_idx", 1))
 
     foo = kwargs.pop("norm", None)
     norm = {} if foo is None else {'norm': foo}
@@ -407,9 +432,6 @@ def _plot2D(f, ax, **kwargs):
     foo = kwargs.pop("aspect", None)
     aspect = {} if foo is None else {'aspect': foo}
 
-    ax.set_title(kwargs.pop("title", ""))
-    ax.set_xlabel(kwargs.pop("xlabel", ""))
-    ax.set_ylabel(kwargs.pop("ylabel", ""))
     dom = dom[x_space]
     if not have_rgb:
         cmap = kwargs.pop("cmap", plt.rcParams['image.cmap'])
@@ -422,16 +444,21 @@ def _plot2D(f, ax, **kwargs):
                 rgb, extent=[0, nx*dx, 0, ny*dy], origin="lower", **norm,
                 **aspect)
         else:
+            alpha = kwargs.get("alpha", None)
+            if isinstance(alpha, Field):
+                alpha = alpha.val.T
             im = ax.imshow(
                 f.val.T, extent=[0, nx*dx, 0, ny*dy],
                 vmin=kwargs.get("vmin"), vmax=kwargs.get("vmax"),
-                cmap=cmap, origin="lower", **norm, **aspect)
+                cmap=cmap, origin="lower", alpha=alpha, **norm, **aspect)
             cax = make_axes_locatable(ax).append_axes("right", size="5%", pad=0.05)
             plt.colorbar(im, cax=cax)
         _limit_xy(**kwargs)
         return
     elif isinstance(dom, (HPSpace, GLSpace)):
         from ducc0.healpix import Healpix_Base
+        from ducc0.misc import GL_thetas
+
         xsize = 800
         res, mask, theta, phi = _mollweide_helper(xsize)
         if have_rgb:
@@ -448,7 +475,6 @@ def _plot2D(f, ax, **kwargs):
             else:
                 res[mask] = f.val[base.ang2pix(ptg)]
         else:
-            from ducc0.misc import GL_thetas
             ra = np.linspace(0, 2*np.pi, dom.nlon+1)
             dec = GL_thetas(dom.nlat)
             ilat = _find_closest(dec, theta)
@@ -469,31 +495,37 @@ def _plot2D(f, ax, **kwargs):
     raise ValueError("Field type not(yet) supported")
 
 
+def _plotHist(f, ax, **kwargs):
+    add_kwargs, with_legend = _extract_list_kwargs(kwargs, ("label", "alpha", "color", "range"),
+                                                   len(f))
+    add_kwargs2 = {
+        "log": kwargs.pop("log", False),
+        "density": kwargs.pop("density", False),
+        "bins": kwargs.pop("bins", 50)
+    }
+    for i, fld in enumerate(f):
+        ax.hist(fld.val.ravel(), **add_kwargs[i], **add_kwargs2)
+    if with_legend:
+        ax.legend(loc="upper right")
+
+
 def _plot(f, ax, **kwargs):
     _register_cmaps()
-    if isinstance(f, Field) or isinstance(f, EnergyHistory):
-        f = [f]
-    f = list(f)
-    if len(f) == 0:
-        raise ValueError("need something to plot")
     if isinstance(f[0], EnergyHistory):
         _plot_history(f, ax, **kwargs)
         return
-    if not isinstance(f[0], Field):
-        raise TypeError("incorrect data type")
-    dom1 = f[0].domain
-    if (len(dom1) == 1 and
-        (isinstance(dom1[0], PowerSpace) or
-         (isinstance(dom1[0], RGSpace) and
-          len(dom1[0].shape) == 1))):
+
+    ax.set_title(kwargs.pop("title", ""))
+    ax.set_xlabel(kwargs.pop("xlabel", ""))
+    ax.set_ylabel(kwargs.pop("ylabel", ""))
+
+    if plottable1D(f):
         _plot1D(f, ax, **kwargs)
         return
-    else:
-        if len(f) != 1:
-            raise ValueError("need exactly one Field for 2D plot")
-        _plot2D(f[0], ax, **kwargs)
+    if plottable2D(f[0], kwargs.get("freq_space_idx", 1)):
+        _plot2D(f, ax, **kwargs)
         return
-    raise ValueError("Field type not(yet) supported")
+    _plotHist(f, ax, **kwargs)
 
 
 class Plot:
@@ -511,11 +543,12 @@ class Plot:
 
         Parameters
         ----------
-        f: Field or list of Field
+        f : :class:`nifty8.field.Field` or list of :class:`nifty8.field.Field` or None
             If `f` is a single Field, it must be defined on a single `RGSpace`,
             `PowerSpace`, `HPSpace`, `GLSpace`.
             If it is a list, all list members must be Fields defined over the
             same one-dimensional `RGSpace` or `PowerSpace`.
+            If `f` is `None`, an empty panel will be displayed.
 
         Optional Parameters
         -------------------
@@ -538,10 +571,17 @@ class Plot:
         freq_space_idx: int
             for multi-frequency plotting: index of frequency space in domain
         """
-        from .multi_field import MultiField
-        if isinstance(f, MultiField):
-            for kk in f.domain.keys():
-                self._plots.append(f[kk])
+        if f is None:
+            self._plots.append(None)
+            self._kwargs.append({})
+            return
+        if isinstance(f, (MultiField, Field, EnergyHistory)):
+            f = [f]
+        if not isinstance(f[0], (MultiField, Field, EnergyHistory)):
+            raise TypeError("Incorrect data type. You can only add Fields or EnergyHistories, or None")
+        if hasattr(f, "__len__") and all(isinstance(ff, MultiField) for ff in f):
+            for kk in f[0].domain.keys():
+                self._plots.append([ff[kk] for ff in f])
                 mykwargs = kwargs.copy()
                 if 'title' in kwargs:
                     mykwargs['title'] = "{} {}".format(kk, kwargs['title'])
@@ -549,8 +589,99 @@ class Plot:
                     mykwargs['title'] = "{}".format(kk)
                 self._kwargs.append(mykwargs)
             return
+
+        if isinstance(f[0], EnergyHistory):
+            dom = None
+        else:
+            dom = f[0].domain
+
+        if isinstance(dom, DomainTuple) \
+                and any(isinstance(dd, RGSpace) for dd in dom) \
+                and not "freq_space_idx" in kwargs \
+                and not plottable2D(f[0], kwargs.get("freq_space_idx", 1)):
+            from .sugar import makeField
+
+            dims = [len(dd.shape) for dd in dom]
+            # One space is 2d, the rest is 1d
+            if np.sum(np.array(dims) == 2) == 1 and np.sum(np.array(dims) == 1) == len(dims) - 1:
+                twod_index = dims.index(2)
+                sizes = [dd.size for dd in dom]
+                del(sizes[twod_index])
+                for multi_index in product(*[tuple(range(ii)) for ii in sizes]):
+                    multi_index = list(multi_index)
+                    multi_index.insert(twod_index, slice(None))
+                    multi_index.insert(twod_index, slice(None))
+                    for ifield in range(len(f)):
+                        arr = f[ifield].val[tuple(multi_index)]
+                        myassert(arr.ndim == 2)
+                        self._plots.append([makeField(dom[twod_index], arr)])
+                        if isinstance(kwargs.get("alpha", None), Field) and len(kwargs["alpha"].shape) > 2:
+                            arr = kwargs["alpha"].val[tuple(multi_index)]
+                            myassert(arr.ndim == 2)
+                            kwargs["alpha"] = makeField(dom[twod_index], arr)
+                        self._kwargs.append(kwargs)
+                return
         self._plots.append(f)
         self._kwargs.append(kwargs)
+
+    def prepare(self, **kwargs):
+        """Prepare the Plot the accumulated list of figures.
+
+        This function returns a figure object and may be used for custom plot
+        saving routines.
+
+        Parameters
+        ----------
+        title: string
+            Title of the full plot.
+        nx, ny: int
+            Number of subplots to use in x- and y-direction.
+            Default: square root of the numer of plots, rounded up.
+        xsize, ysize: float
+            Dimensions of the full plot in inches. Default: 6.
+
+        Note
+        ----
+        It is the responsibility of the user to call `plt.close()` after they
+        are done with processing the figure.
+        """
+        try:
+            import matplotlib.pyplot as plt
+        except ImportError:
+            warn("Since matplotlib is not installed, NIFTy will not generate any plots.")
+            return
+
+        nplot = len(self._plots)
+        if nplot == 0:
+            raise ValueError("Use .add to add plots to your plotting routine.")
+        fig = plt.figure()
+        if "title" in kwargs:
+            plt.suptitle(kwargs.pop("title"))
+        nx = kwargs.pop("nx", 0)
+        ny = kwargs.pop("ny", 0)
+        if nx == ny == 0:
+            ny = int(np.ceil(np.sqrt(nplot)))
+            nx = int(np.ceil(nplot/ny))
+            myassert(nx*ny >= nplot)
+        elif nx == 0:
+            nx = int(np.ceil(nplot/ny))
+        elif ny == 0:
+            ny = int(np.ceil(nplot/nx))
+        if nx*ny < nplot:
+            raise ValueError(
+                'Figure dimensions not sufficient for number of plots. '
+                'Available plot slots: {}, number of plots: {}'
+                .format(nx*ny, nplot))
+        xsize = kwargs.pop("xsize", 6*nx)
+        ysize = kwargs.pop("ysize", 6*ny)
+        fig.set_size_inches(xsize, ysize)
+        for i in range(nplot):
+            if self._plots[i] is None:
+                continue
+            ax = fig.add_subplot(ny, nx, i+1)
+            _plot(self._plots[i], ax, **self._kwargs[i])
+        fig.tight_layout()
+        return fig
 
     def output(self, **kwargs):
         """Plot the accumulated list of figures.
@@ -572,33 +703,28 @@ class Plot:
             Override the blocking behavior of the non-interactive plotting
             mode. The plot will not be closed in this case but is left open!
         """
-        import matplotlib.pyplot as plt
-        nplot = len(self._plots)
-        fig = plt.figure()
-        if "title" in kwargs:
-            plt.suptitle(kwargs.pop("title"))
-        nx = kwargs.pop("nx", 0)
-        ny = kwargs.pop("ny", 0)
-        if nx == ny == 0:
-            ny = int(np.ceil(np.sqrt(nplot)))
-            nx = int(np.ceil(nplot/ny))
-            myassert(nx*ny >= nplot)
-        elif nx == 0:
-            nx = int(np.ceil(nplot/ny))
-        elif ny == 0:
-            ny = int(np.ceil(nplot/nx))
-        if nx*ny < nplot:
-            raise ValueError(
-                'Figure dimensions not sufficient for number of plots. '
-                'Available plot slots: {}, number of plots: {}'
-                .format(nx*ny, nplot))
-        xsize = kwargs.pop("xsize", 6)
-        ysize = kwargs.pop("ysize", 6)
-        fig.set_size_inches(xsize, ysize)
-        for i in range(nplot):
-            ax = fig.add_subplot(ny, nx, i+1)
-            _plot(self._plots[i], ax, **self._kwargs[i])
-        fig.tight_layout()
-        _makeplot(kwargs.pop("name", None),
-                  block=kwargs.pop("block", True),
-                  dpi=kwargs.pop("dpi", None))
+        try:
+            import matplotlib.pyplot as plt
+        except ImportError:
+            warn("Since matplotlib is not installed, NIFTy will not generate any plots.")
+            return
+
+        self.prepare(**kwargs)
+
+        name = kwargs.pop("name", None)
+        if name is None:
+            block = kwargs.pop("block", None)
+            plt.show(block=block)
+            if block:
+                plt.close()
+            return
+        extension = os.path.splitext(name)[1]
+        if extension in (".pdf", ".png", ".svg"):
+            args = {}
+            dpi = kwargs.pop("dpi", None)
+            if dpi is not None:
+                args['dpi'] = float(dpi)
+            plt.savefig(name, **args)
+            plt.close()
+        else:
+            raise ValueError("file format not understood")

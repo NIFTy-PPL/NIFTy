@@ -42,9 +42,16 @@ class ChainOperator(LinearOperator):
 
     @staticmethod
     def simplify(ops):
+        if len(ops) == 1:
+            return ops
         # verify domains
         for i in range(len(ops) - 1):
-            utilities.check_domain_equality(ops[i + 1].target, ops[i].domain)
+            utilities.check_object_identity(ops[i + 1].target, ops[i].domain)
+        if len(ops)==2:
+            if ops[0].isIdentity():
+                return [ops[1]]
+            if ops[1].isIdentity():
+                return [ops[0]]
         # unpack ChainOperators
         opsnew = []
         for op in ops:
@@ -59,12 +66,6 @@ class ChainOperator(LinearOperator):
         lastdom = ops[-1].domain
         dtype = None
         for op in ops:
-            from .sampling_enabler import SamplingDtypeSetter
-            if isinstance(op, SamplingDtypeSetter) and isinstance(op._op, ScalingOperator):
-                if dtype is not None:
-                    raise NotImplementedError
-                dtype = op._dtype
-                op = op._op
             if (isinstance(op, ScalingOperator) and op._factor.imag == 0):
                 fct *= op._factor.real
             else:
@@ -80,7 +81,7 @@ class ChainOperator(LinearOperator):
             # have to add the scaling operator at the end
             op = ScalingOperator(lastdom, fct)
             if dtype is not None:
-                op = SamplingDtypeSetter(op, dtype)
+                op.dtype = dtype
             opsnew.append(op)
         ops = opsnew
         # combine DiagonalOperators where possible

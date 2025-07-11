@@ -11,15 +11,14 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2019 Max-Planck-Society
+# Copyright(C) 2013-2021 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
+import nifty8 as ift
 import numpy as np
 import pytest
 from numpy.testing import assert_equal
-
-import nifty8 as ift
 
 from .common import setup_function, teardown_function
 
@@ -49,8 +48,9 @@ def test_exec_time():
     lh = ift.GaussianEnergy(domain=op.target, sampling_dtype=np.float64) @ op1
     ic = ift.GradientNormController(iteration_limit=2)
     ham = ift.StandardHamiltonian(lh, ic_samp=ic)
-    kl = ift.MetricGaussianKL(ift.full(ham.domain, 0.), ham, 1, False)
-    ops = [op, op1, lh, ham, kl]
+    ham1 = ift.EnergyAdapter(ift.full(ham.domain, 0.), ham)
+    kl = ift.SampledKLEnergy(ift.full(ham.domain, 0.), ham, 1, None, mirror_samples=False)
+    ops = [op, op1, lh, ham, ham1, kl]
     for oo in ops:
         for wm in [True, False]:
             ift.exec_time(oo, wm)
@@ -85,3 +85,11 @@ def test_isinstance_helpers():
     assert ift.is_operator(op)
     assert not ift.is_operator(lin)
     assert not ift.is_operator(fld)
+
+@pmp('dom_shape', [10, (10,20)])
+@pmp('n_samples', [2, 5])
+@pmp('common_colorbar', (True, False))
+def test_plot_priorsamples(dom_shape, n_samples, common_colorbar):
+    dom = ift.RGSpace(dom_shape)
+    op = ift.ScalingOperator(dom, 1.)
+    ift.plot_priorsamples(op, n_samples, common_colorbar, name=f'test_plot_priorsamples_{dom_shape}.png')

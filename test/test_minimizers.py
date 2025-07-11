@@ -15,11 +15,10 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
+import nifty8 as ift
 import numpy as np
 import pytest
 from numpy.testing import assert_allclose, assert_equal
-
-import nifty8 as ift
 
 from .common import setup_function, teardown_function
 
@@ -56,16 +55,16 @@ def test_quadratic_minimization(minimizer, space):
         covariance_diagonal = ift.Field.from_random(domain=space, random_type='uniform') + 0.5
         covariance = ift.DiagonalOperator(covariance_diagonal)
         required_result = ift.full(space, 1.)
-    
+
         try:
             minimizer = eval(minimizer)
             energy = ift.QuadraticEnergy(
                 A=covariance, b=required_result, position=starting_point)
-    
+
             (energy, convergence) = minimizer(energy)
         except NotImplementedError:
             pytest.skip()
-    
+
         assert_equal(convergence, IC.CONVERGED)
         assert_allclose(
             energy.position.val,
@@ -79,16 +78,18 @@ def test_WF_curvature(space):
     required_result = ift.full(space, 1.)
 
     s = ift.Field.from_random(domain=space, random_type='uniform') + 0.5
-    S = ift.DiagonalOperator(s)
+    S = ift.makeOp(s, sampling_dtype=np.float64)
     r = ift.Field.from_random(domain=space, random_type='uniform')
     R = ift.DiagonalOperator(r)
     n = ift.Field.from_random(domain=space, random_type='uniform') + 0.5
-    N = ift.DiagonalOperator(n)
+    N = ift.makeOp(n, sampling_dtype=np.float64)
     all_diag = 1./s + r**2/n
     curv = ift.WienerFilterCurvature(R, N, S, iteration_controller=IC,
-                                     iteration_controller_sampling=IC,
-                                     data_sampling_dtype=np.float64,
-                                     prior_sampling_dtype=np.float64)
+                                     iteration_controller_sampling=IC)
+    for b in [False, True]:
+        S.draw_sample(b)
+        N.draw_sample(b)
+
     m = curv.inverse(required_result)
     assert_allclose(
         m.val,
@@ -101,13 +102,11 @@ def test_WF_curvature(space):
     if len(space.shape) == 1:
         R = ift.ValueInserter(space, [0])
         n = ift.from_random(R.domain, 'uniform') + 0.5
-        N = ift.DiagonalOperator(n)
+        N = ift.makeOp(n, sampling_dtype=np.float64)
         all_diag = 1./s + R(1/n)
         curv = ift.WienerFilterCurvature(R.adjoint, N, S,
                                          iteration_controller=IC,
-                                         iteration_controller_sampling=IC,
-                                         data_sampling_dtype=np.float64,
-                                         prior_sampling_dtype=np.float64)
+                                         iteration_controller_sampling=IC)
         m = curv.inverse(required_result)
         assert_allclose(
             m.val,
@@ -256,3 +255,22 @@ def test_cosh(minimizer):
 
     assert_equal(convergence, IC.CONVERGED)
     assert_allclose(energy.position.val, 0., atol=1e-3)
+
+
+@pmp('space', spaces)
+def test_scipy_respect_bounds(space):
+    starting_point = ift.Field.from_random(domain=space, random_type='normal') * 10
+    covariance_diagonal = ift.Field.from_random(domain=space, random_type='uniform') + 0.5
+    covariance = ift.DiagonalOperator(covariance_diagonal)
+    required_result = ift.full(space, 1.)
+    left_bound = 2.
+    best_possible_result = ift.full(space, left_bound)
+
+    minimizer = ift.L_BFGS_B(ftol=1e-10, gtol=1e-5, maxiter=1000, bounds=(left_bound, 10))
+
+    energy = ift.QuadraticEnergy(
+        A=covariance, b=required_result, position=starting_point)
+
+    (energy, convergence) = minimizer(energy)
+
+    assert_allclose(energy.position.val, best_possible_result.val)

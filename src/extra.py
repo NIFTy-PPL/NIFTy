@@ -11,7 +11,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2021 Max-Planck-Society
+# Copyright(C) 2013-2022 Max-Planck-Society
+# Author: Philipp Arras
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -24,21 +25,20 @@ from .field import Field
 from .linearization import Linearization
 from .multi_domain import MultiDomain
 from .multi_field import MultiField
-from .operators.adder import Adder
 from .operators.endomorphic_operator import EndomorphicOperator
-from .operators.energy_operators import EnergyOperator
+from .operators.energy_operators import (EnergyOperator,
+                                         LikelihoodEnergyOperator)
 from .operators.linear_operator import LinearOperator
 from .operators.operator import Operator
-from .operators.scaling_operator import ScalingOperator
 from .probing import StatCalculator
-from .sugar import from_random, full, is_fieldlike, is_operator
-from .utilities import myassert
+from .sugar import from_random
+from .utilities import issingleprec, myassert
 
 __all__ = ["check_linear_operator", "check_operator", "assert_allclose", "minisanity"]
 
 
 def check_linear_operator(op, domain_dtype=np.float64, target_dtype=np.float64,
-                          atol=1e-12, rtol=1e-12, only_r_linear=False):
+                          atol=1e-14, rtol=1e-14, only_r_linear=False):
     """Checks an operator for algebraic consistency of its capabilities.
 
     Checks whether times(), adjoint_times(), inverse_times() and
@@ -89,10 +89,10 @@ def check_linear_operator(op, domain_dtype=np.float64, target_dtype=np.float64,
                          only_r_linear)
     _full_implementation(op.adjoint.inverse, domain_dtype, target_dtype, atol,
                          rtol, only_r_linear)
-    _check_sqrt(op, domain_dtype)
-    _check_sqrt(op.adjoint, target_dtype)
-    _check_sqrt(op.inverse, target_dtype)
-    _check_sqrt(op.adjoint.inverse, domain_dtype)
+    _check_sqrt(op, domain_dtype, atol, rtol)
+    _check_sqrt(op.adjoint, target_dtype, atol, rtol)
+    _check_sqrt(op.inverse, target_dtype, atol, rtol)
+    _check_sqrt(op.adjoint.inverse, domain_dtype, atol, rtol)
 
 
 def check_operator(op, loc, tol=1e-12, ntries=100, perf_check=True,
@@ -107,7 +107,7 @@ def check_operator(op, loc, tol=1e-12, ntries=100, perf_check=True,
     ----------
     op : Operator
         Operator which shall be checked.
-    loc : Field or MultiField
+    loc : :class:`nifty8.field.Field` or :class:`nifty8.multi_field.MultiField`
         An Field or MultiField instance which has the same domain
         as op. The location at which the gradient is checked
     tol : float
@@ -131,20 +131,25 @@ def check_operator(op, loc, tol=1e-12, ntries=100, perf_check=True,
                                only_r_differentiable)
     _check_nontrivial_constant(op, loc, tol, ntries, only_r_differentiable,
                                metric_sampling)
+    _check_likelihood_energy(op, loc)
 
 
 def assert_allclose(f1, f2, atol=0, rtol=1e-7):
     if isinstance(f1, Field):
         return np.testing.assert_allclose(f1.val, f2.val, atol=atol, rtol=rtol)
+    if f1.domain is not f2.domain:
+        raise AssertionError
     for key, val in f1.items():
         assert_allclose(val, f2[key], atol=atol, rtol=rtol)
 
 
-def assert_equal(f1, f2):
+def assert_equal(f1, f2, *, atol=0.0, rtol=0.0):
     if isinstance(f1, Field):
-        return np.testing.assert_equal(f1.val, f2.val)
+        return np.testing.assert_allclose(f1.val, f2.val, atol=atol, rtol=rtol)
+    if f1.domain is not f2.domain:
+        raise AssertionError
     for key, val in f1.items():
-        assert_equal(val, f2[key])
+        assert_equal(val, f2[key], atol=atol, rtol=rtol)
 
 
 def _adjoint_implementation(op, domain_dtype, target_dtype, atol, rtol,
@@ -206,7 +211,7 @@ def _domain_check_linear(op, domain_dtype=None, inp=None):
     myassert(op(inp).domain is op.target)
 
 
-def _check_sqrt(op, domain_dtype):
+def _check_sqrt(op, domain_dtype, atol, rtol):
     if not isinstance(op, EndomorphicOperator):
         try:
             op.get_sqrt()
@@ -220,7 +225,7 @@ def _check_sqrt(op, domain_dtype):
     fld = from_random(op.domain, dtype=domain_dtype)
     a = op(fld)
     b = (sqop.adjoint @ sqop)(fld)
-    return assert_allclose(a, b, rtol=1e-15)
+    return assert_allclose(a, b, atol=atol, rtol=rtol)
 
 
 def _domain_check_nonlinear(op, loc):
@@ -259,6 +264,7 @@ def _performance_check(op, pos, raise_on_fail):
     class CountingOp(LinearOperator):
         def __init__(self, domain):
             from .sugar import makeDomain
+
             self._domain = self._target = makeDomain(domain)
             self._capability = self.TIMES | self.ADJOINT_TIMES
             self._count = 0
@@ -306,14 +312,19 @@ def _get_acceptable_location(op, loc, lin):
         raise ValueError('Initial value must be finite')
     direction = from_random(loc.domain, dtype=loc.dtype)
     dirder = lin.jac(direction)
+    fac = 1e-3 if issingleprec(loc.dtype) else 1e-6
     if dirder.norm() == 0:
-        direction = direction * (lin.val.norm() * 1e-5)
+        direction = direction * (lin.val.norm() * fac)
     else:
-        direction = direction * (lin.val.norm() * 1e-5 / dirder.norm())
+        direction = direction * (lin.val.norm() * fac / dirder.norm())
+    direction = direction.astype(loc.dtype)
+    assert direction.dtype == loc.dtype
+
     # Find a step length that leads to a "reasonable" location
     for i in range(50):
         try:
             loc2 = loc + direction
+            assert loc2.dtype == loc.dtype
             lin2 = op(Linearization.make_var(loc2, lin.want_metric))
             if np.isfinite(lin2.val.s_sum()) and abs(lin2.val.s_sum()) < 1e20:
                 break
@@ -356,7 +367,7 @@ def _check_nontrivial_constant(op, loc, tol, ntries, only_r_differentiable,
         _, op0 = op.simplify_for_constant_input(cstloc)
         myassert(op0.domain is varloc.domain)
         val1 = op0(varloc)
-        assert_equal(val0, val1)
+        assert_equal(val0, val1, rtol=tol)
 
         lin = Linearization.make_partial_var(loc, cstkeys, want_metric=True)
         lin0 = Linearization.make_var(varloc, want_metric=True)
@@ -368,7 +379,7 @@ def _check_nontrivial_constant(op, loc, tol, ntries, only_r_differentiable,
         assert_allclose(oplin.jac.adjoint(rndinp).extract(varloc.domain),
                         oplin0.jac.adjoint(rndinp), 1e-13, 1e-13)
         foo = oplin.jac.adjoint(rndinp).extract(cstloc.domain)
-        assert_equal(foo, 0*foo)
+        assert_equal(foo, 0*foo, rtol=tol)
 
         if isinstance(op, EnergyOperator) and metric_sampling:
             oplin.metric.draw_sample()
@@ -408,8 +419,26 @@ def _jac_vs_finite_differences(op, loc, tol, ntries, only_r_differentiable):
                               atol=tol**2, rtol=tol**2)
 
 
-def minisanity(data, metric_at_pos, modeldata_operator, mean, samples=None,
-               terminal_colors=True):
+def _check_likelihood_energy(op, loc):
+    from .operators.energy_operators import LikelihoodEnergyOperator
+    if not isinstance(op, LikelihoodEnergyOperator):
+        return
+    data_domain = op.data_domain
+    if data_domain is None:
+        return
+    smet = op._sqrt_data_metric_at(loc)
+    myassert(smet.domain == smet.target == data_domain)
+    nres = op.normalized_residual(loc)
+    myassert(nres.domain is data_domain)
+    res = op.get_transformation()
+    if res is None:
+        raise RuntimeError("`get_transformation` is not implemented for "
+                            "this LikelihoodEnergyOperator")
+    if len(res) != 2:
+        raise RuntimeError("`get_transformation` has to return a dtype and the transformation")
+
+
+def minisanity(likelihood_energy, samples, terminal_colors=True, return_values=False):
     """Log information about the current fit quality and prior compatibility.
 
     Log a table with fitting information for the likelihood and the prior.
@@ -430,88 +459,151 @@ def minisanity(data, metric_at_pos, modeldata_operator, mean, samples=None,
 
     Parameters
     ----------
-    data : Field or MultiField
-        Data which is subtracted from the output of `model_data`.
+    likelihood_energy: LikelihoodEnergyOperator
+        Likelihood energy of which the normalized residuals shall be computed.
 
-    metric_at_pos : function
-        Function which takes a `Field` or `MultiField` in the domain of `mean`
-        and returns an endomorphic operator which applies the inverse of the
-        noise covariance in the domain of `data`.
-
-    model_data : Operator
-        Operator which generates model data.
-
-    mean : Field or MultiField
-        Mean of input of `model_data`.
-
-    samples : iterable of Field or MultiField, optional
-        Residual samples around `mean`. Default: no samples.
+    samples : SampleListBase
+        List of samples.
 
     terminal_colors : bool, optional
         Setting this to false disables terminal colors. This may be useful if
         the output of minisanity is written to a file. Default: True
 
+    return_values : bool, optional
+        If true, in addition to the table in string format, `minisanity` will
+        return the computed values as a dictionary. Default: `False`.
+
+    Returns
+    -------
+        printable_table : string
+        values : dictionary
+            Only returned if `return_values` is `True`
+
     Note
     ----
     For computing the reduced chi^2 values and the normalized residuals, the
-    metric at `mean` is used.
+    metric of each individual sample is used.
 
     """
-    from .logger import logger
-    if not (
-        is_operator(modeldata_operator)
-        and is_fieldlike(data)
-        and is_fieldlike(mean)
-    ):
-        raise TypeError
-    colors = bool(terminal_colors)
+    from .minimization.sample_list import SampleListBase
+    from .sugar import makeDomain
+
+    if not isinstance(samples, SampleListBase):
+        raise TypeError(
+            "Minisanity takes only SampleLists as input. If you happen to have "
+            "only one field (i.e. no samples), you may wrap it via "
+            "`ift.SampleList([field])` and pass it to minisanity."
+        )
+
+    if not isinstance(likelihood_energy, LikelihoodEnergyOperator):
+        return ""
+
+    data_domain = likelihood_energy.data_domain
+    latent_domain = samples.domain
+    xdoms = [data_domain, latent_domain]
+
     keylen = 18
-    for dom in [data.domain, mean.domain]:
+    for dom in xdoms:
         if isinstance(dom, MultiDomain):
             keylen = max([max(map(len, dom.keys())), keylen])
     keylen = min([keylen, 42])
-    op0 = metric_at_pos(mean).get_sqrt() @ Adder(data, neg=True) @ modeldata_operator
-    op1 = ScalingOperator(mean.domain, 1)
-    if not isinstance(op0.target, MultiDomain):
-        op0 = op0.ducktape_left("<None>")
-    if not isinstance(op1.target, MultiDomain):
-        op1 = op1.ducktape_left("<None>")
-    s = [full(mean.domain, 0.0)] if samples is None else samples
-    xop = op0, op1
-    xkeys = op0.target.keys(), op1.target.keys()
-    xredchisq, xscmean, xndof = 2*[None], 2*[None], 2*[None]
-    for aa in [0, 1]:
-        xredchisq[aa] = {kk: StatCalculator() for kk in xkeys[aa]}
-        xscmean[aa] = {kk: StatCalculator() for kk in xkeys[aa]}
-        xndof[aa] = {}
-    for ii, ss in enumerate(s):
-        for aa in [0, 1]:
-            rr = xop[aa].force(mean.unite(ss))
-            for kk in xkeys[aa]:
-                xredchisq[aa][kk].add(np.nansum(abs(rr[kk].val) ** 2) / rr[kk].size)
-                xscmean[aa][kk].add(np.nanmean(rr[kk].val))
-                xndof[aa][kk] = rr[kk].size - np.sum(np.isnan(rr[kk].val))
 
-    s0 = _tableentries(xredchisq[0], xscmean[0], xndof[0], keylen, colors)
-    s1 = _tableentries(xredchisq[1], xscmean[1], xndof[1], keylen, colors)
+    # compute xops
+    xops = []
+    nres = likelihood_energy.normalized_residual
+    if isinstance(data_domain, MultiDomain):
+        lam = lambda x: nres(x)
+    else:
+        name = likelihood_energy.name
+        if name is None:
+            name = "<None>"
+        data_domain = makeDomain({name: data_domain})
+        lam = lambda x: nres(x).ducktape_left(name)
+    xops.append(lam)
+    if isinstance(latent_domain, MultiDomain):
+        xops.append(lambda x: x)
+    else:
+        latent_domain = makeDomain({"<None>": latent_domain})
+        xops.append(lambda x: x.ducktape_left("<None>"))
+    # /compute xops
 
-    f = logger.info
-    n = 38 + keylen
-    f(n * "=")
-    f(
-        (keylen + 2) * " "
-        + "{:>11}".format("reduced χ²")
-        + "{:>14}".format("mean")
-        + "{:>11}".format("# dof")
-    )
-    f(n * "-")
-    f("Data residuals\n" + s0)
-    f("Latent space\n" + s1)
-    f(n * "=")
+    xdoms = [data_domain, latent_domain]
+    xredchisq, xscmean, xndof, xnigndof = [], [], [], []
+    for dd in xdoms:
+        xredchisq.append({kk: StatCalculator() for kk in dd.keys()})
+        xscmean.append({kk: StatCalculator() for kk in dd.keys()})
+        xndof.append({})
+        xnigndof.append({})
+
+    for ss1, ss2 in zip(samples.iterator(xops[0]), samples.iterator(xops[1])):
+        if isinstance(data_domain, MultiDomain):
+            myassert(ss1.domain == data_domain)
+        if isinstance(samples.domain, MultiDomain):
+            myassert(ss2.domain == samples.domain)
+        for ii, ss in enumerate((ss1, ss2)):
+            for kk in ss.domain.keys():
+                n_isnan = np.sum(np.isnan(ss[kk].val))
+                n_iszero = np.sum(ss[kk].val == 0)
+                lsize = ss[kk].size - n_isnan - n_iszero
+                xredchisq[ii][kk].add(np.nansum(abs(ss[kk].val) ** 2) / lsize)
+                xscmean[ii][kk].add(np.nansum(ss[kk].val) / lsize)
+                xndof[ii][kk] = lsize
+                xnigndof[ii][kk] = n_isnan + n_iszero
+
+    cplx_mean = False
+    for ii in range(2):
+        for kk in xredchisq[ii].keys():
+            rcs_mean = xredchisq[ii][kk].mean
+            sc_mean = xscmean[ii][kk].mean
+            try:
+                rcs_std = np.sqrt(xredchisq[ii][kk].var)
+                sc_std = np.sqrt(xscmean[ii][kk].var)
+            except RuntimeError:
+                rcs_std = None
+                sc_std = None
+            cplx_mean |= np.iscomplexobj(sc_mean)
+            xredchisq[ii][kk] = {'mean': rcs_mean, 'std': rcs_std}
+            xscmean[ii][kk] = {'mean': sc_mean, 'std': sc_std}
+
+    s0 = _tableentries(xredchisq[0], xscmean[0], xndof[0], xnigndof[0], keylen,
+                       cplx_mean, terminal_colors)
+    s1 = _tableentries(xredchisq[1], xscmean[1], xndof[1], xnigndof[1], keylen,
+                       cplx_mean, terminal_colors)
+
+    n = 49+12+keylen if cplx_mean else 49+keylen
+    s = [n * "=",
+         ((keylen + 2) * " " + "{:>11}".format("reduced χ²")
+          + ("{:>26}".format("mean") if cplx_mean else "{:>14}".format("mean"))
+          +"{:>11}".format("# dof") + "{:>11}".format("# ign. dof")),
+         n * "-", "Data residuals", s0, "Latent space", s1, n * "="]
+
+    res_string = "\n".join(s)
+
+    if not return_values:
+        return res_string
+    else:
+        res_dict = {
+            'redchisq': {
+                'data_residuals': xredchisq[0],
+                'latent_variables': xredchisq[1]
+            },
+            'scmean': {
+                'data_residuals': xscmean[0],
+                'latent_variables': xscmean[1],
+            },
+            'ndof': {
+                'data_residuals': xndof[0],
+                'latent_variables': xndof[1]
+            },
+            'nigndof': {
+                'data_residuals': xnigndof[0],
+                'latent_variables': xnigndof[1]
+            }
+        }
+        return res_string, res_dict
 
 
-def _tableentries(redchisq, scmean, ndof, keylen, colors):
-
+def _tableentries(redchisq, scmean, ndof, nigndof, keylen, cplx_mean, colors):
     class _bcolors:
         WARNING = "\033[33m" if colors else ""
         FAIL = "\033[31m" if colors else ""
@@ -524,24 +616,24 @@ def _tableentries(redchisq, scmean, ndof, keylen, colors):
             out += "  " + kk[: keylen - 1] + "…"
         else:
             out += "  " + kk.ljust(keylen)
-        foo = f"{redchisq[kk].mean:.1f}"
-        try:
-            foo += f" ± {np.sqrt(redchisq[kk].var):.1f}"
-        except RuntimeError:
-            pass
-        if redchisq[kk].mean > 5 or redchisq[kk].mean < 1/5:
+        foo = f"{redchisq[kk]['mean']:.1f}"
+        if redchisq[kk]['std'] is not None:
+            foo += f" ± {redchisq[kk]['std']:.1f}"
+        if redchisq[kk]['mean'] > 5 or redchisq[kk]['mean'] < 1/5:
             out += _bcolors.FAIL + _bcolors.BOLD + f"{foo:>11}" + _bcolors.ENDC
-        elif redchisq[kk].mean > 2 or redchisq[kk].mean < 1/2:
+        elif redchisq[kk]['mean'] > 2 or redchisq[kk]['mean'] < 1/2:
             out += _bcolors.WARNING + _bcolors.BOLD + f"{foo:>11}" + _bcolors.ENDC
         else:
             out += f"{foo:>11}"
 
-        foo = f"{scmean[kk].mean:.1f}"
-        try:
-            foo += f" ± {np.sqrt(scmean[kk].var):.1f}"
-        except RuntimeError:
-            pass
-        out += f"{foo:>14}"
+        foo = f"{scmean[kk]['mean']:.1f}"
+        if scmean[kk]['std'] is not None:
+            foo += f" ± {scmean[kk]['std']:.1f}"
+        if cplx_mean:
+            out += f"{foo:>26}"
+        else:
+            out += f"{foo:>14}"
         out += f"{ndof[kk]:>11}"
+        out += f"{'-' if nigndof[kk] == 0 else nigndof[kk]:>11}"
         out += "\n"
     return out[:-1]

@@ -50,7 +50,7 @@ class MeanFieldVI:
 
     Parameters
     ----------
-    position : Field
+    position : :class:`nifty8.field.Field`
         The initial estimate of the approximate mean parameter.
     hamiltonian : Energy
         Hamiltonian of the approximated probability distribution.
@@ -62,7 +62,7 @@ class MeanFieldVI:
         doubles. Mirroring samples stabilizes the KL estimate as extreme sample
         variation is counterbalanced. Since it improves stability in many
         cases, it is recommended to set `mirror_samples` to `True`.
-    initial_sig : positive Field or positive float
+    initial_sig : positive :class:`nifty8.field.Field` or positive float
         The initial estimate of the standard deviation.
     comm : MPI communicator or None
         If not None, samples will be distributed as evenly as possible across
@@ -140,7 +140,7 @@ class FullCovarianceVI:
 
     Parameters
     ----------
-    position : Field
+    position : :class:`nifty8.field.Field`
         The initial estimate of the approximate mean parameter.
     hamiltonian : Energy
         Hamiltonian of the approximated probability distribution.

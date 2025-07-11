@@ -15,11 +15,10 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
+import nifty8 as ift
 import numpy as np
 import pytest
 from numpy.testing import assert_allclose, assert_equal, assert_raises
-
-import nifty8 as ift
 
 from .common import setup_function, teardown_function
 
@@ -55,15 +54,15 @@ def test_power_synthesize_analyze(space1, space2):
     fp1 = ift.PS_field(p1, _spec1)
     p2 = ift.PowerSpace(space2)
     fp2 = ift.PS_field(p2, _spec2)
-    op1 = ift.create_power_operator((space1, space2), _spec1, 0)
-    op2 = ift.create_power_operator((space1, space2), _spec2, 1)
+    op1 = ift.create_power_operator((space1, space2), _spec1, 0, float)
+    op2 = ift.create_power_operator((space1, space2), _spec2, 1, float)
     opfull = op2 @ op1
 
     samples = 120
     sc1 = ift.StatCalculator()
     sc2 = ift.StatCalculator()
     for ii in range(samples):
-        sk = opfull.draw_sample_with_dtype(dtype=np.float64)
+        sk = opfull.draw_sample()
         sp = ift.power_analyze(sk, spaces=(0, 1), keep_phase_information=False)
         sc1.add(sp.sum(spaces=1)/fp2.s_sum())
         sc2.add(sp.sum(spaces=0)/fp1.s_sum())
@@ -80,16 +79,16 @@ def test_DiagonalOperator_power_analyze2(space1, space2):
     fp1 = ift.PS_field(ift.PowerSpace(space1), _spec1)
     fp2 = ift.PS_field(ift.PowerSpace(space2), _spec2)
 
-    S_1 = ift.create_power_operator((space1, space2), _spec1, 0)
-    S_2 = ift.create_power_operator((space1, space2), _spec2, 1)
-    S_full = S_2(S_1)
+    S_1 = ift.create_power_operator((space1, space2), _spec1, 0, float)
+    S_2 = ift.create_power_operator((space1, space2), _spec2, 1, float)
+    S_full = S_2 @ S_1
 
     samples = 500
     sc1 = ift.StatCalculator()
     sc2 = ift.StatCalculator()
 
     for ii in range(samples):
-        sk = S_full.draw_sample_with_dtype(dtype=np.float64)
+        sk = S_full.draw_sample()
         sp = ift.power_analyze(sk, spaces=(0, 1), keep_phase_information=False)
         sc1.add(sp.sum(spaces=1)/fp2.s_sum())
         sc2.add(sp.sum(spaces=0)/fp1.s_sum())

@@ -15,9 +15,8 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-import pytest
-
 import nifty8 as ift
+import pytest
 
 from ..common import list2fixture, setup_function, teardown_function
 
@@ -96,6 +95,8 @@ def testInverseGamma(space, seed):
         model = ift.InverseGammaOperator(space, alpha, q)
         ift.extra.check_operator(model, pos, ntries=20)
         model = ift.LogInverseGammaOperator(space, alpha, q)
+        ift.extra.check_operator(model, pos, ntries=20)
+        model = ift.GammaOperator(space, alpha=alpha, theta=q)
         ift.extra.check_operator(model, pos, ntries=20)
 
 

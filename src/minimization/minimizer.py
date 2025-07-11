@@ -39,3 +39,7 @@ class Minimizer(metaclass=NiftyMeta):
             Can be controller.CONVERGED or controller.ERROR
         """
         raise NotImplementedError
+
+    @property
+    def controller(self):
+        raise NotImplementedError

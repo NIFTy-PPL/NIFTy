@@ -1,7 +1,8 @@
 image: $CONTAINER_TEST_IMAGE
 
 variables:
-  CONTAINER_TEST_IMAGE: gitlab-registry.mpcdf.mpg.de/$CI_PROJECT_PATH:$CI_BUILD_REF_NAME
+  CONTAINER_TEST_IMAGE: gitlab-registry.mpcdf.mpg.de/$CI_PROJECT_PATH:$CI_COMMIT_REF_NAME
+  MPLBACKEND: agg
   OMP_NUM_THREADS: 1
 
 stages:
@@ -11,13 +12,8 @@ stages:
   - release
   - demo_runs
 
-check_no_asserts:
-  image: debian:testing-slim
-  stage: static_checks
-  before_script:
-    - ls
-  script:
-    - if [ `grep -r "^[[:space:]]*assert[ (]" src demos | wc -l` -ne 0 ]; then echo "Have found assert statements. Don't use them! Use \`utilities.myassert\` instead." && exit 1; fi
+before_script:
+  - python3 -m pip install --user --break-system-packages .
 
 build_docker_from_scratch:
   only:
@@ -27,7 +23,7 @@ build_docker_from_scratch:
   before_script:
     - ls
   script:
-    - docker login -u gitlab-ci-token -p $CI_BUILD_TOKEN gitlab-registry.mpcdf.mpg.de
+    - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN gitlab-registry.mpcdf.mpg.de
     - docker build -t $CONTAINER_TEST_IMAGE --no-cache .
     - docker push $CONTAINER_TEST_IMAGE
 
@@ -39,57 +35,55 @@ build_docker_from_cache:
   before_script:
     - ls
   script:
-    - docker login -u gitlab-ci-token -p $CI_BUILD_TOKEN gitlab-registry.mpcdf.mpg.de
+    - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN gitlab-registry.mpcdf.mpg.de
     - docker build -t $CONTAINER_TEST_IMAGE .
     - docker push $CONTAINER_TEST_IMAGE
 
 test_serial:
   stage: test
   script:
-    - pytest-3 -q --cov=nifty8 test
+    - pytest -n auto -q --cov=nifty8 --ignore test/test_re/test_optimize_kl.py test
+    - env XLA_FLAGS="--xla_force_host_platform_device_count=4" pytest -n auto -q --cov=nifty8 --cov-append test/test_re/test_optimize_kl.py
     - >
       python3 -m coverage report --omit "*plot*" | tee coverage.txt
-    - >
-      grep TOTAL coverage.txt | awk '{ print "TOTAL: "$4; }'
+  coverage: '/(?i)total.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)$/'
 
 test_mpi:
   stage: test
   variables:
     OMPI_MCA_btl_vader_single_copy_mechanism: none
   script:
-    - mpiexec -n 2 --bind-to none pytest-3 -q test/test_mpi
+    - mpiexec -n 2 --bind-to none pytest -q test/test_mpi
 
 pages:
   stage: release
   script:
-    - rm -rf docs/build docs/source/mod
+    - git config --global --add safe.directory /builds/ift/nifty
+    - git clean -xfd docs/source
     - sh docs/generate.sh
     - mv docs/build/ public/
   artifacts:
     paths:
     - public
   only:
-  - NIFTy_7
-
-
-before_script:
-  - python3 setup.py install --user -f
+  - NIFTy_8
 
 run_ipynb0:
   stage: demo_runs
   script:
-    - jupyter nbconvert --execute --ExecutePreprocessor.timeout=None demos/getting_started_0.ipynb
+    - jupytext --to ipynb demos/old_nifty/getting_started_0.py
+    - jupyter-nbconvert --to markdown --execute --ExecutePreprocessor.timeout=None demos/old_nifty/getting_started_0.ipynb
 
 run_ipynb1:
   stage: demo_runs
   script:
-    - jupyter nbconvert --execute --ExecutePreprocessor.timeout=None demos/getting_started_4_CorrelatedFields.ipynb
+    - jupytext --to ipynb demos/old_nifty/getting_started_4_CorrelatedFields.py
+    - jupyter-nbconvert --to markdown --execute --ExecutePreprocessor.timeout=None demos/old_nifty/getting_started_4_CorrelatedFields.ipynb
 
 run_getting_started_1:
   stage: demo_runs
   script:
-    - python3 demos/getting_started_1.py
-    - mpiexec -n 2 --bind-to none python3 demos/getting_started_1.py 2> /dev/null
+    - python3 demos/old_nifty/getting_started_1.py
   artifacts:
     paths:
       - '*.png'
@@ -97,24 +91,83 @@ run_getting_started_1:
 run_getting_started_2:
   stage: demo_runs
   script:
-    - python3 demos/getting_started_2.py
-    - mpiexec -n 2 --bind-to none python3 demos/getting_started_2.py 2> /dev/null
+    - python3 demos/old_nifty/getting_started_2.py
   artifacts:
     paths:
+      - 'getting_started_2_results'
       - '*.png'
 
 run_getting_started_3:
   stage: demo_runs
   script:
-    - python3 demos/getting_started_3.py
+    - python3 demos/old_nifty/getting_started_3.py
   artifacts:
     paths:
+      - 'getting_started_3_results'
+      - '*.png'
+
+run_getting_started_3_mpi:
+  stage: demo_runs
+  script:
+    - mpirun -np 2 --bind-to none python3 demos/old_nifty/getting_started_3.py
+  artifacts:
+    paths:
+      - 'getting_started_3_results'
       - '*.png'
 
 run_getting_started_mf:
   stage: demo_runs
   script:
-    - python3 demos/getting_started_5_mf.py
+    - mpiexec -n 2 --bind-to none python3 demos/old_nifty/getting_started_5_mf.py
+  artifacts:
+    paths:
+      - 'getting_started_mf_results'
+      - '*.png'
+
+run_getting_started_niftyre_intro:
+  stage: demo_runs
+  script:
+    - python3 demos/0_intro.py
+  artifacts:
+    paths:
+      - '*.png'
+
+run_getting_started_niftyre_tomography:
+  stage: demo_runs
+  script:
+    - python3 demos/1_tomography.py
+  artifacts:
+    paths:
+      - '*.png'
+
+run_getting_started_niftyre_nonlinear_regression:
+  stage: demo_runs
+  script:
+    - python3 demos/a_nonlinear_regression.py
+  artifacts:
+    paths:
+      - '*.png'
+
+run_getting_started_niftyre_wiener_filter:
+  stage: demo_runs
+  script:
+    - python3 demos/a_wiener_filter.py
+  artifacts:
+    paths:
+      - '*.png'
+
+run_getting_started_niftyre_icr:
+  stage: demo_runs
+  script:
+    - python3 demos/a_icr.py
+  artifacts:
+    paths:
+      - '*.png'
+
+run_getting_started_7:
+  stage: demo_runs
+  script:
+    - python3 demos/old_nifty/getting_started_7_config_file.py demos/old_nifty/getting_started_7_config_file.cfg
   artifacts:
     paths:
       - '*.png'
@@ -122,7 +175,15 @@ run_getting_started_mf:
 run_getting_density:
   stage: demo_runs
   script:
-    - python3 demos/getting_started_density.py
+    - python3 demos/old_nifty/density_estimation.py
+  artifacts:
+    paths:
+      - '*.png'
+
+run_model_comparison:
+  stage: demo_runs
+  script:
+    - python3 demos/old_nifty/model_comparison.py
   artifacts:
     paths:
       - '*.png'
@@ -130,7 +191,7 @@ run_getting_density:
 run_bernoulli:
   stage: demo_runs
   script:
-    - python3 demos/bernoulli_demo.py
+    - python3 demos/old_nifty/bernoulli_map.py
   artifacts:
     paths:
       - '*.png'
@@ -138,7 +199,7 @@ run_bernoulli:
 run_curve_fitting:
   stage: demo_runs
   script:
-    - python3 demos/polynomial_fit.py
+    - python3 demos/old_nifty/polynomial_fit.py
   artifacts:
     paths:
       - '*.png'
@@ -146,9 +207,9 @@ run_curve_fitting:
 run_visual_vi:
   stage: demo_runs
   script:
-    - python3 demos/variational_inference_visualized.py
+    - python3 demos/old_nifty/variational_inference_visualized.py
 
 run_meanfield:
   stage: demo_runs
   script:
-    - python3 demos/parametric_variational_inference.py
+    - python3 demos/old_nifty/parametric_variational_inference.py

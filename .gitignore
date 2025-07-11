@@ -1,12 +1,25 @@
-# never store the git version file
-git_version.py
+# nix-related
+result
+.nix-nifty-venv
+.direnv
+demos/result*
 
-docs/source/user/getting_started_0.rst
-docs/source/user/custom_nonlinearities.rst
-docs/source/user/getting_started_4_CorrelatedFields.rst
+docs/source/user/0_intro.md
+docs/source/user/old_nifty_custom_nonlinearities.md
+docs/source/user/old_nifty/getting_started_0.md
+docs/source/user/old_nifty/getting_started_4_CorrelatedFields.md
+docs/source/user/results_intro/
+docs/source/user/results_intro_full_reconstruction.png
+docs/source/user/*.ipynb
 
 # custom
+*_results
+*.h5
+*.hdf5
+*.fits
 *.txt
+*.pickle
+*.pkl
 setup.cfg
 .idea
 .DS_Store
@@ -93,6 +106,7 @@ target/
 
 # IPython Notebook
 .ipynb_checkpoints
+*.ipynb
 
 # pyenv
 .python-version

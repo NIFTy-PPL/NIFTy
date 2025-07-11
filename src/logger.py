@@ -22,7 +22,7 @@ def _logger_init():
     res.setLevel(logging.DEBUG)
     res.propagate = False
     ch = logging.StreamHandler()
-    ch.setLevel(logging.DEBUG)
+    ch.setLevel(logging.INFO)
     res.addHandler(ch)
     return res
 

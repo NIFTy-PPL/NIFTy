@@ -11,16 +11,23 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2021 Max-Planck-Society
+# Copyright(C) 2013-2022 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
+
+import numbers
+from functools import reduce
+from operator import add
+from typing import Callable, Optional
+from warnings import warn
 
 import numpy as np
 
 from .. import pointwise
+from ..domain_tuple import DomainTuple
 from ..logger import logger
 from ..multi_domain import MultiDomain
-from ..utilities import NiftyMeta, check_domain_equality, indent, myassert
+from ..utilities import NiftyMeta, check_object_identity, indent, myassert
 
 
 class Operator(metaclass=NiftyMeta):
@@ -63,7 +70,7 @@ class Operator(metaclass=NiftyMeta):
 
     @property
     def jac(self):
-        """The Jacobian associated with this object
+        """The Jacobian associated with this object.
         For "pure" operators this is `None`. For Field-like objects this
         can be `None` (in which case the object is a constant), or it can be a
         `LinearOperator` with `domain` and `target` matching the object's.
@@ -107,31 +114,12 @@ class Operator(metaclass=NiftyMeta):
         """
         return None
 
-    def get_transformation(self):
-        """The coordinate transformation that maps into a coordinate system in
-        which the metric of a likelihood is the Euclidean metric. It is `None`,
-        except for instances of
-        :class:`~nifty8.operators.energy_operators.LikelihoodEnergyOperator` or
-        (nested) sums thereof.
-
-        Returns
-        -------
-        np.dtype, or dict of np.dtype : The dtype(s) of the target space of the
-        transformation.
-
-        Operator : The transformation that maps from `domain` into the
-        Euclidean target space.
-
-        Note
-        ----
-        This Euclidean target space is the disjoint union of the Euclidean
-        target spaces of all summands. Therefore, the keys of `MultiDomains`
-        are prefixed with an index and `DomainTuples` are converted to
-        `MultiDomains` with the index as the key.
-        """
-        return None
+    def isIdentity(self):  # Will be overloaded in ScalingOperator
+        return False
 
     def scale(self, factor):
+        if not isinstance(factor, numbers.Number):
+            raise TypeError(".scale() takes a number as input")
         if factor == 1:
             return self
         from .scaling_operator import ScalingOperator
@@ -173,14 +161,34 @@ class Operator(metaclass=NiftyMeta):
         return self.scale(-1)
 
     def __matmul__(self, x):
+        from .energy_operators import LikelihoodEnergyOperator
+
         if not isinstance(x, Operator):
             return NotImplemented
-        return _OpChain.make((self, x))
+        if isinstance(x, LikelihoodEnergyOperator):
+            return NotImplemented
+        if x.target is self.domain:
+            if x.isIdentity():
+                return self
+            if self.isIdentity():
+                return x
+            return _OpChain.make((self, x))
+        return self.partial_insert(x)
 
     def __rmatmul__(self, x):
+        from .energy_operators import LikelihoodEnergyOperator
+
         if not isinstance(x, Operator):
             return NotImplemented
-        return _OpChain.make((x, self))
+        if isinstance(x, LikelihoodEnergyOperator):
+            return NotImplemented
+        if x.domain is self.target:
+            if x.isIdentity():
+                return self
+            if self.isIdentity():
+                return x
+            return _OpChain.make((x, self))
+        return x.partial_insert(self)
 
     def partial_insert(self, x):
         from ..multi_domain import MultiDomain
@@ -206,8 +214,13 @@ class Operator(metaclass=NiftyMeta):
 
     @staticmethod
     def identity_operator(dom):
+        from ..sugar import makeDomain
         from .block_diagonal_operator import BlockDiagonalOperator
         from .scaling_operator import ScalingOperator
+
+        dom = makeDomain(dom)
+        if isinstance(dom, DomainTuple):
+            return ScalingOperator(dom, 1.)
         idops = {kk: ScalingOperator(dd, 1.) for kk, dd in dom.items()}
         return BlockDiagonalOperator(dom, idops)
 
@@ -239,14 +252,28 @@ class Operator(metaclass=NiftyMeta):
             return NotImplemented
         return self.ptw("power", power)
 
+    def __getitem__(self, key):
+        from ..sugar import is_operator
+        from .simple_linear_operators import ducktape
+
+        if not is_operator(self):
+            raise TypeError(f"'{type(self)}' object is not subscriptable")
+        if not isinstance(self.target, MultiDomain):
+            raise TypeError("Only Operators with a MultiDomain as target can be subscripted.")
+        return ducktape(None, self, key) @ self
+
     def apply(self, x):
-        """Applies the operator to a Field or MultiField.
+        """Applies the operator to a Field, MultiField or Linearization.
 
         Parameters
         ----------
-        x : Field or MultiField
+        x : :class:`nifty8.field.Field`, :class:`nifty8.multi_field.MultiField`,
+            or :class:`nifty8.linearization.Linearization`
             Input on which the operator shall act. Needs to be defined on
-            :attr:`domain`.
+            :attr:`domain`. If `x`is a :class:`nifty8.linearization.Linearization`,
+            `apply` returns a new :class:`nifty8.linearization.Linearization`
+            contining the result of the operator application as well as its
+            Jacobian, evaluated at `x`.
         """
         raise NotImplementedError
 
@@ -264,7 +291,7 @@ class Operator(metaclass=NiftyMeta):
                 raise ValueError
             if x.jac._factor != 1:
                 raise ValueError
-        check_domain_equality(self._domain, x.domain)
+        check_object_identity(self._domain, x.domain)
 
     def __call__(self, x):
         if not isinstance(x, Operator):
@@ -276,29 +303,55 @@ class Operator(metaclass=NiftyMeta):
         return self @ x
 
     def ducktape(self, name):
-        from ..sugar import is_operator
-        from .simple_linear_operators import ducktape
+        from ..sugar import is_operator, makeDomain
+        from .simple_linear_operators import DomainChangerAndReshaper, ducktape
+
         if not is_operator(self):
             raise RuntimeError("ducktape works only on operators")
-        return self @ ducktape(self, None, name)
+
+        if isinstance(name, str):  # convert to MultiDomain
+            return self @ ducktape(self, None, name)
+        else:  # convert domain
+            newdom = makeDomain(name)
+            return self @ DomainChangerAndReshaper(newdom, self.domain)
 
     def ducktape_left(self, name):
-        from ..sugar import is_fieldlike, is_linearization, is_operator
-        from .simple_linear_operators import ducktape
-        if is_operator(self):
-            return ducktape(None, self, name) @ self
-        if is_fieldlike(self) or is_linearization(self):
-            return ducktape(None, self.domain, name)(self)
+        from ..sugar import is_fieldlike, is_operator, makeDomain
+        from .simple_linear_operators import DomainChangerAndReshaper, ducktape
+
+        if isinstance(name, str):  # convert to MultiDomain
+            tgt = self.target if is_operator(self) else self.domain
+            return ducktape(None, tgt, name)(self)
+        else:  # convert domain
+            newdom = DomainTuple.make(name)
+            dom = self.domain if is_fieldlike(self) else self.target
+            return DomainChangerAndReshaper(dom, newdom)(self)
+
+    def transpose(self, indices):
+        """Transposes a Field.
+
+        Parameters
+        ----------
+        indices : tuple
+            Must be a tuple or list which contains a permutation of
+            [0,1,..,N-1] where N is the number of domains in the target of the
+            Operator (or the Field).
+        """
+        from ..sugar import is_fieldlike
+        from .transpose_operator import TransposeOperator
+
+        dom = self.domain if is_fieldlike(self) else self.target
+        return TransposeOperator(dom, indices)(self)
 
     def __repr__(self):
         return self.__class__.__name__
 
     def simplify_for_constant_input(self, c_inp):
-        from ..domain_tuple import DomainTuple
         from ..multi_field import MultiField
         from ..sugar import makeDomain
-        from .energy_operators import EnergyOperator
+        from .energy_operators import EnergyOperator, LikelihoodEnergyOperator
         from .simplify_for_const import (ConstantEnergyOperator,
+                                         ConstantLikelihoodEnergyOperator,
                                          ConstantOperator)
         if c_inp is None or (isinstance(c_inp, MultiField) and len(c_inp.keys()) == 0):
             return None, self
@@ -318,6 +371,8 @@ class Operator(metaclass=NiftyMeta):
                 raise RuntimeError
             if isinstance(self, EnergyOperator):
                 op = ConstantEnergyOperator(self(c_inp))
+            elif isinstance(self, LikelihoodEnergyOperator):
+                op = ConstantLikelihoodEnergyOperator(self(c_inp))
             else:
                 op = ConstantOperator(self(c_inp))
             return None, op
@@ -346,6 +401,19 @@ class Operator(metaclass=NiftyMeta):
 
     def ptw_pre(self, op, *args, **kwargs):
         return _OpChain.make((self, _FunctionApplier(self.domain, op, *args, **kwargs)))
+
+    def apply_to_random_sample(self, **kwargs):
+        """Applies the operator to a sample drawn with `ift.sugar.from_random`.
+        Keyword arguments are passed through to the sample generation.
+
+        .. warning::
+            If not specified otherwise, the sample will be of dtype
+            `np.float64`. If the operator requires input values of other
+            dtypes, this needs to be indicated with the `dtype` keyword argument.
+        """
+        from ..sugar import from_random
+        random_input = from_random(self.domain, **kwargs)
+        return self(random_input)
 
 
 for f in pointwise.ptw_dict.keys():
@@ -406,19 +474,13 @@ class _OpChain(_CombinedOperator):
         self._domain = self._ops[-1].domain
         self._target = self._ops[0].target
         for i in range(1, len(self._ops)):
-            check_domain_equality(self._ops[i-1].domain, self._ops[i].target)
+            check_object_identity(self._ops[i-1].domain, self._ops[i].target)
 
     def apply(self, x):
         self._check_input(x)
         for op in reversed(self._ops):
             x = op(x)
         return x
-
-    def get_transformation(self):
-        tr = self._ops[0].get_transformation()
-        if tr is None:
-            return tr
-        return tr[0], _OpChain.make((tr[1],)+self._ops[1:])
 
     def _simplify_for_constant_input_nontrivial(self, c_inp):
         from ..multi_domain import MultiDomain
@@ -489,41 +551,27 @@ class _OpSum(Operator):
         self._op2 = op2
 
     def apply(self, x):
-        from ..linearization import Linearization
         self._check_input(x)
-        if x.jac is None:
-            v1 = x.extract(self._op1.domain)
-            v2 = x.extract(self._op2.domain)
-            return self._op1(v1).unite(self._op2(v2))
-        v1 = x.val.extract(self._op1.domain)
-        v2 = x.val.extract(self._op2.domain)
-        wm = x.want_metric
-        lin1 = self._op1(Linearization.make_var(v1, wm))
-        lin2 = self._op2(Linearization.make_var(v2, wm))
-        op = lin1._jac._myadd(lin2._jac, False)
-        res = lin1.new(lin1._val.unite(lin2._val), op)
-        if lin1._metric is not None and lin2._metric is not None:
-            res = res.add_metric(lin1._metric._myadd(lin2._metric, False))
-        return res
+        return self._apply_operator_sum(x, [self._op1, self._op2])
 
-    def get_transformation(self):
-        from .simple_linear_operators import PrependKey
-        tr1 = self._op1.get_transformation()
-        tr2 = self._op2.get_transformation()
-        if tr1 is None or tr2 is None:
-            return None
-        dtype, trafo = {}, None
-        for i, lh in enumerate([self._op1, self._op2]):
-            dtp, tr = lh.get_transformation()
-            if isinstance(tr.target, MultiDomain):
-                dtype.update({str(i)+d: dtp[d] for d in dtp.keys()})
-                tr = PrependKey(tr.target, str(i)) @ tr
-                trafo = tr if trafo is None else trafo+tr
-            else:
-                dtype[str(i)] = dtp
-                tr = tr.ducktape_left(str(i))
-                trafo = tr if trafo is None else trafo + tr
-        return dtype, trafo
+    @staticmethod
+    def _apply_operator_sum(x, ops):
+        from ..linearization import Linearization
+
+        unite = lambda x, y: x.unite(y)
+        if x.jac is None:
+            return reduce(unite, (oo.force(x) for oo in ops))
+        lin = [oo(Linearization.make_var(x.val.extract(oo.domain), x.want_metric))
+                for oo in ops]
+        jacs = map(lambda x: x._jac, lin)
+        vals = map(lambda x: x._val, lin)
+        metrics = list(map(lambda x: x._metric, lin))
+        jac = reduce(lambda x, y: x._myadd(y, False), jacs)
+        val = reduce(unite, vals)
+        res = x.new(val, jac)
+        if all(mm is not None for mm in metrics):
+            res = res.add_metric(reduce(add, metrics))
+        return res
 
     def _simplify_for_constant_input_nontrivial(self, c_inp):
         from ..multi_domain import MultiDomain

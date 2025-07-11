@@ -11,22 +11,24 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2021 Max-Planck-Society
+# Copyright(C) 2013-2022 Max-Planck-Society
+# Copyright(C) 2025 Philipp Arras
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 import collections
+import contextlib
+import pickle
 from functools import reduce
 from itertools import product
-import pickle
 
 import numpy as np
 
 __all__ = ["get_slice_list", "safe_cast", "parse_spaces", "infer_space",
            "memo", "NiftyMeta", "my_sum", "my_lincomb_simple",
-           "my_lincomb", "indent",
-           "my_product", "frozendict", "special_add_at", "iscomplextype",
-           "value_reshaper", "lognormal_moments", "check_domain_equality",
+           "my_lincomb", "indent", "my_product", "frozendict",
+           "special_add_at", "iscomplextype", "issingleprec",
+           "value_reshaper", "lognormal_moments", "check_object_identity",
            "check_MPI_equality", "check_MPI_synced_random_state"]
 
 
@@ -213,10 +215,7 @@ class frozendict(collections.abc.Mapping):
 
     def __hash__(self):
         if self._hash is None:
-            h = 0
-            for key, value in self._dict.items():
-                h ^= hash((key, value))
-            self._hash = h
+            self._hash = hash(frozenset(self._dict.items()))
         return self._hash
 
 
@@ -242,11 +241,23 @@ def special_add_at(a, axis, index, b):
     return a2.reshape(a.shape)
 
 
-_iscomplex_tpl = (np.complex64, np.complex128)
-
-
 def iscomplextype(dtype):
-    return dtype.type in _iscomplex_tpl
+    if isinstance(dtype, dict):
+        return _getunique(iscomplextype, dtype.values())
+    return np.issubdtype(dtype, np.complexfloating)
+
+
+def issingleprec(dtype):
+    if isinstance(dtype, dict):
+        return _getunique(issingleprec, dtype.values())
+    return dtype.type in (np.float32, np.complex64)
+
+
+def _getunique(f, iterable):
+    lst = list(f(vv) for vv in iterable)
+    if len(set(lst)) == 1:
+        return lst[0]
+    raise RuntimeError("Value is not unique", lst)
 
 
 def indent(inp):
@@ -280,14 +291,12 @@ def shareRange(nwork, nshares, myshare):
     return lo, hi
 
 
-
 def get_MPI_params_from_comm(comm):
     if comm is None:
         return 1, 0, True
     size = comm.Get_size()
     rank = comm.Get_rank()
     return size, rank, rank == 0
-
 
 
 def get_MPI_params():
@@ -351,7 +360,6 @@ def allreduce_sum(obj, comm):
         who = np.zeros(nobj, dtype=np.int32)
         rank = 0
     else:
-        ntask = comm.Get_size()
         rank = comm.Get_rank()
         nobj_list = comm.allgather(len(vals))
         all_hi = list(np.cumsum(nobj_list))
@@ -385,7 +393,7 @@ def value_reshaper(x, N):
     """Produce arrays of shape `(N,)`.
     If `x` is a scalar or array of length one, fill the target array with it.
     If `x` is an array, check if it has the right shape."""
-    x = np.asfarray(x)
+    x = np.asarray(x, dtype=float)
     if x.shape in [(), (1, )]:
         return np.full(N, x) if N != 0 else x.reshape(())
     elif x.shape == (N, ):
@@ -416,23 +424,13 @@ def myassert(val):
         raise AssertionError
 
 
-def check_domain_equality(domain0, domain1):
-    """Check if two domains are equal and throw ValueError if not. Throw a
-    TypeError if one of the inputs is neither a DomainTuple nor a
-    MultiDomain.
-    """
-    from .domain_tuple import DomainTuple
-    from .multi_domain import MultiDomain
-    from .domains.domain import Domain
-    for dom in [domain0, domain1]:
-        if not isinstance(dom, (MultiDomain, DomainTuple, Domain)):
-            raise TypeError("The following domain is neither an instance of "
-                            f"ift.MultiDomain nor of ift.DomainTuple.\n{dom}")
-    if domain0 != domain1:
-        raise ValueError(f"Domain mismatch:\n{domain0}\n{domain1}")
+def check_object_identity(obj0, obj1):
+    """Check if two objects are the same and throw ValueError if not."""
+    if obj0 is not obj1:
+        raise ValueError(f"Mismatch:\n{obj0}\n{obj1}")
 
 
-def check_MPI_equality(obj, comm):
+def check_MPI_equality(obj, comm, hash=False):
     """Check that object is the same on all MPI tasks associated to a given
     communicator.
 
@@ -447,12 +445,16 @@ def check_MPI_equality(obj, comm):
     """
     if comm is None:
         return
-    if not _MPI_unique(obj, comm):
+    if not _MPI_unique(obj, comm, hash=hash):
         raise RuntimeError("MPI tasks are not in sync")
 
 
-def _MPI_unique(obj, comm):
-    return len(set(comm.allgather(pickle.dumps(obj)))) == 1
+def _MPI_unique(obj, comm, hash=False):
+    from hashlib import blake2b
+
+    obj = pickle.dumps(obj)
+    obj = blake2b(obj).hexdigest() if hash else obj
+    return len(set(comm.allgather(obj))) == 1
 
 
 def check_MPI_synced_random_state(comm):
@@ -470,3 +472,60 @@ def check_MPI_synced_random_state(comm):
     if comm is None:
         return
     check_MPI_equality(getState(), comm)
+
+
+@contextlib.contextmanager
+def ensure_all_tasks_succeed(comm):
+    if comm is not None:
+        comm.Barrier()
+    all_good, exception_message = True, ""
+    try:
+        yield
+    except Exception as e:
+        all_good, exception_message = False, str(e)
+    finally:
+        all_good = [all_good] if comm is None else comm.allgather(all_good)
+        if not all(all_good):
+            raise RuntimeError(exception_message)
+
+
+def check_dtype_or_none(obj, domain=None):
+    """Check that dtype is compatible with a given domain.
+
+    If domain is None or a DomainTuple, the obj is checked to be either a
+    floating dtype or None. If domain is a MultiDomain, obj can still be a
+    single quantity and is treated like in the previous case. Or it can be a
+    dictionary; then all its entries need to satisfy the previous condition to
+    pass the test.
+
+    Raises a TypeError if any incompatibility is detected.
+
+    Parameters
+    ----------
+    obj : object
+        The object to be checked.
+    domain : DomainTuple or MultiDomain
+        If it is a MultiDomain,
+    """
+    from .multi_domain import MultiDomain
+    from .sugar import makeDomain
+    if domain is not None:
+        domain = makeDomain(domain)
+        if isinstance(domain, MultiDomain) and isinstance(obj, dict):
+            for kk in domain.keys():
+                check_dtype_or_none(obj[kk])
+            return
+    check = obj in [np.float32, np.float64, float,
+                    np.complex64, np.complex128, complex,
+                    None]
+    if not check:
+        s = "Need to pass floating dtype (e.g. np.float64, complex) "
+        s += f"or `None` to this function.\nHave recieved:\n{obj}"
+        raise TypeError(s)
+
+
+class Nop:
+    def nop(*args, **kw):
+        return Nop()
+    def __getattr__(self, _):
+        return self.nop

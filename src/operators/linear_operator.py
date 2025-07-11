@@ -15,8 +15,8 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
+from ..utilities import check_object_identity
 from .operator import Operator
-from ..utilities import check_domain_equality
 
 
 class LinearOperator(Operator):
@@ -97,12 +97,16 @@ class LinearOperator(Operator):
         return self._flip_modes(self.ADJOINT_BIT)
 
     def __matmul__(self, other):
+        if other.isIdentity():
+            return self
         if isinstance(other, LinearOperator):
             from .chain_operator import ChainOperator
             return ChainOperator.make([self, other])
         return Operator.__matmul__(self, other)
 
     def __rmatmul__(self, other):
+        if other.isIdentity():
+            return self
         if isinstance(other, LinearOperator):
             from .chain_operator import ChainOperator
             return ChainOperator.make([other, self])
@@ -148,7 +152,7 @@ class LinearOperator(Operator):
 
         Parameters
         ----------
-        x : Field
+        x : :class:`nifty8.field.Field`
             The input Field, defined on the Operator's domain or target,
             depending on mode.
 
@@ -161,7 +165,7 @@ class LinearOperator(Operator):
 
         Returns
         -------
-        Field
+        :class:`nifty8.field.Field`
             The processed Field defined on the Operator's target or domain,
             depending on mode.
         """
@@ -169,6 +173,8 @@ class LinearOperator(Operator):
 
     def __call__(self, x):
         """Same as :meth:`times`"""
+        if self.isIdentity():
+            return x
         if x.jac is not None:
             return x.new(self(x._val), self).prepend_jac(x.jac)
         if x.val is not None:
@@ -180,12 +186,12 @@ class LinearOperator(Operator):
 
         Parameters
         ----------
-        x : Field
+        x : :class:`nifty8.field.Field`
             The input Field, defined on the Operator's domain.
 
         Returns
         -------
-        Field
+        :class:`nifty8.field.Field`
             The processed Field defined on the Operator's target domain.
         """
         return self.apply(x, self.TIMES)
@@ -195,12 +201,12 @@ class LinearOperator(Operator):
 
         Parameters
         ----------
-        x : Field
+        x : :class:`nifty8.field.Field`
             The input Field, defined on the Operator's target domain
 
         Returns
         -------
-        Field
+        :class:`nifty8.field.Field`
             The processed Field defined on the Operator's domain.
         """
         return self.apply(x, self.INVERSE_TIMES)
@@ -210,12 +216,12 @@ class LinearOperator(Operator):
 
         Parameters
         ----------
-        x : Field
+        x : :class:`nifty8.field.Field`
             The input Field, defined on the Operator's target domain
 
         Returns
         -------
-        Field
+        :class:`nifty8.field.Field`
             The processed Field defined on the Operator's domain.
         """
         return self.apply(x, self.ADJOINT_TIMES)
@@ -225,12 +231,12 @@ class LinearOperator(Operator):
 
         Parameters
         ----------
-        x : Field
+        x : :class:`nifty8.field.Field`
             The input Field, defined on the Operator's domain.
 
         Returns
         -------
-        Field
+        :class:`nifty8.field.Field`
             The processed Field defined on the Operator's target domain.
 
         Notes
@@ -253,4 +259,4 @@ class LinearOperator(Operator):
 
     def _check_input(self, x, mode):
         self._check_mode(mode)
-        check_domain_equality(self._dom(mode), x.domain)
+        check_object_identity(self._dom(mode), x.domain)

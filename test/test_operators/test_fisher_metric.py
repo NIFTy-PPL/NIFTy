@@ -11,14 +11,14 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2021 Max-Planck-Society
+# Copyright(C) 2013-2022 Max-Planck-Society
+# Author: Philipp Arras
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
+import nifty8 as ift
 import numpy as np
 import pytest
-
-import nifty8 as ift
 
 from ..common import list2fixture, setup_function, teardown_function
 
@@ -110,12 +110,10 @@ def energy_tester(pos, get_noisy_data, energy_initializer, assume_diagonal=False
 
 
 def test_GaussianEnergy(field):
-    dtype = field.dtype
     icov = ift.from_random(field.domain, 'normal')**2
-    icov = ift.makeOp(icov)
-    get_noisy_data = lambda mean: mean + icov.draw_sample_with_dtype(
-        from_inverse=True, dtype=dtype)
-    E_init = lambda data: ift.GaussianEnergy(mean=data, inverse_covariance=icov)
+    icov = ift.makeOp(icov, sampling_dtype=field.dtype)
+    get_noisy_data = lambda mean: mean + icov.draw_sample(from_inverse=True)
+    E_init = lambda data: ift.GaussianEnergy(data=data, inverse_covariance=icov)
     energy_tester(field, get_noisy_data, E_init)
 
 
@@ -145,6 +143,21 @@ def test_VariableCovarianceGaussianEnergy(dtype):
         adder = ift.Adder(ift.MultiField.from_dict({'res': data}), neg=True)
         return energy.partial_insert(adder)
     energy_tester(mf, get_noisy_data, E_init, assume_diagonal=True)
+
+
+def test_BernoulliEnergy(field):
+    if not isinstance(field, ift.Field):
+        pytest.skip("MultiField energy not supported")
+    if np.iscomplexobj(field.val):
+        pytest.skip("Bernoulli energy not defined for complex flux")
+    def get_noisy_data(mean):
+        x = ift.random.current_rng().uniform(size=mean.shape)
+        x = (x<mean.val).astype(int)
+        x = ift.makeField(mean.domain, x)
+        return x
+    E_init = lambda data: ift.BernoulliEnergy(data)
+    loc = field.sigmoid()
+    energy_tester(loc, get_noisy_data, E_init, assume_diagonal=True)
 
 
 def normal(dtype, shape):

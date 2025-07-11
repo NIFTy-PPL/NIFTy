@@ -59,4 +59,4 @@ class DOFSpace(StructuredDomain):
         return np.array(self._dvol)
 
     def __repr__(self):
-        return 'this is a dof space'
+        return f'DOFSpace(dof_weights={self._dvol})'

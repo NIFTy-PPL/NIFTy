@@ -21,8 +21,8 @@ import numpy as np
 
 from . import utilities
 from .domain_tuple import DomainTuple
-from .operators.operator import Operator
 from .ducc_dispatch import vdot
+from .operators.operator import Operator
 
 
 class Field(Operator):
@@ -53,6 +53,10 @@ class Field(Operator):
         if not isinstance(val, np.ndarray):
             if np.isscalar(val):
                 val = np.broadcast_to(val, domain.shape)
+            elif np.shape(val) == domain.shape:
+                # If NumPy thinks the shapes are equal, attempt to convert to
+                # NumPy. This is especially helpful for JAX DeviceArrays.
+                val = np.asarray(val)
             else:
                 raise TypeError("val must be of type numpy.ndarray")
         if domain.shape != val.shape:
@@ -171,6 +175,9 @@ class Field(Operator):
         """type : the data type of the field's entries"""
         return self._val.dtype
 
+    def astype(self, dtype):
+        return Field(self._domain, np.astype(self._val, dtype))
+
     @property
     def domain(self):
         """DomainTuple : the field's domain"""
@@ -276,7 +283,7 @@ class Field(Operator):
 
         Parameters
         ----------
-        x : Field
+        x : :class:`nifty8.field.Field`
 
         Returns
         -------
@@ -294,7 +301,7 @@ class Field(Operator):
 
         Parameters
         ----------
-        x : Field
+        x : :class:`nifty8.field.Field`
             x must be defined on the same domain as `self`.
 
         spaces : None, int or tuple of int
@@ -310,7 +317,7 @@ class Field(Operator):
             raise TypeError("The dot-partner must be an instance of " +
                             "the Field class")
 
-        utilities.check_domain_equality(x._domain, self._domain)
+        utilities.check_object_identity(x._domain, self._domain)
 
         ndom = len(self._domain)
         spaces = utilities.parse_spaces(spaces, ndom)
@@ -326,7 +333,7 @@ class Field(Operator):
 
         Parameters
         ----------
-        x : Field
+        x : :class:`nifty8.field.Field`
             x must be defined on the same domain as `self`.
 
         Returns
@@ -338,7 +345,7 @@ class Field(Operator):
             raise TypeError("The dot-partner must be an instance of " +
                             "the Field class")
 
-        utilities.check_domain_equality(x._domain, self._domain)
+        utilities.check_object_identity(x._domain, self._domain)
 
         return vdot(self._val, x._val)
 
@@ -664,16 +671,17 @@ class Field(Operator):
         return "<nifty8.Field>"
 
     def __str__(self):
-        return "nifty8.Field instance\n- domain      = " + \
-               self._domain.__str__() + \
-               "\n- val         = " + repr(self._val)
+        return "\n".join(["nifty8.Field instance",
+                          f"- domain      = {self._domain.__str__()}",
+                          f"- val         = {repr(self._val)}",
+                          f"- nbytes      = {self._val.nbytes*1e-6:.3f} MB"])
 
     def extract(self, dom):
-        utilities.check_domain_equality(dom, self._domain)
+        utilities.check_object_identity(dom, self._domain)
         return self
 
     def extract_part(self, dom):
-        utilities.check_domain_equality(dom, self._domain)
+        utilities.check_object_identity(dom, self._domain)
         return self
 
     def unite(self, other):
@@ -686,7 +694,7 @@ class Field(Operator):
         # if other is a field, make sure that the domains match
         f = getattr(self._val, op)
         if isinstance(other, Field):
-            utilities.check_domain_equality(other._domain, self._domain)
+            utilities.check_object_identity(other._domain, self._domain)
             return Field(self._domain, f(other._val))
         if np.isscalar(other):
             return Field(self._domain, f(other))

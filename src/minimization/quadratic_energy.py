@@ -50,9 +50,9 @@ class QuadraticEnergy(Energy):
 
         Parameters
         ----------
-        position : Field
+        position : :class:`nifty8.field.Field`
             Location in parameter space for the new Energy object.
-        grad : Field
+        grad : :class:`nifty8.field.Field`
             Energy gradient at the new position.
 
         Returns

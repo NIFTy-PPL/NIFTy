@@ -17,9 +17,8 @@
 
 from types import LambdaType
 
-import pytest
-
 import nifty8 as ift
+import pytest
 
 from ..common import setup_function, teardown_function
 

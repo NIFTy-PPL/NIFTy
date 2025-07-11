@@ -20,10 +20,10 @@
 
 from functools import reduce
 from operator import mul
+from warnings import warn
 
 import numpy as np
 
-from .. import utilities
 from ..domain_tuple import DomainTuple
 from ..domains.power_space import PowerSpace
 from ..domains.unstructured_domain import UnstructuredDomain
@@ -37,7 +37,6 @@ from ..operators.distributors import PowerDistributor
 from ..operators.endomorphic_operator import EndomorphicOperator
 from ..operators.harmonic_operators import HarmonicTransformOperator
 from ..operators.linear_operator import LinearOperator
-from ..operators.mask_operator import MaskOperator
 from ..operators.normal_operators import LognormalTransform, NormalTransform
 from ..operators.operator import Operator
 from ..operators.simple_linear_operators import VdotOperator, ducktape
@@ -225,7 +224,7 @@ class _Distributor(LinearOperator):
             res = x[self._dofdex]
         else:
             res = np.zeros(self._tgt(mode).shape, dtype=x.dtype)
-            res = utilities.special_add_at(res, 0, self._dofdex, x)
+            np.add.at(res, self._dofdex, x)
         return makeField(self._tgt(mode), res)
 
 
@@ -289,10 +288,13 @@ class _Amplitude(Operator):
         if len(dofdex) > 0:
             N_copies = max(dofdex) + 1
             space = 1
-            distributed_tgt = makeDomain((UnstructuredDomain(len(dofdex)),
-                                          target))
             target = makeDomain((UnstructuredDomain(N_copies), target))
-            Distributor = _Distributor(dofdex, target, distributed_tgt)
+            if N_copies != len(dofdex):
+                distributed_tgt = makeDomain((UnstructuredDomain(len(dofdex)),
+                                              target[1]))
+                Distributor = _Distributor(dofdex, target, distributed_tgt)
+            else:
+                distributed_tgt = target
         else:
             N_copies = 0
             space = 0
@@ -358,7 +360,7 @@ class _Amplitude(Operator):
             smooth = _SlopeRemover(target, space) @ twolog @ (sigma * xi)
             op = _Normalization(target, space) @ (slope + smooth)
 
-        if N_copies > 0:
+        if N_copies != len(dofdex):
             op = Distributor @ op
             sig_fluc = Distributor @ sig_fluc
             op = Adder(Distributor(vol0)) @ (sig_fluc * op)
@@ -413,7 +415,20 @@ class CorrelatedFieldMaker:
     :func:`add_fluctuations`.
 
     See the methods :func:`add_fluctuations*` and :func:`finalize` for
-    further usage information."""
+    further usage information.
+
+    See also
+    --------
+    * For one power spectrum, the correlated field model has first been
+      described in "Comparison of classical and Bayesian imaging in radio
+      interferometry", A&A 646, A84 (2021) by P. Arras et al.
+      `<https://doi.org/10.1051/0004-6361/202039258>`_
+    * For multiple power spectra, it has first been used in "M87* in space,
+      time and frequency", Nature Astronomy (2022), by P. Arras et al.
+      `<https://doi.org/10.1038/s41550-021-01548-0>`_
+
+    Consider citing these papers, if you use the correlated field model.
+    """
     def __init__(self, prefix, total_N=0):
         """Instantiate a CorrelatedFieldMaker object.
 
@@ -508,6 +523,8 @@ class CorrelatedFieldMaker:
             dofdex = np.full(self._total_N, 0)
         elif len(dofdex) != self._total_N:
             raise ValueError("length of dofdex needs to match total_N")
+
+        _check_dofdex(dofdex, self._total_N)
 
         if self._total_N > 0:
             N = max(dofdex) + 1
@@ -665,7 +682,9 @@ class CorrelatedFieldMaker:
             logger.warning("Overwriting the previous mean offset and zero-mode")
 
         self._offset_mean = offset_mean
-        if offset_std is None or (np.isscalar(offset_std) and offset_std == 1.):
+        if offset_std is None:
+            self._azm = 0.
+        elif np.isscalar(offset_std) and offset_std == 1.:
             self._azm = 1.
         elif isinstance(offset_std, Operator):
             self._azm = offset_std
@@ -674,6 +693,9 @@ class CorrelatedFieldMaker:
                 dofdex = np.full(self._total_N, 0)
             elif len(dofdex) != self._total_N:
                 raise ValueError("length of dofdex needs to match total_N")
+
+            _check_dofdex(dofdex, self._total_N)
+
             N = max(dofdex) + 1 if self._total_N > 0 else 0
             if len(offset_std) != 2:
                 te = (
@@ -686,16 +708,19 @@ class CorrelatedFieldMaker:
                 zm = _Distributor(dofdex, zm.target, UnstructuredDomain(self._total_N)) @ zm
             self._azm = zm
 
-    def finalize(self, prior_info=100):
+    def finalize(self, prior_info=0):
         """Finishes model construction process and returns the constructed
         operator.
 
         Parameters
         ----------
-        prior_info : integer
-            How many prior samples to draw for property verification statistics
-            If zero, skips calculating and displaying statistics.
+        prior_info : deprecated
         """
+        if prior_info != 0:
+            warn("prior_info will be deleted from `finalize()`. To get a summary "
+                 "on the statistics of the configured correlated field model, "
+                 "use `statistics_summary(prior_info)` instead.",
+                 DeprecationWarning)
         n_amplitudes = len(self._a)
         if self._total_N > 0:
             hspace = makeDomain(
@@ -717,10 +742,7 @@ class CorrelatedFieldMaker:
                                            self._target_subdomains[i][amp_space],
                                            space=spaces[i]) @ ht
 
-        if np.isscalar(self.azm):
-            a = list(self.fluctuations)
-        else:
-            a = list(self.get_normalized_amplitudes())
+        a = list(self.get_normalized_amplitudes())
         for ii in range(n_amplitudes):
             co = ContractionOperator(hspace, spaces[:ii] + spaces[ii + 1:])
             pp = a[ii].target[amp_space]
@@ -729,11 +751,11 @@ class CorrelatedFieldMaker:
         corr = reduce(mul, a)
         xi = ducktape(hspace, None, self._prefix + 'xi')
         if np.isscalar(self.azm):
-            op = ht(corr * xi)
+            op = ht(corr.real * xi)
         else:
             expander = ContractionOperator(hspace, spaces=spaces).adjoint
             azm = expander @ self.azm
-            op = ht(azm * corr * xi)
+            op = ht((azm * corr).real * xi)
 
         if self._offset_mean is not None:
             offset = self._offset_mean
@@ -744,14 +766,16 @@ class CorrelatedFieldMaker:
             else:
                 offset = float(offset)
                 op = Adder(full(op.target, offset)) @ op
-        self.statistics_summary(prior_info)
         return op
 
     def statistics_summary(self, prior_info):
-        from ..sugar import from_random
+        """High-level statistics of a readily configured correlated field model.
 
-        if prior_info == 0:
-            return
+        ----------
+        prior_info : int
+            How many prior samples to draw for property verification statistics
+        """
+        from ..sugar import from_random
 
         lst = []
         try:
@@ -796,7 +820,16 @@ class CorrelatedFieldMaker:
         In the case of no zero-mode, i.e. an assumed zero-mode of unity, this
         call is equivalent to the `fluctuations` property.
         """
-        if np.isscalar(self.azm):
+        if self._azm == 0:
+            if not len(self.fluctuations) == 1:
+                raise RuntimeError("Zeromode can not be disabled for product spectra")
+            sp = self.fluctuations[0].target
+            maskzm = np.ones(self.fluctuations[0].target.shape)
+            maskzm[0] = 0
+            maskzm = makeOp(makeField(sp, maskzm))
+            a = [maskzm @ self.fluctuations[0]]
+            return tuple(a)
+        elif self.azm == 1:
             return self.fluctuations
 
         normal_amp = []
@@ -822,7 +855,8 @@ class CorrelatedFieldMaker:
             zm_normalization = zm_unmask @ (
                 zm_mask @ azm_expander(self.azm.ptw("reciprocal"))
             )
-            normal_amp.append(zm_normalization * amp)
+            na = zm_normalization * amp
+            normal_amp.append(na)
         return tuple(normal_amp)
 
     @property
@@ -835,12 +869,13 @@ class CorrelatedFieldMaker:
         normal_amp = self.get_normalized_amplitudes()[0]
 
         if np.isscalar(self.azm):
-            return normal_amp
+            na = normal_amp
         else:
             expand = ContractionOperator(
                 normal_amp.target, len(normal_amp.target) - 1
             ).adjoint
-            return normal_amp * (expand @ self.azm)
+            na = normal_amp * (expand @ self.azm)
+        return na
 
     @property
     def power_spectrum(self):
@@ -860,6 +895,55 @@ class CorrelatedFieldMaker:
         return self.amplitude_total_offset
 
     def moment_slice_to_average(self, fluctuations_slice_mean, nsamples=1000):
+        """Translates the slice fluctuations into average flucutations to
+        use single space results in multi-space setups.
+
+        This method allows to use single-space reconstruction results to set
+        the hyperparameters in multi-space settings. Given the results of a
+        reconstruction in a single space setting (say for example an image at a
+        specific frequency or a specific moment in time), it is possible to use
+        the fluctuations of these results to determine the fluctuations of this
+        (sub-)space in a multi-space setup (e.g. when reconstructing a
+        collection of images over a frequency range or in a time interval). To
+        do so, the single-space fluctuations have to be translated to match
+        their multi-space counterparts, since the single-space results represent
+        a slice of the multi-space setting. The fluctuations in the multi-space
+        setting represent average fluctuations (i.E. the variability that
+        remains when integrating over all other spaces) and therefore the slice
+        fluctuations have to be rescaled. After all new sub-spaces (say time
+        and/or frequency) have been added to the model, this method can be used
+        to obtain the mean of `fluctuations` of the last sub-space from the
+        fluctuations given from the single space result. Note that to properly
+        use this method it should be called only after all other sub-spaces
+        (time/frequency) as well as the `amplitude_total_offset` have been set
+        in the `CorrelatedFieldMaker` (see example below).
+
+        Parameters
+        ----------
+        fluctuations_slice_mean : float
+            Mean fluctuations of the single space reconstruction that is a slice
+            of this multi-space setting.
+        nsamples : int, optional
+            Number of samples used internally to estimate the rescaling of the
+            fluctuations. Default is 1000.
+
+        Returns
+        -------
+        out : float
+            Mean of the average fluctuations that can be used as an input to add
+            the final sub-space matching the space used for the slice case.
+
+        Examples
+        --------
+        >>> slice_fluct = ... # Fluctuations obtained from the single-space run
+        >>> cf = ift.CorrelatedFieldMaker(...) # The cf of the multi-space case
+        >>> cf.add_fluctuations(...) # Add a sub-space (e.g. frequency)
+        >>> cf.add_fluctuations(**freq_params) # An optional second space (time)
+        >>> cf.set_amplitude_total_offset(...) # Set zero mode of the spectrum
+        >>> avg_fluct = cf.moment_slice_to_average(slice_fluct)
+        >>> cf.add_fluctuations(fluctuations=(avg_fluct, ...), ...)
+        >>> cf.finalize()
+        """
         fluctuations_slice_mean = float(fluctuations_slice_mean)
         if not fluctuations_slice_mean > 0:
             msg = "fluctuations_slice_mean must be greater zero; got {!r}"
@@ -968,3 +1052,11 @@ class CorrelatedFieldMaker:
             res = res + (r - co.adjoint(co(r)/size))**2
         res = res.mean(spaces[0])/len(samples)
         return np.sqrt(res if np.isscalar(res) else res.val)
+
+
+def _check_dofdex(dofdex, total_N):
+    if not (list(dofdex) == list(range(total_N)) or list(dofdex) == total_N*[0]):
+        warn("In the upcoming release only dofdex==range(total_N) or dofdex==total_N*[0] "
+             f"will be supported. You can use dofdex={dofdex}.\n"
+             "Please report at `c@philipp-arras.de` if you use this "
+             "feature and would like to see it continued.", DeprecationWarning)

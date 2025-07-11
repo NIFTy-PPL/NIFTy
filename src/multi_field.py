@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2020 Max-Planck-Society
+# Copyright(C) 2013-2021 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -41,7 +41,7 @@ class MultiField(Operator):
             raise ValueError("length mismatch")
         for d, v in zip(domain._domains, val):
             if isinstance(v, Field):
-                utilities.check_domain_equality(v._domain, d)
+                utilities.check_object_identity(v._domain, d)
             else:
                 raise TypeError("bad entry in val (must be Field)")
         self._domain = domain
@@ -85,6 +85,10 @@ class MultiField(Operator):
     @property
     def dtype(self):
         return {key: val.dtype for key, val in self.items()}
+
+    def astype(self, dtype):
+        val = (vv.astype(dtype[kk]) for vv, kk in zip(self._val, self._domain.keys()))
+        return MultiField(self._domain, tuple(val))
 
     def _transform(self, op):
         return MultiField(self._domain, tuple(op(v) for v in self._val))
@@ -138,7 +142,7 @@ class MultiField(Operator):
 
     def s_vdot(self, x):
         result = 0.
-        utilities.check_domain_equality(x._domain, self._domain)
+        utilities.check_object_identity(x._domain, self._domain)
         for v1, v2 in zip(self._val, x._val):
             result += v1.s_vdot(v2)
         return result
@@ -262,7 +266,7 @@ class MultiField(Operator):
 
         Parameters
         ----------
-        other : MultiField
+        other : :class:`nifty8.multi_field.MultiField`
             the partner Field
 
         Returns
@@ -273,12 +277,7 @@ class MultiField(Operator):
             If a field is not present, it is assumed to have an uniform value
             of zero.
         """
-        if self._domain is other._domain:
-            return self + other
-        res = self.to_dict()
-        for key, val in other.items():
-            res[key] = res[key]+val if key in res else val
-        return MultiField.from_dict(res)
+        return self.flexible_addsub(other, False)
 
     @staticmethod
     def union(fields, domain=None):
@@ -286,7 +285,7 @@ class MultiField(Operator):
 
         Parameters
         ----------
-        fields : iterable of MultiFields
+        fields : iterable of :class:`nifty8.multi_field.MultiField`
             The set of input fields. Their domains need not be identical.
         domain : MultiDomain or None
             If supplied, this will be the domain of the resulting field.
@@ -313,9 +312,9 @@ class MultiField(Operator):
 
         Parameters
         ----------
-        other : MultiField
+        other : :class:`nifty8.multi_field.MultiField`
             the partner Field
-        neg : bool
+        neg : bool or dict
             if True, the partner field is subtracted, otherwise added
 
         Returns
@@ -326,14 +325,19 @@ class MultiField(Operator):
             the fields in self and other. If a field is not present, it is
             assumed to have an uniform value of zero.
         """
-        if self._domain is other._domain:
+        if self._domain is other._domain and not isinstance(neg, dict):
             return self-other if neg else self+other
+
+        if isinstance(neg, dict):
+            fct = lambda k: neg[k]
+        else:
+            fct = lambda k: neg
         res = self.to_dict()
         for key, val in other.items():
             if key in res:
-                res[key] = res[key]-val if neg else res[key]+val
+                res[key] = res[key]-val if fct(key) else res[key]+val
             else:
-                res[key] = -val if neg else val
+                res[key] = -val if fct(key) else val
         return MultiField.from_dict(res)
 
     def _prep_args(self, args, kwargs, i):
@@ -364,7 +368,7 @@ class MultiField(Operator):
     def _binary_op(self, other, op):
         f = getattr(Field, op)
         if isinstance(other, MultiField):
-            utilities.check_domain_equality(self._domain, other._domain)
+            utilities.check_object_identity(self._domain, other._domain)
             val = tuple(f(v1, v2)
                         for v1, v2 in zip(self._val, other._val))
         else:

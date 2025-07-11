@@ -45,7 +45,7 @@ def NormalTransform(mean, sigma, key, N_copies=0):
     """
     if N_copies == 0:
         domain = DomainTuple.scalar_domain()
-        mean, sigma = np.asfarray(mean), np.asfarray(sigma)
+        mean, sigma = np.asarray(mean, dtype=float), np.asarray(sigma, dtype=float)
         mean_adder = Adder(makeField(domain, mean))
         return mean_adder @ (sigma * ducktape(domain, None, key))
 

@@ -16,10 +16,9 @@
 
 from time import time
 
+import nifty8 as ift
 import numpy as np
 import pytest
-
-import nifty8 as ift
 
 from .common import list2fixture, setup_function, teardown_function
 

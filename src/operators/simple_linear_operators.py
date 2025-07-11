@@ -15,6 +15,8 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
+from functools import partial
+
 import numpy as np
 
 from ..domain_tuple import DomainTuple
@@ -22,7 +24,7 @@ from ..domains.unstructured_domain import UnstructuredDomain
 from ..field import Field
 from ..multi_domain import MultiDomain
 from ..multi_field import MultiField
-from ..utilities import check_domain_equality
+from ..utilities import check_object_identity
 from .endomorphic_operator import EndomorphicOperator
 from .linear_operator import LinearOperator
 
@@ -32,7 +34,7 @@ class VdotOperator(LinearOperator):
 
     Parameters
     ----------
-    field : Field or MultiField
+    field : :class:`nifty8.field.Field` or :class:`nifty8.multi_field.MultiField`
         The field used to build the scalar product with the operator input
     """
     def __init__(self, field):
@@ -100,12 +102,14 @@ class Realizer(EndomorphicOperator):
 
     Parameters
     ----------
-    domain: Domain, tuple of domains or DomainTuple
+    domain: Domain, tuple of domains, DomainTuple or MultiDomain
         domain of the input field
 
     """
     def __init__(self, domain):
-        self._domain = DomainTuple.make(domain)
+        from ..sugar import makeDomain
+
+        self._domain = makeDomain(domain)
         self._capability = self.TIMES | self.ADJOINT_TIMES
 
     def apply(self, x, mode):
@@ -118,12 +122,14 @@ class Imaginizer(EndomorphicOperator):
 
     Parameters
     ----------
-    domain: Domain, tuple of domains or DomainTuple
+    domain: Domain, tuple of domains, DomainTuple or MultiDomain
         domain of the input field
 
     """
     def __init__(self, domain):
-        self._domain = DomainTuple.make(domain)
+        from ..sugar import makeDomain
+
+        self._domain = makeDomain(domain)
         self._capability = self.TIMES | self.ADJOINT_TIMES
 
     def apply(self, x, mode):
@@ -348,12 +354,6 @@ class NullOperator(LinearOperator):
         tgt = self.target.keys() if isinstance(self.target, MultiDomain) else '()'
         return f'{tgt} <- NullOperator <- {dom}'
 
-    def draw_sample(self, from_inverse=False):
-        if self._domain is not self._target:
-            raise RuntimeError
-        from ..sugar import full
-        return full(self._domain, 0.)
-
 
 class PartialExtractor(LinearOperator):
     def __init__(self, domain, target):
@@ -364,7 +364,7 @@ class PartialExtractor(LinearOperator):
         self._domain = domain
         self._target = target
         for key in self._target.keys():
-            check_domain_equality(self._domain[key], self._target[key])
+            check_object_identity(self._domain[key], self._target[key])
         self._capability = self.TIMES | self.ADJOINT_TIMES
         self._compldomain = MultiDomain.make({kk: self._domain[kk]
                                               for kk in self._domain.keys()
@@ -407,3 +407,98 @@ class PrependKey(LinearOperator):
         else:
             res = {k:x[self._pre+k] for k in self._domain.keys()}
         return MultiField.from_dict(res, domain=self._tgt(mode))
+
+
+class DomainChangerAndReshaper(LinearOperator):
+    """Convert nifty domains into each other and reshape field.
+
+    This is only possible if `domain` and `target` have the same number of pixels.
+
+    Parameters
+    ----------
+    domain : DomainTuple
+        Domain of the operator
+    target : DomainTuple
+        Target of the operator
+    """
+    def __init__(self, domain, target):
+        from ..sugar import makeDomain
+
+        self._domain = makeDomain(domain)
+        self._target = makeDomain(target)
+        if self._domain.size != self._target.size:
+            s = ["Domain and target do not have the same number of pixels",
+                f"Domain: {self._domain.shape}",
+                f"Target: {self._target.shape}"]
+            raise ValueError("\n".join(s))
+        self._capability = self.TIMES | self.ADJOINT_TIMES
+        if isinstance(self._domain, MultiDomain) or isinstance(self._target, MultiDomain):
+            raise NotImplementedError("MultiDomains are not supported yet")
+
+    def apply(self, x, mode):
+        from ..sugar import makeField
+
+        self._check_input(x, mode)
+        x = x.val
+        tgt = self._tgt(mode)
+        return makeField(tgt, x.reshape(tgt.shape))
+
+    def __repr__(self):
+        return f"Reshape {self._shapes(self.target)} <- {self._shapes(self.domain)}"
+
+    @staticmethod
+    def _shapes(dom):
+        return " ".join([str(dd.shape) for dd in dom])
+
+
+class ExtractAtIndices(LinearOperator):
+    """Extract Field values at given indices along a subspace of a DomainTuple,
+    and puts them in a field with an unstructured domain for the given subspace.
+    Note: This operator supports having the same index several times.
+    If this is not the case also the numerically faster `GeometryRemover`
+    and `MaskOperator` might be useful.
+
+    Parameters
+    ----------
+    domain : DomainTuple
+        Domain of the operator
+    indices: tuple
+        Tuple of indices to extract from the field along a given space.
+        The length of the tuple needs to equal the number of axes of the space.
+        Each entry of the tuple should be a tuple of indices to take along the
+        respective axis of the space.
+        Example for a 2d space: indices=((0,1,1,0), (3,4,1,5)) will extract
+        the pixels (0,3), (1,4), (1,1) and (0,5).
+    space: int
+        The index of the space in the domain along which to extract values
+    """
+    def __init__(self, domain, indices, space=0):
+        from ..sugar import makeDomain
+
+        self._domain = makeDomain(domain)
+        if not isinstance(indices, tuple):
+            raise TypeError("indices need to be a tuple")
+        if not len(self._domain[space].shape) == len(indices):
+            raise ValueError("Shape of indices don't match dimension of space")
+        target = [
+                UnstructuredDomain(len(indices[0])) if i == space else sp
+                for i, sp in enumerate(self._domain)]
+        self._target = makeDomain(target)
+
+        inds = [slice(None)] * len(domain.shape)
+        dims_of_sps = [len(sp.shape) for sp in self._domain]
+        start_ax_sp = int(np.sum(dims_of_sps[:space]))
+        stop_ax_sp = start_ax_sp + dims_of_sps[space]
+        for i, ax in enumerate(range(start_ax_sp, stop_ax_sp)):
+            inds[ax] = indices[i]
+        self._inds = tuple(inds)
+        self._capability = self.TIMES | self.ADJOINT_TIMES
+
+    def apply(self, x, mode):
+        self._check_input(x, mode)
+        if mode == self.TIMES:
+            res = x.val[self._inds]
+        else:
+            res = np.zeros(self._domain.shape, dtype=x.dtype)
+            np.add.at(res, self._inds, x.val)
+        return Field.from_raw(self._tgt(mode), res)
