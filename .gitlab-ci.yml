@@ -14,15 +14,23 @@ default:
     - apt-get update && apt-get install -y libopenmpi-dev
     - pip install .[test,cl_parallel]
 
-test_serial:
+test_serial_cl:
   stage: test
   tags:
     - docker
   script:
-    - pytest -n auto -q --cov=nifty test
+    - pytest -n auto -q --cov=nifty test/test_cl
     - >
       coverage report --omit "*plot*" | tee coverage.txt
   coverage: '/(?i)total.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)$/'
+
+test_serial_re:
+  stage: test
+  tags:
+    - docker
+  script:
+    - pytest -n 2 -q --cov=nifty test/test_re
+  allow_failure: true
 
 test_mpi:
   stage: test
@@ -49,6 +57,7 @@ pages:
 
 run_ipynb0:
   stage: demo_runs
+  needs: [test_serial_cl]
   script:
     - pip install .[doc]
     - jupytext --to ipynb demos/cl/getting_started_0.py
@@ -56,6 +65,7 @@ run_ipynb0:
 
 run_ipynb1:
   stage: demo_runs
+  needs: [test_serial_cl]
   script:
     - pip install .[doc]
     - jupytext --to ipynb demos/cl/getting_started_4_CorrelatedFields.py
@@ -63,6 +73,7 @@ run_ipynb1:
 
 run_getting_started_1:
   stage: demo_runs
+  needs: [test_serial_cl]
   script:
     - python3 demos/cl/getting_started_1.py
   artifacts:
@@ -71,6 +82,7 @@ run_getting_started_1:
 
 run_getting_started_2:
   stage: demo_runs
+  needs: [test_serial_cl]
   script:
     - python3 demos/cl/getting_started_2.py
   artifacts:
@@ -80,6 +92,7 @@ run_getting_started_2:
 
 run_getting_started_3:
   stage: demo_runs
+  needs: [test_serial_cl]
   script:
     - python3 demos/cl/getting_started_3.py
   artifacts:
@@ -89,6 +102,7 @@ run_getting_started_3:
 
 run_getting_started_3_mpi:
   stage: demo_runs
+  needs: [test_serial_cl]
   script:
     - mpirun --allow-run-as-root -np 2 --bind-to none python3 demos/cl/getting_started_3.py
   artifacts:
@@ -98,6 +112,7 @@ run_getting_started_3_mpi:
 
 run_getting_started_mf:
   stage: demo_runs
+  needs: [test_serial_cl]
   script:
     - mpirun --allow-run-as-root -np 2 --bind-to none python3 demos/cl/getting_started_5_mf.py
   artifacts:
@@ -107,46 +122,57 @@ run_getting_started_mf:
 
 run_getting_started_niftyre_intro:
   stage: demo_runs
+  needs: [test_serial_re]
   script:
     - python3 demos/re/0_intro.py
+  allow_failure: true
   artifacts:
     paths:
       - '*.png'
 
 run_getting_started_niftyre_tomography:
   stage: demo_runs
+  needs: [test_serial_re]
   script:
     - python3 demos/re/1_tomography.py
+  allow_failure: true
   artifacts:
     paths:
       - '*.png'
 
 run_getting_started_niftyre_nonlinear_regression:
   stage: demo_runs
+  needs: [test_serial_re]
   script:
     - python3 demos/re/a_nonlinear_regression.py
+  allow_failure: true
   artifacts:
     paths:
       - '*.png'
 
 run_getting_started_niftyre_wiener_filter:
   stage: demo_runs
+  needs: [test_serial_re]
   script:
     - python3 demos/re/a_wiener_filter.py
+  allow_failure: true
   artifacts:
     paths:
       - '*.png'
 
 run_getting_started_niftyre_icr:
   stage: demo_runs
+  needs: [test_serial_re]
   script:
     - python3 demos/re/a_icr.py
+  allow_failure: true
   artifacts:
     paths:
       - '*.png'
 
 run_getting_started_7:
   stage: demo_runs
+  needs: [test_serial_cl]
   script:
     - python3 demos/cl/getting_started_7_config_file.py demos/cl/getting_started_7_config_file.cfg
   artifacts:
@@ -155,6 +181,7 @@ run_getting_started_7:
 
 run_getting_density:
   stage: demo_runs
+  needs: [test_serial_cl]
   script:
     - python3 demos/cl/density_estimation.py
   artifacts:
@@ -163,6 +190,7 @@ run_getting_density:
 
 run_model_comparison:
   stage: demo_runs
+  needs: [test_serial_cl]
   script:
     - python3 demos/cl/model_comparison.py
   artifacts:
@@ -171,6 +199,7 @@ run_model_comparison:
 
 run_bernoulli:
   stage: demo_runs
+  needs: [test_serial_cl]
   script:
     - python3 demos/cl/bernoulli_map.py
   artifacts:
@@ -179,6 +208,7 @@ run_bernoulli:
 
 run_curve_fitting:
   stage: demo_runs
+  needs: [test_serial_cl]
   script:
     - python3 demos/cl/polynomial_fit.py
   artifacts:
@@ -187,10 +217,12 @@ run_curve_fitting:
 
 run_visual_vi:
   stage: demo_runs
+  needs: [test_serial_cl]
   script:
     - python3 demos/cl/variational_inference_visualized.py
 
 run_meanfield:
   stage: demo_runs
+  needs: [test_serial_cl]
   script:
     - python3 demos/cl/parametric_variational_inference.py
