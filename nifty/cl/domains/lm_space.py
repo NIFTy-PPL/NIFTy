@@ -17,7 +17,6 @@
 
 import numpy as np
 
-from ..field import Field
 from .structured_domain import StructuredDomain
 
 
@@ -87,6 +86,7 @@ class LMSpace(StructuredDomain):
         for m in range(1, mmax+1):
             ldist[idx:idx+2*(lmax+1-m)] = tmp[2*m:]
             idx += 2*(lmax+1-m)
+        from ..field import Field
         return Field.from_raw(self, ldist)
 
     def get_unique_k_lengths(self):
@@ -118,6 +118,7 @@ class LMSpace(StructuredDomain):
         """
         from ducc0.misc import GL_thetas
 
+        from ..field import Field
         from ..operators.harmonic_operators import HarmonicTransformOperator
         from .gl_space import GLSpace
 

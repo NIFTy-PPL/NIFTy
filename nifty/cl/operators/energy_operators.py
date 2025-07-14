@@ -30,7 +30,7 @@ from ..sugar import makeDomain, makeOp
 from ..utilities import iscomplextype, myassert
 from .adder import Adder
 from .linear_operator import LinearOperator
-from .operator import Operator, _OpChain, _OpSum
+from .operator import Operator, _OpChain, _OpSum, is_operator
 from .sampling_enabler import SamplingEnabler
 from .sandwich_operator import SandwichOperator
 from .scaling_operator import ScalingOperator
@@ -93,7 +93,6 @@ class LikelihoodEnergyOperator(EnergyOperator):
     likelihood.
     """
     def __init__(self, data_residual, sqrt_data_metric_at):
-        from ..sugar import is_operator
         if data_residual is not None and not is_operator(data_residual):
             raise TypeError(f"{data_residual} is not an operator")
         self._res = data_residual
