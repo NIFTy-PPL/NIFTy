@@ -462,6 +462,14 @@ class Field(Operator):
             return self
         return factor*self
 
+    def broadcast(self, index, space):
+        from .operators.contraction_operator import ContractionOperator
+        if not isinstance(self.domain, DomainTuple):
+            raise RuntimeError("Broadcasting works only on DomainTuples")
+        tgt = list(self.domain)
+        tgt.insert(index, space)
+        return ContractionOperator(tgt, index).adjoint(self)
+
     def sum(self, spaces=None):
         """Sums up over the sub-domains given by `spaces`.
 
@@ -529,6 +537,14 @@ class Field(Operator):
             return self.s_sum()*swgt
         tmp = self.weight(1)
         return tmp.s_sum()
+
+    def squeeze(self, aggressive=False):
+        """Squeezes the Field.
+
+        Look at `SqueezeOperator` for further information.
+        """
+        from .operators.simple_linear_operators import SqueezeOperator
+        return SqueezeOperator(self.domain, aggressive)(self)
 
     def prod(self, spaces=None):
         """Computes the product over the sub-domains given by `spaces`.
@@ -752,6 +768,16 @@ class Field(Operator):
     def ptw_with_deriv(self, op, *args, **kwargs):
         val, deriv = self._val.ptw_with_deriv(op, *args, **kwargs)
         return Field(self._domain, val), Field(self._domain, deriv)
+
+    def map(self, func):
+        """Applies a function directly on AnyArray-level.
+
+        Note
+        ----
+        The result of the function needs to have the same shape as the original
+        Field.
+        """
+        return Field(self._domain, func(self._val))
 
 
 for op in ["__add__", "__radd__",

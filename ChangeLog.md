@@ -15,6 +15,23 @@ Change categories:
 - New features
   - CorrelatedFields: support not-sampled zero mode in prior_info
   - minisanity: fixup if whole field==0
+  - Squeezing: `Operator`, `Linearization` and `Field` support
+    `.squeeze(aggressive)` now. If `aggressive` is `True`, it will also squeeze
+    sub domains (i.e., squeeze away parts of a `RGSpace` or
+    `UnstructuredDomain`). Otherwise it just squeezes trivial subspaces.
+  - Broadcasting: `Operator`, `Linearization` and `Field` support
+    `.broadcast(index, space)` to insert a space at an index. It only works if
+    the target of the `Operator`/`Linearization` or the domain of the `Field` is
+    a `DomainTuple`.
+  - Shorthand for variables: When defining complicated forward models, users
+    often need to write something like `ift.ScalingOperator(domain,
+    1.).ducktape(key)` or `ift.FieldAdapter(...).adjoint`. Now, we have the
+    shorthand `ift.Variable(domain, key)` for this.
+  - `Field.map()`: Sometimes (especially during plotting) one might want to
+    apply a numpy-compatible transformation to a Field. Previsouly, one needed
+    to write, e.g., `ift.makeField(fld.domain, np.angle(fld.val))` to apply
+    `np.angle` to the `Field`. Now one can write `Field.map(np.angle)` in this
+    case.
 - Breaking changes
   - `KLEnergy` & `StandardHamiltonian`: Support complex input fields. As a
     consequence `StandardHamiltonian` now takes `prior_sampling_dtype` as

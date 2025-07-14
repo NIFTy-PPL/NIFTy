@@ -12,6 +12,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Copyright(C) 2013-2022 Max-Planck-Society
+# Copyright(C) 2025 LambdaFields GmbH
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -127,6 +128,17 @@ class Operator(metaclass=NiftyMeta):
         from .simple_linear_operators import ConjugationOperator
         return ConjugationOperator(self.target)(self)
 
+    def broadcast(self, index, space):
+        from .contraction_operator import ContractionOperator
+        from ..multi_field import MultiField
+        if not isinstance(self.target, DomainTuple):
+            raise RuntimeError("Broadcasting works only on DomainTuples")
+        if isinstance(self, MultiField):
+            raise RuntimeError(".broadcast is not implemented for MultiField")
+        tgt = list(self.target)
+        tgt.insert(index, space)
+        return ContractionOperator(tgt, index).adjoint(self)
+
     def sum(self, spaces=None):
         from .contraction_operator import ContractionOperator
         return ContractionOperator(self.target, spaces)(self)
@@ -134,6 +146,10 @@ class Operator(metaclass=NiftyMeta):
     def integrate(self, spaces=None):
         from .contraction_operator import IntegrationOperator
         return IntegrationOperator(self.target, spaces)(self)
+
+    def squeeze(self, aggressive=False):
+        from .simple_linear_operators import SqueezeOperator
+        return SqueezeOperator(self.target, aggressive)(self)
 
     def vdot(self, other):
         from ..sugar import makeOp
@@ -223,7 +239,8 @@ class Operator(metaclass=NiftyMeta):
         return BlockDiagonalOperator(dom, idops)
 
     def __mul__(self, x):
-        if isinstance(x, Operator):
+        from ..sugar import is_operator
+        if is_operator(x):
             return _OpProd(self, x)
         if np.isscalar(x):
             return self.scale(x)
@@ -233,14 +250,16 @@ class Operator(metaclass=NiftyMeta):
         return self.__mul__(x)
 
     def __add__(self, x):
-        if not isinstance(x, Operator):
-            return NotImplemented
-        return _OpSum(self, x)
+        from ..sugar import is_operator
+        if is_operator(x):
+            return _OpSum(self, x)
+        return NotImplemented
 
     def __sub__(self, x):
-        if not isinstance(x, Operator):
-            return NotImplemented
-        return _OpSum(self, -x)
+        from ..sugar import is_operator
+        if is_operator(x):
+            return _OpSum(self, -x)
+        return NotImplemented
 
     def __abs__(self):
         return self.ptw("abs")

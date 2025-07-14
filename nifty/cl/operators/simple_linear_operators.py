@@ -13,12 +13,14 @@
 #
 # Copyright(C) 2013-2020 Max-Planck-Society
 # Copyright(C) 2025 Philipp Arras
+# Copyright(C) 2025 LambdaFields GmbH
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 import numpy as np
 
 from ..domain_tuple import DomainTuple
+from ..domains.rg_space import RGSpace
 from ..domains.unstructured_domain import UnstructuredDomain
 from ..field import Field
 from ..multi_domain import MultiDomain
@@ -291,6 +293,26 @@ def ducktape(left, right, name):
     raise ValueError("must not arrive here")
 
 
+def Variable(target, key):
+    """Operator that picks an entry from a MultiDomain and makes it available on
+    a DomainTuple.
+
+    The domain of the operator is a MultiDomain with one entry: {key: target}.
+
+    This operator is often used at the very beginning of a complicated operator
+    chain.
+
+    Parameters
+    ----------
+    target: Domain, tuple of Domain, or DomainTuple
+        The target of the operator.
+    key: str
+        The key of the domain of the operator.
+    """
+    from .scaling_operator import ScalingOperator
+    return ScalingOperator(target, 1.).ducktape(key)
+
+
 class GeometryRemover(LinearOperator):
     """Operator which transforms between a structured and an unstructured
     domain.
@@ -549,3 +571,64 @@ class ExtractAtIndices(LinearOperator):
                 np.add.at(res, self._inds, x)
                 res = res.at(x.device_id).at(device_id)
         return Field.from_raw(self._tgt(mode), res)
+
+
+class SqueezeOperator(LinearOperator):
+    def __init__(self, domain, aggressive=False):
+        """Removes trivial axes from a DomainTuple.
+
+        This operator performs the equivalent of `np.squeeze` along selected
+        dimensions (by default only truly trivial spaces, optionally also
+        "aggressively" compressing RGSpaces and UnstructuredDomains).
+
+        Parameters
+        ----------
+        domain : DomainTuple or compatible
+            The input domain from which trivial axes may be removed.
+
+        aggressive : bool, optional
+            If True, also remove all singleton axes from certain domain types
+            (`UnstructuredDomain`, `RGSpace`), effectively changing the
+            dimensionality of the respective subspaces. If False (default), only
+            entire domains of shape `(1,)` are removed.
+        """
+        self._domain = DomainTuple.make(domain)
+        self._capability = self._all_ops
+
+        ta, tgt, ax = [], [], 0
+        for d in self._domain:
+            if d.shape == (1,):  # Trivially removable
+                ta.append(ax)
+            elif aggressive and isinstance(d, (UnstructuredDomain, RGSpace)):  # Agressively removable
+                shp, dst = [], []
+                for ii, ss in enumerate(d.shape):
+                    if ss == 1:
+                        ta.append(ax+ii)
+                    else:
+                        shp.append(ss)
+                        if isinstance(d, RGSpace):
+                            dst.append(d.distances[ii])
+                if isinstance(d, RGSpace):
+                    tgt.append(RGSpace(shp, dst, d.harmonic))
+                else:
+                    tgt.append(UnstructuredDomain(shp))
+            else:  # Not removeable
+                tgt.append(d)
+            ax += len(d.shape)
+
+        self._target = DomainTuple.make(tgt)
+        self._trivial_axes = tuple(ta)
+        self._fwd_indexer = tuple(0 if i in ta else slice(None)
+                                  for i in range(len(self.domain.shape)))
+        if len(self._trivial_axes) == 0:
+            raise RuntimeError("Nothing found to be squeezed")
+
+    def apply(self, x, mode):
+        self._check_input(x, mode)
+        x = x.val
+        if mode & (self.TIMES | self.ADJOINT_INVERSE_TIMES):
+            x = x[self._fwd_indexer]
+        else:
+            for ax in self._trivial_axes:
+                x = np.expand_dims(x, axis=ax)
+        return Field(self._tgt(mode), x)
