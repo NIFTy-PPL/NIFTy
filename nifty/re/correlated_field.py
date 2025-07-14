@@ -348,8 +348,6 @@ class MaternAmplitude(Model):
             )
 
         self.renormalize_amplitude = renormalize_amplitude
-        if self.renormalize_amplitude:
-            logger.warning("Renormalize amplidude is not yet tested!")
 
         models = [self.scale, self.cutoff, self.loglogslope]
         domain = reduce(operator.or_, [m.domain for m in models if m is not None])
@@ -376,24 +374,24 @@ class MaternAmplitude(Model):
                 norm = jnp.sqrt(
                     jnp.sum(
                         self.grid.harmonic_grid.mode_multiplicity[1:]
-                        * spectrum[1:] ** 4
+                        * spectrum[1:] ** 2
                     )
                 )
             elif self.kind == "power":
                 norm = jnp.sqrt(
                     jnp.sum(
                         self.grid.harmonic_grid.mode_multiplicity[1:]
-                        * spectrum[1:] ** 2
+                        * spectrum[1:]
                     )
                 )
 
-            norm /= jnp.sqrt(
-                self.grid.total_volume
-            )  # Due to integral in harmonic space
-        spectrum = scl * (jnp.sqrt(self.grid.total_volume) / norm) * spectrum
-        spectrum = spectrum.at[0].set(self.grid.total_volume)
+            # Due to integral in harmonic space
+            norm /= jnp.sqrt(self.grid.total_volume)
+
         if self.kind.lower() == "power":
             spectrum = jnp.sqrt(spectrum)
+        spectrum = scl * (jnp.sqrt(self.grid.total_volume) / norm) * spectrum
+        spectrum = spectrum.at[0].set(self.grid.total_volume)
 
         return spectrum
 

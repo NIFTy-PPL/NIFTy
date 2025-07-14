@@ -279,3 +279,34 @@ def test_nifty_vs_niftyre_product(seed, fluct1, fluct2):
     }
     npos = ift.MultiField.from_dict(npos, cf.domain)
     assert_allclose(cf(npos).asnumpy(), jcf(pos))
+
+
+@pmp("scale", [(1.0, 1.e-10), (3.0, 1.e-10)])
+@pmp("loglogslope", [(1.0, 1.0), (5.0, 0.5)])
+@pmp("cutoff", [(1.0, 1.0), (0.1, 0.01)])
+def test_matern_renormalize_amplitude(
+    scale,
+    loglogslope,
+    cutoff,
+):
+    seed = 42
+    n_samples = 100
+    shape = (12,)
+    distances = 0.1
+    cf = jft.CorrelatedFieldMaker("cf")
+    offset_mean = 0.
+    offset_std = (0.1, 1.e-10)
+    cf.set_amplitude_total_offset(offset_mean=offset_mean,
+                                  offset_std=offset_std)
+    cf.add_fluctuations_matern(
+        shape,
+        distances=distances,
+        scale=scale,
+        cutoff=cutoff,
+        loglogslope=loglogslope,
+        renormalize_amplitude=True,
+    )
+    cf = cf.finalize()
+    fields = [cf(cf.init(random.PRNGKey(seed + ii))) for ii in range(n_samples)]
+    avg_scale = np.mean(np.std(fields, axis=0))
+    assert_allclose(avg_scale, scale[0], atol=2.e-1)
