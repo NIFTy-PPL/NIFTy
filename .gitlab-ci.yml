@@ -29,7 +29,7 @@ test_serial_re:
   tags:
     - docker
   script:
-    - pytest -n 2 -q --cov=nifty test/test_re
+    - pytest -n auto -q --cov=nifty test/test_re
   allow_failure: true
 
 test_mpi:
