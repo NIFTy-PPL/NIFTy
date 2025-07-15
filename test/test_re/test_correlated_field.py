@@ -294,7 +294,7 @@ def test_matern_renormalize_amplitude(
     kind,
 ):
     seed = 42
-    n_samples = 100
+    n_samples = 200
     shape = (12,)
     distances = 0.1
     cf = jft.CorrelatedFieldMaker("cf")
@@ -315,4 +315,4 @@ def test_matern_renormalize_amplitude(
     keys = random.split(key, n_samples)
     fields = [cf(cf.init(k)) for k in keys]
     avg_scale = np.mean(np.std(fields, axis=0))
-    assert_allclose(avg_scale, scale[0], atol=5.0e-1)
+    assert_allclose(avg_scale, scale[0], atol=2.0e-1)
