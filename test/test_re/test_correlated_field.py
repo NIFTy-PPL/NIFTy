@@ -282,12 +282,14 @@ def test_nifty_vs_niftyre_product(seed, fluct1, fluct2):
 
 
 @pmp("scale", [(1.0, 1.e-10), (3.0, 1.e-10)])
-@pmp("loglogslope", [(1.0, 1.0), (5.0, 0.5)])
-@pmp("cutoff", [(1.0, 1.0), (0.1, 0.01)])
+@pmp("loglogslope", [(-1.0, 1.0), (-5.0, 0.5)])
+@pmp("cutoff", [(1.0, 1.0), (3.3, 0.01)])
+@pmp("kind", ["amplitude", "power"])
 def test_matern_renormalize_amplitude(
     scale,
     loglogslope,
     cutoff,
+    kind,
 ):
     seed = 42
     n_samples = 100
@@ -304,9 +306,12 @@ def test_matern_renormalize_amplitude(
         scale=scale,
         cutoff=cutoff,
         loglogslope=loglogslope,
+        non_parametric_kind=kind,
         renormalize_amplitude=True,
     )
     cf = cf.finalize()
-    fields = [cf(cf.init(random.PRNGKey(seed + ii))) for ii in range(n_samples)]
+    key = random.PRNGKey(seed)
+    keys = random.split(key, n_samples)
+    fields = [cf(cf.init(k)) for k in keys]
     avg_scale = np.mean(np.std(fields, axis=0))
-    assert_allclose(avg_scale, scale[0], atol=2.e-1)
+    assert_allclose(avg_scale, scale[0], atol=1.e-1)
