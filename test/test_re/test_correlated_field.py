@@ -183,8 +183,9 @@ def test_nifty_vs_niftyre_non_parametric_cf(
 
     pos = jft.random_like(key, jcf.domain)
     npos = {
-        k: ift.makeField(cf.domain[k],
-                         np.array(v) if k != "spectrum" else np.array(v.T))
+        k: ift.makeField(
+            cf.domain[k], np.array(v) if k != "spectrum" else np.array(v.T)
+        )
         for k, v in pos.items()
     }
     npos = ift.MultiField.from_dict(npos, cf.domain)
@@ -273,15 +274,16 @@ def test_nifty_vs_niftyre_product(seed, fluct1, fluct2):
 
     pos = jft.random_like(key, jcf.domain)
     npos = {
-        k: ift.makeField(cf.domain[k],
-                         np.array(v) if not k.endswith("spectrum") else np.array(v.T))
+        k: ift.makeField(
+            cf.domain[k], np.array(v) if not k.endswith("spectrum") else np.array(v.T)
+        )
         for k, v in pos.items()
     }
     npos = ift.MultiField.from_dict(npos, cf.domain)
     assert_allclose(cf(npos).asnumpy(), jcf(pos))
 
 
-@pmp("scale", [(1.0, 1.e-10), (3.0, 1.e-10)])
+@pmp("scale", [(1.0, 1.0e-10), (3.0, 1.0e-10)])
 @pmp("loglogslope", [(-1.0, 1.0), (-5.0, 0.5)])
 @pmp("cutoff", [(1.0, 1.0), (3.3, 0.01)])
 @pmp("kind", ["amplitude", "power"])
@@ -296,10 +298,9 @@ def test_matern_renormalize_amplitude(
     shape = (12,)
     distances = 0.1
     cf = jft.CorrelatedFieldMaker("cf")
-    offset_mean = 0.
-    offset_std = (0.1, 1.e-10)
-    cf.set_amplitude_total_offset(offset_mean=offset_mean,
-                                  offset_std=offset_std)
+    offset_mean = 0.0
+    offset_std = (0.1, 1.0e-10)
+    cf.set_amplitude_total_offset(offset_mean=offset_mean, offset_std=offset_std)
     cf.add_fluctuations_matern(
         shape,
         distances=distances,
@@ -314,4 +315,4 @@ def test_matern_renormalize_amplitude(
     keys = random.split(key, n_samples)
     fields = [cf(cf.init(k)) for k in keys]
     avg_scale = np.mean(np.std(fields, axis=0))
-    assert_allclose(avg_scale, scale[0], atol=1.e-1)
+    assert_allclose(avg_scale, scale[0], atol=1.0e-1)

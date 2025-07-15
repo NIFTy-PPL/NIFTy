@@ -380,8 +380,7 @@ class MaternAmplitude(Model):
             elif self.kind == "power":
                 norm = jnp.sqrt(
                     jnp.sum(
-                        self.grid.harmonic_grid.mode_multiplicity[1:]
-                        * spectrum[1:]
+                        self.grid.harmonic_grid.mode_multiplicity[1:] * spectrum[1:]
                     )
                 )
 
