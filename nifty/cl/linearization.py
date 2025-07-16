@@ -168,6 +168,9 @@ class Linearization(Operator):
         return self._val.device_id
 
     def _myadd(self, other, neg):
+        from .operators.operator import is_fieldlike
+        if not (is_fieldlike(other) or np.isscalar(other)):
+            return NotImplemented
         if np.isscalar(other) or other.jac is None:
             return self.new(self._val-other if neg else self._val+other,
                             self._jac, self._metric)
@@ -199,11 +202,19 @@ class Linearization(Operator):
         return self.ptw("reciprocal").__mul__(other)
 
     def __pow__(self, power):
-        if not (np.isscalar(power) or power.jac is None):
+        from .operators.operator import is_fieldlike
+        if not (is_fieldlike(power) or np.isscalar(power)):
             return NotImplemented
-        return self.ptw("power", power)
+        if np.isscalar(power) or power.jac is None:
+            return self.ptw("power", power)
+        if isinstance(power, Linearization):
+            return (power * self.log()).exp()
+        return NotImplemented
 
     def __mul__(self, other):
+        from .operators.operator import is_fieldlike
+        if not (is_fieldlike(other) or np.isscalar(other)):
+            return NotImplemented
         if np.isscalar(other):
             if other == 1:
                 return self
@@ -211,12 +222,11 @@ class Linearization(Operator):
             return self.new(self._val*other, self._jac.scale(other), met)
         if other.jac is None:
             check_object_identity(self.target, other.domain)
-            return self.new(self._val*other, makeOp(other)(self._jac))
+            return self.new(self._val*other, other*self._jac)
         check_object_identity(self.target, other.target)
         return self.new(
             self.val*other.val,
-            (makeOp(other.val)(self.jac))._myadd(
-             makeOp(self.val)(other.jac), False))
+            (other.val*self.jac)._myadd(self.val*other.jac, False))
 
     def __rmul__(self, other):
         return self.__mul__(other)

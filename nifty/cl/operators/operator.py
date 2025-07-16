@@ -16,8 +16,8 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-import numbers
 from functools import reduce
+from numbers import Number
 from operator import add
 
 import numpy as np
@@ -117,7 +117,7 @@ class Operator(metaclass=NiftyMeta):
         return False
 
     def scale(self, factor):
-        if not isinstance(factor, numbers.Number):
+        if not isinstance(factor, Number):
             raise TypeError(".scale() takes a number as input")
         if factor == 1:
             return self
@@ -129,8 +129,8 @@ class Operator(metaclass=NiftyMeta):
         return ConjugationOperator(self.target)(self)
 
     def broadcast(self, index, space):
-        from .contraction_operator import ContractionOperator
         from ..multi_field import MultiField
+        from .contraction_operator import ContractionOperator
         if not isinstance(self.target, DomainTuple):
             raise RuntimeError("Broadcasting works only on DomainTuples")
         if isinstance(self, MultiField):
@@ -177,32 +177,16 @@ class Operator(metaclass=NiftyMeta):
     def __matmul__(self, x):
         from .energy_operators import LikelihoodEnergyOperator
 
-        if not isinstance(x, Operator):
-            return NotImplemented
-        if isinstance(x, LikelihoodEnergyOperator):
-            return NotImplemented
-        if x.target is self.domain:
-            if x.isIdentity():
-                return self
-            if self.isIdentity():
-                return x
-            return _OpChain.make((self, x))
-        return self.partial_insert(x)
-
-    def __rmatmul__(self, x):
-        from .energy_operators import LikelihoodEnergyOperator
-
-        if not isinstance(x, Operator):
-            return NotImplemented
-        if isinstance(x, LikelihoodEnergyOperator):
-            return NotImplemented
-        if x.domain is self.target:
-            if x.isIdentity():
-                return self
-            if self.isIdentity():
-                return x
-            return _OpChain.make((x, self))
-        return x.partial_insert(self)
+        if is_operator(x) and not isinstance(x, LikelihoodEnergyOperator):
+            if x.target is self.domain:
+                if x.isIdentity():
+                    return self
+                if self.isIdentity():
+                    return x
+                return _OpChain.make((self, x))
+            else:
+                return self.partial_insert(x)
+        return NotImplemented
 
     def partial_insert(self, x):
         from ..multi_domain import MultiDomain
@@ -239,32 +223,81 @@ class Operator(metaclass=NiftyMeta):
         return BlockDiagonalOperator(dom, idops)
 
     def __mul__(self, x):
+        from ..field import Field
+        from ..multi_field import MultiField
+        from ..sugar import makeOp
+
         if is_operator(x):
             return _OpProd(self, x)
-        if np.isscalar(x):
+        if isinstance(x, Number):
             return self.scale(x)
+        if isinstance(x, (Field, MultiField)):
+            return makeOp(x) @ self
         return NotImplemented
 
     def __rmul__(self, x):
         return self.__mul__(x)
 
     def __add__(self, x):
+        from ..field import Field
+        from ..multi_field import MultiField
+        from ..sugar import full
+        from .adder import Adder
+
         if is_operator(x):
             return _OpSum(self, x)
+        if isinstance(x, Number):
+            return Adder(full(self.target, x)) @ self
+        if isinstance(x, (Field, MultiField)):
+            return Adder(x) @ self
         return NotImplemented
 
+    def __radd__(self, x):
+        return self.__add__(x)
+
     def __sub__(self, x):
+        from ..field import Field
+        from ..multi_field import MultiField
+        from ..sugar import full
+        from .adder import Adder
+
         if is_operator(x):
             return _OpSum(self, -x)
+        if isinstance(x, Number):
+            return Adder(full(self.target, x), neg=True) @ self
+        if isinstance(x, (Field, MultiField)):
+            return Adder(x, neg=True) @ self
         return NotImplemented
+
+    def __rsub__(self, x):
+        return x + (-self)
+
+    def __truediv__(self, x):
+        if isinstance(x, Number):
+            return self.scale(1/x)
+        if isinstance(x, Operator):
+            return self * x.reciprocal()
+        return NotImplemented
+
+    def __rtruediv__(self, x):
+        return self.reciprocal() * x
 
     def __abs__(self):
         return self.ptw("abs")
 
     def __pow__(self, power):
-        if not (np.isscalar(power) or power.jac is None):
-            return NotImplemented
-        return self.ptw("power", power)
+        if isinstance(power, Number):
+            return self.ptw("power", power)
+        if isinstance(power, Operator):
+            return (power * self.log()).exp()
+        return NotImplemented
+
+    def __rpow__(self, base):
+        if isinstance(base, Number):
+            return self.scale(np.log(base)).exp()
+        if isinstance(base, Operator):
+            return (base.log() * self).exp()
+        return NotImplemented
 
     def __getitem__(self, key):
         from .simple_linear_operators import ducktape

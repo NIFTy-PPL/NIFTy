@@ -93,18 +93,16 @@ def _make_dynamic_operator(target, harmonic_padding, sm_s0, sm_x0, cone, keys, c
             res = res + (x[i]/sm_x0[i]/dists[i])**2
         return sm_s0/res
 
-    Sm = makeOp(_field_from_function(m.target, smoothness_prior_func))
-    m = CentralPadd.adjoint(FFTB(Sm(m)))
+    Sm = _field_from_function(m.target, smoothness_prior_func)
+    m = (CentralPadd.adjoint @ FFTB)(Sm*m)
     ops['smoothed_dynamics'] = m
 
     m = -m.ptw("log")
     if not minimum_phase:
         m = m.ptw("exp")
     if causal or minimum_phase:
-        m = Real.adjoint(FFT.inverse(Realizer(FFT.target).adjoint(m)))
-        kernel = makeOp(
-            _field_from_function(FFT.domain, (lambda x: 1. + np.sign(x[0]))))
-        m = kernel(m)
+        m = (Real.adjoint@FFT.inverse@Realizer(FFT.target).adjoint)(m)
+        m = m * _field_from_function(FFT.domain, (lambda x: 1. + np.sign(x[0])))
 
     if cone and len(m.target.shape) > 1:
         if isinstance(sigc, float):

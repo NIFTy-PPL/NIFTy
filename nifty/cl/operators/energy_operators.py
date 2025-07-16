@@ -696,7 +696,7 @@ class InverseGammaEnergy(LikelihoodEnergyOperator):
 
     def get_transformation(self):
         fact = self._alphap1.sqrt()
-        res = makeOp(fact) @ Operator.identity_operator(self._domain).log()
+        res = fact * Operator.identity_operator(self._domain).log()
         return self._sampling_dtype, res
 
 
@@ -786,8 +786,7 @@ class BernoulliEnergy(LikelihoodEnergyOperator):
         return res.add_metric(self.get_metric_at(x.val))
 
     def get_transformation(self):
-        from ..sugar import full
-        res = Adder(full(self._domain, 1.)) @ ScalingOperator(self._domain, -1)
+        res = 1. + ScalingOperator(self._domain, -1)
         res = res * Operator.identity_operator(self._domain).reciprocal()
         return np.float64, -2.*res.sqrt().arctan()
 

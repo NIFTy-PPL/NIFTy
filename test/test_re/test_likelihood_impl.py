@@ -356,7 +356,7 @@ def test_nifty_vcgaussian_vs_niftyre_vcgaussian_consistency(seed, iscomplex):
         data = ift.full(sp, 0.0)
     fl = ift.full(sp, val)
     rls = ift.Realizer(sp)
-    res = ift.Adder(data, neg=True) @ ift.makeOp(fl) @ rls.adjoint
+    res = fl * rls.adjoint - data
     res = res.ducktape("res")
     res = res.ducktape_left("res")
     invcov = ift.exp(ift.makeOp(ift.full(sp, 1.0)))

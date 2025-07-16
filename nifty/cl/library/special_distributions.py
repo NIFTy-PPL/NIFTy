@@ -25,7 +25,6 @@ from .. import random
 from ..domain_tuple import DomainTuple
 from ..domains.unstructured_domain import UnstructuredDomain
 from ..field import Field
-from ..operators.adder import Adder
 from ..operators.operator import Operator
 from ..sugar import makeOp
 
@@ -174,11 +173,7 @@ class InverseGammaOperator(Operator):
         self._delta = float(delta)
         op = _InterpolationOperator(self._domain, lambda x: invgamma.ppf(norm._cdf(x), float(self._alpha)),
                                     -8.2, 8.2, self._delta, lambda x: x.ptw("log"), lambda x: x.ptw("exp"))
-        if np.isscalar(self._q):
-            op = op.scale(self._q)
-        else:
-            op = makeOp(self._q) @ op
-        self._op = op
+        self._op = self._q * op
 
     def apply(self, x):
         return self._op(x)
@@ -265,11 +260,7 @@ class GammaOperator(Operator):
         self._delta = float(delta)
         op = _InterpolationOperator(self._domain, lambda x: gamma.ppf(norm._cdf(x), self._alpha),
                                     -8.2, 8.2, self._delta)
-        if np.isscalar(self._theta):
-            op = op.scale(self._theta)
-        else:
-            op = makeOp(self._theta) @ op
-        self._op = op
+        self._op = op * self._theta
 
     def apply(self, x):
         return self._op(x)
@@ -317,7 +308,7 @@ def LogInverseGammaOperator(domain, alpha, q, delta=1e-2):
     op = _InterpolationOperator(domain, lambda x: np.log(invgamma.ppf(norm._cdf(x), float(alpha))),
                                 -8.2, 8.2, delta)
     q = np.log(q) if np.isscalar(q) else q.log()
-    return Adder(q, domain=op.target) @ op
+    return q + op
 
 
 def BetaOperator(domain, a, b, delta=1e-2):

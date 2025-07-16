@@ -32,6 +32,9 @@ Change categories:
     to write, e.g., `ift.makeField(fld.domain, np.angle(fld.val))` to apply
     `np.angle` to the `Field`. Now one can write `Field.map(np.angle)` in this
     case.
+  - Extend support for binary operations (`+`, `-`, `*`, `/`, `**`) across
+    `Operator`, `Linearization`, and `Field`, including mixed combinations with
+    scalars and between instances.
 - Breaking changes
   - `KLEnergy` & `StandardHamiltonian`: Support complex input fields. As a
     consequence `StandardHamiltonian` now takes `prior_sampling_dtype` as

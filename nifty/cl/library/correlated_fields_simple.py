@@ -21,14 +21,13 @@ import numpy as np
 from ..any_array import AnyArray
 from ..domain_tuple import DomainTuple
 from ..domains.power_space import PowerSpace
-from ..operators.adder import Adder
 from ..operators.contraction_operator import ContractionOperator
 from ..operators.distributors import PowerDistributor
 from ..operators.harmonic_operators import HarmonicTransformOperator
 from ..operators.normal_operators import LognormalTransform, NormalTransform
 from ..operators.simple_linear_operators import ducktape
 from ..operators.value_inserter import ValueInserter
-from ..sugar import full, makeField, makeOp
+from ..sugar import makeField
 from .correlated_fields import (_log_vol, _Normalization,
                                 _relative_log_k_lengths, _SlopeRemover,
                                 _TwoLogIntegrations)
@@ -84,8 +83,8 @@ def SimpleCorrelatedField(
     twolog = _TwoLogIntegrations(pspace)
     expander = ContractionOperator(twolog.domain, 0).adjoint
     ps_expander = ContractionOperator(pspace, 0).adjoint
-    vslope = makeOp(makeField(pspace, _relative_log_k_lengths(pspace)))
-    slope = vslope @ ps_expander @ avgsl
+    vslope = makeField(pspace, _relative_log_k_lengths(pspace))
+    slope = vslope * ps_expander @ avgsl
     a = slope
 
     if flexibility is not None:
@@ -93,8 +92,7 @@ def SimpleCorrelatedField(
         dom = twolog.domain[0]
         vflex = AnyArray(np.empty(dom.shape))
         vflex[0] = vflex[1] = np.sqrt(_log_vol(pspace))
-        vflex = makeOp(makeField(dom, vflex))
-        sig_flex = vflex @ expander @ flex
+        sig_flex = makeField(dom, vflex) * expander @ flex
         xi = ducktape(dom, None, prefix + 'spectrum')
 
         shift = AnyArray(np.empty(dom.shape))
@@ -102,21 +100,21 @@ def SimpleCorrelatedField(
         shift[1] = 1
         shift = makeField(dom, shift)
         if asperity is None:
-            asp = makeOp(shift.ptw("sqrt")) @ (xi*sig_flex)
+            asp = shift.ptw("sqrt") * xi * sig_flex
         else:
             asp = LognormalTransform(*asperity, prefix + 'asperity', 0)
             vasp = np.empty(dom.shape)
             vasp[0] = 1
             vasp[1] = 0
-            vasp = makeOp(makeField(dom, vasp))
-            sig_asp = vasp @ expander @ asp
-            asp = xi*sig_flex*(Adder(shift) @ sig_asp).ptw("sqrt")
+            vasp = makeField(dom, vasp)
+            sig_asp = vasp * expander @ asp
+            asp = xi*sig_flex*(shift + sig_asp).ptw("sqrt")
         a = a + _SlopeRemover(pspace, 0) @ twolog @ asp
     a = _Normalization(pspace, 0) @ a
     maskzm = np.ones(pspace.shape)
     maskzm[0] = 0
-    maskzm = makeOp(makeField(pspace, maskzm))
-    a = (maskzm @ ((ps_expander @ fluct)*a))
+    maskzm = makeField(pspace, maskzm)
+    a = maskzm * a * (ps_expander@fluct)
     if offset_std is not None:
         zm = LognormalTransform(*offset_std, prefix + 'zeromode', 0)
         insert = ValueInserter(pspace, (0,))
@@ -128,7 +126,7 @@ def SimpleCorrelatedField(
     xi = ducktape(harmonic_partner, None, prefix + 'xi')
     op = ht(pd(a).real*xi)
     if offset_mean is not None:
-        op = Adder(full(op.target, float(offset_mean))) @ op
+        op = float(offset_mean) + op
     op.amplitude = a
     op.power_spectrum = a**2
 
