@@ -1,6 +1,6 @@
 [project]
 name = "nifty"
-version = "9.0.0"
+version = "9.1.0"
 description = "Probabilistic programming framework for signal inference algorithms that operate regardless of the underlying grids and their resolutions"
 readme = "README.md"
 authors = [

@@ -18,7 +18,7 @@
         myPyPkgs = pkgs.python3Packages;
         myPyPkgs-cuda = pkgs-cuda.python3Packages;
 
-        version = "9.0.0";
+        version = "9.1.0";
 
         req.minimal = with myPyPkgs; [ numpy scipy ducc0 ];
         req.dev = with myPyPkgs; [ pytest pytest-cov pytest-xdist matplotlib ];

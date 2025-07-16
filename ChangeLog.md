@@ -12,6 +12,16 @@ Change categories:
 - Deprecations
 -->
 
+
+- New features
+- Breaking changes
+- Changes
+- Deprecations
+
+
+NIFTy 9.1.0 (July 17, 2025)
+===========================
+
 - New features
   - CorrelatedFields: support not-sampled zero mode in prior_info
   - minisanity: fixup if whole field==0
