@@ -154,6 +154,7 @@ def test_optimize_kl_sample_consistency(
     absdelta = delta * jft.size(pos)
 
     draw_linear_kwargs = dict(
+        cg=jft.conjugate_gradient.cg,
         cg_name="SL",
         cg_kwargs=dict(miniter=2, absdelta=absdelta / 10.0, maxiter=100),
     )
@@ -177,6 +178,7 @@ def test_optimize_kl_sample_consistency(
         lh,
         pos,
         sk,
+        minimize=jft.optimize._newton_cg,
         point_estimates=point_estimates,
         minimize_kwargs=minimize_kwargs,
         **draw_linear_kwargs,
@@ -197,6 +199,7 @@ def test_optimize_kl_sample_consistency(
         metric_sample_key=sk,
         metric_sample_sign=+1,
         point_estimates=point_estimates,
+        minimize=jft.optimize._newton_cg,
         minimize_kwargs=minimize_kwargs,
     )
     residual_diy_n2, _ = jft.nonlinearly_update_residual(
@@ -206,6 +209,7 @@ def test_optimize_kl_sample_consistency(
         metric_sample_key=sk,
         metric_sample_sign=-1,
         point_estimates=point_estimates,
+        minimize=jft.optimize._newton_cg,
         minimize_kwargs=minimize_kwargs,
     )
     residual_diy = jft.stack((residual_diy_n1, residual_diy_n2))
@@ -221,7 +225,9 @@ def test_optimize_kl_sample_consistency(
         n_samples=1,
         point_estimates=point_estimates,
         draw_linear_kwargs=draw_linear_kwargs,
-        nonlinearly_update_kwargs=dict(minimize_kwargs=minimize_kwargs),
+        nonlinearly_update_kwargs=dict(
+            minimize=jft.optimize._newton_cg, minimize_kwargs=minimize_kwargs
+        ),
         kl_kwargs=dict(
             minimize=jft.optimize._newton_cg, minimize_kwargs=dict(name="M", maxiter=0)
         ),
@@ -236,6 +242,7 @@ def test_optimize_kl_sample_consistency(
         pos,
         samples_opt.keys[0],
         point_estimates=point_estimates,
+        minimize=jft.optimize._newton_cg,
         minimize_kwargs=minimize_kwargs,
         **draw_linear_kwargs,
     )
@@ -263,7 +270,9 @@ def test_optimize_kl_constants(seed, shape, lh_init):
     absdelta = delta * jft.size(pos)
 
     draw_linear_kwargs = dict(
-        cg_name="SL", cg_kwargs=dict(miniter=2, absdelta=absdelta / 10.0, maxiter=100)
+        cg=jft.conjugate_gradient.cg,
+        cg_name="SL",
+        cg_kwargs=dict(miniter=2, absdelta=absdelta / 10.0, maxiter=100),
     )
     minimize_kwargs = dict(
         name="SN", xtol=delta, cg_kwargs=dict(name=None, miniter=2), maxiter=5
@@ -286,8 +295,12 @@ def test_optimize_kl_constants(seed, shape, lh_init):
         n_samples=1,
         constants=constants,
         draw_linear_kwargs=draw_linear_kwargs,
-        nonlinearly_update_kwargs=dict(minimize_kwargs=minimize_kwargs),
-        kl_kwargs=dict(minimize_kwargs=dict(name="M", maxiter=5)),
+        nonlinearly_update_kwargs=dict(
+            minimize=jft.optimize._newton_cg, minimize_kwargs=minimize_kwargs
+        ),
+        kl_kwargs=dict(
+            minimize=jft.optimize._newton_cg, minimize_kwargs=dict(name="M", maxiter=5)
+        ),
         sample_mode="linear_resample",
         kl_jit=False,
         residual_jit=False,
@@ -351,7 +364,9 @@ def test_optimize_kl_device_consistency(
     absdelta = delta * jft.size(pos)
 
     draw_linear_kwargs = dict(
-        cg_name="SL", cg_kwargs=dict(miniter=2, absdelta=absdelta / 10.0, maxiter=10)
+        cg=jft.conjugate_gradient.cg,
+        cg_name="SL",
+        cg_kwargs=dict(miniter=2, absdelta=absdelta / 10.0, maxiter=10),
     )
     minimize_kwargs = dict(
         name="SN", xtol=delta, cg_kwargs=dict(name=None, miniter=2), maxiter=5
