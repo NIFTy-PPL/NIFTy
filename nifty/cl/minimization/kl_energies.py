@@ -21,7 +21,6 @@ from functools import reduce
 import numpy as np
 
 from .. import random, utilities
-from ..any_array import _make_scalar_if_scalar
 from ..linearization import Linearization
 from ..multi_domain import MultiDomain
 from ..multi_field import MultiField
@@ -322,7 +321,7 @@ class SampledKLEnergyClass(Energy):
         def _func(inp):
             inp, tmp = _reduce_by_keys(inp, hamiltonian, constants)
             tmp = tmp(Linearization.make_var(inp))
-            return _make_scalar_if_scalar(tmp.val.val.val), tmp.gradient
+            return tmp.val.val.val, tmp.gradient
 
         self._val, self._grad = sample_list._average_2tuple(_func)
         if np.isnan(self._val) and self._nanisinf:

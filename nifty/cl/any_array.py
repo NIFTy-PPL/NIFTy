@@ -35,15 +35,6 @@ if device_available():
 ALLOWED_WRAPPEES = tuple(ALLOWED_WRAPPEES)
 
 
-def _make_scalar_if_scalar(a):
-    if a.shape == tuple():
-        if device_available() and isinstance(a, cupy.ndarray):
-            return cupy.asnumpy(a)[()]
-        else:
-            return a[()]
-    return a
-
-
 @contextlib.contextmanager
 def assert_no_device_copies():
     from ..config import update
@@ -82,15 +73,11 @@ class AnyArray(np.lib.mixins.NDArrayOperatorsMixin):
     """
 
     # ---Constructors---
-    def __new__(cls, obj=None, *args, **kwargs):
-        # TODO: Do we still need this one?
-        assert not isinstance(obj, AnyArray)
-        return super().__new__(cls)
-
     def __init__(self, arr):
         assert not isinstance(arr, AnyArray)
         assert not np.isscalar(arr)
-        if isinstance(arr, np.ndarray):
+        isnumpy = isinstance(arr, np.ndarray)
+        if isnumpy:
             self._device_id = -1
         elif isinstance(arr, cupy.ndarray):
             self._device_id = arr.device.id
@@ -99,9 +86,8 @@ class AnyArray(np.lib.mixins.NDArrayOperatorsMixin):
         self._val = arr
         self._shape = arr.shape
         self._strides = arr.strides
-        if self._val.shape == tuple():
-            assert not isinstance(self._val[()], AnyArray)
         self._writeable = True
+        self._lockable = isnumpy
         if (
             _config["fail_on_nontrivial_anyarray_creation_on_host"]
             and (self._device_id == -1)
@@ -111,7 +97,6 @@ class AnyArray(np.lib.mixins.NDArrayOperatorsMixin):
                 "forbidden AnyArray creation on host: "
                 f"shape {self._shape}, device_id {self._device_id}"
             )
-        assert not np.isscalar(self._val)
 
     @staticmethod
     def full(shape, val, device_id=-1):
@@ -181,7 +166,7 @@ class AnyArray(np.lib.mixins.NDArrayOperatorsMixin):
         >>> arr[0] = 10  # Raises ValueError
 
         """
-        if isinstance(self, np.ndarray):
+        if self._lockable:
             self._val.flags.writeable = False
         # TODO: Set writable to False for cupy arrays as well, as soon as
         # https://github.com/cupy/cupy/issues/2616 is resolved
@@ -259,7 +244,7 @@ class AnyArray(np.lib.mixins.NDArrayOperatorsMixin):
         -1  # Now on CPU again
 
         """
-        myassert(isinstance(device_id, int))
+        assert isinstance(device_id, int)
         origin, target = self._device_id, device_id
         if origin != target:
             s = f"AnyArray copy {self._device_id} -> {device_id}: shape {self._shape}"
@@ -552,14 +537,13 @@ class AnyArray(np.lib.mixins.NDArrayOperatorsMixin):
 
     # ---Operations---
     def norm(self, ord=2):
-        res = np.linalg.norm(self._val.reshape(-1), ord=ord)
-        return _make_scalar_if_scalar(res)
+        return np.linalg.norm(self._val.reshape(-1), ord=ord)
 
     def vdot(self, x):
         x = x.at(self.device_id)
         if self._device_id == -1:
             return cpu_vdot(self._val, x._val)
-        return _make_scalar_if_scalar(cupy.vdot(self._val, x._val))
+        return cupy.vdot(self._val, x._val)
 
     @property
     def T(self):
@@ -691,8 +675,6 @@ for op in ["sum", "prod", "mean", "var", "std", "all", "any", "min", "max",
     def func(op):
         def func2(self, *args, **kwargs):
             res = getattr(self._val, op)(*args, **kwargs)
-            # Convention: simple types (float, int, complex, ...) are always on the host
-            res = _make_scalar_if_scalar(res)
             return res if np.isscalar(res) else AnyArray(res)
         return func2
     setattr(AnyArray, op, func(op))
