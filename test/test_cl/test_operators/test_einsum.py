@@ -107,7 +107,7 @@ class _SwitchSpacesOperator(ift.LinearOperator):
         args = self._axes_dom, self._axes_tgt
         if mode == self.ADJOINT_TIMES:
             args = args[::-1]
-        return ift.Field(self._tgt(mode), np.moveaxis(x.asnumpy(), *args))
+        return ift.Field.from_raw(self._tgt(mode), np.moveaxis(x.asnumpy(), *args))
 
 
 def test_linear_einsum_transpose(space1, space2, dtype, n_invocations=10):

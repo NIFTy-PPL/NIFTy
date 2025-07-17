@@ -103,7 +103,7 @@ def test_inverse_gamma(field):
     field = field.ptw("exp")
     space = field.domain
     d = ift.random.current_rng().normal(10, size=space.shape)**2
-    d = ift.Field(space, d)
+    d = ift.makeField(space, d)
     energy = ift.InverseGammaEnergy(d)
     ift.extra.check_operator(energy, field, tol=1e-10)
 
@@ -114,7 +114,7 @@ def testPoissonian(field):
     field = field.ptw("exp")
     space = field.domain
     d = ift.random.current_rng().poisson(120, size=space.shape)
-    d = ift.Field(space, d)
+    d = ift.makeField(space, d)
     energy = ift.PoissonianEnergy(d)
     ift.extra.check_operator(energy, field)
 
@@ -125,7 +125,7 @@ def test_bernoulli(field):
     field = field.ptw("sigmoid")
     space = field.domain
     d = ift.random.current_rng().binomial(1, 0.1, size=space.shape)
-    d = ift.Field(space, d)
+    d = ift.makeField(space, d)
     energy = ift.BernoulliEnergy(d)
     ift.extra.check_operator(energy, field, tol=1e-10)
 

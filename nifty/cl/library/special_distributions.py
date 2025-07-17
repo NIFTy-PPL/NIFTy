@@ -106,9 +106,9 @@ class _InterpolationOperator(Operator):
         lin = x.jac is not None
         xval = x.val.raw if lin else x.raw
         res = self._interpolator(xval)
-        res = Field(self._domain, res)
+        res = Field.from_raw(self._domain, res)
         if lin:
-            res = x.new(res, makeOp(Field(self._domain, self._deriv(xval))))
+            res = x.new(res, makeOp(Field.from_raw(self._domain, self._deriv(xval))))
         if self._inv_table_func is not None:
             res = self._inv_table_func(res)
         res = res.at(device_id)  # Temporary
@@ -380,16 +380,17 @@ class LaplaceOperator(Operator):
         self._check_input(x)
         lin = x.jac is not None
         xval = x.val.asnumpy() if lin else x.asnumpy()
-        res = Field(self._target, laplace.ppf(norm._cdf(xval), self._loc, self._scale))
+        res = Field.from_raw(self._target,
+                             laplace.ppf(norm._cdf(xval), self._loc, self._scale))
         res = res.at(x.device_id)
         if not lin:
             return res
         y = norm._cdf(xval)
         y = self._scale * np.where(y > 0.5, 1/(1-y), 1/y)
-        jac = makeOp(Field(self.domain, y*norm._pdf(xval)).at(x.device_id))
+        jac = makeOp(Field.from_raw(self.domain, y*norm._pdf(xval)).at(x.device_id))
         return x.new(res, jac)
 
     def inverse(self, x):
         res = laplace.cdf(x.asnumpy(), self._loc, self._scale)
         res = norm._ppf(res)
-        return Field(x.domain, res).at(x.device_id)
+        return Field.from_raw(x.domain, res).at(x.device_id)

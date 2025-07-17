@@ -20,6 +20,7 @@ import numpy as np
 from scipy.sparse import coo_matrix
 from scipy.special import erfc
 
+from ..any_array import AnyArray
 from ..domain_tuple import DomainTuple
 from ..domains.rg_space import RGSpace
 from ..domains.unstructured_domain import UnstructuredDomain
@@ -250,4 +251,4 @@ class LOSResponse(LinearOperator):
             res = self._sop.matvec(x.reshape(-1))
         else:
             res = self._sop.rmatvec(x).reshape(self.domain[0].shape)
-        return Field(self._tgt(mode), res)
+        return Field(self._tgt(mode), AnyArray(res))

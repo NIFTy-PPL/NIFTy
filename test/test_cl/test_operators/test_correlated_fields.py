@@ -109,9 +109,9 @@ def test_unit_zero_mode(sspace, asperity, flexibility, matern):
     cf = cfm.finalize(prior_info=0)
 
     r = ift.from_random(cf.domain).to_dict()
-    r_xi = np.copy(r["xi"].asnumpy())
+    r_xi = r["xi"].asnumpy_rw()
     r_xi[0] = 1.
-    r["xi"] = ift.Field(r["xi"].domain, r_xi)
+    r["xi"] = ift.makeField(r["xi"].domain, r_xi)
     r = ift.MultiField.from_dict(r)
 
     cf_r = cf(r)

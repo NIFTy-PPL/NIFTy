@@ -264,7 +264,7 @@ class LowerTriangularInserter(LinearOperator):
     def __init__(self, target):
         myassert(len(target.shape) == 2)
         myassert(target.shape[0] == target.shape[1])
-        self._target = makeDomain(target)
+        self._target = DomainTuple.make(target)
         ndof = (target.shape[0]*(target.shape[0]+1))//2
         self._domain = makeDomain(UnstructuredDomain(ndof))
         self._indices = np.tril_indices(target.shape[0])
@@ -278,7 +278,7 @@ class LowerTriangularInserter(LinearOperator):
             res[self._indices] = x
         else:
             res = x[self._indices].reshape(self._domain.shape)
-        return makeField(self._tgt(mode), res)
+        return Field(self._tgt(mode), res)
 
 
 class DiagonalSelector(LinearOperator):
@@ -299,4 +299,4 @@ class DiagonalSelector(LinearOperator):
 
     def apply(self, x, mode):
         self._check_input(x, mode)
-        return makeField(self._tgt(mode), np.diag(x.val))
+        return Field(self._tgt(mode), np.diag(x.val))

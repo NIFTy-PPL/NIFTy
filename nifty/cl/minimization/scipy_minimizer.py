@@ -54,7 +54,7 @@ def _toArray_rw(fld):
 
 def _toField(arr, template):
     if isinstance(template, Field):
-        return Field(template.domain, arr.reshape(template.shape).copy())
+        return Field.from_raw(template.domain, arr.reshape(template.shape).copy())
     ofs = 0
     res = []
     for v in template.values():

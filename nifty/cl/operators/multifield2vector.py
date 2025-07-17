@@ -17,10 +17,12 @@
 
 import numpy as np
 
+from ..any_array import AnyArray
 from ..domain_tuple import DomainTuple
 from ..domains.unstructured_domain import UnstructuredDomain
+from ..field import Field
 from ..multi_domain import MultiDomain
-from ..sugar import makeField
+from ..multi_field import MultiField
 from .linear_operator import LinearOperator
 
 
@@ -56,14 +58,15 @@ class Multifield2Vector(LinearOperator):
                 arr = x.val[key].flatten()
                 res[ii:ii + arr.size] = arr
                 ii += arr.size
+            return Field(self._target, res)
         else:
             res = {}
             for key in self.domain.keys():
                 n = self.domain[key].size
                 shp = self.domain[key].shape
-                res[key] = x.val[ii:ii + n].reshape(shp)
+                res[key] = Field(self.domain[key], x.val[ii:ii + n].reshape(shp))
                 ii += n
-        return makeField(self._tgt(mode), res)
+            return MultiField.from_dict(res)
 
 
 def _unique_dtype(lst):

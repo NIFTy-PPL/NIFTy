@@ -171,7 +171,7 @@ def test_outer():
 def test_sum():
     x1 = ift.RGSpace((9,), distances=2.)
     x2 = ift.RGSpace((2, 12), distances=(0.3,))
-    m1 = ift.Field(ift.makeDomain(x1), np.arange(9))
+    m1 = ift.Field(ift.makeDomain(x1), ift.AnyArray(np.arange(9)))
     m2 = ift.Field.full(ift.makeDomain((x1, x2)), 0.45)
     res1 = m1.s_sum()
     res2 = m2.sum(spaces=1)
@@ -182,7 +182,7 @@ def test_sum():
 def test_integrate():
     x1 = ift.RGSpace((9,), distances=2.)
     x2 = ift.RGSpace((2, 12), distances=(0.3,))
-    m1 = ift.Field(ift.makeDomain(x1), np.arange(9))
+    m1 = ift.makeField(ift.makeDomain(x1), np.arange(9))
     m2 = ift.Field.full(ift.makeDomain((x1, x2)), 0.45)
     res1 = m1.s_integrate()
     res2 = m2.integrate(spaces=1)
@@ -278,7 +278,7 @@ def test_err():
     s2 = ift.RGSpace((11,))
     f1 = ift.Field.full(s1, 27)
     with assert_raises(ValueError):
-        f2 = ift.Field(ift.DomainTuple.make(s2), f1.asnumpy())
+        f2 = ift.Field(ift.DomainTuple.make(s2), f1.val)
     with assert_raises(TypeError):
         f2 = ift.Field.full(s2, "xyz")
     with assert_raises(TypeError):

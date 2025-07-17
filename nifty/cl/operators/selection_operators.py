@@ -198,9 +198,7 @@ class SplitOperator(LinearOperator):
     def apply(self, x, mode):
         self._check_input(x, mode)
         if mode == self.TIMES:
-            res = dict()
-            for k, slc in self._k_slc.items():
-                res[k] = x.val[slc]
+            res = {k: x.raw[slc] for k, slc in self._k_slc.items()}
             return MultiField.from_raw(self.target, res)
 
         refarr = next(iter(x.val.values()))
@@ -209,7 +207,7 @@ class SplitOperator(LinearOperator):
             for k, slc in self._k_slc.items():
                 # Mind the `+` here for coping with intersections
                 res[slc] += x.val[k]
-            return Field.from_raw(self.domain, res)
+            return Field(self.domain, res)
         for k, slc in self._k_slc.items():
             res[slc] = x.val[k]
         return Field.from_raw(self.domain, res)

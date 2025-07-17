@@ -183,13 +183,14 @@ class RGSpace(StructuredDomain):
             distance from center (in the same units as the RGSpace distances),
             and return the kernel amplitude at that distance.
         """
-        from ..operators.harmonic_operators import HarmonicTransformOperator
+        from ..any_array import AnyArray
         from ..field import Field
+        from ..operators.harmonic_operators import HarmonicTransformOperator
         if (not self.harmonic):
             raise NotImplementedError
         op = HarmonicTransformOperator(self, self.get_default_codomain())
         dist = op.target[0]._get_dist_array()
-        kernel = Field(op.target, func(dist.asnumpy()))
+        kernel = Field(op.target, AnyArray(func(dist.asnumpy())))
         kernel = kernel / kernel.s_integrate()
         return op.adjoint_times(kernel.weight(1))
 

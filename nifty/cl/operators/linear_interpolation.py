@@ -22,6 +22,7 @@ from operator import add
 import numpy as np
 from scipy.sparse import coo_matrix
 
+from ..any_array import AnyArray
 from ..domains.rg_space import RGSpace
 from ..domains.unstructured_domain import UnstructuredDomain
 from ..field import Field
@@ -122,4 +123,4 @@ class LinearInterpolator(LinearOperator):
             res = self._sop.matvec(x.reshape(-1))
         else:
             res = self._sop.rmatvec(x).reshape(self.domain.shape)
-        return Field(self._tgt(mode), res)
+        return Field(self._tgt(mode), AnyArray(res))

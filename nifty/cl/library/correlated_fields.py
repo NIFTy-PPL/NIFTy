@@ -114,7 +114,7 @@ class _SlopeRemover(EndomorphicOperator):
             res = x.val_rw()
             sub = (res*self._sc).sum(axis=self._space, keepdims=True)
             res[self._last] = res[self._last] - sub
-        return makeField(self._tgt(mode), res)
+        return Field(self._tgt(mode), res)
 
 
 class _TwoLogIntegrations(LinearOperator):
@@ -160,7 +160,7 @@ class _TwoLogIntegrations(LinearOperator):
             x[from_third] *= (self._log_vol/2.)[extender_sl]
             x[no_border] += x[from_third]
             res[second] += np.cumsum(x[from_third][reverse], axis=axis)[reverse]
-        return makeField(self._tgt(mode), res)
+        return Field(self._tgt(mode), res)
 
 
 class _Normalization(Operator):
@@ -239,7 +239,7 @@ class _Distributor(LinearOperator):
         else:
             res = np.zeros_like(x, shape=self._tgt(mode).shape, dtype=x.dtype)
             np.add.at(res, self._dofdex, x)
-        return makeField(self._tgt(mode), res)
+        return Field(self._tgt(mode), res)
 
 
 class _AmplitudeMatern(Operator):

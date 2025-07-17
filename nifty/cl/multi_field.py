@@ -209,9 +209,21 @@ class MultiField(Operator):
                                                        self._val)}
 
     @staticmethod
-    def from_raw(domain, arr):
+    def from_raw(domain, dct):
+        """Returns a MultiField constructed from `domain` and `dct`.
+
+        Parameters
+        ----------
+        domain : DomainTuple, tuple of Domain, or Domain
+            The domain of the new Field.
+        dct : dict of np.ndarray, cupy.ndarray
+            The data content to be used for the new MultiField.  Its keys must
+            match the keys of `domain` and the shape of its values needs to
+            match the shapes of the domains.
+        """
+        domain = MultiDomain.make(domain)
         return MultiField(
-            domain, tuple(Field.from_raw(domain[key], arr[key])
+            domain, tuple(Field.from_raw(domain[key], dct[key])
                           for key in domain.keys()))
 
     def norm(self, ord=2):

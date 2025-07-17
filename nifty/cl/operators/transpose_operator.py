@@ -17,7 +17,7 @@
 import numpy as np
 
 from ..domain_tuple import DomainTuple
-from ..sugar import makeField
+from ..field import Field
 from ..utilities import myassert
 from .linear_operator import LinearOperator
 
@@ -43,7 +43,7 @@ class TransposeOperator(LinearOperator):
             x = np.transpose(x, self._np_indices)
         else:
             x = np.transpose(x, self._np_indices_inv)
-        return makeField(self._tgt(mode), x)
+        return Field(self._tgt(mode), x)
 
     def __repr__(self):
         return f'Transpose (indices={self._indices})'

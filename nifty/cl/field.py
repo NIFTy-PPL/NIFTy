@@ -51,7 +51,8 @@ class Field(Operator):
     def __init__(self, domain, val):
         if not isinstance(domain, DomainTuple):
             raise TypeError("domain must be of type DomainTuple")
-        val = AnyArray(val)
+        if not isinstance(val, AnyArray):
+            raise TypeError(f"val must be AnyArray, got: {type(val)}")
         val.lock()
         if domain.shape != val.shape:
             raise ValueError(f"shape mismatch between val and domain\n{domain.shape}\n{val.shape}")
@@ -60,7 +61,9 @@ class Field(Operator):
 
     @staticmethod
     def scalar(val, device_id=-1):
-        return Field(Field._scalar_dom, AnyArray(val).at(device_id))
+        assert np.isscalar(val)
+        val = AnyArray(np.array(val))
+        return Field(Field._scalar_dom, val.at(device_id))
 
     # prevent implicit conversion to bool
     def __nonzero__(self):
@@ -100,14 +103,13 @@ class Field(Operator):
         ----------
         domain : DomainTuple, tuple of Domain, or Domain
             The domain of the new Field.
-        arr : AnyArray
+        arr : np.ndarray, cupy.ndarray
             The data content to be used for the new Field.
             Its shape must match the shape of `domain`.
         """
-        domain = DomainTuple.make(domain)
-        if np.isscalar(arr):
-            arr = np.broadcast_to(arr, domain.shape)
-        return Field(domain, AnyArray(arr))
+        from .any_array import ALLOWED_WRAPPEES
+        assert isinstance(arr, ALLOWED_WRAPPEES)
+        return Field(DomainTuple.make(domain), AnyArray(arr))
 
     def cast_domain(self, new_domain):
         """Returns a field with the same data, but a different domain
@@ -319,7 +321,7 @@ class Field(Operator):
         if fct != 1.:
             aout *= fct
 
-        return Field(self._domain, AnyArray(aout).at(self._val.device_id))
+        return Field(self._domain, aout.at(self._val.device_id))
 
     def outer(self, x):
         """Computes the outer product of 'self' with x.
@@ -757,6 +759,9 @@ class Field(Operator):
         f = getattr(self._val, op)
         if isinstance(other, Field):
             utilities.check_object_identity(other._domain, self._domain)
+            # print(f"Binary Op: type(self)={type(self)}, type(other)={type(other)}, "
+            #       f"type(self._val)={type(self._val)}, type(other._val)={type(other._val)}, "
+            #       f"op={op}, f(other.val)={type(f(other._val))}")
             return Field(self._domain, f(other._val))
         if np.isscalar(other):
             return Field(self._domain, f(other))

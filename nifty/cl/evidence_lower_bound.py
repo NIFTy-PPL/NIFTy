@@ -310,6 +310,7 @@ def estimate_evidence_lower_bound(
 
     stats = {"lower_error": tr_log_lat_cov_lower}
     elbo_mean, elbo_var = elbo_samples.sample_stat()
+    elbo_up = elbo_var.sqrt()
     elbo_up = elbo_mean + elbo_var.sqrt()
     elbo_lw = elbo_mean - elbo_var.sqrt() - stats["lower_error"]
     stats["elbo_mean"], stats["elbo_up"], stats["elbo_lw"] = elbo_mean, elbo_up, elbo_lw

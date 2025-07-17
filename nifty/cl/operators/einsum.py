@@ -163,8 +163,8 @@ class MultiLinearEinsum(Operator):
                     _calling_as_lin=True
                 ).ducktape(wrt)
                 jac = jac + jac_k if jac is not None else jac_k
-            return x.new(Field.from_raw(self.target, res), jac)
-        return Field.from_raw(self.target, res)
+            return x.new(Field(self.target, res), jac)
+        return Field(self.target, res)
 
 
 class LinearEinsum(LinearOperator):
@@ -292,4 +292,4 @@ class LinearEinsum(LinearOperator):
             ss, *(mf[k].val for k in self._key_order), x.val,
             **self._ein_kw
         )
-        return Field.from_raw(dom, res)
+        return Field(dom, res)

@@ -165,7 +165,7 @@ def test_complex_sampling():
     e = ift.SampledKLEnergy(pos, ham, 100, None)
 
     ref, tol = 1., 1e-1
-    val = np.std(list(e.samples.iterator(lambda x: x["xi"].val.real[0, 0])))
+    val = np.std(list(e.samples.iterator(lambda x: x["xi"].val.real[0, 0].asnumpy())))
     assert abs(ref-val)/(abs(ref)+abs(val)) < tol
-    val = np.std(list(e.samples.iterator(lambda x: x["xi"].val.imag[0, 0])))
+    val = np.std(list(e.samples.iterator(lambda x: x["xi"].val.imag[0, 0].asnumpy())))
     assert abs(ref-val)/(abs(ref)+abs(val)) < tol

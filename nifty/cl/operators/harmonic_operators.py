@@ -18,6 +18,7 @@
 import numpy as np
 
 from .. import utilities
+from ..any_array import AnyArray
 from ..domain_tuple import DomainTuple
 from ..domains.gl_space import GLSpace
 from ..domains.lm_space import LMSpace
@@ -263,7 +264,7 @@ class SHTOperator(LinearOperator):
         odat = np.empty(tdom.shape, dtype=x.dtype)
         for slice in utilities.get_slice_list(v.shape, axes):
             odat[slice] = func(v[slice])
-        return Field(tdom, odat)
+        return Field(tdom, AnyArray(odat))
 
 
 def _unpickleSHTOperator(*args):

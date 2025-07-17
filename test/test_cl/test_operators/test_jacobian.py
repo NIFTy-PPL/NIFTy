@@ -117,8 +117,6 @@ def testAdder(space, seed, neg):
         f1 = ift.from_random(space, 'normal')
         op = ift.Adder(f1, neg)
         ift.extra.check_operator(op, f, ntries=ntries)
-        op = ift.Adder(f1.asnumpy().ravel()[0], neg=neg, domain=space)
-        ift.extra.check_operator(op, f, ntries=ntries)
 
 
 def testAbs(space, seed):

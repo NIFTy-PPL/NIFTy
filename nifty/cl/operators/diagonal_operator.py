@@ -149,7 +149,8 @@ class DiagonalOperator(EndomorphicOperator):
             res._spaces = None
         else:
             res._spaces = tuple(set(self._spaces) | set(spc))
-        res._ldiag = AnyArray(ldiag)
+        assert isinstance(ldiag, AnyArray)
+        res._ldiag = ldiag
         res._fill_rest()
         return res
 

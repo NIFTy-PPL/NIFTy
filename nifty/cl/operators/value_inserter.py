@@ -57,4 +57,4 @@ class ValueInserter(LinearOperator):
             res[self._index] = x
             return Field(self._tgt(mode), res)
         else:
-            return Field.scalar(x[self._index], x.device_id)
+            return Field(self.domain, x[self._index]).at(x.device_id)

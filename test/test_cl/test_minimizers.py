@@ -137,7 +137,7 @@ def test_rosenbrock(minimizer):
         @property
         def gradient(self):
             inp = self._position.asnumpy_rw()
-            out = ift.Field(space, rosen_der(inp))
+            out = ift.Field(space, ift.AnyArray(rosen_der(inp)))
             return out
 
         @property
@@ -151,9 +151,8 @@ def test_rosenbrock(minimizer):
                 def apply(self, x, mode):
                     self._check_input(x, mode)
                     inp = x.asnumpy_rw()
-                    out = ift.Field(
-                        space, rosen_hess_prod(self._loc.copy(), inp))
-                    return out
+                    out = ift.AnyArray(rosen_hess_prod(self._loc.copy(), inp))
+                    return ift.Field(space, out)
 
             t1 = ift.GradientNormController(
                 tol_abs_gradnorm=1e-5, iteration_limit=1000)

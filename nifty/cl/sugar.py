@@ -374,19 +374,34 @@ def makeField(domain, arr):
     arr : Numpy array if `domain` corresponds to a `DomainTuple`,
           dictionary of Numpy arrays if `domain` corresponds to a `MultiDomain`
 
+    Note
+    ----
+    This function is a convenience function and may not be suited for use in
+    small problems within operators. Construct your Fields and MultiFields via
+    their respective constructors in these cases.
+
     Returns
     -------
     :class:`nifty.cl.field.Field` or:class:`nifty.cl.mulit_field.MultiField`
         The newly created random field
     """
-    if isinstance(domain, (dict, MultiDomain)):
-        if not isinstance(arr, dict):
-            raise TypeError("If `domain` is an instance of `MultiDomain`, `arr` must be a dict of Numpy arrays.")
-        return MultiField.from_raw(domain, arr)
+    domain = makeDomain(domain)
+
+    # MultiField
+    if isinstance(domain, MultiDomain):
+        if not isinstance(arr, dict) or set(arr.keys()) != set(domain.keys()):
+            raise TypeError("If `domain` is an instance of `MultiDomain`, "
+                            "`arr` must be a dict with the same keys")
+        for kk in domain.keys():
+            arr[kk] = makeField(domain[kk], arr[kk])
+        return MultiField.from_dict(arr)
+
+    # Field
     if np.isscalar(arr):
-        domain = makeDomain(domain)
-        arr = np.broadcast_to(arr, domain.shape)
-    return Field.from_raw(domain, arr)
+        return Field.full(domain, arr)
+    if not isinstance(arr, AnyArray):
+        arr = AnyArray(arr)
+    return Field(domain, arr)
 
 
 def makeDomain(domain):

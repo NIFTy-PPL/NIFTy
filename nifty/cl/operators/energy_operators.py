@@ -21,6 +21,7 @@ from operator import add
 import numpy as np
 
 from .. import utilities
+from ..any_array import AnyArray
 from ..domain_tuple import DomainTuple
 from ..field import Field
 from ..linearization import Linearization
@@ -668,7 +669,7 @@ class InverseGammaEnergy(LikelihoodEnergyOperator):
         self._domain = DomainTuple.make(beta.domain)
         self._beta = beta
         if np.isscalar(alpha):
-            alpha = Field(beta.domain, np.full(beta.shape, alpha))
+            alpha = Field(beta.domain, AnyArray(np.full(beta.shape, alpha)))
         elif not isinstance(alpha, Field):
             raise TypeError(f"alpha needs to be a `Field`. Got:\n{alpha}")
         self._alphap1 = alpha+1

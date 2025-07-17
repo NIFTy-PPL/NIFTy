@@ -26,7 +26,7 @@ from ..operators.operator import Operator
 def _field_from_function(domain, func, absolute=False):
     domain = DomainTuple.make(domain)
     k_array = _make_coords(domain, absolute=absolute)
-    return Field(domain, func(k_array))
+    return Field.from_raw(domain, func(k_array))
 
 
 def _make_coords(domain, absolute=False):

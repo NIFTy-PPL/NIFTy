@@ -24,6 +24,7 @@ from ..domain_tuple import DomainTuple
 from ..domains.rg_space import RGSpace
 from ..domains.unstructured_domain import UnstructuredDomain
 from ..ducc_dispatch import nthreads
+from ..field import Field
 from ..operators.linear_operator import LinearOperator
 from ..sugar import makeDomain, makeField
 
@@ -79,7 +80,7 @@ class Gridder(LinearOperator):
             res = dirty2ms(self._uvw, freq, x.asnumpy(), None, dstx, dsty, 0, 0,
                            self._eps, False, nthreads(), 0)
             res = res.reshape((-1,))
-        return makeField(self._tgt(mode), res).at(x.device_id)
+        return Field.from_raw(self._tgt(mode), res).at(x.device_id)
 
 
 class Nufft(LinearOperator):
@@ -129,7 +130,7 @@ class Nufft(LinearOperator):
             res = u2nu(grid=x.asnumpy().astype('complex128'), forward=True, **self._args)
             #if res.ndim == 0:
                 #res = np.array([res])
-        return makeField(self._tgt(mode), res).at(x.device_id)
+        return Field.from_raw(self._tgt(mode), res).at(x.device_id)
 
 
 def FinuFFT(*args, **kwargs):

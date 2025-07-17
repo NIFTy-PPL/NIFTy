@@ -109,7 +109,7 @@ class DOFDistributor(LinearOperator):
         oarr = np.zeros_like(arr, shape=self._hshape, dtype=x.dtype)
         oarr = special_add_at(oarr, 1, self._dofdex, arr)
         oarr = oarr.reshape(self._domain.shape)
-        return Field.from_raw(self._domain, oarr)
+        return Field(self._domain, oarr)
 
     def _times(self, x):
         arr = x.val

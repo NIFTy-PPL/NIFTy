@@ -19,7 +19,6 @@ import numpy as np
 
 from ..domain_tuple import DomainTuple
 from ..domains.unstructured_domain import UnstructuredDomain
-from ..operators.diagonal_operator import DiagonalOperator
 from ..operators.simple_linear_operators import ducktape
 from ..sugar import makeField
 from ..utilities import lognormal_moments, value_reshaper

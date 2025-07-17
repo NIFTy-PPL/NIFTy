@@ -83,21 +83,19 @@ class AnyArray(np.lib.mixins.NDArrayOperatorsMixin):
 
     # ---Constructors---
     def __new__(cls, obj=None, *args, **kwargs):
-        if isinstance(obj, AnyArray):
-            return obj
+        # TODO: Do we still need this one?
+        assert not isinstance(obj, AnyArray)
         return super().__new__(cls)
 
     def __init__(self, arr):
-        if isinstance(arr, AnyArray):
-            return
-        if np.isscalar(arr):
-            arr = np.array(arr)
-        if not isinstance(arr, ALLOWED_WRAPPEES):
-            raise TypeError(f"arr must be in {ALLOWED_WRAPPEES}, got {arr}")
+        assert not isinstance(arr, AnyArray)
+        assert not np.isscalar(arr)
         if isinstance(arr, np.ndarray):
             self._device_id = -1
         elif isinstance(arr, cupy.ndarray):
             self._device_id = arr.device.id
+        else:
+            raise TypeError(f"arr must be in {ALLOWED_WRAPPEES}, got {arr}")
         self._val = arr
         self._shape = arr.shape
         self._strides = arr.strides
@@ -113,6 +111,7 @@ class AnyArray(np.lib.mixins.NDArrayOperatorsMixin):
                 "forbidden AnyArray creation on host: "
                 f"shape {self._shape}, device_id {self._device_id}"
             )
+        assert not np.isscalar(self._val)
 
     @staticmethod
     def full(shape, val, device_id=-1):
@@ -444,7 +443,10 @@ class AnyArray(np.lib.mixins.NDArrayOperatorsMixin):
 
     def __getitem__(self, index):
         index = self._preprocess_index(index)
-        return AnyArray(self._val[index])
+        res = self._val[index]
+        if np.isscalar(res):
+            res = np.array(res)
+        return AnyArray(res)
 
     def __setitem__(self, index, value):
         if self.readonly:
@@ -492,7 +494,10 @@ class AnyArray(np.lib.mixins.NDArrayOperatorsMixin):
         """
         from .pointwise import ptw_dict
         argstmp, kwargstmp = self._prep_args(args, kwargs, self._device_id)
-        return AnyArray(ptw_dict[op][0](self._val, *argstmp, **kwargstmp))
+        tmp = ptw_dict[op][0](self._val, *argstmp, **kwargstmp)
+        if np.isscalar(tmp):  # TODO: TEMPORARY
+            tmp = np.array(tmp)  # TODO: TEMPORARY
+        return AnyArray(tmp)
 
     def ptw_with_deriv(self, op, *args, **kwargs):
         """Performs element-wise operation and derivative simultaneously.
@@ -529,7 +534,12 @@ class AnyArray(np.lib.mixins.NDArrayOperatorsMixin):
         """
         from .pointwise import ptw_dict
         argstmp, kwargstmp = self._prep_args(args, kwargs, self._device_id)
-        return tuple(map(AnyArray, ptw_dict[op][1](self._val, *argstmp, **kwargstmp)))
+        res = ptw_dict[op][1](self._val, *argstmp, **kwargstmp)
+        if np.isscalar(res[0]):  # TODO: TEMPORARY
+            res = list(res)
+            res[0] = np.array(res[0])  # TODO: TEMPORARY
+            res[1] = np.array(res[1])  # TODO: TEMPORARY
+        return tuple(map(AnyArray, res))
 
     # ---Numeric properties---
     @property
@@ -628,7 +638,9 @@ class AnyArray(np.lib.mixins.NDArrayOperatorsMixin):
             warn("Falling back to inefficient way to determine responsibility "
                  "for AnyArray operations. Please report.")
             return NotImplemented
-        # TODO: Add make_scalar_if_scalar here
+        if np.isscalar(obj):
+            obj = np.array(obj)  # TODO: TEMPORARY
+            return AnyArray(obj)
         if out is not None:
             return out
         if isinstance(obj, ALLOWED_WRAPPEES):
@@ -642,8 +654,9 @@ class AnyArray(np.lib.mixins.NDArrayOperatorsMixin):
         if not self._check_responsibility(chain(args, kwargs.values())):
             return NotImplemented
         args2, kwargs2 = self._unify_device_ids_and_get_val(args, kwargs)
-        return self._wrap_result(getattr(ufunc, method)(*args2, **kwargs2),
+        res = self._wrap_result(getattr(ufunc, method)(*args2, **kwargs2),
                                  out=kwargs.get("out", None))
+        return res
 
     def __array_function__(self, func, types, args, kwargs):
         if any(not issubclass(t, AnyArray) for t in types):

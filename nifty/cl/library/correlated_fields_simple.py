@@ -21,6 +21,7 @@ import numpy as np
 from ..any_array import AnyArray
 from ..domain_tuple import DomainTuple
 from ..domains.power_space import PowerSpace
+from ..field import Field
 from ..operators.contraction_operator import ContractionOperator
 from ..operators.distributors import PowerDistributor
 from ..operators.harmonic_operators import HarmonicTransformOperator
@@ -89,16 +90,16 @@ def SimpleCorrelatedField(
 
     if flexibility is not None:
         flex = LognormalTransform(*flexibility, prefix + 'flexibility', 0)
-        dom = twolog.domain[0]
+        dom = DomainTuple.make(twolog.domain[0])
         vflex = AnyArray(np.empty(dom.shape))
         vflex[0] = vflex[1] = np.sqrt(_log_vol(pspace))
-        sig_flex = makeField(dom, vflex) * expander @ flex
+        sig_flex = Field(dom, vflex) * expander @ flex
         xi = ducktape(dom, None, prefix + 'spectrum')
 
         shift = AnyArray(np.empty(dom.shape))
         shift[0] = _log_vol(pspace)**2 / 12.
         shift[1] = 1
-        shift = makeField(dom, shift)
+        shift = Field(dom, shift)
         if asperity is None:
             asp = shift.ptw("sqrt") * xi * sig_flex
         else:

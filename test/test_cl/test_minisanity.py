@@ -84,13 +84,13 @@ def test_minisanity_gaussian(ddtype):
 
     # NOTE: dres.mean is the "average (over samples) averaged (over data
     # space) normalized data residual"
-    assert_allclose(val["data_residuals"]["<None>"]["mean"], dres.mean)
-    assert_allclose(val["data_residuals"]["<None>"]["std"], np.sqrt(dres.var))
-    assert_allclose(val["latent_variables"]["<None>"]["mean"], var.mean)
-    assert_allclose(val["latent_variables"]["<None>"]["std"], np.sqrt(var.var))
+    assert_allclose(val["data_residuals"]["<None>"]["mean"], dres.mean.asnumpy())
+    assert_allclose(val["data_residuals"]["<None>"]["std"], np.sqrt(dres.var).asnumpy())
+    assert_allclose(val["latent_variables"]["<None>"]["mean"], var.mean.asnumpy())
+    assert_allclose(val["latent_variables"]["<None>"]["std"], np.sqrt(var.var).asnumpy())
 
     val = ms["redchisq"]
-    assert_allclose(val["data_residuals"]["<None>"]["mean"], redchisq_d.mean)
-    assert_allclose(val["data_residuals"]["<None>"]["std"], np.sqrt(redchisq_d.var))
-    assert_allclose(val["latent_variables"]["<None>"]["mean"], redchisq_var.mean)
-    assert_allclose(val["latent_variables"]["<None>"]["std"], np.sqrt(redchisq_var.var))
+    assert_allclose(val["data_residuals"]["<None>"]["mean"], redchisq_d.mean.asnumpy())
+    assert_allclose(val["data_residuals"]["<None>"]["std"], np.sqrt(redchisq_d.var).asnumpy())
+    assert_allclose(val["latent_variables"]["<None>"]["mean"], redchisq_var.mean.asnumpy())
+    assert_allclose(val["latent_variables"]["<None>"]["std"], np.sqrt(redchisq_var.var).asnumpy())

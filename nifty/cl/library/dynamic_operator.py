@@ -110,11 +110,11 @@ def _make_dynamic_operator(target, harmonic_padding, sm_s0, sm_x0, cone, keys, c
         elif len(sigc) != len(m.target.shape) - 1:
             raise (ValueError, "Shape mismatch!")
         c = FieldAdapter(UnstructuredDomain(len(sigc)), keys[1])
-        c = makeOp(Field(c.target, np.array(sigc)))(c)
+        c = makeOp(Field.from_raw(c.target, np.array(sigc)))(c)
 
         lightspeed = ScalingOperator(c.target, -0.5)(c).ptw("exp")
         scaling = np.array(m.target[0].distances[1:])/m.target[0].distances[0]
-        scaling = DiagonalOperator(Field(c.target, scaling))
+        scaling = DiagonalOperator(Field.from_raw(c.target, scaling))
         ops['lightspeed'] = scaling(lightspeed)
 
         c = LightConeOperator(c.target, m.target, quant) @ c.ptw("exp")

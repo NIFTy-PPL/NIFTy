@@ -19,7 +19,6 @@ import numpy as np
 
 from ..field import Field
 from ..multi_field import MultiField
-from ..sugar import makeField
 from .operator import Operator
 
 
@@ -28,16 +27,13 @@ class Adder(Operator):
 
     Parameters
     ----------
-    a : :class:`nifty.cl.field.Field` or :class:`nifty.cl.multi_field.MultiField` or Scalar
+    a : :class:`nifty.cl.field.Field` or :class:`nifty.cl.multi_field.MultiField`
         The field by which the input is shifted.
     """
     def __init__(self, a, neg=False, domain=None):
-        if isinstance(a, (Field, MultiField)):
-            self._a = a
-        elif np.isscalar(a):
-            self._a = makeField(domain, a)
-        else:
+        if not isinstance(a, (Field, MultiField)):
             raise TypeError
+        self._a = a
         self._domain = self._target = self._a.domain
         self._neg = bool(neg)
 

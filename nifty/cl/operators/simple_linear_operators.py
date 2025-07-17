@@ -498,11 +498,9 @@ class DomainChangerAndReshaper(LinearOperator):
             raise NotImplementedError("MultiDomains are not supported yet")
 
     def apply(self, x, mode):
-        from ..sugar import makeField
-
         self._check_input(x, mode)
         tgt = self._tgt(mode)
-        return makeField(tgt, x.val.reshape(tgt.shape))
+        return Field(tgt, x.val.reshape(tgt.shape))
 
     def __repr__(self):
         return f"Reshape {self._shapes(self.target)} <- {self._shapes(self.domain)}"
@@ -566,11 +564,10 @@ class ExtractAtIndices(LinearOperator):
                 np.add.at(res, self._inds, x)
             else:
                 # FIXME: Understand how np.add.at works for GPUs, then enable device copy test
-                device_id = x.device_id
                 res, x = res.at(-1), x.at(-1)
                 np.add.at(res, self._inds, x)
-                res = res.at(x.device_id).at(device_id)
-        return Field.from_raw(self._tgt(mode), res)
+                res = res.at(x.device_id)
+        return Field(self._tgt(mode), res)
 
 
 class SqueezeOperator(LinearOperator):
