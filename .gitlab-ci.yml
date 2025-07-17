@@ -6,7 +6,6 @@ variables:
 
 stages:
   - test
-  - release
   - demo_runs
 
 default:
@@ -33,20 +32,6 @@ test_mpi:
     OMPI_MCA_btl_vader_single_copy_mechanism: none
   script:
     - mpirun --allow-run-as-root -np 2 --bind-to none pytest -q test/test_mpi
-
-pages:
-  stage: release
-  script:
-    - pip install .[doc]
-    - git config --global --add safe.directory /builds/ift/nifty
-    - git clean -xfd docs/source
-    - sh docs/generate.sh
-    - mv docs/build/ public/
-  artifacts:
-    paths:
-    - public
-  only:
-  - NIFTy_8
 
 run_ipynb0:
   stage: demo_runs
