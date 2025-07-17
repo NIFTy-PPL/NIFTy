@@ -1,5 +1,14 @@
 # Contributors
 
+## NIFTy9
+
+- Jakob Roth
+- Lukas Scheel-Platz
+- Martin Reinecke
+- Matteo Guardiani
+- [Philipp Arras](https://philipp-arras.de)
+
+
 ## NIFTy8
 
 - Ananya Shankar
