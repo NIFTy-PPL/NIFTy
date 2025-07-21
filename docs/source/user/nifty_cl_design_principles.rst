@@ -37,7 +37,7 @@ Abstract base class
 
 .. currentmodule:: nifty.cl.domains.domain
 
-One of the fundamental building blocks of the NIFTy8 framework is the *domain*.
+One of the fundamental building blocks of the NIFTy framework is the *domain*.
 Its required capabilities are expressed by the abstract :py:class:`Domain` class.
 A domain must be able to answer the following queries:
 
@@ -241,7 +241,7 @@ Linear Operators
 
 .. currentmodule:: nifty.cl.operators
 
-A linear operator (represented by NIFTy8's abstract
+A linear operator (represented by NIFTy's abstract
 :class:`~linear_operator.LinearOperator` class) is derived from
 :class:`~operator.Operator` and can be interpreted as an (implicitly defined)
 matrix. Since its operation is linear, it can provide some additional
@@ -353,7 +353,7 @@ high-dimensional functions, which are often nonlinear.
 Energy functionals
 ------------------
 
-In NIFTy8 such functions are represented by objects of type
+In NIFTy such functions are represented by objects of type
 :class:`~energy.Energy`. These hold the prescription how to calculate the
 function's :attr:`~energy.Energy.value`, :attr:`~energy.Energy.gradient` and
 (optionally) :attr:`~energy.Energy.metric` at any given
@@ -365,7 +365,7 @@ position domain, and metrics are represented by linear operator objects.
 
 Energies are classes that typically have to be provided by the user when
 tackling new IFT problems. An example of concrete energy classes delivered with
-NIFTy8 is :class:`~minimization.quadratic_energy.QuadraticEnergy` (with
+NIFTy is :class:`~minimization.quadratic_energy.QuadraticEnergy` (with
 position-independent metric, mainly used with conjugate gradient minimization).
 
 For MGVI and GeoVI, NIFTy provides
@@ -399,7 +399,7 @@ checking the quality of the current solution estimate and stopping once
 it is sufficiently accurate. In case of numerical problems, the iteration needs
 to be terminated as well, returning a suitable error description.
 
-In NIFTy8, this functionality is encapsulated in the abstract
+In NIFTy, this functionality is encapsulated in the abstract
 :class:`IterationController` class, which is provided with the initial energy
 object before starting the minimization, and is updated with the improved
 energy after every iteration. Based on this information, it can either continue

@@ -45,7 +45,7 @@ Thus, only the gradient of the KL is needed with respect to this, which can be e
 We stochastically estimate the KL-divergence and gradients with a set of samples drawn from the approximate posterior distribution.
 The particular structure of the covariance allows us to draw independent samples solving a certain system of equations.
 This KL-divergence for MGVI is implemented by
-:func:`~nifty.cl.minimization.kl_energies.SampledKLEnergy` within NIFTy8.
+:func:`~nifty.cl.minimization.kl_energies.SampledKLEnergy` within NIFTy.
 
 Note that MGVI typically provides only a lower bound on the variance.
 
@@ -77,7 +77,7 @@ where :math:`\delta` denotes the Kronecker-delta.
 
 GeoVI obtains the optimal expansion point :math:`\bar{\xi}` such that :math:`\mathcal{Q}_{\bar{\xi}}` matches the posterior as good as possible.
 Analogous to the MGVI algorithm, :math:`\bar{\xi}` is obtained by minimization of the KL-divergence between :math:`\mathcal{P}` and :math:`\mathcal{Q}_{\bar{\xi}}` w.r.t. :math:`\bar{\xi}`.
-Furthermore the KL is represented as a stochastic estimate using a set of samples drawn from :math:`\mathcal{Q}_{\bar{\xi}}` which is implemented in NIFTy8 via :func:`~nifty.cl.minimization.kl_energies.SampledKLEnergy` with `minimizer_sampling != None`.
+Furthermore the KL is represented as a stochastic estimate using a set of samples drawn from :math:`\mathcal{Q}_{\bar{\xi}}` which is implemented in NIFTy via :func:`~nifty.cl.minimization.kl_energies.SampledKLEnergy` with `minimizer_sampling != None`.
 
 
 Publications
@@ -88,4 +88,3 @@ If you use MGVI or geoVI, the authors of the respective papers would greatly app
 .. [1] J. Knollmüller, T.A. Enßlin, "Metric Gaussian Variational Inference"; `[arXiv:1901.11033] <https://arxiv.org/abs/1901.11033>`_
 
 .. [2] P. Frank, R. Leike, and T.A. Enßlin (2021), "Geometric Variational Inference"; `[arXiv:2105.10470] <https://arxiv.org/abs/2105.10470>`_ `[doi] <https://doi.org/10.3390/e23070853>`_
-
