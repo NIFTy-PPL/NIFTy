@@ -23,7 +23,7 @@
         req.minimal = with myPyPkgs; [ numpy scipy ducc0 ];
         req.dev = with myPyPkgs; [ pytest pytest-cov pytest-xdist matplotlib ];
         req.mpi = [ myPyPkgs.mpi4py pkgs.openmpi pkgs.openssh ];
-        req.jax = with myPyPkgs; [ jax jaxlib ];
+        # req.jax = with myPyPkgs; [ jax jaxlib ];
         req.rest = with myPyPkgs; [ h5py ];
         req.docs = with myPyPkgs; [
           sphinx
@@ -37,7 +37,7 @@
         req-cuda.minimal = with myPyPkgs-cuda; [ numpy scipy ducc0 cupy pkgs-cuda.cudaPackages.cudatoolkit ];
         req-cuda.dev = with myPyPkgs-cuda; [ pytest pytest-cov pytest-xdist matplotlib ];
         req-cuda.mpi = [ myPyPkgs-cuda.mpi4py pkgs-cuda.openmpi pkgs-cuda.openssh ];
-        req-cuda.jax = with myPyPkgs-cuda; [ jax jaxlib ];
+        # req-cuda.jax = with myPyPkgs-cuda; [ jax jaxlib ];
         req-cuda.rest = with myPyPkgs-cuda; [ h5py ];
         req-cuda.docs = with myPyPkgs-cuda; [
           sphinx
