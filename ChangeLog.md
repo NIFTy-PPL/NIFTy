@@ -15,7 +15,9 @@ Change categories:
 
 - New features
 - Breaking changes
+  - Change name of the logger from `NIFTy8` to `NIFTy`.
 - Changes
+  - Remove remaining mentions of `NIFTy8` in the documentation.
 - Deprecations
 
 
