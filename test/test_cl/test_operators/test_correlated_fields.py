@@ -76,6 +76,7 @@ def test_init(total_N, offset_std, asperity, flexibility, ind, matern):
     if flexibility is None and asperity is not None:
         pytest.skip()
     cfg = 1, 1
+    offset_mean = -99
     for dofdex in ([None], [None, [0]], [None, [0, 0], [0, 1], [1, 1]])[total_N]:
         cfm = ift.CorrelatedFieldMaker('', total_N)
         cfm.add_fluctuations(ift.RGSpace(4), cfg, flexibility, asperity, (-2, 0.1))
@@ -88,8 +89,17 @@ def test_init(total_N, offset_std, asperity, flexibility, ind, matern):
                         cfm.add_fluctuations_matern(ift.RGSpace(4), *(3*[cfg]))
             else:
                 cfm.add_fluctuations(ift.RGSpace(4), *(4*[cfg]), index=ind)
-        cfm.set_amplitude_total_offset(0, offset_std, dofdex=dofdex)
-        cfm.finalize(prior_info=0)
+        cfm.set_amplitude_total_offset(offset_mean, offset_std, dofdex=dofdex)
+        op = cfm.finalize(prior_info=0)
+
+        x = op(ift.from_random(op.domain))
+        if offset_std is None:
+            np.testing.assert_allclose(np.mean(x.val), offset_mean)
+        else:
+            with pytest.raises(AssertionError):
+                np.testing.assert_allclose(np.mean(x.val), offset_mean)
+        with pytest.raises(AssertionError):
+            np.testing.assert_allclose(np.std(x.val), 0)
 
 
 @pmp('sspace', spaces)

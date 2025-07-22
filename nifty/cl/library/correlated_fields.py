@@ -843,7 +843,10 @@ class CorrelatedFieldMaker:
                 raise RuntimeError("Zeromode can not be disabled for product spectra")
             sp = self.fluctuations[0].target
             maskzm = np.ones(self.fluctuations[0].target.shape)
-            maskzm[0] = 0
+            if self._total_N > 0:
+                maskzm[:, 0] = 0
+            else:
+                maskzm[0] = 0
             maskzm = makeField(sp, maskzm)
             a = [maskzm * self.fluctuations[0]]
             return tuple(a)
