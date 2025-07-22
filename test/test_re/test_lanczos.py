@@ -4,6 +4,7 @@
 
 import sys
 from functools import partial
+from operator import matmul
 
 import jax
 import jax.numpy as jnp
@@ -35,9 +36,6 @@ def matern_kernel(distance, scale, cutoff, dof):
     # NOTE, this is not safe for differentiating because `cov` still may
     # contain NaNs
     return jnp.where(distance < 1e-8 * cutoff, scale**2, cov)
-
-
-from operator import matmul
 
 
 @pmp("seed", tuple(range(12, 44, 5)))
