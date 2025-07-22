@@ -197,7 +197,7 @@ class _Normalization(Operator):
 
     def apply(self, x):
         self._check_input(x)
-        spec = x.ptw("exp")
+        spec = x.exp()
         # NOTE, see the note in the doc-string on why this is not a proper
         # normalization!
         # NOTE, this "normalizes" also the zero-mode which is supposed to be
@@ -352,13 +352,13 @@ class _Amplitude(Operator):
         if sig_asp is None and sig_flex is None:
             op = _Normalization(target, space) @ slope
         elif sig_asp is None:
-            sigma = DiagonalOperator(shift.ptw("sqrt"), dom) @ sig_flex
+            sigma = DiagonalOperator(shift.sqrt(), dom) @ sig_flex
             smooth = _SlopeRemover(target, space) @ twolog @ (sigma * xi)
             op = _Normalization(target, space) @ (slope + smooth)
         elif sig_flex is None:
             raise ValueError("flexibility may not be disabled on its own")
         else:
-            sigma = sig_flex * (shift + sig_asp).ptw("sqrt")
+            sigma = sig_flex * (shift + sig_asp).sqrt()
             smooth = _SlopeRemover(target, space) @ twolog @ (sigma * xi)
             op = _Normalization(target, space) @ (slope + smooth)
 
@@ -797,7 +797,7 @@ class CorrelatedFieldMaker:
             for _ in range(prior_info):
                 sc.add(op(from_random(op.domain, 'normal')))
             mean = sc.mean.asnumpy()
-            stddev = sc.var.ptw("sqrt").asnumpy()
+            stddev = sc.var.sqrt().asnumpy()
             for m, s in zip(mean.flatten(), stddev.flatten()):
                 logger.info('{}: {:.02E} ± {:.02E}'.format(kk, m, s))
 
@@ -948,7 +948,7 @@ class CorrelatedFieldMaker:
         from ..sugar import from_random
         scm = 1.
         for a in self._a:
-            op = a.fluctuation_amplitude * self.azm.ptw("reciprocal")
+            op = a.fluctuation_amplitude/self.azm
             res = np.array([op(from_random(op.domain, 'normal')).asnumpy()
                             for _ in range(nsamples)])
             scm *= res**2 + 1.
@@ -963,9 +963,9 @@ class CorrelatedFieldMaker:
             return self.average_fluctuation(0)
         q = 1.
         for a in self._a:
-            fl = a.fluctuation_amplitude*self.azm.ptw("reciprocal")
+            fl = a.fluctuation_amplitude/self.azm
             q = q*(1 + fl**2)
-        return (q - 1).ptw("sqrt")*self.azm
+        return (q - 1).sqrt()*self.azm
 
     def slice_fluctuation(self, space):
         """Returns operator which acts on prior or posterior samples"""
@@ -977,12 +977,12 @@ class CorrelatedFieldMaker:
             return self.average_fluctuation(0)
         q = 1.
         for j in range(len(self._a)):
-            fl = self._a[j].fluctuation_amplitude*self.azm.ptw("reciprocal")
+            fl = self._a[j].fluctuation_amplitude/self.azm
             if j == space:
                 q = q*fl**2
             else:
                 q = q*(1 + fl**2)
-        return q.ptw("sqrt")*self.azm
+        return q.sqrt()*self.azm
 
     def average_fluctuation(self, space):
         """Returns operator which acts on prior or posterior samples"""
