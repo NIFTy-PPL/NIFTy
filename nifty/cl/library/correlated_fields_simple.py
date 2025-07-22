@@ -25,7 +25,7 @@ from ..operators.contraction_operator import ContractionOperator
 from ..operators.distributors import PowerDistributor
 from ..operators.harmonic_operators import HarmonicTransformOperator
 from ..operators.normal_operators import LognormalTransform, NormalTransform
-from ..operators.simple_linear_operators import ducktape
+from ..operators.simple_linear_operators import Variable
 from ..operators.value_inserter import ValueInserter
 from ..sugar import makeField
 from .correlated_fields import (_log_vol, _Normalization,
@@ -93,7 +93,7 @@ def SimpleCorrelatedField(
         vflex = AnyArray(np.empty(dom.shape))
         vflex[0] = vflex[1] = np.sqrt(_log_vol(pspace))
         sig_flex = makeField(dom, vflex) * expander @ flex
-        xi = ducktape(dom, None, prefix + 'spectrum')
+        xi = Variable(dom, prefix + 'spectrum')
 
         shift = AnyArray(np.empty(dom.shape))
         shift[0] = _log_vol(pspace)**2 / 12.
@@ -123,7 +123,7 @@ def SimpleCorrelatedField(
 
     ht = HarmonicTransformOperator(harmonic_partner, target)
     pd = PowerDistributor(harmonic_partner, pspace)
-    xi = ducktape(harmonic_partner, None, prefix + 'xi')
+    xi = Variable(harmonic_partner, prefix + 'xi')
     op = ht(pd(a).real*xi)
     if offset_mean is not None:
         op = float(offset_mean) + op
