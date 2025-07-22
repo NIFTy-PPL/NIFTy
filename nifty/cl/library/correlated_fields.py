@@ -31,7 +31,6 @@ from ..domains.power_space import PowerSpace
 from ..domains.unstructured_domain import UnstructuredDomain
 from ..field import Field
 from ..logger import logger
-from ..multi_field import MultiField
 from ..operators.contraction_operator import ContractionOperator
 from ..operators.diagonal_operator import DiagonalOperator
 from ..operators.distributors import PowerDistributor
@@ -772,13 +771,7 @@ class CorrelatedFieldMaker:
             op = ht((azm * corr).real * xi)
 
         if self._offset_mean is not None:
-            offset = self._offset_mean
-            # Deviations from this offset must not be considered here as they
-            # are learned by the zeromode
-            if isinstance(offset, (Field, MultiField)):
-                op = offset + op
-            else:
-                op = float(offset) + op
+            op = self._offset_mean + op
         return op
 
     def statistics_summary(self, prior_info):
