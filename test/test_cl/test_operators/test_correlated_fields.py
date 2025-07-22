@@ -67,7 +67,7 @@ def testDistributor(dofdex, seed):
 
 
 @pmp('total_N', [0, 1, 2])
-@pmp('offset_std', [None, (1, 1)])
+@pmp('offset_std', [None, 0, 1, 999, (1, 1)])
 @pmp('asperity', [None, (1, 1)])
 @pmp('flexibility', [None, (1, 1)])
 @pmp('ind', [None, 1])
@@ -75,25 +75,34 @@ def testDistributor(dofdex, seed):
 def test_init(total_N, offset_std, asperity, flexibility, ind, matern):
     if flexibility is None and asperity is not None:
         pytest.skip()
+    zm_constant = offset_std in [None, 0]
     cfg = 1, 1
     offset_mean = -99
     for dofdex in ([None], [None, [0]], [None, [0, 0], [0, 1], [1, 1]])[total_N]:
         cfm = ift.CorrelatedFieldMaker('', total_N)
+        nspectra = 0
         cfm.add_fluctuations(ift.RGSpace(4), cfg, flexibility, asperity, (-2, 0.1))
-        if not offset_std is None:
-            if matern:
-                if total_N == 0:
-                    cfm.add_fluctuations_matern(ift.RGSpace(4), *(3*[cfg]))
-                else:
-                    with pytest.raises(NotImplementedError):
-                        cfm.add_fluctuations_matern(ift.RGSpace(4), *(3*[cfg]))
+        nspectra += 1
+        if matern:
+            if total_N == 0:
+                cfm.add_fluctuations_matern(ift.RGSpace(4), *(3*[cfg]))
+                nspectra += 1
             else:
-                cfm.add_fluctuations(ift.RGSpace(4), *(4*[cfg]), index=ind)
+                with pytest.raises(NotImplementedError):
+                    cfm.add_fluctuations_matern(ift.RGSpace(4), *(3*[cfg]))
+                    nspectra += 1
+        else:
+            cfm.add_fluctuations(ift.RGSpace(4), *(4*[cfg]), index=ind)
+            nspectra += 1
         cfm.set_amplitude_total_offset(offset_mean, offset_std, dofdex=dofdex)
-        op = cfm.finalize(prior_info=0)
+        if nspectra > 1 and zm_constant:
+            with pytest.raises(RuntimeError, match="Zeromode can not be disabled for product spectra"):
+                op = cfm.finalize()
+            continue
+        op = cfm.finalize()
 
         x = op(ift.from_random(op.domain))
-        if offset_std is None:
+        if zm_constant:
             np.testing.assert_allclose(np.mean(x.val), offset_mean)
         else:
             with pytest.raises(AssertionError):
