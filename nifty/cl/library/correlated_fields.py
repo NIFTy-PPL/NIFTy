@@ -40,7 +40,7 @@ from ..operators.harmonic_operators import HarmonicTransformOperator
 from ..operators.linear_operator import LinearOperator
 from ..operators.normal_operators import LognormalTransform, NormalTransform
 from ..operators.operator import Operator
-from ..operators.simple_linear_operators import VdotOperator, ducktape
+from ..operators.simple_linear_operators import Variable, VdotOperator
 from ..probing import StatCalculator
 from ..sugar import full, makeDomain, makeField, makeOp
 from ..utilities import myassert
@@ -360,17 +360,16 @@ class _Amplitude(Operator):
         sig_asp = vasp @ expander @ asperity if asperity is not None else None
         sig_fluc = vol1 @ ps_expander @ fluctuations
 
+        xi = Variable(dom, key)
         if sig_asp is None and sig_flex is None:
             op = _Normalization(target, space) @ slope
         elif sig_asp is None:
-            xi = ducktape(dom, None, key)
             sigma = DiagonalOperator(shift.ptw("sqrt"), dom) @ sig_flex
             smooth = _SlopeRemover(target, space) @ twolog @ (sigma * xi)
             op = _Normalization(target, space) @ (slope + smooth)
         elif sig_flex is None:
             raise ValueError("flexibility may not be disabled on its own")
         else:
-            xi = ducktape(dom, None, key)
             sigma = sig_flex * (shift + sig_asp).ptw("sqrt")
             smooth = _SlopeRemover(target, space) @ twolog @ (sigma * xi)
             op = _Normalization(target, space) @ (slope + smooth)
@@ -764,7 +763,7 @@ class CorrelatedFieldMaker:
             pd = PowerDistributor(co.target, pp, amp_space)
             a[ii] = co.adjoint @ pd @ a[ii]
         corr = reduce(mul, a)
-        xi = ducktape(hspace, None, self._prefix + 'xi')
+        xi = Variable(hspace, self._prefix + 'xi')
         if np.isscalar(self.azm):
             op = ht(corr.real * xi)
         else:
