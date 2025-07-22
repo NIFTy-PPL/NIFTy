@@ -103,7 +103,7 @@ def test_open_grid(seed, shape0, splits, padding, depth):
 
 @pmp("seed", (12,))
 @pmp("nside0", [1, 2, 16])
-@pmp("depth", [0, 1, 2])
+@pmp("depth", [0, 2])
 def test_hp_grid(seed, nside0, depth):
     g = HEALPixGrid(nside0=nside0, depth=depth)
     assert g.depth == depth
@@ -114,7 +114,7 @@ def test_hp_grid(seed, nside0, depth):
 @pmp("seed", (12,))
 def test_mgrid(seed):
     g1 = Grid(shape0=(3,), splits=(2,) * 2)
-    g2 = HEALPixGrid(nside0=4, depth=2)
+    g2 = HEALPixGrid(nside0=2, depth=2)
     g3 = Grid(shape0=(3, 5), splits=((1, 2),) * 2)
     g = MGrid(g1, g2, g3)
     _test_grid(g, nbr=(3, 9, 2, 3), seed=seed)

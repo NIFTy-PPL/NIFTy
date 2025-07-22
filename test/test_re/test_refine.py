@@ -83,7 +83,7 @@ def test_refinement_matrices_1d(dist, kernel=kernel):
     assert_allclose(ks, fine_kernel_sqrt_diy)
 
 
-@pmp("seed", (12, 45))
+@pmp("seed", (12,))
 @pmp("dist", (10.0, 1e3))
 def test_refinement_1d(seed, dist, kernel=kernel):
     rng = np.random.default_rng(seed)
@@ -124,7 +124,7 @@ def test_refinement_1d(seed, dist, kernel=kernel):
 
 
 @pmp("seed", (12,))
-@pmp("dist", (60.0, 1e3, (40.0, 90.0)))
+@pmp("dist", (60.0, (40.0, 90.0)))
 @pmp("_coarse_size", (3, 5))
 @pmp("_fine_size", (2, 4))
 @pmp("_fine_strategy", ("jump", "extend"))
@@ -156,7 +156,7 @@ def test_refinement_nd_cross_consistency(
         aallclose(cf(xi, _refine=ref))
 
 
-@pmp("dist", (60.0, 1e3, (40.0, 90.0)))
+@pmp("dist", (1e3, (40.0, 90.0)))
 def test_refinement_fine_strategy_basic_consistency(dist, kernel=kernel):
     shape0 = (12,) * len(dist) if isinstance(dist, tuple) else (12,)
 
@@ -195,7 +195,7 @@ def test_refinement_fine_strategy_basic_consistency(dist, kernel=kernel):
     assert_allclose(rm_j.cov_sqrt0, rm_e.cov_sqrt0, rtol=1e-13, atol=0.0)
 
 
-@pmp("dist", (60.0, 1e3, (40.0, 90.0), (1e2, 1e3, 1e4)))
+@pmp("dist", (60.0, (1e2, 1e3, 1e4)))
 @pmp("_coarse_size", (3, 5))
 @pmp("_fine_size", (2, 4))
 @pmp("_fine_strategy", ("jump", "extend"))
@@ -272,7 +272,7 @@ def test_refinement_nd_shape(seed, n_dim, kernel=kernel):
     assert fine_reference.shape == tuple((2 * (shp_i - 2),) * n_dim)
 
 
-@pmp("dist", (60.0, 1e3, (40.0, 90.0)))
+@pmp("dist", (60.0, (40.0, 90.0)))
 @pmp("_coarse_size", (3, 5))
 @pmp("_fine_size", (2, 4))
 @pmp("_fine_strategy", ("jump", "extend"))

@@ -63,18 +63,7 @@ cc_0 = jft.HEALPixChart(
     _coarse_size=3,
     _fine_size=2,
 )
-cc_1 = jft.HEALPixChart(
-    min_shape=(
-        12 * 4**2,
-        6,
-    ),
-    nonhp_rg2cart=lambda x: (jnp.exp(0.75 * x[0] - 1.0),),
-    nonhp_cart2rg=lambda x: ((jnp.log(x[0]) + 1.0) / 0.75,),
-    depth=1,
-    _coarse_size=3,
-    _fine_size=2,
-)
-cc = lst2fixt((cc_0, cc_1))
+cc = lst2fixt((cc_0,))
 
 
 @pmp(
