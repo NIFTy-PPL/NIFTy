@@ -193,7 +193,7 @@ class _Normalization(Operator):
         zero_mode = (slice(None),)*self._domain.axes[space][0] + (0,)
         mode_multiplicity[zero_mode] = 0
         multipl = makeOp(makeField(self._domain, mode_multiplicity))
-        self._specsum = _SpecialSum(self._domain, space) @ multipl
+        self._specsum = multipl.sum(space).broadcast(space, self._domain[space])
 
     def apply(self, x):
         self._check_input(x)
@@ -206,17 +206,6 @@ class _Normalization(Operator):
         # However, it wrongly sets the zeroth entry of the result. Luckily,
         # in subsequent calls, the zeroth entry is not used in the CF model.
         return (self._specsum(spec).reciprocal()*spec).sqrt()
-
-
-class _SpecialSum(EndomorphicOperator):
-    def __init__(self, domain, space=0):
-        self._domain = makeDomain(domain)
-        self._capability = self.TIMES | self.ADJOINT_TIMES
-        self._contractor = ContractionOperator(domain, space)
-
-    def apply(self, x, mode):
-        self._check_input(x, mode)
-        return self._contractor.adjoint(self._contractor(x))
 
 
 class _Distributor(LinearOperator):
@@ -851,17 +840,10 @@ class CorrelatedFieldMaker:
             a_pp = amp.target[a_space]
             myassert(isinstance(a_pp, PowerSpace))
 
-            azm_expander = ContractionOperator(
-                a_target, spaces=a_space
-            ).adjoint
             zm_unmask, zm_mask = [np.zeros(a_pp.shape) for _ in range(2)]
             zm_mask[1:] = zm_unmask[0] = 1.
-            zm_mask = DiagonalOperator(
-                makeField(a_pp, zm_mask), a_target, a_space
-            )
-            zm_unmask = DiagonalOperator(
-                makeField(a_pp, zm_unmask), a_target, a_space
-            )
+            zm_mask = DiagonalOperator(makeField(a_pp, zm_mask), a_target, a_space)
+            zm_unmask = DiagonalOperator(makeField(a_pp, zm_unmask), a_target, a_space)
             zm_unmask = zm_unmask(full(zm_unmask.domain, 1))
 
             assert a_target[a_space] == a_pp
@@ -888,10 +870,8 @@ class CorrelatedFieldMaker:
         if np.isscalar(self.azm):
             na = normal_amp
         else:
-            expand = ContractionOperator(
-                normal_amp.target, len(normal_amp.target) - 1
-            ).adjoint
-            na = normal_amp * (expand @ self.azm)
+            space = len(normal_amp.target) - 1
+            na = normal_amp * self.azm.broadcast(space, normal_amp.target[space])
         return na
 
     @property
