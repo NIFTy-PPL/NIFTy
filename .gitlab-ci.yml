@@ -35,7 +35,6 @@ test_re:
   artifacts:
     paths:
       - .coverage.re
-  allow_failure: true
 
 test_cl_mpi:
   stage: test
