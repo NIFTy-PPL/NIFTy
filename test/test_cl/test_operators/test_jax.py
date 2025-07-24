@@ -119,8 +119,8 @@ def test_jax_errors():
 def test_jax_complex():
     pytest.importorskip("jax")
     dom = ift.UnstructuredDomain(1)
-    a = ift.ducktape(dom, None, "a")
-    b = ift.ducktape(dom, None, "b")
+    a = ift.Variable(dom, "a")
+    b = ift.Variable(dom, "b")
     op = a.real+1j*b.real
     op1 = ift.JaxOperator(op.domain, op.target, lambda x: x["a"] + 1j*x["b"])
     _op_equal(op, op1, ift.from_random(op.domain))

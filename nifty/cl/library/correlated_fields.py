@@ -31,7 +31,6 @@ from ..domains.power_space import PowerSpace
 from ..domains.unstructured_domain import UnstructuredDomain
 from ..field import Field
 from ..logger import logger
-from ..multi_field import MultiField
 from ..operators.contraction_operator import ContractionOperator
 from ..operators.diagonal_operator import DiagonalOperator
 from ..operators.distributors import PowerDistributor
@@ -40,7 +39,7 @@ from ..operators.harmonic_operators import HarmonicTransformOperator
 from ..operators.linear_operator import LinearOperator
 from ..operators.normal_operators import LognormalTransform, NormalTransform
 from ..operators.operator import Operator
-from ..operators.simple_linear_operators import VdotOperator, ducktape
+from ..operators.simple_linear_operators import Variable, VdotOperator
 from ..probing import StatCalculator
 from ..sugar import full, makeDomain, makeField, makeOp
 from ..utilities import myassert
@@ -194,11 +193,11 @@ class _Normalization(Operator):
         zero_mode = (slice(None),)*self._domain.axes[space][0] + (0,)
         mode_multiplicity[zero_mode] = 0
         multipl = makeOp(makeField(self._domain, mode_multiplicity))
-        self._specsum = _SpecialSum(self._domain, space) @ multipl
+        self._specsum = multipl.sum(space).broadcast(space, self._domain[space])
 
     def apply(self, x):
         self._check_input(x)
-        spec = x.ptw("exp")
+        spec = x.exp()
         # NOTE, see the note in the doc-string on why this is not a proper
         # normalization!
         # NOTE, this "normalizes" also the zero-mode which is supposed to be
@@ -207,17 +206,6 @@ class _Normalization(Operator):
         # However, it wrongly sets the zeroth entry of the result. Luckily,
         # in subsequent calls, the zeroth entry is not used in the CF model.
         return (self._specsum(spec).reciprocal()*spec).sqrt()
-
-
-class _SpecialSum(EndomorphicOperator):
-    def __init__(self, domain, space=0):
-        self._domain = makeDomain(domain)
-        self._capability = self.TIMES | self.ADJOINT_TIMES
-        self._contractor = ContractionOperator(domain, space)
-
-    def apply(self, x, mode):
-        self._check_input(x, mode)
-        return self._contractor.adjoint(self._contractor(x))
 
 
 class _Distributor(LinearOperator):
@@ -360,18 +348,17 @@ class _Amplitude(Operator):
         sig_asp = vasp @ expander @ asperity if asperity is not None else None
         sig_fluc = vol1 @ ps_expander @ fluctuations
 
+        xi = Variable(dom, key)
         if sig_asp is None and sig_flex is None:
             op = _Normalization(target, space) @ slope
         elif sig_asp is None:
-            xi = ducktape(dom, None, key)
-            sigma = DiagonalOperator(shift.ptw("sqrt"), dom) @ sig_flex
+            sigma = DiagonalOperator(shift.sqrt(), dom) @ sig_flex
             smooth = _SlopeRemover(target, space) @ twolog @ (sigma * xi)
             op = _Normalization(target, space) @ (slope + smooth)
         elif sig_flex is None:
             raise ValueError("flexibility may not be disabled on its own")
         else:
-            xi = ducktape(dom, None, key)
-            sigma = sig_flex * (shift + sig_asp).ptw("sqrt")
+            sigma = sig_flex * (shift + sig_asp).sqrt()
             smooth = _SlopeRemover(target, space) @ twolog @ (sigma * xi)
             op = _Normalization(target, space) @ (slope + smooth)
 
@@ -764,7 +751,7 @@ class CorrelatedFieldMaker:
             pd = PowerDistributor(co.target, pp, amp_space)
             a[ii] = co.adjoint @ pd @ a[ii]
         corr = reduce(mul, a)
-        xi = ducktape(hspace, None, self._prefix + 'xi')
+        xi = Variable(hspace, self._prefix + 'xi')
         if np.isscalar(self.azm):
             op = ht(corr.real * xi)
         else:
@@ -773,13 +760,7 @@ class CorrelatedFieldMaker:
             op = ht((azm * corr).real * xi)
 
         if self._offset_mean is not None:
-            offset = self._offset_mean
-            # Deviations from this offset must not be considered here as they
-            # are learned by the zeromode
-            if isinstance(offset, (Field, MultiField)):
-                op = offset + op
-            else:
-                op = float(offset) + op
+            op = self._offset_mean + op
         return op
 
     def statistics_summary(self, prior_info):
@@ -816,7 +797,7 @@ class CorrelatedFieldMaker:
             for _ in range(prior_info):
                 sc.add(op(from_random(op.domain, 'normal')))
             mean = sc.mean.asnumpy()
-            stddev = sc.var.ptw("sqrt").asnumpy()
+            stddev = sc.var.sqrt().asnumpy()
             for m, s in zip(mean.flatten(), stddev.flatten()):
                 logger.info('{}: {:.02E} ± {:.02E}'.format(kk, m, s))
 
@@ -859,17 +840,10 @@ class CorrelatedFieldMaker:
             a_pp = amp.target[a_space]
             myassert(isinstance(a_pp, PowerSpace))
 
-            azm_expander = ContractionOperator(
-                a_target, spaces=a_space
-            ).adjoint
             zm_unmask, zm_mask = [np.zeros(a_pp.shape) for _ in range(2)]
             zm_mask[1:] = zm_unmask[0] = 1.
-            zm_mask = DiagonalOperator(
-                makeField(a_pp, zm_mask), a_target, a_space
-            )
-            zm_unmask = DiagonalOperator(
-                makeField(a_pp, zm_unmask), a_target, a_space
-            )
+            zm_mask = DiagonalOperator(makeField(a_pp, zm_mask), a_target, a_space)
+            zm_unmask = DiagonalOperator(makeField(a_pp, zm_unmask), a_target, a_space)
             zm_unmask = zm_unmask(full(zm_unmask.domain, 1))
 
             assert a_target[a_space] == a_pp
@@ -896,10 +870,8 @@ class CorrelatedFieldMaker:
         if np.isscalar(self.azm):
             na = normal_amp
         else:
-            expand = ContractionOperator(
-                normal_amp.target, len(normal_amp.target) - 1
-            ).adjoint
-            na = normal_amp * (expand @ self.azm)
+            space = len(normal_amp.target) - 1
+            na = normal_amp * self.azm.broadcast(space, normal_amp.target[space])
         return na
 
     @property
@@ -976,7 +948,7 @@ class CorrelatedFieldMaker:
         from ..sugar import from_random
         scm = 1.
         for a in self._a:
-            op = a.fluctuation_amplitude * self.azm.ptw("reciprocal")
+            op = a.fluctuation_amplitude/self.azm
             res = np.array([op(from_random(op.domain, 'normal')).asnumpy()
                             for _ in range(nsamples)])
             scm *= res**2 + 1.
@@ -991,9 +963,9 @@ class CorrelatedFieldMaker:
             return self.average_fluctuation(0)
         q = 1.
         for a in self._a:
-            fl = a.fluctuation_amplitude*self.azm.ptw("reciprocal")
+            fl = a.fluctuation_amplitude/self.azm
             q = q*(1 + fl**2)
-        return (q - 1).ptw("sqrt")*self.azm
+        return (q - 1).sqrt()*self.azm
 
     def slice_fluctuation(self, space):
         """Returns operator which acts on prior or posterior samples"""
@@ -1005,12 +977,12 @@ class CorrelatedFieldMaker:
             return self.average_fluctuation(0)
         q = 1.
         for j in range(len(self._a)):
-            fl = self._a[j].fluctuation_amplitude*self.azm.ptw("reciprocal")
+            fl = self._a[j].fluctuation_amplitude/self.azm
             if j == space:
                 q = q*fl**2
             else:
                 q = q*(1 + fl**2)
-        return q.ptw("sqrt")*self.azm
+        return q.sqrt()*self.azm
 
     def average_fluctuation(self, space):
         """Returns operator which acts on prior or posterior samples"""

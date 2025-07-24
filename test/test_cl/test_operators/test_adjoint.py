@@ -283,12 +283,6 @@ def testTwoLogIntegrations(sp):
     ift.extra.check_linear_operator(op)
 
 
-@pmp('sp', _h_spaces + _p_spaces + _pow_spaces)
-def testSpecialSum(sp):
-    op = ift.library.correlated_fields._SpecialSum(sp)
-    ift.extra.check_linear_operator(op)
-
-
 @pmp('dofdex', [(0,), (1,), (0, 1), (1, 0)])
 def testCorFldDistr(dofdex):
     tgt = ift.UnstructuredDomain(len(dofdex))

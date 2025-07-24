@@ -49,7 +49,7 @@ def test_kl(constants, point_estimates, mirror_samples, mf, geo, nsamps):
     dom = ift.RGSpace((12,), (2.12))
     op = ift.HarmonicSmoothingOperator(dom, 3)
     if mf:
-        op = ift.ducktape(dom, None, 'a')*(op.ducktape('b'))
+        op = ift.Variable(dom, 'a')*(op.ducktape('b'))
     lh = ift.GaussianEnergy(domain=op.target, sampling_dtype=np.float64) @ op
     ic = ift.GradientNormController(iteration_limit=5)
     ic2 = ift.GradientNormController(iteration_limit=5)
