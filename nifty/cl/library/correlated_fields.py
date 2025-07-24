@@ -680,11 +680,10 @@ class CorrelatedFieldMaker:
                 :class:`~nifty.cl.operators.operator.Operator` acting on scalar \
                 domain, scalar or None
             Mean standard deviation and standard deviation of the standard
-            deviation of the offset. No, this is not a word duplication.
-            The option to specify `None` or equivalently a scalar value of `1.`
-            only really makes sense for one dimensional amplitude spectral.
-            Take special care if using this option for multi-dimensional
-            amplitude spectra that this is really what you want.
+            deviation of the offset. No, this is not a word duplication. The
+            option to specify `None` only really makes sense for single
+            amplitude spectra. Take special care if using this option for
+            product amplitude spectra that this is really what you want.
         dofdex : np.array of integers, optional
             An integer array specifying the zero mode models used if
             total_N > 1. It needs to have length of total_N. If total_N=3 and
@@ -700,8 +699,8 @@ class CorrelatedFieldMaker:
         self._offset_mean = offset_mean
         if offset_std is None:
             self._azm = 0.
-        elif np.isscalar(offset_std) and offset_std == 1.:
-            self._azm = 1.
+        elif np.isscalar(offset_std):
+            self._azm = offset_std
         elif isinstance(offset_std, Operator):
             self._azm = offset_std
         else:
@@ -843,7 +842,10 @@ class CorrelatedFieldMaker:
                 raise RuntimeError("Zeromode can not be disabled for product spectra")
             sp = self.fluctuations[0].target
             maskzm = np.ones(self.fluctuations[0].target.shape)
-            maskzm[0] = 0
+            if self._total_N > 0:
+                maskzm[:, 0] = 0
+            else:
+                maskzm[0] = 0
             maskzm = makeField(sp, maskzm)
             a = [maskzm * self.fluctuations[0]]
             return tuple(a)
@@ -870,10 +872,15 @@ class CorrelatedFieldMaker:
             )
             zm_unmask = zm_unmask(full(zm_unmask.domain, 1))
 
-            zm_normalization = zm_unmask + (
-                zm_mask @ azm_expander(self.azm.ptw("reciprocal"))
-            )
-            na = zm_normalization * amp
+            assert a_target[a_space] == a_pp
+            if np.isscalar(self.azm) and self._total_N == 0:
+                azm = Field.scalar(self.azm)
+            elif np.isscalar(self.azm) and self._total_N > 0:
+                azm = Field.full(amp.target[0], self.azm)
+            else:
+                azm = self.azm
+            na = azm.reciprocal().broadcast(a_space, a_pp)
+            na = amp * (zm_mask(na) + zm_unmask)
             normal_amp.append(na)
         return tuple(normal_amp)
 
