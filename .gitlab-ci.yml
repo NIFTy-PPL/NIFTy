@@ -19,20 +19,25 @@ test_serial_cl:
   tags:
     - docker
   script:
-    - pytest -n auto -q --cov=nifty test/test_cl
-    - >
-      coverage report --omit "*plot*" | tee coverage.txt
-  coverage: '/(?i)total.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)$/'
+    - pytest -n auto -q --cov=nifty.cl test/test_cl
+    - mv .coverage .coverage.cl
+  artifacts:
+    paths:
+      - .coverage.cl
 
 test_serial_re:
   stage: test
   tags:
     - docker
   script:
-    - pytest -n auto -q --cov=nifty test/test_re
+    - pytest -n auto -q --cov=nifty.re test/test_re
+    - mv .coverage .coverage.re
+  artifacts:
+    paths:
+      - .coverage.re
   allow_failure: true
 
-test_mpi:
+test_serial_cl_mpi:
   stage: test
   tags:
     - docker
@@ -40,6 +45,26 @@ test_mpi:
     OMPI_MCA_btl_vader_single_copy_mechanism: none
   script:
     - mpirun --allow-run-as-root -np 2 --bind-to none pytest -q test/test_cl/test_mpi
+  artifacts:
+    paths:
+      - .coverage.cl_mpi
+
+merge_coverage:
+  stage: test
+  tags:
+    - docker
+  needs:
+    - job: test_serial_cl
+      artifacts: true
+    - job: test_serial_cl_mpi
+      artifacts: true
+    - job: test_serial_re
+      artifacts: true
+  script:
+    - coverage combine .coverage.cl .coverage.cl_mpi .coverage.re
+    - coverage report --omit "*plot*" | tee coverage.txt
+  coverage: '/(?i)total.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)$/'
+
 
 pages:
   stage: release
