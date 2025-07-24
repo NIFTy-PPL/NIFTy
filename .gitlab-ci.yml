@@ -6,8 +6,8 @@ variables:
 
 stages:
   - test
-  - release
   - demo_runs
+  - release
 
 default:
   before_script:
