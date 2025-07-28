@@ -43,7 +43,7 @@ def SimpleCorrelatedField(
     loglogavgslope,
     prefix="",
     harmonic_partner=None,
-    power_space_model_builder=None
+    power_space_model_builder=None #Quasi Periodic Operator
 ):
     """Simplified version of :class:`~nifty.cl.library.correlated_fields.CorrelatedFieldMaker`.
 
