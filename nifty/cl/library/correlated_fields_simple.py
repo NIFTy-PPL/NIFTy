@@ -43,6 +43,7 @@ def SimpleCorrelatedField(
     loglogavgslope,
     prefix="",
     harmonic_partner=None,
+    power_space_model_builder=None
 ):
     """Simplified version of :class:`~nifty.cl.library.correlated_fields.CorrelatedFieldMaker`.
 
@@ -120,6 +121,9 @@ def SimpleCorrelatedField(
         insert = ValueInserter(pspace, (0,))
         a = a + insert(zm)
     a = a.scale(target.total_volume)
+
+    if power_space_model_builder is not None: #additional power models for detecting periodicity
+        a += power_space_model_builder(pspace)
 
     ht = HarmonicTransformOperator(harmonic_partner, target)
     pd = PowerDistributor(harmonic_partner, pspace)
