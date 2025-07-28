@@ -1,5 +1,0 @@
-include ChangeLog.md
-include demos/cl/*.py
-include demos/re/*.py
-graft tests
-global-exclude *.py[cod]

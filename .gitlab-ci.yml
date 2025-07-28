@@ -19,11 +19,22 @@ test_cl:
   tags:
     - docker
   script:
-    - pytest -n auto -q --cov=nifty.cl test/test_cl
+    - pytest -n auto -q --cov=nifty.cl --import-mode=importlib test/test_cl
     - mv .coverage .coverage.cl
   artifacts:
     paths:
       - .coverage.cl
+
+test_cl_nix:
+  stage: test
+  tags:
+    - docker
+  image: nixos/nix:latest
+  before_script:
+    - ls
+  script:
+    - export NIX_CONFIG="extra-experimental-features = nix-command flakes"
+    - nix build --print-build-logs
 
 test_re:
   stage: test
@@ -43,7 +54,7 @@ test_cl_mpi:
   variables:
     OMPI_MCA_btl_vader_single_copy_mechanism: none
   script:
-    - mpirun --allow-run-as-root -np 2 --bind-to none pytest -q test/test_cl/test_mpi
+    - mpirun --allow-run-as-root -np 2 --bind-to none pytest --import-mode=importlib -q test/test_cl/test_mpi
   artifacts:
     paths:
       - .coverage.cl_mpi

@@ -1,3 +1,5 @@
+from ..cl_cpp import myadd
+
 from .. import config
 from . import random
 

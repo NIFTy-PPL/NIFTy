@@ -51,12 +51,19 @@
         allreqs = pkgs.lib.attrValues req;
         allreqs-cuda = pkgs.lib.attrValues req-cuda;
 
-        nifty = myPyPkgs.buildPythonPackage {
+        nifty = myPyPkgs.buildPythonPackage rec {
           pname = "nifty";
           inherit version;
           src = ./.;
           pyproject = true;
-          build-system = with pkgs.python3.pkgs; [ setuptools ];
+          build-system = with myPyPkgs; [
+            pkgs.cmake
+            nanobind
+            ninja
+            scikit-build-core
+            setuptools-scm
+          ];
+          dontUseCmakeConfigure = true;
           dependencies = req.minimal ++ req.mpi;
           checkInputs = with myPyPkgs; [ pytestCheckHook pytest-xdist ]
             ++ allreqs;
@@ -64,10 +71,11 @@
             rm -r nifty/re
             rm -r test/test_re
           '';
-          postCheck = ''
-            ${
-              pkgs.lib.getExe' pkgs.mpi "mpirun"
-            } -n 2 --bind-to none python3 -m pytest test/test_cl/test_mpi
+          installCheckPhase = ''
+            cd $TMPDIR  # leave source
+            cp -r ${src}/test ${src}/demos .
+            python3 -m pytest -n auto test/test_cl
+            ${pkgs.lib.getExe' pkgs.mpi "mpirun"} -n 2 --bind-to none python3 -m pytest test/test_cl/test_mpi
           '';
           pythonImportsCheck = [ "nifty" ];
         };
