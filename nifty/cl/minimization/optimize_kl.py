@@ -626,14 +626,14 @@ def _plot_minisanity_history(index, minisanity_history):
     idxs = []
 
     n_dr = 0
-    for kk in mhrcs['data_residuals'].keys():
+    for kk in sorted(mhrcs['data_residuals'].keys()):
         labels.append(f'residuals: {n_dr}')
         vals.append(mhrcs['data_residuals'][kk]['mean'])
         idxs.append(mhrcs['data_residuals'][kk]['index'])
         n_dr += 1
 
     n_lv = 0
-    for kk in mhrcs['latent_variables'].keys():
+    for kk in sorted(mhrcs['latent_variables'].keys()):
         labels.append(f'latent: {kk}')
         vals.append(mhrcs['latent_variables'][kk]['mean'])
         idxs.append(mhrcs['latent_variables'][kk]['index'])

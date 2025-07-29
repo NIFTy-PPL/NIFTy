@@ -640,8 +640,8 @@ def minisanity(likelihood_energy, samples, terminal_colors=True, return_values=F
     xdoms = [data_domain, latent_domain]
     xredchisq, xscmean, xndof, xnigndof = [], [], [], []
     for dd in xdoms:
-        xredchisq.append({kk: StatCalculator() for kk in dd.keys()})
-        xscmean.append({kk: StatCalculator() for kk in dd.keys()})
+        xredchisq.append({kk: StatCalculator() for kk in sorted(dd.keys())})
+        xscmean.append({kk: StatCalculator() for kk in sorted(dd.keys())})
         xndof.append({})
         xnigndof.append({})
 
