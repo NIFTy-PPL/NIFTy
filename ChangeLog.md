@@ -23,6 +23,8 @@ Change categories:
   - Minisanity plot: add posterior mean of quantities (additional to reduced chi
     squared)
 - Deprecations
+  - Delete `FinuFFT` interface (has not been active Jun 12, 2022). Use
+    `ift.cl.Nufft` instead.
 
 
 NIFTy 9.1.0 (July 17, 2025)

@@ -130,11 +130,3 @@ class Nufft(LinearOperator):
             #if res.ndim == 0:
                 #res = np.array([res])
         return makeField(self._tgt(mode), res).at(x.device_id)
-
-
-def FinuFFT(*args, **kwargs):
-    from warnings import warn
-
-    warn("This operator has been renamed to Nufft. "
-         "FinuFFT won't be present in the upcoming release.", DeprecationWarning)
-    return Nufft(*args, **kwargs)
