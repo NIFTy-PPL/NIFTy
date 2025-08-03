@@ -28,7 +28,7 @@ from .operators.linear_interpolation import LinearInterpolator
 from .operators.endomorphic_operator import EndomorphicOperator
 from .operators.harmonic_operators import (
     FFTOperator, HartleyOperator, SHTOperator, HarmonicTransformOperator,
-    HarmonicSmoothingOperator)
+    HarmonicSmoothingOperator, FFTShiftOperator)
 from .operators.field_zero_padder import FieldZeroPadder
 from .operators.inversion_enabler import InversionEnabler
 from .operators.mask_operator import MaskOperator

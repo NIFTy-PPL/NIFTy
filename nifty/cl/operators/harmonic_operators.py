@@ -12,6 +12,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Copyright(C) 2013-2019 Max-Planck-Society
+# Copyright(C) 2025 LambdaFields GmbH
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -24,6 +25,7 @@ from ..domains.lm_space import LMSpace
 from ..domains.rg_space import RGSpace
 from ..ducc_dispatch import fftn, hartley, ifftn
 from ..field import Field
+from ..operators.endomorphic_operator import EndomorphicOperator
 from .diagonal_operator import DiagonalOperator
 from .linear_operator import LinearOperator
 from .scaling_operator import ScalingOperator
@@ -370,3 +372,46 @@ def HarmonicSmoothingOperator(domain, sigma, space=None):
     ddom[space] = codomain
     diag = DiagonalOperator(kernel, ddom, space)
     return Hartley.inverse(diag(Hartley))
+
+
+class FFTShiftOperator(EndomorphicOperator):
+    """Applies FFT-compatible shift by approx. half the array size
+
+    This operator wraps `numpy.fft.fftshift` (and `numpy.fft.ifftshift` for the
+    inverse direction).
+
+    Parameters
+    ----------
+    domain : Domain or DomainTuple
+        The domain on which this operator acts.
+    spaces : int or tuple of int, optional
+        Specifies which domain axes the shift should be applied to. If `None`
+        (default), applies to all RGSpace axes. Each entry refers to the
+        space index in the domain tuple, not the raw data axes.
+    """
+    def __init__(self, domain, spaces=None):
+        self._domain = DomainTuple.make(domain)
+        self._capability = self._all_ops
+        self._forward = self.TIMES | self.ADJOINT_INVERSE_TIMES
+        self._axes = []
+        if spaces is None:
+            spaces = tuple(range(len(self._domain)))
+        elif isinstance(spaces, int):
+            spaces = (spaces,)
+        spaces = tuple(spaces)
+        assert max(spaces) < len(self._domain)
+        assert min(spaces) >= -len(self._domain)
+        assert all(map(lambda x: isinstance(x, int), spaces))
+        spaces = tuple(i % len(self._domain) for i in spaces)
+        offset = 0
+        for i, d in enumerate(self._domain):
+            if i in spaces:
+                assert isinstance(self._domain[i], RGSpace)
+                self._axes.extend(range(offset, offset + len(d.shape)))
+            offset += len(d.shape)
+        self._axes = tuple(self._axes)
+
+    def apply(self, x, mode):
+        self._check_input(x, mode)
+        f = np.fft.fftshift if mode & self._forward else np.fft.ifftshift
+        return Field(self._tgt(mode), f(x.val, axes=self._axes))

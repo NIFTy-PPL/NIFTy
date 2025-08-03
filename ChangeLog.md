@@ -14,6 +14,7 @@ Change categories:
 
 
 - New features
+  - Add `FFTShiftOperator` to enable frequency-domain shifting for RGSpaces.
 - Breaking changes
   - Change name of the logger from `NIFTy8` to `NIFTy`.
 - Changes
