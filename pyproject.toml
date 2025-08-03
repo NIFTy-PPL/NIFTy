@@ -44,6 +44,9 @@ cl_gpu = [
     "cupy",
     "pyvkfft"
 ]
+cl_cufinufft = [
+  "cufinufft",
+]
 cl_parallel = [
     "mpi4py",
 ]
@@ -68,7 +71,7 @@ test = [
     "nifty[re]",
     "nifty[cl_util]",
 ]
-all = ["nifty[re,cl_native,cl_parallel,cl_util,test,doc]"]
+all = ["nifty[re,cl_native,cl_parallel,cl_util,cl_finufft,test,doc]"]
 
 [build-system]
 requires = [

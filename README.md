@@ -162,6 +162,7 @@ may choose to install optional dependencies to enable additional features.
   directly in C++ for speed.
 - `cupy`: Enable GPU backend.
 - `pyvkfft`: Use vkFFT instead of cufft.
+- `cufinufft`: Enables nffts on the GPU.
 - `mpi4py`: Parallelize computations via MPI.
 - `astropy`: Save certain outputs as FITS files.
 - `h5py`: Save certain outputs as HDF5 files.

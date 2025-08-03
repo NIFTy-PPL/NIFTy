@@ -87,7 +87,8 @@ def check_linear_operator(op, domain_dtype=np.float64, target_dtype=np.float64,
         raise TypeError('This test tests only linear operators.')
     device_ids = _prepare_device_ids(force_device_ids, _device_ids)
     f = lambda x, y, z: _device_equality_check(x, from_random(y, dtype=z),
-                                               device_ids, assert_fixed_device)
+                                               device_ids, assert_fixed_device,
+                                               atol, rtol)
     f(op, op.domain, domain_dtype)
     f(op.adjoint.inverse, op.domain, domain_dtype)
     f(op.inverse, op.target, target_dtype)
@@ -170,7 +171,7 @@ def check_operator(op, loc, tol=1e-12, ntries=100, perf_check=True,
     if not isinstance(op, Operator):
         raise TypeError('This test tests only (nonlinear) operators.')
     device_ids = _prepare_device_ids(force_device_ids)
-    _device_equality_check(op, loc, device_ids, assert_fixed_device)
+    _device_equality_check(op, loc, device_ids, assert_fixed_device, tol, tol)
     for device_id in device_ids:
         myloc = loc.at(device_id)
         _domain_check_nonlinear(op, loc)
@@ -515,7 +516,7 @@ def _check_likelihood_energy(op, loc):
         raise RuntimeError("`get_transformation` has to return a dtype and the transformation")
 
 
-def _device_equality_check(op, loc, device_ids, assert_fixed_device):
+def _device_equality_check(op, loc, device_ids, assert_fixed_device, atol, rtol):
     if isinstance(op, LinearOperator):
         needed_cap = op.TIMES
         if (op.capability & needed_cap) != needed_cap:
@@ -528,7 +529,7 @@ def _device_equality_check(op, loc, device_ids, assert_fixed_device):
         dev0, dev1 = myloc.device_id, res.device_id
         if ref is None:
             ref = res
-        assert_allclose(ref, res)
+        assert_allclose(ref, res, atol=atol, rtol=rtol)
 
         # Analyze domain and target device
         if not assert_fixed_device:

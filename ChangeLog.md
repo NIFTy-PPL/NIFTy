@@ -14,6 +14,10 @@ Change categories:
 
 
 - New features
+  - Introduce `VariablePositionNufft`, a type-2 NUFFT operator for evaluating
+    signals on a regular grid at arbitrary spatial positions.
+  - Introduce `ShiftedPositionFFT`, an operator to perform FFT-like transforms
+    at frequency-shifted positions via NUFFT.
   - Add `FFTShiftOperator` to enable frequency-domain shifting for RGSpaces.
 - Breaking changes
   - Change name of the logger from `NIFTy8` to `NIFTy`.
