@@ -28,7 +28,7 @@ def discrete_gauss_markov_process(xi: Array, x0: Array, drift: Array, diffamp: A
     matrices, this function produces a series `res` of the form:
 
     .. math::
-        res_{i+1} = drift_i @ res_i + diffamp_i @ xi_i
+        \\mathrm{res}_{i+1} = \\mathrm{drift}_i @ \\mathrm{res}_i + \\mathrm{diffamp}_i @ \\xi_i
 
     which corresponds to a random realization of a GMP in case `xi` is
     standard normal distributed.
@@ -180,9 +180,9 @@ def WienerProcess(
     The WP in continuous time takes the form:
 
     .. math::
-        d/dt x_t = sigma xi_t ,
+        \\frac{d}{dt} x_t = \\sigma \\xi_t ,
 
-    where `xi_t` is continuous time white noise.
+    where :math:`\\xi_t` is continuous time white noise.
 
     Parameters:
     -----------
@@ -205,9 +205,9 @@ def WienerProcess(
 
     Notes:
     ------
-    In case `sigma` is time dependent, i.E. passed on as a sequence
-    of length equal to `xi`, it is assumed to be constant within each timebin,
-    i.E. `sigma_t = sigma_i for t_i <= t < t_{i+1}`.
+    In case :math:`\\sigma` is time dependent, i.E. passed on as a sequence
+    of length equal to :math:`\\xi`, it is assumed to be constant within each timebin,
+    i.E. :math:`\\sigma_t = \\sigma_i` for :math:`t_i <= t < t_{i+1}`.
     """
     if isinstance(x0, tuple):
         x0 = NormalPrior(x0[0], x0[1], name=name + "_x0")
@@ -231,10 +231,12 @@ def IntegratedWienerProcess(
     The generalized IWP in continuous time takes the form:
 
     .. math::
-        d/dt x_t = y_t + sigma * asperity xi^1_t , \\
-        d/dt y_t = sigma * xi^2_t
+        \\begin{align}
+        \\frac{d}{dt} x_t &= y_t + \\sigma * \\mathrm{asperity} * \\xi^1_t , \\\\
+        \\frac{d}{dt} y_t &= \\sigma * \\xi^2_t
+        \\end{align}
 
-    where `xi^i_t` are continuous time white noise processes.
+    where :math:`\\xi^i_t` are continuous time white noise processes.
     This is a standard IWP in x in the case that `asperity` is zero (None). If
     it is non-zero, a WP with relative strength set by `asperity` is added to
     the dynamics of the IWP.
@@ -249,7 +251,7 @@ def IntegratedWienerProcess(
 
     Notes:
     ------
-    `sigma` and `asperity` may also be sequences. See notes on `WienerProcess`
+    :math:`\\sigma` and `asperity` may also be sequences. See notes on `WienerProcess`
     for further information.
     """
     if isinstance(x0, tuple):
@@ -282,12 +284,12 @@ def OrnsteinUhlenbeckProcess(
     The stochastic differential equation of the OUP takes the form:
 
     .. math::
-        d/dt x_t + gamma x_t = sigma xi_t
+        \\frac{d}{dt} x_t + \\gamma x_t = \\sigma \\xi_t
 
-    where `xi_t` is continuous time white noise.
+    where :math:`\\xi_t` is continuous time white noise.
 
     For information on the parameters, please refer to `WienerProcess`. The
-    `gamma` parameter may be defined analogously to `sigma`.
+    :math:`\\gamma` parameter may be defined analogously to :math:`\\sigma`.
     Unlike the WP and IWP, the OUP is a proper process, i.E. allows for a proper
     steady state solution. Therefore, `x0` may not be provided at all, in which
     case it defaults to a random variable drawn from the steady state
