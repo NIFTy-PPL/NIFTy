@@ -232,8 +232,8 @@ def IntegratedWienerProcess(
 
     .. math::
         \\begin{align}
-        \\frac{d}{dt} x_t = y_t + \\sigma * \\mathrm{asperity} * \\xi^1_t , \\\\
-        \\frac{d}{dt} y_t = \\sigma * \\xi^2_t
+        \\frac{d}{dt} x_t &= y_t + \\sigma * \\mathrm{asperity} * \\xi^1_t , \\\\
+        \\frac{d}{dt} y_t &= \\sigma * \\xi^2_t
         \\end{align}
 
     where :math:`\\xi^i_t` are continuous time white noise processes.
