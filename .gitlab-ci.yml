@@ -25,6 +25,19 @@ test_cl:
     paths:
       - .coverage.cl
 
+test_cl_nix:
+  stage: test
+  tags:
+    - docker
+  image: nixos/nix:latest
+  before_script:
+    - ls
+  script:
+    - export NIX_CONFIG="extra-experimental-features = nix-command flakes"
+    - nix build --print-build-logs
+    - nix build --print-build-logs .#docs
+  allow_failure: true
+
 test_re:
   stage: test
   tags:

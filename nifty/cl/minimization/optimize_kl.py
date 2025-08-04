@@ -618,26 +618,56 @@ def _minisanity(likelihood_energy, iglobal, sl, comm, plot_minisanity_history):
 def _plot_minisanity_history(index, minisanity_history):
     import matplotlib.pyplot as plt
     from matplotlib.cm import plasma
+    from matplotlib.ticker import MaxNLocator
 
-    mhrcs = minisanity_history['redchisq']
+    mh = minisanity_history
+    mhkeys = sorted(mh.keys())
 
-    labels = []
-    vals = []
-    idxs = []
+    labels, vals, idxs = {}, {}, {}
 
-    n_dr = 0
-    for kk in mhrcs['data_residuals'].keys():
-        labels.append(f'residuals: {n_dr}')
-        vals.append(mhrcs['data_residuals'][kk]['mean'])
-        idxs.append(mhrcs['data_residuals'][kk]['index'])
-        n_dr += 1
+    cplx_dof = {}
+    for kk, vv in mh["scmean"]['data_residuals'].items():
+        cplx_dof[f"residuals: {kk}"] = np.iscomplexobj(np.array(vv["mean"]))
+    for kk, vv in mh["scmean"]['latent_variables'].items():
+        cplx_dof[f"latent: {kk}"] = np.iscomplexobj(np.array(vv["mean"]))
 
-    n_lv = 0
-    for kk in mhrcs['latent_variables'].keys():
-        labels.append(f'latent: {kk}')
-        vals.append(mhrcs['latent_variables'][kk]['mean'])
-        idxs.append(mhrcs['latent_variables'][kk]['index'])
-        n_lv += 1
+    for dkey in mhkeys:
+        labels[dkey], vals[dkey], idxs[dkey] = [], [], []
+        n_dr = 0
+        for kk in sorted(mh[dkey]['data_residuals'].keys()):
+            vv = np.array(mh[dkey]['data_residuals'][kk]['mean'])
+            ii = np.array(mh[dkey]['data_residuals'][kk]['index'])
+            if cplx_dof[f"residuals: {kk}"]:
+                labels[dkey].append(f'residuals: {n_dr} (real)')
+                vals[dkey].append(vv.real)
+                idxs[dkey].append(ii)
+                labels[dkey].append(f'residuals: {n_dr} (imag)')
+                vals[dkey].append(vv.imag)
+                idxs[dkey].append(ii)
+                n_dr += 2
+            else:
+                labels[dkey].append(f'residuals: {n_dr}')
+                vals[dkey].append(vv)
+                idxs[dkey].append(ii)
+                n_dr += 1
+
+        n_lv = 0
+        for kk in sorted(mh[dkey]['latent_variables'].keys()):
+            vv = np.array(mh[dkey]['latent_variables'][kk]['mean'])
+            ii = np.array(mh[dkey]['latent_variables'][kk]['index'])
+            if cplx_dof[f"latent: {kk}"]:
+                labels[dkey].append(f'latent: {kk} (real)')
+                vals[dkey].append(vv.real)
+                idxs[dkey].append(ii)
+                labels[dkey].append(f'latent: {kk} (imag)')
+                vals[dkey].append(vv.imag)
+                idxs[dkey].append(ii)
+                n_lv += 2
+            else:
+                labels[dkey].append(f'latent: {kk}')
+                vals[dkey].append(vv)
+                idxs[dkey].append(ii)
+                n_lv += 1
 
     n_tot = n_dr + n_lv
 
@@ -649,29 +679,34 @@ def _plot_minisanity_history(index, minisanity_history):
     for ii in range(2, n_tot, 3):
         linestyles[ii] = '--'
 
-    vals = [np.array(v) for v in vals]
-    idxs = [np.array(i) for i in idxs]
-
-    delta_idx = np.max([np.max(i) for i in idxs]) - np.min([np.min(i) for i in idxs])
+    delta_idx = np.max([np.max(i) for i in idxs["redchisq"]]) - np.min([np.min(i) for i in idxs["redchisq"]])
     xsize = max(0.8 + 0.2 * delta_idx, 6.4)
-    plt.figure(figsize=(xsize, 4.8))
+    fig, (ax0, ax1) = plt.subplots(figsize=(xsize, 2*4.8), ncols=1, nrows=2, sharex=True)
 
-    for i in range(n_tot):
-        plt.plot(idxs[i], vals[i], label=labels[i], color=colors[i], marker='.',
-                 linestyle=linestyles[i])
+    for kk, ax in zip(mhkeys, (ax0, ax1)):
+        for i in range(n_tot):
+            label = labels[kk][i] if kk == "redchisq" else None
+            ys = vals[kk][i]
+            ax.plot(idxs[kk][i], ys, label=label,
+                    color=colors[i], marker='.', linestyle=linestyles[i])
 
-    xlim = plt.xlim()
-    plt.hlines(1., xlim[0], xlim[1], linestyle='dashed', color='black', linewidth=2, zorder=-1)
-    plt.xlim(*xlim)
-    plt.yscale('log')
+    xlim = ax0.set_xlim()
+    ax0.hlines(1., xlim[0], xlim[1], linestyle='dashed', color='black', linewidth=2, zorder=-1)
+    ax1.hlines(0, xlim[0], xlim[1], linestyle='dashed', color='black', linewidth=2, zorder=-1)
+    ax0.set_xlim(*xlim)
+    ax0.set_yscale('log')
 
-    plt.title(r'reduced $\chi^2$ values')
-    plt.xlabel('iteration')
-    plt.ylabel(r'red. $\chi^2$')
-    plt.legend(bbox_to_anchor=(1.04, 0.5),
+    ax0.set_title(r'reduced $\chi^2$ values')
+    ax0.set_ylabel(r'red. $\chi^2$')
+    ax1.set_ylabel('mean')
+    fig.legend(bbox_to_anchor=(1.04, 0.5),
                loc='center left',
                borderaxespad=0,
                ncol=int(np.ceil(n_tot / 20)))
+
+    ax1.set_xlabel('Iteration')
+    ax1.xaxis.set_major_locator(MaxNLocator(integer=True))
+
     plt.savefig(join(_output_directory, 'minisanity_history',
                      'minisanity_history_' + _file_name_by_strategy(index) + '.png'),
                 bbox_inches="tight", dpi=250)

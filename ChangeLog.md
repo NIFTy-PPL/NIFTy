@@ -19,6 +19,9 @@ Change categories:
 - Changes
   - Remove remaining mentions of `NIFTy8` in the documentation.
   - Cfm: fix bug for `offset_std=None` and `total_N>0`
+  - Minisanity: keys are now in lexicographic order
+  - Minisanity plot: add posterior mean of quantities (additional to reduced chi
+    squared)
 - Deprecations
 
 
