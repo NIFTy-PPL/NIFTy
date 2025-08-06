@@ -36,12 +36,34 @@ __all__ = ["JaxOperator", "JaxLikelihoodEnergyOperator", "JaxLinearOperator"]
 def _framework2anyarray(obj):
     if isinstance(obj, dict):
         return {kk: _framework2anyarray(vv) for kk, vv in obj.items()}
-    elif device_available():
+
+    device_id = None
+
+    import torch
+    if isinstance(obj, torch.Tensor):
+        if obj.device.type == "cpu":
+            device_id = -1
+        else:
+            device_id = obj.device.index
+
+    if device_id is None:
+        import jax
+        if isinstance(obj, jax.Array):
+            if obj.device.platform == "cpu":
+                device_id = -1
+            else:
+                device_id = obj.device.id
+
+    if device_id is None:
+        raise RuntimeError
+
+    # which device
+    if device_id == -1:
+        return AnyArray(np.array(obj))
+    else:
         import cupy
         cu = cupy.from_dlpack(obj)
         return AnyArray(cu)
-    else:
-        return AnyArray(np.array(obj))
 
 
 def _anyarray2framework(obj, framework):
