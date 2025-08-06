@@ -54,6 +54,7 @@ from .operators.convolution_operators import FuncConvolutionOperator
 from .operators.normal_operators import NormalTransform, LognormalTransform
 from .operators.multifield2vector import Multifield2Vector
 from .operators.jax_operator import *
+from .operators.torch_operator import *
 from .operators.counting_operator import CountingOperator
 from .operators.transpose_operator import TransposeOperator
 

@@ -21,7 +21,7 @@
           let
             pyPkgs = pkgs.python3Packages;
             main = with pyPkgs;
-              [ numpy scipy ducc0 ] ++ (if cudaSupport then [
+              [ numpy scipy ducc0 pytorch ] ++ (if cudaSupport then [
                 cupy
                 pkgs.cudaPackages.cudatoolkit
               ] else
