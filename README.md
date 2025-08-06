@@ -1,3 +1,12 @@
+# TODOs
+- [ ] assert fixed device fixen
+- [ ] tests auf GPU maschine laufen lassen!
+- [ ] gettingstarted3 mit torch und mit jax nonlinearity testen
+- [ ] Neuer Name
+- [ ] Remove TorchOperator
+
+
+
 # NIFTy - Numerical Information Field Theory
 
 [![pipeline status](https://gitlab.mpcdf.mpg.de/ift/nifty/badges/main/pipeline.svg)](https://gitlab.mpcdf.mpg.de/ift/nifty/-/commits/main)
