@@ -21,7 +21,7 @@
           let
             pyPkgs = pkgs.python3Packages;
             main = with pyPkgs;
-              [ numpy scipy ducc0 pytorch ] ++ (if cudaSupport then [
+              [ numpy scipy ducc0 ] ++ (if cudaSupport then [
                 cupy
                 pkgs.cudaPackages.cudatoolkit
               ] else
@@ -36,6 +36,8 @@
               pytest-xdist
               matplotlib
               h5py
+              pytorch
+              jax
             ]);
             docs = [
               pkgs.jupyter # python3Packages.jupyter is broken, see https://github.com/NixOS/nixpkgs/issues/299385

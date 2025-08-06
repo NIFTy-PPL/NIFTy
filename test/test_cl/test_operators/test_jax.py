@@ -37,11 +37,11 @@ def test_jax(dom, func):
     loc = ift.from_random(dom)
     f, linear = func
     res0 = np.array(f(loc.asnumpy()))
-    op = ift.JaxOperator(dom, dom, f)
+    op = ift.JaxOperator(dom, dom, f, "jax")
     np.testing.assert_allclose(res0, op(loc).asnumpy())
     ift.extra.check_operator(op, ift.from_random(op.domain), assert_fixed_device=False)
 
-    op = ift.JaxLinearOperator(dom, dom, f, np.float64)
+    op = ift.JaxLinearOperator(dom, dom, f, framework="jax", domain_dtype=np.float64)
     if linear:
         ift.extra.check_linear_operator(op, assert_fixed_device=False)
     else:
@@ -54,13 +54,13 @@ def test_mf_jax():
     dom = ift.makeDomain({"a": ift.RGSpace(10), "b": ift.UnstructuredDomain(2)})
 
     func = lambda x: x["a"]*x["b"][0]
-    op = ift.JaxOperator(dom, dom["a"], func)
+    op = ift.JaxOperator(dom, dom["a"], func, "jax")
     loc = ift.from_random(op.domain)
     np.testing.assert_allclose(np.array(func(loc.asnumpy())), op(loc).asnumpy())
     ift.extra.check_operator(op, loc, assert_fixed_device=False)
 
     func = lambda x: {"a": jnp.full(dom["a"].shape, 2.)*x[0]*x[1], "b": jnp.full(dom["b"].shape, 1.)*jnp.exp(x[0])}
-    op = ift.JaxOperator(dom["b"], dom, func)
+    op = ift.JaxOperator(dom["b"], dom, func, "jax")
     loc = ift.from_random(op.domain)
     for kk in dom.keys():
         np.testing.assert_allclose(np.array(func(loc.asnumpy())[kk]), op(loc)[kk].asnumpy())
@@ -82,6 +82,7 @@ def test_jax_energy(dom):
         return 0.5*res
     e = ift.JaxLikelihoodEnergyOperator(dom,
             funcmf if isinstance(dom, ift.MultiDomain) else func,
+            "jax",
             transformation=ift.ScalingOperator(dom, 1.),
             sampling_dtype=np.float64)
     ift.extra.check_operator(e, ift.from_random(e.domain))
@@ -101,17 +102,17 @@ def test_jax_errors():
     pytest.importorskip("jax")
     dom = ift.UnstructuredDomain(2)
     mdom = {"a": dom}
-    op = ift.JaxOperator(dom, dom, lambda x: {"a": x})
+    op = ift.JaxOperator(dom, dom, lambda x: {"a": x}, "jax")
     fld = ift.full(dom, 0.)
     with pytest.raises(TypeError):
         op(fld)
-    op = ift.JaxOperator(dom, mdom, lambda x: x)
+    op = ift.JaxOperator(dom, mdom, lambda x: x, "jax")
     with pytest.raises(TypeError):
         op(fld)
-    op = ift.JaxOperator(dom, dom, lambda x: x[0])
+    op = ift.JaxOperator(dom, dom, lambda x: x[0], "jax")
     with pytest.raises(ValueError):
         op(fld)
-    op = ift.JaxOperator(dom, mdom, lambda x: {"a": x[0]})
+    op = ift.JaxOperator(dom, mdom, lambda x: {"a": x[0]}, "jax")
     with pytest.raises(ValueError):
         op(fld)
 
@@ -122,7 +123,7 @@ def test_jax_complex():
     a = ift.Variable(dom, "a")
     b = ift.Variable(dom, "b")
     op = a.real+1j*b.real
-    op1 = ift.JaxOperator(op.domain, op.target, lambda x: x["a"] + 1j*x["b"])
+    op1 = ift.JaxOperator(op.domain, op.target, lambda x: x["a"] + 1j*x["b"], "jax")
     _op_equal(op, op1, ift.from_random(op.domain))
     ift.extra.check_operator(op, ift.from_random(op.domain), ntries=10)
     ift.extra.check_operator(op1, ift.from_random(op.domain), ntries=10,

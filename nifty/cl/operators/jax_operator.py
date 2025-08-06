@@ -33,9 +33,9 @@ from .simple_linear_operators import VdotOperator
 __all__ = ["JaxOperator", "JaxLikelihoodEnergyOperator", "JaxLinearOperator"]
 
 
-def _jax2anyarray(obj):
+def _framework2anyarray(obj):
     if isinstance(obj, dict):
-        return {kk: _jax2anyarray(vv) for kk, vv in obj.items()}
+        return {kk: _framework2anyarray(vv) for kk, vv in obj.items()}
     elif device_available():
         import cupy
         cu = cupy.from_dlpack(obj)
@@ -44,15 +44,23 @@ def _jax2anyarray(obj):
         return AnyArray(np.array(obj))
 
 
-def _anyarray2jax(obj):
-    import jax
-    if isinstance(obj, AnyArray):
-        if obj.device_id == -1:
-            return jax.numpy.array(obj._val)
-        else:
-            return jax.dlpack.from_dlpack(obj._val)
-    elif isinstance(obj, dict):
-        return {kk: _anyarray2jax(vv) for kk, vv in obj.items()}
+def _anyarray2framework(obj, framework):
+    if isinstance(obj, dict):
+        return {kk: _anyarray2framework(vv, framework) for kk, vv in obj.items()}
+    if framework == "jax":
+        import jax
+        if isinstance(obj, AnyArray):
+            if obj.device_id == -1:
+                return jax.numpy.array(obj._val)
+            else:
+                return jax.dlpack.from_dlpack(obj._val)
+    else:
+        import torch
+        if isinstance(obj, AnyArray):
+            if obj.device_id == -1:
+                return torch.from_numpy(obj._val)
+            else:
+                return torch.from_dlpack(obj._val)
 
 
 class JaxOperator(Operator):
@@ -72,21 +80,35 @@ class JaxOperator(Operator):
         `MultiDomain`, `func` takes a `dict` as argument and like-wise for the
         target.
 
+    framework : str
+        "torch" or "jax" TODO
+
     Note
     ----
     Contrary to the convention in the rest of nifty, this operator returns
     Fields on device if a device is available. Normally, nifty operators return
     on the same device_id as their input has been.
     """
-    def __init__(self, domain, target, func):
-        import jax
-
+    def __init__(self, domain, target, func, framework):
         from ..sugar import makeDomain
+
         self._domain = makeDomain(domain)
         self._target = makeDomain(target)
-        self._func = jax.jit(func)
-        self._bwd = jax.jit(lambda x, y: jax.vjp(func, x)[1](y)[0])
-        self._fwd = jax.jit(lambda x, y: jax.jvp(self._func, (x,), (y,))[1])
+        self._framework = framework
+
+        if framework == "jax":
+            from jax import jit, jvp, vjp
+            self._func = jit(func)
+            self._bwd = jit(lambda x, y: vjp(func, x)[1](y)[0])
+            self._fwd = jit(lambda x, y: jvp(self._func, (x,), (y,))[1])
+        elif framework == "torch":
+            from torch import compile as jit
+            from torch.autograd.functional import vjp, jvp
+            self._func = jit(func)
+            self._bwd = jit(lambda x, y: vjp(func, x, v=y)[1])
+            self._fwd = lambda x, y: jvp(func, x, y)[1] # FIXME
+        else:
+            raise ValueError
 
     def apply(self, x):
         from ..sugar import makeField
@@ -96,11 +118,11 @@ class JaxOperator(Operator):
             # calls. Computing the pass through the function thrice (once now
             # and twice when differentiating) is redundant and inefficient.
             res = self._func(x.val.asnumpy())
-            bwd = partial(self._bwd, _anyarray2jax(x.val.val))
-            fwd = partial(self._fwd, _anyarray2jax(x.val.val))
-            jac = JaxLinearOperator(self._domain, self._target, fwd, func_T=bwd)
-            return x.new(makeField(self._target, _jax2anyarray(res)), jac)
-        res = _jax2anyarray(self._func(_anyarray2jax(x.val)))
+            bwd = partial(self._bwd, _anyarray2framework(x.val.val, self._framework))
+            fwd = partial(self._fwd, _anyarray2framework(x.val.val, self._framework))
+            jac = JaxLinearOperator(self._domain, self._target, fwd, self._framework, func_T=bwd)
+            return x.new(makeField(self._target, _framework2anyarray(res)), jac)
+        res = _framework2anyarray(self._func(_anyarray2framework(x.val, self._framework)))
         if isinstance(res, dict):
             if not isinstance(self._target, MultiDomain):
                 raise TypeError(("Jax function returns a dictionary although the "
@@ -129,7 +151,7 @@ class JaxOperator(Operator):
     def _simplify_for_constant_input_nontrivial(self, c_inp):
         func2 = lambda x: self._func({**x, **c_inp.asnumpy()})
         dom = {kk: vv for kk, vv in self._domain.items() if kk not in c_inp.keys()}
-        return None, JaxOperator(dom, self._target, func2)
+        return None, JaxOperator(dom, self._target, func2, self._framework)
 
 
 class JaxLinearOperator(LinearOperator):
@@ -149,6 +171,9 @@ class JaxLinearOperator(LinearOperator):
         `MultiDomain`, `func` takes a `dict` as argument and like-wise for the
         target.
 
+    framework : str
+        TODO
+
     func_T : callable
         The jax function that implements the transposed action of the operator.
         If None, jax computes the adjoint. Note that this is *not* the adjoint
@@ -165,12 +190,13 @@ class JaxLinearOperator(LinearOperator):
     user can double check this with the help of
     `nifty.cl.extra.check_linear_operator`.
     """
-    def __init__(self, domain, target, func, domain_dtype=None, func_T=None):
-        import jax
-
+    def __init__(self, domain, target, func, framework, domain_dtype=None, func_T=None):
         from ..sugar import makeDomain
         domain = makeDomain(domain)
         if domain_dtype is not None and func_T is None:
+            if framework != "jax":
+                raise NotImplementedError(f"Need to pass func_T for framework {framework}")
+            import jax
             if isinstance(domain, DomainTuple):
                 inp = SimpleNamespace(shape=domain.shape, dtype=domain_dtype)
             else:
@@ -186,16 +212,17 @@ class JaxLinearOperator(LinearOperator):
         self._func = func
         self._func_T = func_T
         self._capability = self.TIMES | self.ADJOINT_TIMES
+        self._framework = framework
 
     def apply(self, x, mode):
         from ..sugar import makeField
         self._check_input(x, mode)
         if mode == self.TIMES:
-            fx = self._func(_anyarray2jax(x.val))
-            return makeField(self._target, _jax2anyarray(fx))
+            fx = self._func(_anyarray2framework(x.val, self._framework))
+            return makeField(self._target, _framework2anyarray(fx))
         # TODO: make conjugate part of the jax operation
-        fx = self._func_T(_anyarray2jax(x.conjugate().val))
-        return makeField(self._domain, _jax2anyarray(fx)).conjugate()
+        fx = self._func_T(_anyarray2framework(x.conjugate().val, self._framework))
+        return makeField(self._domain, _framework2anyarray(fx)).conjugate()
 
 
 class JaxLikelihoodEnergyOperator(LikelihoodEnergyOperator):
@@ -219,13 +246,21 @@ class JaxLikelihoodEnergyOperator(LikelihoodEnergyOperator):
         The dtype that shall be used for drawing samples from the metric of the
         likelihood.
     """
-    def __init__(self, domain, func, transformation=None, sampling_dtype=None):
-        import jax
+    def __init__(self, domain, func, framework, transformation=None, sampling_dtype=None):
 
         from ..sugar import makeDomain
         self._domain = makeDomain(domain)
-        self._func = jax.jit(func)
-        self._val_and_grad = jax.jit(jax.value_and_grad(func))
+        self._framework = framework
+        if framework == "jax":
+            import jax
+            self._func = jax.jit(func)
+            self._val_and_grad = jax.jit(jax.value_and_grad(func))
+        elif framework == "torch":
+            import torch
+            self._func = torch.compile(func)
+            self._val_and_grad = torch.compile(torch.value_and_grad(func))
+        else:
+            raise ValueError
         self._dt = sampling_dtype
         self._trafo = transformation
         warn("JaxLikelihoodEnergyOperator does not support normalized residuals "
@@ -245,21 +280,21 @@ class JaxLikelihoodEnergyOperator(LikelihoodEnergyOperator):
         lin = is_linearization(x)
         val = x.val.val if lin else x.val
         if not lin:
-            return makeField(self._target, _jax2anyarray(self._func(_anyarray2jax(val))))
-        res, grad = self._val_and_grad(_anyarray2jax(val))
-        jac = VdotOperator(makeField(self._domain, _jax2anyarray(grad)))
-        res = x.new(makeField(self._target, _jax2anyarray(res)), jac)
+            return makeField(self._target, _framework2anyarray(self._func(_anyarray2framework(val, self._framework))))
+        res, grad = self._val_and_grad(_anyarray2framework(val, self._framework))
+        jac = VdotOperator(makeField(self._domain, _framework2anyarray(grad)))
+        res = x.new(makeField(self._target, _framework2anyarray(res)), jac)
         if not x.want_metric:
             return res
         # TODO: Add jax version of metric
         return res.add_metric(self.get_metric_at(x.val))
 
     def _simplify_for_constant_input_nontrivial(self, c_inp):
-        func2 = lambda x: self._func({**x, **_anyarray2jax(c_inp.val)})
+        func2 = lambda x: self._func({**x, **_anyarray2framework(c_inp.val, self._framework)})
         dom = {kk: vv for kk, vv in self._domain.items() if kk not in c_inp.keys()}
         _, trafo = self._trafo.simplify_for_constant_input(c_inp)
         if isinstance(self._dt, dict):
             dt = {kk: self._dt[kk] for kk in dom.keys()}
         else:
             dt = self._dt
-        return None, JaxLikelihoodEnergyOperator(dom, func2, trafo, dt)
+        return None, JaxLikelihoodEnergyOperator(dom, func2, self._framework, trafo, sampling_dtype=dt)
