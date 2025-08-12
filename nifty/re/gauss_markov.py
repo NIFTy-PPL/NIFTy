@@ -249,12 +249,30 @@ def IntegratedWienerProcess(
     scale. See also `re.correlated_field.CorrelatedFieldMaker` and references
     there for further information.
 
+    Parameters:
+    ----------
+    x0: tuple, array, LazyModel
+        Initial position of the IWP and its derivative. In case you set a tuple,
+        make sure the structure is: tuple(array(mean, mean), array(std, std))
+    sigma: tuple, array, LazyModel
+        standard deviation of the integrated Wiener process.
+    dt: float, array
+        time steps
+    name: str
+    asperity: tuple, float, array, LazyModel
+    N_steps: int (optional)
+        Option to set the number of steps in case `dt` is a scalar.
+
     Notes:
     ------
     :math:`\\sigma` and `asperity` may also be sequences. See notes on `WienerProcess`
     for further information.
     """
     if isinstance(x0, tuple):
+        if x0[0].shape != (2,):
+            raise ValueError(
+                "Please insert tuple(array(mean, mean), array(std, std)) to specify both x0's."
+            )
         x0 = NormalPrior(x0[0], x0[1], shape=(2,), name=name + "_x0")
     if isinstance(sigma, tuple):
         sigma = LogNormalPrior(sigma[0], sigma[1], name=name + "_sigma")
