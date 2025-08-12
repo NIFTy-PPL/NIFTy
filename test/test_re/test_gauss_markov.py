@@ -114,7 +114,7 @@ def test_wiener_eval(x0, sigma, dt, name, N_steps, seed):
     "x0",
     [
         np.array([0.3, -0.4]),
-        (0.0, 1.5),
+        (np.array([0.0, 0.0]), np.array([1.5, 1.5])),
         jft.UniformPrior(-1.0, 1.0, name="x0", shape=(2,)),
     ],
 )
