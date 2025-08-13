@@ -21,13 +21,14 @@
 import numpy as np
 from scipy.constants import speed_of_light
 
-from ..domain_tuple import DomainTuple
-from ..field import Field
 from ..any_array import AnyArray
+from ..domain_tuple import DomainTuple
 from ..domains.rg_space import RGSpace
 from ..domains.unstructured_domain import UnstructuredDomain
 from ..ducc_dispatch import nthreads
+from ..field import Field
 from ..operators.diagonal_operator import DiagonalOperator
+from ..operators.domain_tuple_field_inserter import DomainTupleFieldInserter
 from ..operators.harmonic_operators import FFTShiftOperator
 from ..operators.linear_operator import LinearOperator
 from ..operators.operator import Operator, is_linearization
@@ -285,7 +286,7 @@ class _VariablePositionNufftJacobian(LinearOperator):
         return makeField(self._tgt(mode), res)
 
 
-def ShiftedPositionFFT(grid_domain, eps, pre_domain=None):
+def ShiftedPositionFFT(grid_domain, eps, pre_domain=None, shift_directions=None):
     """Type 2 NUFFT operator for shifted grid-like positions.
 
     Constructs a NUFFT operator that emulates an FFT on a regular grid, while
@@ -327,15 +328,17 @@ def ShiftedPositionFFT(grid_domain, eps, pre_domain=None):
         If pre_domain is not None, it will be prepended to grid_domain. All
         transformations are performed for each element in pre_domain. Default is
         None.
+    shift_directions : int, set of ints or None
+        Collection of integers representing the directions in which a shift
+        shall be modeled. Default is None.
     """
-    # TODO: Write version that only shifts in one direction
     shape = grid_domain.shape
     nufft = VariablePositionNufft(grid_domain,
                                   np.prod(grid_domain.shape),
                                   eps,
                                   pre_domain)
     domain = nufft.domain["grid"][-1]  # TODO: refactor
-    coord_dom = domain, UnstructuredDomain(len(shape))
+    coord_dom = domain.get_default_codomain(), UnstructuredDomain(len(shape))
     freq_axes = [np.fft.fftfreq(ss, dd)
                  for (ss, dd) in zip(shape, domain.distances)]
     fft_coord = np.stack(np.meshgrid(*freq_axes, indexing="ij"), axis=-1)
@@ -359,6 +362,22 @@ def ShiftedPositionFFT(grid_domain, eps, pre_domain=None):
         tgt = pre_domain, tgt
     post = DomainChangerAndReshaper(nufft.target, tgt)
     post = domain.scalar_dvol * post
+
+    if shift_directions is None:
+        shift_directions = tuple(range(len(shape)))
+    elif isinstance(shift_directions, int):
+        shift_directions = shift_directions,
+    if min(shift_directions) < 0 or \
+       max(shift_directions) >= len(shape) or \
+       len(set(shift_directions)) != len(shift_directions):
+        raise ValueError("Invalid values in shift_directions")
+    if len(shift_directions) != len(shape) and len(shift_directions) == 1:
+        ins = DomainTupleFieldInserter(pre.domain["delta_coord"], 1,
+                                       shift_directions)
+        ins = ins.ducktape((pre.domain["delta_coord"][0], UnstructuredDomain(1)))
+        pre = pre @ ins.ducktape("delta_coord").ducktape_left("delta_coord")
+    elif len(shift_directions) != len(shape):
+        raise NotImplementedError
     return post @ nufft @ pre
 
 

@@ -251,7 +251,8 @@ def test_variable_position_nufft_consistency(shape, N, eps, pre_domain):
 @pmp('eps', [1e-4, 1e-7, 1e-10, 1e-11, 1e-12, 2e-13])
 @pmp('shape', [(34,), (1001,), (100, 100), (35, 199), (20, 20, 21)])
 @pmp('pre_domain', [None, ift.UnstructuredDomain(3)])
-def test_variable_position_nufft_vs_fft(shape, eps, pre_domain):
+@pmp('shift_direction', [None, 1])
+def test_variable_position_nufft_vs_fft(shape, eps, pre_domain, shift_direction):
     dst = (0.2, 0.99, 28.1)
     ndim = len(shape)
     dom = ift.RGSpace(shape, dst[:ndim])
@@ -259,10 +260,20 @@ def test_variable_position_nufft_vs_fft(shape, eps, pre_domain):
         dom = (pre_domain, dom)
     dom = ift.DomainTuple.make(dom)
 
-    op1 = ift.ShiftedPositionFFT(dom[-1], eps, pre_domain)
+    if shift_direction is not None and len(shape) == 1:
+        with pytest.raises(ValueError):
+            ift.ShiftedPositionFFT(dom[-1], eps, pre_domain, shift_direction)
+        return
+    op1 = ift.ShiftedPositionFFT(dom[-1], eps, pre_domain, shift_direction)
     op0 = ift.FFTOperator(dom, space=None if pre_domain is None else 1)
     assert op1.domain["grid"] == ift.makeDomain(dom)
-    assert op1.domain["delta_coord"] == ift.makeDomain((dom[-1], ift.UnstructuredDomain(ndim)))
+    if shift_direction is None:
+        ndim_active = ndim
+    elif isinstance(shift_direction, int):
+        ndim_active = 1
+    else:
+        ndim_active = len(shift_direction)
+    assert op1.domain["delta_coord"] == ift.makeDomain((dom[-1].get_default_codomain(), ift.UnstructuredDomain(ndim_active)))
     inp = ift.MultiField.from_dict({"grid": ift.from_random(op1.domain["grid"], dtype=complex)},
                                    domain=op1.domain)
     ref = op0(inp["grid"]).asnumpy()
@@ -274,17 +285,25 @@ def test_variable_position_nufft_vs_fft(shape, eps, pre_domain):
         delta_coord[1, 0] = -1
         delta_coord[2, 0] = 2
     elif ndim == 2:
-        delta_coord[1, 0, 0] = -1
-        delta_coord[0, 2, 1] = 2
-        delta_coord[3, 3, 0] = 1
-        delta_coord[3, 3, 1] = -2
+        if shift_direction is None:
+            delta_coord[1, 0, 0] = -1
+            delta_coord[0, 2, 1] = 2
+            delta_coord[3, 3, 0] = 1
+            delta_coord[3, 3, 1] = -2
+        elif shift_direction == 1:
+            delta_coord[0, 2, 0] = 2
+            delta_coord[3, 3, 0] = -2
     elif ndim == 3:
-        delta_coord[6, 4, 3, 0] = 3
-        delta_coord[6, 4, 3, 1] = -1
-        delta_coord[6, 4, 3, 2] = -2
-        delta_coord[2, 1, 10, 0] = -5
-        delta_coord[2, 1, 10, 1] = 20
-        delta_coord[2, 1, 10, 2] = 30
+        if shift_direction is None:
+            delta_coord[6, 4, 3, 0] = 3
+            delta_coord[6, 4, 3, 1] = -1
+            delta_coord[6, 4, 3, 2] = -2
+            delta_coord[2, 1, 10, 0] = -5
+            delta_coord[2, 1, 10, 1] = 20
+            delta_coord[2, 1, 10, 2] = 30
+        elif shift_direction == 1:
+            delta_coord[6, 4, 3, 0] = -1
+            delta_coord[2, 1, 10, 0] = 20
 
     delta_coord = ift.makeField(op1.domain["delta_coord"], delta_coord)
     inp = ift.MultiField.from_dict(
@@ -305,9 +324,17 @@ def test_variable_position_nufft_vs_fft(shape, eps, pre_domain):
             np.testing.assert_allclose(res[itrans, 0], res[itrans, 1])
             np.testing.assert_allclose(res[itrans, 2], res[itrans, 4])
         elif ndim == 2:
-            np.testing.assert_allclose(res[itrans, 1, 0], res[itrans, 0, 0])
-            np.testing.assert_allclose(res[itrans, 0, 2], res[itrans, 0, 4])
-            np.testing.assert_allclose(res[itrans, 3, 3], res[itrans, 4, 1])
+            if shift_direction is None:
+                np.testing.assert_allclose(res[itrans, 1, 0], res[itrans, 0, 0])
+                np.testing.assert_allclose(res[itrans, 0, 2], res[itrans, 0, 4])
+                np.testing.assert_allclose(res[itrans, 3, 3], res[itrans, 4, 1])
+            elif shift_direction == 1:
+                np.testing.assert_allclose(res[itrans, 0, 2], res[itrans, 0, 4])
+                np.testing.assert_allclose(res[itrans, 3, 3], res[itrans, 3, 1])
         elif ndim == 3:
-            np.testing.assert_allclose(res[itrans, 6, 4, 3], res[itrans, 9, 3, 1])
-            np.testing.assert_allclose(res[itrans, 2, 1, 10], res[itrans, 17, 1, 19]) # Test wraparound
+            if shift_direction is None:
+                np.testing.assert_allclose(res[itrans, 6, 4, 3], res[itrans, 9, 3, 1])
+                np.testing.assert_allclose(res[itrans, 2, 1, 10], res[itrans, 17, 1, 19]) # Test wraparound
+            elif shift_direction == 1:
+                np.testing.assert_allclose(res[itrans, 6, 4, 3], res[itrans, 6, 3, 3])
+                np.testing.assert_allclose(res[itrans, 2, 1, 10], res[itrans, 2, 21%20, 10]) # Test wraparound
