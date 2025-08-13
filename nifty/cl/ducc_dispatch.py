@@ -25,7 +25,7 @@ import scipy.fft
 
 from ..config import _config
 
-_nthreads = 1
+_nthreads = None
 
 
 def nthreads():
@@ -35,6 +35,15 @@ def nthreads():
 def set_nthreads(nthr):
     global _nthreads
     _nthreads = int(nthr)
+    try:
+        import ducc0
+        if nthr == 0:
+            nthr = ducc0.misc.available_hardware_threads()
+        ducc0.misc.resize_thread_pool(nthr)
+    except ImportError:
+        pass
+
+set_nthreads(1)
 
 
 try:
