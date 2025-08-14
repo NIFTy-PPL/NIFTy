@@ -102,6 +102,7 @@
               export LD_LIBRARY_PATH=${
                 toString pkgs.cudaPackages.cudatoolkit.lib
               }/lib:$LD_LIBRARY_PATH
+              pip install cufinufft
             '' else
               "";
             #   CUDA_HOME = "/usr/local/cuda";

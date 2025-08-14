@@ -12,6 +12,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Copyright(C) 2013-2019 Max-Planck-Society
+# Copyright(C) 2025 LambdaFields GmbH
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -69,3 +70,60 @@ def test_normalisation(space, tp):
     zero_idx = tuple([0]*len(space.shape))
     assert_allclose(
         inp.asnumpy()[zero_idx], out.s_integrate(), rtol=tol, atol=tol)
+
+@pmp(
+    "domain_spaces",
+    [
+        (ift.RGSpace(8), None, False),
+        ((ift.RGSpace((2, 3)), ift.RGSpace(10)), 1, False),
+        ((ift.RGSpace((2, 3)), ift.RGSpace(10)), 0, False),
+        ((ift.RGSpace((2, 3)), ift.RGSpace(10)), None, False),
+        ((ift.UnstructuredDomain((2, 3)), ift.RGSpace(10)), 1, False),
+        ((ift.UnstructuredDomain((2, 3)), ift.RGSpace(10)), -1, False),
+        ((ift.UnstructuredDomain((2, 3)), ift.RGSpace(10)), -2, True),
+        ((ift.UnstructuredDomain((2,3)), ift.RGSpace(10)), None, True),
+    ],
+)
+@pmp("dtype", [np.float32, np.float64, np.complex64, np.complex128])
+def test_fftshift(domain_spaces, dtype):
+    domain, spaces, should_fail = domain_spaces
+    domain = ift.DomainTuple.make(domain)
+
+    if should_fail:
+        with pytest.raises(AssertionError):
+            op = ift.FFTShiftOperator(domain, spaces)
+        return
+
+    op = ift.FFTShiftOperator(domain, spaces)
+    eps = 1e-6 if dtype in [np.float32, np.complex64] else 1e-16
+    ift.extra.check_linear_operator(op, domain_dtype=dtype,
+                                    target_dtype=dtype, rtol=eps)
+
+    # Normalize spaces
+    if isinstance(spaces, int):
+        spaces = spaces,
+    if spaces is None:
+        spaces = tuple(range(len(domain)))
+    spaces = list(spaces)
+    for ispace, sp in enumerate(spaces):
+        if sp < 0:
+            spaces[ispace] = len(domain) + sp
+    spaces = tuple(spaces)
+
+    # spaces -> axes
+    axes = []
+    idim = 0
+    for ispace, dom in enumerate(ift.makeDomain(domain)):
+        ndim = len(dom.shape)
+        if ispace in spaces:
+            for _ in range(ndim):
+                axes.append(idim)
+                idim += 1
+        else:
+            idim += ndim
+
+    # Check against numpy
+    fld = ift.from_random(op.domain, dtype=dtype)
+    res = op(fld).val
+    ref = np.fft.fftshift(fld.val, axes=axes)
+    np.testing.assert_allclose(res.asnumpy(), ref.asnumpy())

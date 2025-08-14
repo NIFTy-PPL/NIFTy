@@ -28,7 +28,7 @@ from .operators.linear_interpolation import LinearInterpolator
 from .operators.endomorphic_operator import EndomorphicOperator
 from .operators.harmonic_operators import (
     FFTOperator, HartleyOperator, SHTOperator, HarmonicTransformOperator,
-    HarmonicSmoothingOperator)
+    HarmonicSmoothingOperator, FFTShiftOperator)
 from .operators.field_zero_padder import FieldZeroPadder
 from .operators.inversion_enabler import InversionEnabler
 from .operators.mask_operator import MaskOperator
@@ -95,7 +95,7 @@ from .library.light_cone_operator import LightConeOperator
 from .library.wiener_filter_curvature import WienerFilterCurvature
 from .library.adjust_variances import (make_adjust_variances_hamiltonian,
                                        do_adjust_variances)
-from .library.nft import Gridder, FinuFFT, Nufft
+from .library.nft import Gridder, Nufft, VariablePositionNufft, ShiftedPositionFFT
 from .library.correlated_fields import CorrelatedFieldMaker
 from .library.correlated_fields_simple import SimpleCorrelatedField
 from .library.variational_models import MeanFieldVI, FullCovarianceVI
