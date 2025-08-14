@@ -22,6 +22,9 @@ Change categories:
   - Minisanity: keys are now in lexicographic order
   - Minisanity plot: add posterior mean of quantities (additional to reduced chi
     squared)
+  - The ducc0 thread pool now always follows the size as set be
+    `ift.set_nthreads` irrespective of the environment variables
+    `OMP_NUM_THREADS` and `DUCC0_NUM_THREADS`
 - Deprecations
 
 
