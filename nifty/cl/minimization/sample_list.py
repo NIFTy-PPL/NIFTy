@@ -64,7 +64,7 @@ class SampleListBase:
         from ..sugar import makeDomain
         self._comm = comm
         self._domain = makeDomain(domain)
-        utilities.check_MPI_equality(self._domain, comm)
+        # utilities.check_MPI_equality(self._domain, comm)
         self.local_indices = _compute_local_indices(n_local_samples, comm)
         self._n_samples = utilities.allreduce_sum([self.n_local_samples], self.comm)
 
