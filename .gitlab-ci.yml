@@ -61,6 +61,14 @@ test_cl_mpi:
     paths:
       - .coverage.cl_mpi
 
+test_gpu:
+  stage: test
+  tags:
+    - cloud-gpu
+  script:
+    - pip install --upgrade "jax[cuda12]"
+    - python gpu_test.py
+
 merge_coverage:
   stage: test
   tags:
