@@ -77,14 +77,14 @@ class _StandardHamiltonian(LazyModel):
     def __call__(self, primals, **primals_kw):
         return self.energy(primals, **primals_kw)
 
-    def energy(self, primals, **primals_kw):
+    def energy(self, primals, **primals_kw): #geovidoc Alg. 2: Function Energy(ξ): Line 1-2
         return self.likelihood(primals, **primals_kw) + 0.5 * vdot(primals, primals)
 
     def metric(self, primals, tangents, **primals_kw):
         return self.likelihood.metric(primals, tangents, **primals_kw) + tangents
 
 
-def _kl_vg(
+def _kl_vg(     #geovidoc Alg. 2: Function geoKL(samples =̂ primals_samples, ξ =̂ primals): Line 12-17
     likelihood,
     primals,
     primals_samples,
@@ -102,7 +102,7 @@ def _kl_vg(
         return jax.value_and_grad(ham)(primals)
 
     if named_sharding is None:
-        vvg = map(jax.value_and_grad(ham))
+        vvg = map(jax.value_and_grad(ham))     #geovidoc Alg. 2: vgg = Energy
     else:
         if kl_device_map == "shard_map":
             vvg = map(jax.value_and_grad(ham))
@@ -124,8 +124,8 @@ def _kl_vg(
             ve = f"`kl_device_map` need to be `pmap`, `shard_map`, or `jit`, not {kl_device_map}"
             raise ValueError(ve)
 
-    s = vvg(primals_samples.at(primals).samples)
-    return reduce(s)
+    s = vvg(primals_samples.at(primals).samples)    #geovidoc Alg. 2: Energy(ξ + samples): Line 13-16
+    return reduce(s)    #geovidoc Alg. 2: Line 17
 
 
 def _kl_met(
@@ -558,7 +558,7 @@ class OptimizeVI:
             if sample_mode.lower().endswith("_resample"):
                 k_smpls = random.split(key, n_samples)
             assert n_samples == len(k_smpls)
-            samples, st_smpls = self.draw_linear_samples(
+            samples, st_smpls = self.draw_linear_samples(   #geovidoc Alg. 1 Line 6 - initialization of ξ with linear sol.
                 samples.pos,
                 k_smpls,
                 point_estimates=point_estimates,
@@ -566,7 +566,7 @@ class OptimizeVI:
                 **kwargs,
             )
             if sample_mode.lower().startswith("nonlinear"):
-                samples, st_smpls = self.nonlinearly_update_samples(
+                samples, st_smpls = self.nonlinearly_update_samples( #geovidoc Alg. 1 - update samples via Alg. 1
                     samples,
                     point_estimates=point_estimates,
                     **nonlinearly_update_kwargs,
@@ -622,7 +622,7 @@ class OptimizeVI:
                 remove_axes=insert_axes,
                 unflatten=unflatten,
             )
-        kl_opt_state = minimize(
+        kl_opt_state = minimize(    #geovidoc Alg. 2: Line 18
             None,
             x0=pl,
             fun_and_grad=fun_and_grad,
@@ -747,7 +747,7 @@ class OptimizeVI:
         )
         # Make the `key` tick independently of whether samples are drawn or not
         key, sk = random.split(key, 2)
-        samples, st_smpls = self.draw_samples(
+        samples, st_smpls = self.draw_samples(     #geovidoc Alg. 2: Line 5-11
             samples,
             key=sk,
             sample_mode=sample_mode,
@@ -759,10 +759,10 @@ class OptimizeVI:
         )
 
         kl_kwargs = _getitem_at_nit(config, "kl_kwargs", nit).copy()
-        kl_opt_state = self.kl_minimize(
+        kl_opt_state = self.kl_minimize(     #geovidoc Alg. 2: Line 12-19
             samples, constants=constants, **kl_kwargs, **kwargs
         )
-        samples = samples.at(kl_opt_state.x)
+        samples = samples.at(kl_opt_state.x)     #geovidoc Alg. 2: Line 21-25
         # Remove unnecessary references
         kl_opt_state = kl_opt_state._replace(x=None, jac=None, hess=None, hess_inv=None)
 
@@ -894,9 +894,9 @@ def optimize_kl(
             pass
 
     nm = "OPTIMIZE_KL"
-    for i in range(opt_vi_st.nit, opt_vi.n_total_iterations):
+    for i in range(opt_vi_st.nit, opt_vi.n_total_iterations):   #geovidoc Alg. 2: outer loop Line 4-20
         logger.info(f"{nm}: Starting {i + 1:04d}")
-        samples, opt_vi_st = opt_vi.update(samples, opt_vi_st)
+        samples, opt_vi_st = opt_vi.update(samples, opt_vi_st)     #geovidoc Alg. 2: core Algorithm Line 5-19
         msg = opt_vi.get_status_message(samples, opt_vi_st, name=nm)
         logger.info(msg)
         if sanity_fn is not None:

@@ -96,14 +96,14 @@ def draw_linear_residual(
     if point_estimates:
         lh, p_liquid = likelihood.freeze(point_estimates=point_estimates, primals=pos)
 
-    def ham_metric(primals, tangents, **primals_kw):
+    def ham_metric(primals, tangents, **primals_kw):    #geovidoc Alg. 1: return (1 + (A^T A)(primals))∙tangents
         return lh.metric(primals, tangents, **primals_kw) + tangents
 
     cg_kwargs = cg_kwargs if cg_kwargs is not None else {}
 
     subkey_nll, subkey_prr = random.split(key, 2)
-    nll_smpl = sample_likelihood(lh, p_liquid, key=subkey_nll)
-    prr_inv_metric_smpl = random_like(key=subkey_prr, primals=p_liquid)
+    nll_smpl = sample_likelihood(lh, p_liquid, key=subkey_nll)  #geovidoc Alg. 1:  nll_smpl = A^T η_2
+    prr_inv_metric_smpl = random_like(key=subkey_prr, primals=p_liquid)     #geovidoc Alg. 1: prr_inv_metric_smpl = η_1
     # One may transform any metric sample to a sample of the inverse
     # metric by simply applying the inverse metric to it
     prr_smpl = prr_inv_metric_smpl
@@ -116,15 +116,15 @@ def draw_linear_residual(
     # impact on stability is still unknown.
     # TODO: investigate the impact of sampling the prior and likelihood
     # antithetically.
-    smpl = nll_smpl + prr_smpl
+    smpl = nll_smpl + prr_smpl    #geovidoc Alg. 1: smpl = A^T η_2 + η_1
     info = 0
     if from_inverse:
         inv_metric_at_p = partial(
             cg,
             Partial(ham_metric, p_liquid),
             **{"name": cg_name, "_raise_nonposdef": _raise_nonposdef, **cg_kwargs},
-        )
-        smpl, info = inv_metric_at_p(smpl, x0=prr_inv_metric_smpl)
+        )   #geovidoc Alg. 1: inv_metric_at_p = lambda x: (1 + (A^T A)(p_liquid))⁻¹∙x
+        smpl, info = inv_metric_at_p(smpl, x0=prr_inv_metric_smpl)    #geovidoc Alg. 1: smpl = (1 + (A^T A)(p_liquid))⁻¹∙smpl
         conditional_raise(
             (info < 0) if info is not None else False,
             ValueError("conjugate gradient failed"),
@@ -133,7 +133,7 @@ def draw_linear_residual(
     return smpl, info
 
 
-def nonlinearly_update_residual(
+def nonlinearly_update_residual(    #geovidoc Alg. 1 - implementation
     likelihood=None,
     pos: P = None,
     residual_sample=None,
@@ -155,14 +155,14 @@ def nonlinearly_update_residual(
         point_estimates=point_estimates,
     )
 
-    def residual_vg(e, lh_trafo_at_p, ms_at_p, x):
+    def residual_vg(e, lh_trafo_at_p, ms_at_p, x):    #geovidoc Alg. 1: residual_vg(...) = Energy(ξ̄, (dx/dξ̄)(ξ̄̄), z, ξ̄)
         lh, e_liquid = likelihood.freeze(point_estimates=point_estimates, primals=e)
 
         # t = likelihood.transformation(x) - lh_trafo_at_p
-        t = tree_map(jnp.subtract, lh.transformation(x), lh_trafo_at_p)
-        g = x - e_liquid + lh.left_sqrt_metric(e_liquid, t)
-        r = ms_at_p - g
-        res = 0.5 * vdot(r, r)
+        t = tree_map(jnp.subtract, lh.transformation(x), lh_trafo_at_p)     #geovidoc Alg. 1 Line 8: t = x(ξ̄) - x(ξ̄̄)
+        g = x - e_liquid + lh.left_sqrt_metric(e_liquid, t)     #geovidoc Alg. 1 Line 8: g = A^T(x(ξ̄) - x(ξ̄̄))
+        r = ms_at_p - g     #geovidoc Alg. 1 Line 9: r = z-g̃
+        res = 0.5 * vdot(r, r)      #geovidoc Alg. 1 Line 9: r = 0.5 (z-g̃)^T ∙ (z-g̃)
 
         r = conj(r)
         ngrad = r + lh.left_sqrt_metric(x, lh.right_sqrt_metric(e_liquid, r))
@@ -175,7 +175,7 @@ def nonlinearly_update_residual(
         tm = lsm(e_liquid, rsm(primals, tangents)) + tangents
         return lsm(primals, rsm(e_liquid, tm)) + tm
 
-    def sampnorm(e, natgrad):
+    def sampnorm(e,             natgrad):
         lh, e_liquid = likelihood.freeze(point_estimates=point_estimates, primals=e)
         fpp = lh.right_sqrt_metric(e_liquid, natgrad)
         return jnp.sqrt(vdot(natgrad, natgrad) + vdot(fpp, fpp))
@@ -183,7 +183,7 @@ def nonlinearly_update_residual(
     sample = pos + residual_sample
     del residual_sample
     sample = _process_point_estimate(sample, pos, point_estimates, insert=False)
-    metric_sample, _ = draw_lni(pos, metric_sample_key)
+    metric_sample, _ = draw_lni(pos, metric_sample_key) #geovidoc Alg. 1 Line 3 - 5
     metric_sample *= metric_sample_sign
     metric_sample = _process_point_estimate(
         metric_sample, pos, point_estimates, insert=False
@@ -201,7 +201,7 @@ def nonlinearly_update_residual(
             "hessp": partial(metric, pos),
             "custom_gradnorm": partial(sampnorm, pos),
         }
-        opt_state = minimize(None, x0=sample, **(minimize_kwargs | options))
+        opt_state = minimize(None, x0=sample, **(minimize_kwargs | options)) #geovidoc Alg. 1 Line 10: opt_state = NewtonCG(Energy, ξ0)
     else:
         opt_state = optimize.OptimizeResults(sample, True, 0, None, None)
     if _raise_notconverged and (opt_state.status < 0):
