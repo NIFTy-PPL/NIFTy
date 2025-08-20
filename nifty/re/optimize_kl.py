@@ -93,7 +93,6 @@ def _kl_vg(     #geovidoc Alg. 2: Function geoKL(samples =̂ primals_samples, ξ
     reduce=_reduce,
     named_sharding=None,
     kl_device_map="shard_map",
-    pos_samples=None
 ):
     assert isinstance(primals_samples, Samples)
     map = get_map(map)
@@ -125,10 +124,7 @@ def _kl_vg(     #geovidoc Alg. 2: Function geoKL(samples =̂ primals_samples, ξ
             ve = f"`kl_device_map` need to be `pmap`, `shard_map`, or `jit`, not {kl_device_map}"
             raise ValueError(ve)
 
-    s = vvg(primals_samples.at(primals).samples)   #geovidoc Alg. 2: Energy(ξ + samples): Line 13-16
-    if pos_samples is not None:
-        s_ = vvg(pos_samples.at(primals).samples)
-        s = 0.5 * (s + s_)
+    s = vvg(primals_samples.at(primals).samples)    #geovidoc Alg. 2: Energy(ξ + samples): Line 13-16
     return reduce(s)    #geovidoc Alg. 2: Line 17
 
 
@@ -391,7 +387,7 @@ class OptimizeVI:
             )
         if _nonlinearly_update_residual is None:
             _nonlinearly_update_residual = partial(
-                residual_jit(nonlinearly_update_residual, static_argnames='make_position_samples'), likelihood
+                residual_jit(nonlinearly_update_residual), likelihood
             )
         if _get_status_message is None:
             _get_status_message = partial(
@@ -541,7 +537,6 @@ class OptimizeVI:
         point_estimates,
         draw_linear_kwargs={},
         nonlinearly_update_kwargs={},
-        make_position_samples=False,
         **kwargs,
     ):
         # Always resample if `n_samples` increased
@@ -574,7 +569,6 @@ class OptimizeVI:
                 samples, st_smpls = self.nonlinearly_update_samples( #geovidoc Alg. 1 - update samples via Alg. 1
                     samples,
                     point_estimates=point_estimates,
-                    make_position_samples=make_position_samples,
                     **nonlinearly_update_kwargs,
                     **kwargs,
                 )
@@ -601,7 +595,6 @@ class OptimizeVI:
         minimize: Callable[..., optimize.OptimizeResults] = optimize._static_newton_cg,
         minimize_kwargs={},
         constants=(),
-        pos_samples=None,
         **kwargs,
     ) -> optimize.OptimizeResults:
         fun_and_grad = Partial(
@@ -727,7 +720,6 @@ class OptimizeVI:
         samples: Samples,
         state: OptimizeVIState,
         /,
-        implicit_minimization=False,
         **kwargs,
     ) -> tuple[Samples, OptimizeVIState]:
         """Moves the VI approximation one sample update and minimization forward.
@@ -765,22 +757,10 @@ class OptimizeVI:
             nonlinearly_update_kwargs=nonlinearly_update_kwargs,
             **kwargs,
         )
-        pos_samples = None
-        if implicit_minimization:
-            pos_samples, _ = self.draw_samples(     #geovidoc Alg. 2: Line 5-11
-                samples,
-                key=sk,
-                sample_mode=sample_mode,
-                point_estimates=point_estimates,
-                n_samples=n_samples,
-                draw_linear_kwargs=draw_linear_kwargs,
-                nonlinearly_update_kwargs=nonlinearly_update_kwargs,
-                make_position_samples=True,
-                **kwargs,
-            )
+
         kl_kwargs = _getitem_at_nit(config, "kl_kwargs", nit).copy()
         kl_opt_state = self.kl_minimize(     #geovidoc Alg. 2: Line 12-19
-            samples, constants=constants, **kl_kwargs, **kwargs, pos_samples=pos_samples
+            samples, constants=constants, **kl_kwargs, **kwargs
         )
         samples = samples.at(kl_opt_state.x)     #geovidoc Alg. 2: Line 21-25
         # Remove unnecessary references
@@ -836,7 +816,6 @@ def optimize_kl(
     residual_device_map="pmap",
     _optimize_vi=None,
     _optimize_vi_state=None,
-    implicit_minimization=False
 ) -> tuple[Samples, OptimizeVIState]:
     """One-stop-shop for MGVI/geoVI style V:30I approximation.
 
@@ -918,7 +897,7 @@ def optimize_kl(
     #the geovidoc commments refer to the pseudocode in the geovi paper: https://doi.org/10.48550/arXiv.2105.10470
     for i in range(opt_vi_st.nit, opt_vi.n_total_iterations):   #geovidoc Alg. 2: outer loop Line 4-20
         logger.info(f"{nm}: Starting {i + 1:04d}")
-        samples, opt_vi_st = opt_vi.update(samples, opt_vi_st, implicit_minimization)     #geovidoc Alg. 2: core Algorithm Line 5-19
+        samples, opt_vi_st = opt_vi.update(samples, opt_vi_st)     #geovidoc Alg. 2: core Algorithm Line 5-19
         msg = opt_vi.get_status_message(samples, opt_vi_st, name=nm)
         logger.info(msg)
         if sanity_fn is not None:

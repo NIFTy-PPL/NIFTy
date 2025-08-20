@@ -144,7 +144,6 @@ def nonlinearly_update_residual(    #geovidoc Alg. 1 - implementation
     minimize: Callable[..., optimize.OptimizeResults] = optimize._static_newton_cg,
     minimize_kwargs={},
     _raise_notconverged=False,
-    make_position_samples=False
 ) -> tuple[P, optimize.OptimizeResults]:
     assert_arithmetics(pos)
     assert_arithmetics(residual_sample)
@@ -168,21 +167,6 @@ def nonlinearly_update_residual(    #geovidoc Alg. 1 - implementation
         r = conj(r)
         ngrad = r + lh.left_sqrt_metric(x, lh.right_sqrt_metric(e_liquid, r))
         return (res, -ngrad)
-
-
-    def residual_vg_ps(e, lh_trafo_at_p, ms_at_p, x):    #geovidoc Alg. 1: residual_vg(...) = Energy(ξ̄, (dx/dξ̄)(ξ̄̄), z, ξ̄)
-        lh, e_liquid = likelihood.freeze(point_estimates=point_estimates, primals=e)
-
-        # t = likelihood.transformation(x) - lh_trafo_at_p
-        t = tree_map(jnp.subtract, lh_trafo_at_p, lh.transformation(x))     #geovidoc Alg. 1 Line 8: t = x(ξ̄) - x(ξ̄̄)
-        g = e_liquid - x + lh.left_sqrt_metric(x, t)     #geovidoc Alg. 1 Line 8: g = A^T(x(ξ̄) - x(ξ̄̄))
-        r = ms_at_p - g     #geovidoc Alg. 1 Line 9: r = z-g̃
-        res = 0.5 * vdot(r, r)      #geovidoc Alg. 1 Line 9: r = 0.5 (z-g̃)^T ∙ (z-g̃)
-
-        r = conj(r)
-        ngrad = r + lh.left_sqrt_metric(x, lh.right_sqrt_metric(e_liquid, r))
-        return (res, -ngrad)
-
 
     def metric(e, primals, tangents):
         lh, e_liquid = likelihood.freeze(point_estimates=point_estimates, primals=e)
@@ -212,19 +196,11 @@ def nonlinearly_update_residual(    #geovidoc Alg. 1 - implementation
     if not skip:
         lh_f, e_liquid = likelihood.freeze(point_estimates=point_estimates, primals=pos)
         trafo_at_p = lh_f.transformation(e_liquid)
-        if not make_position_samples:
-            options = {
-                "fun_and_grad": partial(residual_vg, pos, trafo_at_p, metric_sample),
-                "hessp": partial(metric, pos),
-                "custom_gradnorm": partial(sampnorm, pos),
-            }
-        else:
-            options = {
-                "fun": partial(residual_vg_ps, pos, trafo_at_p, metric_sample),
-                "hessp": partial(metric, pos),
-                "custom_gradnorm": partial(sampnorm, pos),
-            }
-
+        options = {
+            "fun_and_grad": partial(residual_vg, pos, trafo_at_p, metric_sample),
+            "hessp": partial(metric, pos),
+            "custom_gradnorm": partial(sampnorm, pos),
+        }
         opt_state = minimize(None, x0=sample, **(minimize_kwargs | options)) #geovidoc Alg. 1 Line 10: opt_state = NewtonCG(Energy, ξ0)
     else:
         opt_state = optimize.OptimizeResults(sample, True, 0, None, None)
