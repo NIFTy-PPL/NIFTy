@@ -112,7 +112,7 @@ samples, state = jft.optimize_kl(
             name="SN",
             xtol=delta,
             cg_kwargs=dict(name=None),
-            maxiter=5,
+            maxiter=20,
         )
     ),
     # Arguments for the minimizer of the KL-divergence cost potential
@@ -124,6 +124,7 @@ samples, state = jft.optimize_kl(
     sample_mode="nonlinear_resample",
     odir="results_intro",
     resume=False,
+    implicit_samples=True
 )
 
 # %%
@@ -137,12 +138,17 @@ to_plot = [
     ("Data", data, "im"),
     ("Reconstruction", post_sr_mean, "im"),
     (
-        "Amplitude spectrum",
+        "Amplitude spectrum mean",
         (
             grid.harmonic_grid.mode_lengths[1:],
             cfm.amplitude(pos_truth)[1:],
             post_a_mean,
         ),
+        "loglog",
+    ),
+    (
+        "Amplitude spectrum samples",
+        (grid.harmonic_grid.mode_lengths[1:],) + tuple(cfm.amplitude(s)[1:] for s in samples),
         "loglog",
     ),
 ]
@@ -162,5 +168,9 @@ for ax, v in zip(axs.flat, to_plot):
 for ax in axs.flat[len(to_plot) :]:
     ax.set_axis_off()
 fig.tight_layout()
-fig.savefig("results_intro_full_reconstruction.png", dpi=400)
+
+from datetime import datetime
+timestamp = datetime.now().strftime("%d%m%Y_%H%M%S")
+filename = f"scatter_{timestamp}.png"
+plt.savefig(f"demos/Elias/0_intro_data/{filename}", dpi=600, bbox_inches="tight")
 plt.show()

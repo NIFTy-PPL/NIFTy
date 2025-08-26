@@ -144,6 +144,7 @@ def nonlinearly_update_residual(    #geovidoc Alg. 1 - implementation
     minimize: Callable[..., optimize.OptimizeResults] = optimize._static_newton_cg,
     minimize_kwargs={},
     _raise_notconverged=False,
+    implicit_samples=False
 ) -> tuple[P, optimize.OptimizeResults]:
     assert_arithmetics(pos)
     assert_arithmetics(residual_sample)
@@ -167,6 +168,38 @@ def nonlinearly_update_residual(    #geovidoc Alg. 1 - implementation
         r = conj(r)
         ngrad = r + lh.left_sqrt_metric(x, lh.right_sqrt_metric(e_liquid, r))
         return (res, -ngrad)
+
+
+    def residual_vg_symm(e, ms_at_p, x):
+
+        def sampnorm_q2(e, vector):
+            lh, e_liquid = likelihood.freeze(point_estimates=point_estimates, primals=e)
+            fpp = lh.right_sqrt_metric(e_liquid, vector)
+            return vdot(vector, vector) + vdot(fpp, fpp)
+
+        lh, e_liquid = likelihood.freeze(point_estimates=point_estimates, primals=e)
+
+        lh_trafo_at_p = lh.transformation(e_liquid)
+        lh_trafo_at_x = lh.transformation(x)
+
+        t = tree_map(jnp.subtract, lh_trafo_at_x, lh_trafo_at_p)
+
+        # r_1 = ms_at_p - (x - e_liquid + lh.left_sqrt_metric(e_liquid, t))
+        # r_2 = ms_at_p - (x - e_liquid + lh.left_sqrt_metric(x, t))
+        # res = 0.25 * (vdot(r_1, r_1) + vdot(r_2, r_2))
+        # res = 0.25 * (sampnorm_q2(e, r_1) + sampnorm_q2(x, r_2))
+
+        r_1 = (x - e_liquid + lh.left_sqrt_metric(e_liquid, t))
+        r_2 = (x - e_liquid + lh.left_sqrt_metric(x, t))
+        r = ms_at_p - 0.5*(r_1 + r_2)
+        res = 0.5 * vdot(r, r)
+
+        # r_1 = ms_at_p - (x - e_liquid + lh.left_sqrt_metric(x, t))
+        # res = 0.5 * vdot(r_1, r_1)
+        # res = 0.5 * (sampnorm_q2(e, r_1))
+
+        return res
+
 
     def metric(e, primals, tangents):
         lh, e_liquid = likelihood.freeze(point_estimates=point_estimates, primals=e)
@@ -196,12 +229,19 @@ def nonlinearly_update_residual(    #geovidoc Alg. 1 - implementation
     if not skip:
         lh_f, e_liquid = likelihood.freeze(point_estimates=point_estimates, primals=pos)
         trafo_at_p = lh_f.transformation(e_liquid)
-        options = {
-            "fun_and_grad": partial(residual_vg, pos, trafo_at_p, metric_sample),
-            "hessp": partial(metric, pos),
-            "custom_gradnorm": partial(sampnorm, pos),
-        }
-        opt_state = minimize(None, x0=sample, **(minimize_kwargs | options)) #geovidoc Alg. 1 Line 10: opt_state = NewtonCG(Energy, ξ0)
+        if not implicit_samples:
+            options = {
+                "fun_and_grad": partial(residual_vg, pos, trafo_at_p, metric_sample),
+                "hessp": partial(metric, pos),
+                "custom_gradnorm": partial(sampnorm, pos),
+            }
+        else:
+            options = {
+                "fun": partial(residual_vg_symm, pos, metric_sample),
+                "custom_gradnorm": partial(sampnorm, pos),
+            }
+
+        opt_state = minimize(x0=sample, **(minimize_kwargs | options)) #geovidoc Alg. 1 Line 10: opt_state = NewtonCG(Energy, ξ0)
     else:
         opt_state = optimize.OptimizeResults(sample, True, 0, None, None)
     if _raise_notconverged and (opt_state.status < 0):
