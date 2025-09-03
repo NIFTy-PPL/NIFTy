@@ -121,7 +121,7 @@ def _cg(
         d = r
         energy = float(vdot((r - j) / 2, pos))
         nfev = 1
-    previous_gamma = float(vdot(r, r))
+    previous_gamma = float(jnp.real(vdot(r, r)))
 
     info = -1
     i = 0
@@ -145,7 +145,7 @@ def _cg(
         q = mat(d)
         nfev += 1
 
-        curv = float(vdot(d, q))
+        curv = float(jnp.real(vdot(d, q)))
         if curv == 0.0:
             if _raise_nonposdef:
                 nm = "CG" if name is None else name
@@ -170,7 +170,7 @@ def _cg(
             nfev += 1
         else:
             r = r - q * alpha
-        gamma = float(vdot(r, r))
+        gamma = float(jnp.real(vdot(r, r)))
         if time_threshold is not None and datetime.now() > time_threshold:
             info = i
             break
@@ -186,7 +186,7 @@ def _cg(
                 break
         else:
             norm = None
-        new_energy = float(vdot((r - j) / 2, pos))
+        new_energy = float(jnp.real(vdot((r - j) / 2, pos)))
         energy_diff = energy - new_energy
         neg_energy_eps = -eps * jnp.abs(new_energy)
         if energy_diff < neg_energy_eps:
