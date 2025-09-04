@@ -369,12 +369,13 @@ def wiener_filter_posterior(
     optimize_for_linear: bool = False,
 ) -> Tuple[Samples, Tuple]:
     """Computes wiener filter solution for a standardized model.
+    Linearizes the problem for non-linear models.
 
     Parameters
     ----------
     likelihood : :class:`~nifty.re.likelihood.LikelihoodWithModel`
         Likelihood to be used for the wiener filter.
-    primals : tree-like
+    position : tree-like
         Position around which to linearize (if the problem is non-linear).
     key : jax random number generation key
     n_samples : int
