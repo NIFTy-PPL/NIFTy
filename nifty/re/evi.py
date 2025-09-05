@@ -368,15 +368,16 @@ def wiener_filter_posterior(
     draw_linear_kwargs: Optional[dict] = None,
     optimize_for_linear: bool = False,
 ) -> Tuple[Samples, Tuple]:
-    """Computes wiener filter solution for a standardized model.
-    Linearizes the problem for non-linear models.
+    """Computes wiener filter solution for a standardized model. For non-linear
+    models, the wiener filter solution is computed for a linearized model.
 
     Parameters
     ----------
     likelihood : :class:`~nifty.re.likelihood.LikelihoodWithModel`
         Likelihood to be used for the wiener filter.
     position : tree-like
-        Position around which to linearize (if the problem is non-linear).
+        Position around which to linearize (if the model is non-linear). By
+        default the model is linearized around 0.
     key : jax random number generation key
     n_samples : int
         Number of samples to draw.
