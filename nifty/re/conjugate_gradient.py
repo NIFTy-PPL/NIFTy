@@ -119,7 +119,7 @@ def _cg(
         pos = x0
         r = mat(pos) - j
         d = r
-        energy = float(vdot((r - j) / 2, pos))
+        energy = float(jnp.real(vdot((r - j) / 2, pos)))
         nfev = 1
     previous_gamma = float(jnp.real(vdot(r, r)))
 
@@ -273,7 +273,7 @@ def _static_cg(
         i += 1
 
         q = mat(d)
-        curv = vdot(d, q)
+        curv = jnp.real(vdot(d, q))
         alpha = previous_gamma / curv
         # ValueError("implausible or zero curvature in conjugate gradient")
         info = jnp.where(curv <= 0.0, jnp.where(_raise_nonposdef, -1, 0), info)
@@ -290,7 +290,7 @@ def _static_cg(
             lambda x: x["r"] - x["q"] * x["alpha"],
             {"pos": pos, "j": j, "r": r, "q": q, "alpha": alpha},
         )
-        gamma = vdot(r, r)
+        gamma = jnp.real(vdot(r, r))
 
         info = jnp.where((gamma >= 0.0) & (gamma <= tiny) & (info != -1), 0, info)
         if resnorm is not None:
@@ -298,7 +298,7 @@ def _static_cg(
             info = jnp.where((norm < resnorm) & (i >= miniter) & (info != -1), 0, info)
         else:
             norm = None
-        energy = vdot((r - j) / 2, pos)
+        energy = jnp.real(vdot((r - j) / 2, pos))
         energy_diff = previous_energy - energy
         neg_energy_eps = -eps * jnp.abs(energy)
         # print(f"energy increased", file=sys.stderr)
@@ -349,9 +349,9 @@ def _static_cg(
         d = r
         nfev = 1
     # energy = .5xT M x - xT j
-    energy = jnp.array(0.0) if x0 is None else vdot((r - j) / 2, pos)
+    energy = jnp.array(0.0) if x0 is None else jnp.real(vdot((r - j) / 2, pos))
 
-    gamma = vdot(r, r)
+    gamma = jnp.real(vdot(r, r))
     val = {
         "info": jnp.array(-2, dtype=int),
         "pos": pos,
