@@ -124,6 +124,37 @@ def test_cg(seed, cg):
 
 @pmp("seed", (3637, 12, 42))
 @pmp("cg", (jft.cg, jft.static_cg))
+def test_cg_consistency(seed, cg):
+    key = random.PRNGKey(seed)
+    n = 3
+    sk = random.split(key, 4)
+    x_real = random.normal(sk[0], shape=(n,))
+    x_imag = random.normal(sk[1], shape=(n,))
+
+    # Random complex matrix
+    A = random.normal(sk[2], shape=(n, n)) + 1j * random.normal(sk[3], shape=(n, n))
+    # Make it Hermitian and positive definite
+    H = (A + A.conj().T) / 2 + 6 * jnp.eye(n)
+    mat_complex = lambda x: jnp.matmul(H, x)
+
+    # build real counterpart
+    H_real = jnp.block([[H.real, -H.imag], [H.imag, H.real]])
+    mat_real = lambda x: jnp.matmul(H_real, x)
+
+    res_complex, _ = cg(mat_complex, x_real + 1j * x_imag, resnorm=1e-5, absdelta=1e-5)
+    res_real, _ = cg(mat_real, jnp.append(x_real, x_imag), resnorm=1e-5, absdelta=1e-5)
+    res_complex_to_real = jnp.append(res_complex.real, res_complex.imag)
+
+    # test complex against real
+    assert_allclose(res_real, res_complex_to_real, rtol=1e-12, atol=1e-12)
+
+    # check against explicit inversion
+    res_expl = jnp.matmul(jnp.linalg.inv(H), x_real + 1j * x_imag)
+    assert_allclose(res_complex, res_expl, rtol=1e-4, atol=1e-4)
+
+
+@pmp("seed", (3637, 12, 42))
+@pmp("cg", (jft.cg, jft.static_cg))
 def test_cg_non_pos_def_failure(seed, cg):
     key = random.PRNGKey(seed)
     sk = random.split(key, 2)
