@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
+# Authors: Philipp Frank
 
 import jax
 from jax import numpy as jnp
@@ -24,7 +25,7 @@ def _solve(A, X):
 
 @_solve.defjvp
 def _solve_jvp(primals, tangents):
-    # Note: Makes use of `stable_inverse` directly to enable stable higher order
+    # Note: Makes use of `_solve` directly to enable stable higher order
     # derivatives. This is a tradeoff against saving compute for first order.
     (A, X), (dA, dX) = primals, tangents
     res = _solve(A, X)
