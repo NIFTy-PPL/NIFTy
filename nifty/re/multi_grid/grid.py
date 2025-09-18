@@ -61,7 +61,7 @@ class GridAtLevel(metaclass=ModelMeta):
         # TODO non-dense grid
         return np.mgrid[tuple(slice(0, sh) for sh in self.shape)]
 
-    def is_index_refined(self, index):
+    def _is_index_refined(self, index):
         if self.splits is None:
             return jnp.zeros(index.shape[1:], dtype=bool) if index.ndim > 1 else False
         return jnp.ones(index.shape[1:], dtype=bool) if index.ndim > 1 else True
@@ -210,7 +210,7 @@ class OpenGridAtLevel(GridAtLevel):
             tuple(slice(pp, sh - pp) for sh, pp in zip(self.shape, self.padding))
         ]
 
-    def is_index_refined(self, index):
+    def _is_index_refined(self, index):
         if self.splits is None:
             return jnp.zeros(index.shape[1:], dtype=bool) if index.ndim > 1 else False
         isin = (
@@ -372,12 +372,12 @@ class MGridAtLevel(GridAtLevel):
             res = jnp.concatenate((res, mg), axis=0)
         return res
 
-    def is_index_refined(self, index):
+    def _is_index_refined(self, index):
         if self.splits is None:
             return jnp.zeros(index.shape[1:], dtype=bool) if index.ndim > 1 else False
         ndims_off = tuple(np.cumsum(tuple(g.ndim for g in self.grids)))
         islice = tuple(slice(l, r) for l, r in zip((0,) + ndims_off[:-1], ndims_off))
-        isin = tuple(g.is_index_refined(index[i]) for i, g in zip(islice, self.grids))
+        isin = tuple(g._is_index_refined(index[i]) for i, g in zip(islice, self.grids))
         return reduce(operator.mul, isin, 1)
 
     def resort(self, batched_ar, /):
@@ -576,20 +576,17 @@ class FlatGridAtLevel(GridAtLevel):
     def raw_grids(self):
         return self.grid_at_level.raw_grids
 
-    def levelshape(self, levelshift):
-        return self.all_shapes[-2 + levelshift]
-
     def _weights_serial(self, levelshift):
         if levelshift not in (-1, 0, 1):
             raise ValueError(f"invalid shift in level {levelshift!r}")
-        shape = self.levelshape(levelshift)
+        shape = self.all_shapes[levelshift - 2]
         return np.cumprod(np.append(shape[1:], 1)[::-1])[::-1]
 
     def _weights_nest(self, levelshift):
         if levelshift not in (-1, 0, 1):
             raise ValueError(f"invalid shift in level {levelshift!r}")
         bases = self.all_splits[: (len(self.all_splits) - 2 + levelshift)]
-        shape = self.levelshape(levelshift)
+        shape = self.all_shapes[levelshift - 2]
         base_shape = shape // reduce(operator.mul, bases, np.ones_like(shape))
         wgts = (base_shape,) + bases
         return np.stack(wgts, axis=0)
@@ -650,10 +647,10 @@ class FlatGridAtLevel(GridAtLevel):
         else:
             return res.reshape((1, -1))
 
-    def is_index_refined(self, index):
+    def _is_index_refined(self, index):
         index = self._parse_index(index)
         index = self.flatindex2index(index)
-        return self.grid_at_level.is_index_refined(index)
+        return self.grid_at_level._is_index_refined(index)
 
     def resort(self, batched_ar, /):
         if self.ordering == "nest":
@@ -836,9 +833,9 @@ class SparseGridAtLevel(FlatGridAtLevel):
 
     def refined_indices(self):
         index = jnp.arange(self.mapping.size, dtype=self.mapping.dtype)[jnp.newaxis, :]
-        return index[:, self.is_index_refined(index)]
+        return index[:, self._is_index_refined(index)]
 
-    def is_index_refined(self, index):
+    def _is_index_refined(self, index):
         index = self.arrayindex2flatindex(index)
         children = self.to_flat_grid().children(index)
         isin = jnp.isin(children[0], self.children_mapping)
