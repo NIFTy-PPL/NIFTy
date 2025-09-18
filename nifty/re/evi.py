@@ -360,13 +360,13 @@ class Samples:
 
 def wiener_filter_posterior(
     likelihood: LikelihoodWithModel,
-    position: Optional[P] = None,
+    position,
     *,
     key,
     n_samples: int = 0,
     residual_map="smap",
     draw_linear_kwargs: Optional[dict] = None,
-    optimize_for_linear: bool = False,
+    optimize_for_linear: bool = True,
 ) -> Tuple[Samples, Tuple]:
     """Computes wiener filter solution for a standardized model. For non-linear
     models, the wiener filter solution is computed for a linearized model.
@@ -376,8 +376,7 @@ def wiener_filter_posterior(
     likelihood : :class:`~nifty.re.likelihood.LikelihoodWithModel`
         Likelihood to be used for the wiener filter.
     position : tree-like
-        Position around which to linearize (if the model is non-linear). By
-        default the model is linearized around 0.
+        Position around which to linearize (if the model is non-linear).
     key : jax random number generation key
     n_samples : int
         Number of samples to draw.
@@ -398,21 +397,24 @@ def wiener_filter_posterior(
     # Remove any constant offsets from the data/signal that are part of the model
     data = data - likelihood.forward(zeros_like(likelihood.domain))
 
-    position = zeros_like(likelihood.domain) if position is None else position
     if optimize_for_linear:
         forward_T = jax.linear_transpose(likelihood.forward, likelihood.domain)
     else:
         _, forward_T = jax.vjp(likelihood.forward, position)
+
     forward_T = _functional_conj(forward_T)
     n_inv_d = likelihood.likelihood.metric(likelihood.forward(position), data)
     (j,) = forward_T(n_inv_d)
 
+    if isinstance(j, dict):
+        j = Vector(j)
+
     def post_cov_inv(tangents, primals):
         return likelihood.metric(primals, tangents) + tangents
 
-    cg = draw_linear_kwargs.get("cg", conjugate_gradient.static_cg)
+    cg = draw_linear_kwargs.get("cg", conjugate_gradient.cg)
     post_mean, post_info = cg(
-        Partial(post_cov_inv, primals=position),
+        jax.jit(Partial(post_cov_inv, primals=position)),
         j,
         name=draw_linear_kwargs.get("cg_name", None),
         **draw_linear_kwargs.get("cg_kwargs", {}),

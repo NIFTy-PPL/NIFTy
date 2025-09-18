@@ -81,8 +81,11 @@ lh = jft.Gaussian(data, noise_cov_inv).amend(signal_response)
 # %%
 delta = 1e-6
 key, k_w = random.split(key)
+
+pos = jft.zeros_like(lh.domain)
 samples, info = jft.wiener_filter_posterior(
     lh,
+    pos,
     key=k_w,
     n_samples=20,
     draw_linear_kwargs=dict(
