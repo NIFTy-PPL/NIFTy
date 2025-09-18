@@ -381,11 +381,9 @@ class MGridAtLevel(GridAtLevel):
         return reduce(operator.mul, isin, 1)
 
     def resort(self, batched_ar, /):
-        for g in self.grids:
-            if isinstance(g, FlatGrid):
-                if g.ordering == "serial":
-                    msg = "serial ordering MGrid resort not implemented"
-                    raise NotImplementedError(msg)  # TODO generalize using grids resort
+        if any(isinstance(g, FlatGrid) and g.ordering == "serial" for g in self.grids):
+            msg = "serial ordering MGrid resort not implemented"
+            raise NotImplementedError(msg) # TODO generalize using grids resort
         return super().resort(batched_ar)
 
     def children(self, index) -> npt.NDArray:
@@ -473,10 +471,7 @@ class MGridAtLevel(GridAtLevel):
         )
         if return_valid:
             inds = tuple(i[0] if isinstance(i, tuple) else i for i in index)
-            valid = []
-            for i in index:
-                if isinstance(i, tuple):
-                    valid.append(i[1])
+            valid = list(i[1] for i in index if isinstance(i, tuple))
             if len(valid) > 0:
                 valid = jnp.all(jnp.stack(valid, axis=0), axis=0)
             else:
