@@ -312,6 +312,12 @@ class ICRKernel(Kernel):
         return self._window_size
 
     def get_output_input_indices(self, index, level):
+        """Index mappings defining matrix elements to refine `index`.
+
+        Each `index` at `level` is refined onto children `gout` at `level + 1`.
+        The indices of neighbors at `level` and inputs at `level + 1` needed to
+        gather the array elements of the input are returned.
+        """
         if level is None:
             grid_at_lvl = self.grid.at(0)
             pixel_indices = np.mgrid[tuple(slice(0, sz) for sz in grid_at_lvl.shape)]
@@ -327,6 +333,13 @@ class ICRKernel(Kernel):
         return (gout, level + 1), ((gc, level), (gf, level + 1))
 
     def get_kernel_distmat(self, index, level):
+        """Distance matrix between fine and coarse points.
+        
+        Distances between all points involved in one local refinement operation.
+        In addition to the distance matrix, the number of features in the output
+        grid is returned, defining the number of columns in the distance matrix
+        that belong to the `fine` points.
+        """
         if level is None:
             _, ((ids, _),) = self.get_output_input_indices(index, None)
             coords = self.grid.at(0).index2coord(ids)
@@ -342,6 +355,12 @@ class ICRKernel(Kernel):
         return dists, gf.shape[-1]
 
     def compute_matrices(self, index, level):
+        """Kernel matrices for a given index and level.
+        
+        Computes and returns the matrix elements required to refine `index`
+        onto it's children. These matrix elements are to be combined with array
+        elements gathered from the output of `self.get_output_input_indices`.
+        """
         if level is None:
             _, ((ids, _),) = self.get_output_input_indices(index, None)
             gc = self.grid.at(0).index2coord(ids)
