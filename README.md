@@ -171,7 +171,7 @@ may choose to install optional dependencies to enable additional features.
 ### First Steps
 
 For a quick start, you can browse through the [informal
-introduction](https://ift.pages.mpcdf.de/nifty/user/code.html) or dive into
+introduction](https://ift.pages.mpcdf.de/nifty/user/) or dive into
 NIFTy by running one of the demonstrations, e.g.:
 
     python3 demos/cl/getting_started_1.py
