@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 # Authors: Philipp Frank, Gordian Edenhofer
 
+from dataclasses import field
 import operator
 from collections import namedtuple
 from functools import partial, reduce
@@ -11,16 +12,18 @@ from typing import Optional, Tuple
 import jax.numpy as jnp
 import numpy as np
 from jax import eval_shape, jit, vmap
+from jax.tree_util import register_pytree_node
 from jax.lax import scan
 from numpy import typing as npt
 
+from ..model import ModelMeta
 from ..num import amend_unique_
 from .grid import FlatGrid, Grid, OpenGridAtLevel
 from .grid_impl import HEALPixGridAtLevel
 from ..tree_math import solve, sqrtm
 
 
-def apply_kernel(x, *, kernel):
+def apply_kernel(x, *, kernel, indices=None):
     """Applies the kernel to values on an entire multigrid"""
     if len(x) != (kernel.grid.depth + 1):
         msg = f"input depth {len(x)} does not match grid depth {kernel.grid.depth}"
@@ -43,10 +46,12 @@ def apply_kernel(x, *, kernel):
         return iout, res.reshape(iout[0].shape[1:])
 
     x = list(x)
-    _, x[0] = apply_at(jnp.array([-1]), None, x)  # Use dummy index for base
+    _, x[0] = apply_at(
+        indices[0] if indices is not None else jnp.array([-1]), None, x
+    )  # Use dummy index for base
     for lvl in range(kernel.grid.depth):
         g = kernel.grid.at(lvl)
-        index = g.refined_indices()
+        index = indices[lvl + 1] if indices is not None else g.refined_indices()
         # TODO this selects window for each index individually
         f = apply_at
         for i in range(g.ndim):
@@ -61,15 +66,27 @@ _CompressedIndexMap = namedtuple(
     "_CompressedIndexMap",
     ("base_kernel", "kernels", "uindices", "indexmaps", "invindices"),
 )
+def tree_flatten(self):
+    dynamic = [self.base_kernel, self.kernels, self.uindices, self.invindices]
+    static = [self.indexmaps]
+    return (tuple(dynamic), tuple(static))
+
+def tree_unflatten(aux, children):
+    static, dynamic = aux, children
+    return _CompressedIndexMap(base_kernel=dynamic[0], kernels=dynamic[1],
+                               uindices=dynamic[2], indexmaps=static[0], invindices=dynamic[3])
+register_pytree_node(_CompressedIndexMap, tree_flatten, tree_unflatten)
 
 
-class Kernel:
+class Kernel(metaclass=ModelMeta):
     """
     - Apply linear operators with inputs accross an arbitrary grid
     - A Kernel could be as simple as coarse graining children to a parent; or a full
       ICR or MSC implementation
     - Fully jax transformable to allow seamlessly being used in larger models
     """
+    _grid: Grid = field(metadata=dict(static=False))
+    _cim: Optional[_CompressedIndexMap] = field(metadata=dict(static=False), default=None)
 
     def __init__(self, grid, *, _cim: Optional[_CompressedIndexMap] = None):
         self._grid = grid
@@ -104,8 +121,7 @@ class Kernel:
         """Compute kernel matrices from scratch."""
         raise NotImplementedError()
 
-    def lookup_matrices(self, index, level):
-        """Efficient retrieval of kernel matrices for a compressed kernel."""
+    def _lookup_indices(self, index, level):
         if self._cim is None:
             msg = "kernel needs to be compressed first for fast lookups"
             raise NotImplementedError(msg)
@@ -114,6 +130,17 @@ class Kernel:
             return self._cim.base_kernel
         index = self._cim.indexmaps[level].index2flatindex(index)[0]
         index = self._cim.invindices[level][index - self._cim.indexmaps[level].shift]
+        return index
+
+    def lookup_matrices(self, index, level):
+        """Efficient retrieval of kernel matrices for a compressed kernel."""
+        if self._cim is None:
+            msg = "kernel needs to be compressed first for fast lookups"
+            raise NotImplementedError(msg)
+
+        if level is None:
+            return self._cim.base_kernel
+        index = self._lookup_indices(index, level)
         return tuple(kk[index] for kk in self._cim.kernels[level])
 
     def compress_indices(
@@ -143,7 +170,11 @@ class Kernel:
             assert index.ndim == ids.ndim - 1
             return (distance_norm(out[..., jnp.newaxis] - ids[..., jnp.newaxis, :]),)
 
-        gridf = self.grid if isinstance(self.grid, FlatGrid) else FlatGrid(self.grid)
+        gridf = (
+            FlatGrid(self.grid)
+            if not isinstance(self.grid, FlatGrid)
+            else FlatGrid(self.grid, ordering=self.grid.ordering)
+        )
         uindices = []
         invindices = []
         indexmaps = []
@@ -248,22 +279,23 @@ def refinement_matrices(cov, n_fsz: int):
 class ICRKernel(Kernel):
     """Full ICR implementation taking an arbitrary grid and a covariance function."""
 
+
     def __init__(self, grid, covariance, *, window_size=None, _cim=None):
         self._covariance_elem = covariance
         if window_size is None:
             window_size = tuple(
                 _default_window_size(grid.at(lvl)) for lvl in range(grid.depth)
             )
-        self._window_size = tuple(
-            np.broadcast_to(window_size, (grid.depth, grid.at(0).ndim))
-        )
+        elif not isinstance(window_size, tuple):
+            window_size = (window_size) * grid.depth
+        self._window_size = window_size
         super().__init__(grid=grid, _cim=_cim)
 
     def replace(self, *, covariance=None, window_size=None, _cim=None):
         cim = self._cim if _cim is None else _cim
         if covariance is not None and cim is not None:
             cim = cim._replace(base_kernel=None, kernels=None)
-        else:
+        elif covariance is None:
             covariance = self._covariance_elem
         window_size = self.window_size if window_size is None else window_size
         return self.__class__(self.grid, covariance, window_size=window_size, _cim=cim)
@@ -280,6 +312,12 @@ class ICRKernel(Kernel):
         return self._window_size
 
     def get_output_input_indices(self, index, level):
+        """Index mappings defining matrix elements to refine `index`.
+
+        Each `index` at `level` is refined onto children `gout` at `level + 1`.
+        The indices of neighbors at `level` and inputs at `level + 1` needed to
+        gather the array elements of the input are returned.
+        """
         if level is None:
             grid_at_lvl = self.grid.at(0)
             pixel_indices = np.mgrid[tuple(slice(0, sz) for sz in grid_at_lvl.shape)]
@@ -294,7 +332,35 @@ class ICRKernel(Kernel):
         gf = gout.reshape(index.shape + (-1,))
         return (gout, level + 1), ((gc, level), (gf, level + 1))
 
+    def get_kernel_distmat(self, index, level):
+        """Distance matrix between fine and coarse points.
+        
+        Distances between all points involved in one local refinement operation.
+        In addition to the distance matrix, the number of features in the output
+        grid is returned, defining the number of columns in the distance matrix
+        that belong to the `fine` points.
+        """
+        if level is None:
+            _, ((ids, _),) = self.get_output_input_indices(index, None)
+            coords = self.grid.at(0).index2coord(ids)
+            dists = coords[..., jnp.newaxis] - coords[..., jnp.newaxis, :]
+            dists = jnp.linalg.norm(dists, axis=0)
+            return dists
+        _, ((idc, _), (idf, _)) = self.get_output_input_indices(index, level)
+        gc = self.grid.at(level).index2coord(idc)
+        gf = self.grid.at(level + 1).index2coord(idf)
+        coords = jnp.concatenate((gc, gf), axis=-1)
+        dists = coords[..., jnp.newaxis] - coords[..., jnp.newaxis, :]
+        dists = jnp.linalg.norm(dists, axis=0)
+        return dists, gf.shape[-1]
+
     def compute_matrices(self, index, level):
+        """Kernel matrices for a given index and level.
+        
+        Computes and returns the matrix elements required to refine `index`
+        onto it's children. These matrix elements are to be combined with array
+        elements gathered from the output of `self.get_output_input_indices`.
+        """
         if level is None:
             _, ((ids, _),) = self.get_output_input_indices(index, None)
             gc = self.grid.at(0).index2coord(ids)

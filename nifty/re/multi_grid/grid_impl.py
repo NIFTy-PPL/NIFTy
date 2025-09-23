@@ -63,7 +63,7 @@ class HEALPixGridAtLevel(GridAtLevel):
         if window_size == 1:
             return index[..., jnp.newaxis]
         if window_size == self.size:
-            assert np.all(index >= 0) and np.all(index < self.size)
+            # assert np.all(index >= 0) and np.all(index < self.size) FIXME potential non-static indices
             nbrs = np.arange(self.size, dtype=dtp)
             nbrs = nbrs[(np.newaxis,) * index.ndim + (slice(None),)]
             return (index[..., jnp.newaxis] + nbrs) % self.size
@@ -150,14 +150,14 @@ class HEALPixGrid(Grid):
                     "Ambiguous initialisation of HEALPixGrid. If depth is given, please supply exactly one of (nside0, nside, shape0)"
                 )
             if nside is not None:
-                nside0 = nside // 2**depth
+                nside0 = nside // 2**depth # FIXME assumes splits=4 everywhere
         else:
             if (nside is None) or (nside0 is None):
                 raise ValueError(
                     "Ambiguous initialisation of HEALPixGrid. If depth is not given, please supply nside and exactly one of (nside0, shape0)"
                 )
             assert nside0 <= nside
-            depth = np.log2(nside / nside0)
+            depth = np.log2(nside / nside0) # FIXME assumes splits=4 everywhere
             assert np.isclose(depth, round(depth), atol=1.0e-10)
             depth = round(depth)
 
@@ -180,7 +180,10 @@ class HEALPixGrid(Grid):
             assert splits is not None
             splits = (splits,) if isinstance(splits, int) else splits
         splits = tuple(np.atleast_1d(s) for s in splits)
-        return self.__class__(nside0=self.nside0, splits=self.splits + splits)
+        splits = self.splits + splits
+        depth = len(splits)
+        return self.__class__(nside0=self.nside0, depth=depth,
+                              splits=splits)
 
 
 class SimpleOpenGridAtLevel(OpenGridAtLevel):
@@ -209,10 +212,10 @@ class SimpleOpenGridAtLevel(OpenGridAtLevel):
         coord = super().index2coord(index)
         return coord * ((self.shape + 2 * self.shifts) * self.distances)[bc]
 
-    def coord2index(self, coord, dtype=np.uint64):
+    def coord2index(self, coord, **kwargs):
         bc = (slice(None),) + (np.newaxis,) * (coord.ndim - 1)
         coord = coord / ((self.shape + 2 * self.shifts) * self.distances)[bc]
-        return super().coord2index(coord, dtype=dtype)
+        return super().coord2index(coord, **kwargs)
 
     def index2volume(self, index):
         vol = super().index2volume(index)
@@ -272,6 +275,8 @@ def SimpleOpenGrid(
             )
             depth = max(int(np.ceil(depth)), 0)
         splits = np.broadcast_to(splits, (depth,) + min_shape.shape)
+    if depth is None:
+        depth = len(splits)
     padding = np.ceil((window_size - 1) // 2).astype(np.int_)
     padding = np.broadcast_to(padding, (depth,) + min_shape.shape)
 
@@ -319,9 +324,9 @@ class LogGridAtLevel(SimpleOpenGridAtLevel):
         coord = super().index2coord(index)
         return jnp.exp(self.coord_scale * coord + self.coord_offset)
 
-    def coord2index(self, coord, dtype=np.uint64):
+    def coord2index(self, coord, **kwargs):
         coord = (jnp.log(coord) - self.coord_offset) / self.coord_scale
-        return super().coord2index(coord, dtype=dtype)
+        return super().coord2index(coord, **kwargs)
 
     def index2volume(self, index):
         a = (slice(None),) + (np.newaxis,) * index.ndim
@@ -460,7 +465,7 @@ class BrokenLogGridAtLevel(SimpleOpenGridAtLevel):
         ]
         return jnp.piecewise(coord, condlist, funclist)
 
-    def coord2index(self, coord, dtype=np.uint64):
+    def coord2index(self, coord, **kwargs):
         # map to in-between 0 and 1
         condlist = [
             coord < self._r_min,
@@ -476,7 +481,7 @@ class BrokenLogGridAtLevel(SimpleOpenGridAtLevel):
         ]
         coord = jnp.piecewise(coord, condlist, funclist)
         # transform to index
-        return super().coord2index(coord, dtype=dtype)
+        return super().coord2index(coord, **kwargs)
 
     def index2volume(self, index):
         a = (slice(None),) + (np.newaxis,) * index.ndim
