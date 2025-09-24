@@ -155,7 +155,7 @@ def nonlinearly_update_residual(    #geovidoc Alg. 1 - implementation
         point_estimates=point_estimates,
     )
 
-    def residual_vg(e, lh_trafo_at_p, ms_at_p, x):    #geovidoc Alg. 1: residual_vg(...) = Energy(ξ̄, (dx/dξ̄)(ξ̄̄), z, ξ̄)
+    def residual_vg(e, lh_trafo_at_p, ms_at_p, x):    #geovidoc Alg. 1: residual_vg(...) = Energy(ξ̄ , (dx/dξ̄)(ξ̄̄), z, ξ̄)
         lh, e_liquid = likelihood.freeze(point_estimates=point_estimates, primals=e)
 
         # t = likelihood.transformation(x) - lh_trafo_at_p
@@ -183,7 +183,7 @@ def nonlinearly_update_residual(    #geovidoc Alg. 1 - implementation
     sample = pos + residual_sample
     del residual_sample
     sample = _process_point_estimate(sample, pos, point_estimates, insert=False)
-    metric_sample, _ = draw_lni(pos, metric_sample_key) #geovidoc Alg. 1 Line 3 - 5
+    metric_sample, _ = draw_lni(pos, metric_sample_key) #geovidoc Alg. 1 Line 3 - 5: z = metric_sample
     metric_sample *= metric_sample_sign
     metric_sample = _process_point_estimate(
         metric_sample, pos, point_estimates, insert=False
@@ -201,7 +201,7 @@ def nonlinearly_update_residual(    #geovidoc Alg. 1 - implementation
             "hessp": partial(metric, pos),
             "custom_gradnorm": partial(sampnorm, pos),
         }
-        opt_state = minimize(None, x0=sample, **(minimize_kwargs | options)) #geovidoc Alg. 1 Line 10: opt_state = NewtonCG(Energy, ξ0)
+        opt_state = minimize(None, x0=sample, **(minimize_kwargs | options)) #geovidoc Alg. 1 Line 10: opt_state = NewtonCG(Energy, ξ^0)
     else:
         opt_state = optimize.OptimizeResults(sample, True, 0, None, None)
     if _raise_notconverged and (opt_state.status < 0):
