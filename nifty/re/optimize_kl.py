@@ -817,7 +817,7 @@ def optimize_kl(
     _optimize_vi=None,
     _optimize_vi_state=None,
 ) -> tuple[Samples, OptimizeVIState]:
-    """One-stop-shop for MGVI/geoVI style VI approximation.
+    """One-stop-shop for MGVI/geoVI style V:30I approximation.
 
     Parameters
     ----------
@@ -894,6 +894,7 @@ def optimize_kl(
             pass
 
     nm = "OPTIMIZE_KL"
+    #the geovidoc commments refer to the pseudocode in the geovi paper: https://doi.org/10.48550/arXiv.2105.10470
     for i in range(opt_vi_st.nit, opt_vi.n_total_iterations):   #geovidoc Alg. 2: outer loop Line 4-20
         logger.info(f"{nm}: Starting {i + 1:04d}")
         samples, opt_vi_st = opt_vi.update(samples, opt_vi_st)     #geovidoc Alg. 2: core Algorithm Line 5-19
