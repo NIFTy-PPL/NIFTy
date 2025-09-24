@@ -170,28 +170,75 @@ def nonlinearly_update_residual(    #geovidoc Alg. 1 - implementation
         return (res, -ngrad)
 
 
-    def residual_vg_symm(e, ms_at_p, x):
+    # def residual_vg_symm(e, ms_at_p, x):
 
-        def sampnorm_q2(e, vector):
-            lh, e_liquid = likelihood.freeze(point_estimates=point_estimates, primals=e)
-            fpp = lh.right_sqrt_metric(e_liquid, vector)
-            return vdot(vector, vector) + vdot(fpp, fpp)
+    #     def sampnorm_q2(e, vector):
+    #         lh, e_liquid = likelihood.freeze(point_estimates=point_estimates, primals=e)
+    #         fpp = lh.right_sqrt_metric(e_liquid, vector)
+    #         return vdot(vector, vector) + vdot(fpp, fpp)
 
-        lh, e_liquid = likelihood.freeze(point_estimates=point_estimates, primals=e)
+    #     lh, e_liquid = likelihood.freeze(point_estimates=point_estimates, primals=e)
 
-        lh_trafo_at_p = lh.transformation(e_liquid)
+
+    #     lh_trafo_at_p = lh.transformation(e_liquid)
+    #     lh_trafo_at_x = lh.transformation(x)
+
+    #     t = tree_map(jnp.subtract, lh_trafo_at_x, lh_trafo_at_p)
+
+    #     # r_1 = ms_at_p - (x - e_liquid + lh.left_sqrt_metric(e_liquid, t))
+    #     # r_2 = ms_at_p - (x - e_liquid + lh.left_sqrt_metric(x, t))
+    #     # res = 0.25 * (vdot(r_1, r_1) + vdot(r_2, r_2))
+    #     # res = 0.25 * (sampnorm_q2(e, r_1) + sampnorm_q2(x, r_2))
+
+    #     r_1 = (x - e_liquid + lh.left_sqrt_metric(e_liquid, t))
+    #     r_2 = (x - e_liquid + lh.left_sqrt_metric(x, t))
+    #     r = ms_at_p - 0.5*(r_1 + r_2)
+    #     res = 0.5 * vdot(r, r)
+
+    #     # r_1 = ms_at_p - (x - e_liquid + lh.left_sqrt_metric(x, t))
+    #     # res = 0.5 * vdot(r_1, r_1)
+    #     # res = 0.5 * (sampnorm_q2(e, r_1))
+
+    #     return res
+
+    def residual_vg_implicit_mid(e, x):
+
+        lh, e = likelihood.freeze(point_estimates=point_estimates, primals=e)
+        
+        smpl_at_x,_ = draw_lni((x+e)/2, metric_sample_key)
+
+
+        lh_trafo_at_p = lh.transformation(e)
         lh_trafo_at_x = lh.transformation(x)
 
         t = tree_map(jnp.subtract, lh_trafo_at_x, lh_trafo_at_p)
 
-        # r_1 = ms_at_p - (x - e_liquid + lh.left_sqrt_metric(e_liquid, t))
-        # r_2 = ms_at_p - (x - e_liquid + lh.left_sqrt_metric(x, t))
-        # res = 0.25 * (vdot(r_1, r_1) + vdot(r_2, r_2))
-        # res = 0.25 * (sampnorm_q2(e, r_1) + sampnorm_q2(x, r_2))
+        g_at_x = (x - e + lh.left_sqrt_metric((x+e)/2, t))
+        r = smpl_at_x - g_at_x
+        res = 0.5 * vdot(r, r)
 
-        r_1 = (x - e_liquid + lh.left_sqrt_metric(e_liquid, t))
-        r_2 = (x - e_liquid + lh.left_sqrt_metric(x, t))
-        r = ms_at_p - 0.5*(r_1 + r_2)
+        # r_1 = ms_at_p - (x - e_liquid + lh.left_sqrt_metric(x, t))
+        # res = 0.5 * vdot(r_1, r_1)
+        # res = 0.5 * (sampnorm_q2(e, r_1))
+
+        return res
+    
+    def residual_vg_implicit_non_diag(e, x):
+
+        lh, e = likelihood.freeze(point_estimates=point_estimates, primals=e)
+        
+        smpl_at_p,_ = draw_lni(e, metric_sample_key)
+        smpl_at_x,_ = draw_lni(x, metric_sample_key)
+
+
+        lh_trafo_at_p = lh.transformation(e)
+        lh_trafo_at_x = lh.transformation(x)
+
+        t = tree_map(jnp.subtract, lh_trafo_at_x, lh_trafo_at_p)
+
+        g_at_p = (x - e + lh.left_sqrt_metric(e, t))
+        g_at_x = (x - e + lh.left_sqrt_metric(x, t))
+        r = 0.5*((smpl_at_p + smpl_at_x) - (g_at_p + g_at_x))
         res = 0.5 * vdot(r, r)
 
         # r_1 = ms_at_p - (x - e_liquid + lh.left_sqrt_metric(x, t))
@@ -201,6 +248,31 @@ def nonlinearly_update_residual(    #geovidoc Alg. 1 - implementation
         return res
 
 
+    def residual_vg_nr(e, x):
+
+        lh, e = likelihood.freeze(point_estimates=point_estimates, primals=e)
+
+        lh_trafo_at_p = lh.transformation(e)
+        lh_trafo_at_x = lh.transformation(x)
+        t = tree_map(jnp.subtract, lh_trafo_at_x, lh_trafo_at_p)
+
+        
+        def pnt(xi):
+            smpl_at_xi,_ = draw_lni(xi, metric_sample_key)
+            g_at_xi = (x - e + lh.left_sqrt_metric(xi, t))
+            return smpl_at_xi - g_at_xi
+
+        ws = [1/6, 4/6, 1/6]
+        xs = [e, (e+x)/2, x]
+
+        ws = [1/2, 1/2]
+        xs = [e, x]
+
+        r = sum([wi * pnt(xi) for wi, xi in zip(ws, xs)])
+        res = 0.5 * vdot(r, r)
+
+        return res
+
     def metric(e, primals, tangents):
         lh, e_liquid = likelihood.freeze(point_estimates=point_estimates, primals=e)
         lsm = lh.left_sqrt_metric
@@ -208,7 +280,7 @@ def nonlinearly_update_residual(    #geovidoc Alg. 1 - implementation
         tm = lsm(e_liquid, rsm(primals, tangents)) + tangents
         return lsm(primals, rsm(e_liquid, tm)) + tm
 
-    def sampnorm(e,             natgrad):
+    def sampnorm(e, natgrad):
         lh, e_liquid = likelihood.freeze(point_estimates=point_estimates, primals=e)
         fpp = lh.right_sqrt_metric(e_liquid, natgrad)
         return jnp.sqrt(vdot(natgrad, natgrad) + vdot(fpp, fpp))
@@ -229,15 +301,25 @@ def nonlinearly_update_residual(    #geovidoc Alg. 1 - implementation
     if not skip:
         lh_f, e_liquid = likelihood.freeze(point_estimates=point_estimates, primals=pos)
         trafo_at_p = lh_f.transformation(e_liquid)
-        if not implicit_samples:
+        if not implicit_samples or implicit_samples == "standard":
             options = {
                 "fun_and_grad": partial(residual_vg, pos, trafo_at_p, metric_sample),
                 "hessp": partial(metric, pos),
                 "custom_gradnorm": partial(sampnorm, pos),
             }
-        else:
+        elif implicit_samples == "implicit":
             options = {
-                "fun": partial(residual_vg_symm, pos, metric_sample),
+                "fun": partial(residual_vg_implicit_mid, pos),
+                "custom_gradnorm": partial(sampnorm, pos),
+            }
+        elif implicit_samples == "implicit_non_diag":
+                        options = {
+                "fun": partial(residual_vg_implicit_non_diag, pos),
+                "custom_gradnorm": partial(sampnorm, pos),
+            }
+        elif isinstance(implicit_samples, int):
+                        options = {
+                "fun": partial(residual_vg_nr, pos),
                 "custom_gradnorm": partial(sampnorm, pos),
             }
 
