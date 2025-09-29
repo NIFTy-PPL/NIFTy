@@ -33,8 +33,8 @@ def discrete_gauss_markov_process(xi: Array, x0: Array, drift: Array, diffamp: A
     which corresponds to a random realization of a GMP in case `xi` is
     standard normal distributed.
 
-    Parameters:
-    -----------
+    Parameters
+    ----------
     xi: Array
         Input random variables for the GMP.
     x0: Array
@@ -54,8 +54,9 @@ def discrete_gauss_markov_process(xi: Array, x0: Array, drift: Array, diffamp: A
         Sequence of vectors of the Gauss-Markov series. The sequence is returned
         as an array where the first axis corresponds to the steps of the
         sequence and the second axis are the entries of the vector.
-    Notes:
-    ------
+
+    Notes
+    -----
     In case the sequence `xi` has length N (i.E. `xi.shape[0] = N`) the result
     sequence is of length N+1 as `x0` is returned as the first entry of the
     final sequence, followed by N transitions.
@@ -184,8 +185,8 @@ def WienerProcess(
 
     where :math:`\\xi_t` is continuous time white noise.
 
-    Parameters:
-    -----------
+    Parameters
+    ----------
     x0: tuple, float, or LazyModel
         Initial position of the WP. Can be passed as a fixed value, or a
         generative Model. Passing a tuple is a shortcut to set a normal prior
@@ -203,8 +204,8 @@ def WienerProcess(
     N_steps: int (optional)
         Option to set the number of steps in case `dt` is a scalar.
 
-    Notes:
-    ------
+    Notes
+    -----
     In case :math:`\\sigma` is time dependent, i.E. passed on as a sequence
     of length equal to :math:`\\xi`, it is assumed to be constant within each timebin,
     i.E. :math:`\\sigma_t = \\sigma_i` for :math:`t_i <= t < t_{i+1}`.
@@ -249,7 +250,7 @@ def IntegratedWienerProcess(
     scale. See also `re.correlated_field.CorrelatedFieldMaker` and references
     there for further information.
 
-    Parameters:
+    Parameters
     ----------
     x0: tuple, array, LazyModel
         Initial position of the IWP and its derivative. In case you set a tuple,
@@ -263,8 +264,8 @@ def IntegratedWienerProcess(
     N_steps: int (optional)
         Option to set the number of steps in case `dt` is a scalar.
 
-    Notes:
-    ------
+    Notes
+    -----
     :math:`\\sigma` and `asperity` may also be sequences. See notes on `WienerProcess`
     for further information.
     """
@@ -313,8 +314,8 @@ def OrnsteinUhlenbeckProcess(
     case it defaults to a random variable drawn from the steady state
     distribution of the OUP.
 
-    Notes:
-    ------
+    Notes
+    -----
     `sigma` and `gamma` may also be sequences. See notes on `WienerProcess`
     for further information.
     """

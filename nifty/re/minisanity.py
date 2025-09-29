@@ -31,8 +31,8 @@ def reduced_residual_stats(position_or_samples, func=None, *, map="lmap"):
     """Computes the average, reduced chi-squared, and number of parameters
     as a summary statistics for a given input.
 
-    Parameters:
-    -----------
+    Parameters
+    ----------
     position_or_samples: tree-like or Samples
         Input values to compute reduces chi-sq statistics. The statistics is
         computed for each leaf of the pytree, i.E. only array-like leafs are
@@ -44,8 +44,8 @@ def reduced_residual_stats(position_or_samples, func=None, *, map="lmap"):
         statistics for. If provided, the statistics is computed for `func(x)`
         instead of `x` where x is either primals or a sample.
 
-    Returns:
-    --------
+    Returns
+    -------
     stats: tree-like
         Pytree of tuple containing the mean, reduced chi-squared, and number of
         parameters for each leaf of the input tree. For the mean and reduched

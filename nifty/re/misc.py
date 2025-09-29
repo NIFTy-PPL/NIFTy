@@ -139,8 +139,8 @@ def _maybe_raise(condition, exception):
 def conditional_raise(condition: bool, exception):
     """JAX JIT-safe raise of the given Exception if `condition` is True.
 
-    Parameters:
-    -----------
+    Parameters
+    ----------
     condition: bool
         If True, will raise `exception` on the host.
     exception: :class:`Exception`
@@ -174,8 +174,8 @@ def conditional_call(condition, fn, *args, **kwargs):
     objects! To safeguard against easy to miss fallacies, all JAX arrays are
     automatically converted to numpy arrays.
 
-    Parameters:
-    -----------
+    Parameters
+    ----------
     condition: boolean
         If True, will call `fn` on the host
     fn: Callable
