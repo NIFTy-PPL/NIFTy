@@ -66,10 +66,10 @@ def _cg_pretty_print_it(
         i_str = "✖" * len(str(i)) + f" ({i})"
     else:
         i_str = str(i)
-    msg = f"{name}: Iteration {i_str} ⛰:{energy:+.4e} Δ⛰:{energy_diff:.4e}"
-    msg += f" ➽:{absdelta:.4e}" if absdelta is not None else ""
+    msg = f"{name}: Iteration {i_str} E:{energy:+.4e} ΔE:{energy_diff:.4e}"
+    msg += f" AbsDelta:{absdelta:.4e}" if absdelta is not None else ""
     if norm is not None and resnorm is not None:
-        msg += f" |∇|:{norm:.4e} ➽:{resnorm:.4e}"
+        msg += f" Norm:{norm:.4e} Resnorm:{resnorm:.4e}"
     logger.info(msg)
 
 
