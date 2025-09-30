@@ -85,6 +85,6 @@ Publications
 
 If you use MGVI or geoVI, the authors of the respective papers would greatly appreciate a citation.
 
-.. [1] J. Knollmüller, T.A. Enßlin, "Metric Gaussian Variational Inference"; `[arXiv:1901.11033] <https://arxiv.org/abs/1901.11033>`_
+.. [1] Knollmüller J., Enßlin T., "Metric Gaussian Variational Inference"; `[arXiv:1901.11033] <https://arxiv.org/abs/1901.11033>`_
 
-.. [2] P. Frank, R. Leike, and T.A. Enßlin (2021), "Geometric Variational Inference"; `[arXiv:2105.10470] <https://arxiv.org/abs/2105.10470>`_ `[doi] <https://doi.org/10.3390/e23070853>`_
+.. [2] Frank P., Leike R., and Enßlin T. (2021), "Geometric Variational Inference"; `[arXiv:2105.10470] <https://arxiv.org/abs/2105.10470>`_ `[doi] <https://doi.org/10.3390/e23070853>`_
