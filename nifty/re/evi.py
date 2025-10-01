@@ -376,8 +376,7 @@ def wiener_filter_posterior(
     likelihood : :class:`~nifty.re.likelihood.LikelihoodWithModel`
         Likelihood to be used for the wiener filter.
     position : tree-like
-        Position around which to linearize (if the model is non-linear). By
-        default the model is linearized around 0.
+        Position around which to linearize (if the model is non-linear).
     key : jax random number generation key
     n_samples : int
         Number of samples to draw.
@@ -389,7 +388,8 @@ def wiener_filter_posterior(
     model_is_linear : bool
         Whether the model is linear. If the model is non-linear, you must
         specify a position around which to linearize it. For non-linear models,
-        consider applying variational inference via `optimize_kl` instead.
+        consider applying variational inference via
+        :func:`~nifty.re.optimize_kl.optimize_kl` instead.
     """
     if not isinstance(likelihood, LikelihoodWithModel):
         msg = f"likelihood must be of LikelihoodWithModel type; got {likelihood}"
