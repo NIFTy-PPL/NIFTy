@@ -133,10 +133,10 @@ def _ncg_pretty_print_it(
     absdelta=None,
 ):
     msg = (
-        f"{name}: →:{grad_scaling} ↺:{ls_reset} #∇²:{nhev:02d}"
-        f" |↘|:{descent_norm:.6e} 🞋:{xtol:.6e}"
-        f"\n{name}: Iteration {i} ⛰:{energy:+.6e} Δ⛰:{energy_diff:.6e}"
-        + (f" 🞋:{absdelta:.6e}" if absdelta is not None else "")
+        f"{name}: GradScale:{grad_scaling} LineSearchReset:{ls_reset} #HessEval:{nhev:02d}"
+        f" DescentNorm:{descent_norm:.6e} xtol:{xtol:.6e}"
+        f"\n{name}: Iteration {i} E:{energy:+.6e} ΔE:{energy_diff:.6e}"
+        + (f" AbsDelta:{absdelta:.6e}" if absdelta is not None else "")
     )
     logger.info(msg)
 

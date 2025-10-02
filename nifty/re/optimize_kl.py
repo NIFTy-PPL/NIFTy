@@ -51,7 +51,7 @@ def get_status_message(samples, state, residual=None, *, name="", map="lmap") ->
         _, mini_res = minisanity(samples, residual, map=map)
     _, mini_pr = minisanity(samples, map=map)
     msg = (
-        f"{name}: Iteration {state.nit:04d} ⛰:{energy:+2.4e}"
+        f"{name}: Iteration {state.nit:04d} E:{energy:+2.4e}"
         f"{msg_smpl}"
         f"\n{name}: #(KL minimization steps) {state.minimization_state.nit}"
         f"\n{name}: Likelihood residual(s):\n{mini_res}"
