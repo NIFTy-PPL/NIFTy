@@ -1,6 +1,6 @@
 # Copyright(C) 2023 Gordian Edenhofer
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
-# Authors: Gordian Edenhofer, Philipp Frank
+# Authors: Gordian Edenhofer, Philipp Frank, Jakob Roth
 
 from functools import partial
 from operator import getitem
@@ -366,7 +366,7 @@ def wiener_filter_posterior(
     n_samples: int = 0,
     residual_map="smap",
     draw_linear_kwargs: Optional[dict] = None,
-    optimize_for_linear: bool = False,
+    model_is_linear: Optional[bool] = True,
 ) -> Tuple[Samples, Tuple]:
     """Computes wiener filter solution for a standardized model. For non-linear
     models, the wiener filter solution is computed for a linearized model.
@@ -376,43 +376,51 @@ def wiener_filter_posterior(
     likelihood : :class:`~nifty.re.likelihood.LikelihoodWithModel`
         Likelihood to be used for the wiener filter.
     position : tree-like
-        Position around which to linearize (if the model is non-linear). By
-        default the model is linearized around 0.
+        Position around which to linearize (if the model is non-linear).
     key : jax random number generation key
     n_samples : int
         Number of samples to draw.
-    residual_map: callable
+    residual_map : callable
         Map function used for the residual sample drawing.
     draw_linear_kwargs : dict
-        Optional parameters passed on to :func:`draw_linear_residual` if these
-        should not be the same as for the retrieval of the posterior mean.
-    optimize_for_linear: bool
-        Whether to optimize computations for linear model.
+        Optional parameters for the conjugate gradient used to compute the
+        posterior mean and to draw samples.
+    model_is_linear : bool
+        Whether the model is linear. If the model is non-linear, you must
+        specify a position around which to linearize it. For non-linear models,
+        consider applying variational inference via
+        :func:`~nifty.re.optimize_kl.optimize_kl` instead.
     """
     if not isinstance(likelihood, LikelihoodWithModel):
         msg = f"likelihood must be of LikelihoodWithModel type; got {likelihood}"
         return TypeError(msg)
+    if not model_is_linear and position is None:
+        msg = "For nonlinear models a position to linearize must be specified."
+        raise ValueError(msg)
+
     residual_map = get_map(residual_map)
+    position = zeros_like(likelihood.domain) if position is None else position
 
     data = likelihood.likelihood.data
-    # Remove any constant offsets from the data/signal that are part of the model
-    data = data - likelihood.forward(zeros_like(likelihood.domain))
 
-    position = zeros_like(likelihood.domain) if position is None else position
-    if optimize_for_linear:
-        forward_T = jax.linear_transpose(likelihood.forward, likelihood.domain)
+    if model_is_linear:
+        forward_lin = likelihood.forward
     else:
-        _, forward_T = jax.vjp(likelihood.forward, position)
-    forward_T = _functional_conj(forward_T)
-    n_inv_d = likelihood.likelihood.metric(likelihood.forward(position), data)
-    (j,) = forward_T(n_inv_d)
+        _, forward_lin = jax.linearize(likelihood.forward, position)
+        data = data - likelihood.forward(position) + forward_lin(position)
 
-    def post_cov_inv(tangents, primals):
-        return likelihood.metric(primals, tangents) + tangents
+    forward_lin_T = jax.linear_transpose(forward_lin, likelihood.domain)
+    forward_lin_T = _functional_conj(forward_lin_T)
+
+    n_inv = Partial(likelihood.likelihood.metric, likelihood.forward(position))
+    (j,) = forward_lin_T(n_inv(data))
+
+    def post_cov_inv(tangents):
+        return forward_lin_T(n_inv(forward_lin(tangents)))[0] + tangents
 
     cg = draw_linear_kwargs.get("cg", conjugate_gradient.static_cg)
     post_mean, post_info = cg(
-        Partial(post_cov_inv, primals=position),
+        post_cov_inv,
         j,
         name=draw_linear_kwargs.get("cg_name", None),
         **draw_linear_kwargs.get("cg_kwargs", {}),
