@@ -253,10 +253,13 @@ def iscomplextype(dtype):
     return np.issubdtype(dtype, np.complexfloating)
 
 
-try:
-    from ducc0.misc import special_add_at
-except ImportError:
-    special_add_at = _special_add_at
+# MR: disable this for now, because it must be reworked
+# special_add_at is supposed to deal with AnyArrays, but the ducc version
+# takes numpy arrays instead
+#try:
+#    from ducc0.misc import special_add_at
+#except ImportError:
+special_add_at = _special_add_at
 
 
 def issingleprec(dtype):
