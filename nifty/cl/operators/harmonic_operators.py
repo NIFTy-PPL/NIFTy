@@ -23,12 +23,13 @@ from ..domain_tuple import DomainTuple
 from ..domains.gl_space import GLSpace
 from ..domains.lm_space import LMSpace
 from ..domains.rg_space import RGSpace
-from ..ducc_dispatch import fftn, hartley, ifftn
+from ..ducc_dispatch import fftn, hartley, ifftn, nthreads
 from ..field import Field
 from ..operators.endomorphic_operator import EndomorphicOperator
 from .diagonal_operator import DiagonalOperator
 from .linear_operator import LinearOperator
 from .scaling_operator import ScalingOperator
+import ducc0
 
 
 class FFTOperator(LinearOperator):
@@ -210,15 +211,16 @@ class SHTOperator(LinearOperator):
         hspc.check_codomain(target)
         target.check_codomain(hspc)
 
-        from ducc0.sht import sharpjob_d
         self.lmax = hspc.lmax
         self.mmax = hspc.mmax
-        self.sjob = sharpjob_d()
-        self.sjob.set_triangular_alm_info(self.lmax, self.mmax)
         if isinstance(target, GLSpace):
-            self.sjob.set_gauss_geometry(target.nlat, target.nlon)
+            nphi = np.full(target.nlat, target.nlon, dtype=np.uint64)
+            phi0 = np.full(target.nlat, 0.)
+            theta = ducc0.misc.GL_thetas(target.nlat)
+            ringstart = np.arange(target.nlat, dtype=np.uint64)*target.nlon
+            self._ginfo = dict(nphi=nphi, theta=theta, phi0=phi0, ringstart=ringstart)
         else:
-            self.sjob.set_healpix_geometry(target.nside)
+            self._ginfo = ducc0.healpix.Healpix_Base(target.nside, "RING").sht_info()
 
     def __reduce__(self):
         return (_unpickleSHTOperator,
@@ -234,7 +236,9 @@ class SHTOperator(LinearOperator):
         return res.at(x.device_id)
 
     def _slice_p2h(self, inp):
-        rr = self.sjob.alm2map_adjoint(inp)
+        rr = ducc0.sht.adjoint_synthesis(
+            map=inp.reshape((1,-1)), lmax=self.lmax, mmax=self.mmax,
+            spin=0, **self._ginfo, nthreads=nthreads())[0]
         if len(rr) != ((self.mmax+1)*(self.mmax+2))//2 + \
                       (self.mmax+1)*(self.lmax-self.mmax):
             raise ValueError("array length mismatch")
@@ -252,7 +256,9 @@ class SHTOperator(LinearOperator):
         res[0:self.lmax+1] = inp[0:self.lmax+1]
         res[self.lmax+1:] = np.sqrt(0.5)*(inp[self.lmax+1::2] +
                                           1j*inp[self.lmax+2::2])
-        res = self.sjob.alm2map(res)
+        res = ducc0.sht.synthesis(
+            alm=res.reshape((1,-1)), lmax=self.lmax, mmax=self.mmax,
+            spin=0, **self._ginfo, nthreads=nthreads())[0]
         return res/np.sqrt(np.pi*4)
 
     def _apply_spherical(self, x, mode):
