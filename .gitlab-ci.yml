@@ -1,4 +1,4 @@
-image: python:latest
+image: python:3.13
 
 variables:
   MPLBACKEND: agg
@@ -12,7 +12,7 @@ stages:
 default:
   before_script:
     - apt-get update && apt-get install -y libopenmpi-dev
-    - pip install .[test,cl_parallel]
+    - "pip install --only-binary=:all: '.[test,cl_parallel]'"
 
 test_cl:
   stage: test
