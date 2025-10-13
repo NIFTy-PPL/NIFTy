@@ -1,5 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 
+import warnings
+
 from typing import Callable, Optional, TypeVar, Union
 
 import jax
@@ -123,6 +125,12 @@ def stochastic_lq_logdet(
     """Computes a stochastic estimate of the log-determinate of a matrix using
     the stochastic Lanczos quadrature algorithm.
     """
+    warnings.warn(
+        "stochastic_lq_logdet is known to sometimes return NaN. "
+        "Use at your own risk and fix it.",
+        UserWarning,
+        stacklevel=2,
+    )
     shape0 = shape0 if shape0 is not None else mat.shape[0]
     mat = mat.__matmul__ if not hasattr(mat, "__call__") else mat
     if not isinstance(key, jnp.ndarray):
