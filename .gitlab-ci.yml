@@ -11,7 +11,7 @@ stages:
 
 default:
   before_script:
-    - apt-get update && apt-get install -y libopenmpi-dev
+    - apt-get update && apt-get install -y libopenmpi-dev libhdf5-dev
     - pip install .[test,cl_parallel]
 
 test_cl:
