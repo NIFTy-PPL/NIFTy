@@ -134,7 +134,9 @@ samples, state = jft.optimize_kl(
     sample_mode="nonlinear_resample",
     odir="results_intro",
     resume=False,
-    implicit_samples="standard"
+    # implicit_samples="standard"
+    # implicit_samples="implicit"
+    implicit_samples="implicit_other"
 )
 
 # %%
