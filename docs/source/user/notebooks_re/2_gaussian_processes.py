@@ -1,0 +1,359 @@
+# %% [markdown]
+# # Gaussian Processes with a fixed kernel
+
+# %% [markdown]
+# This notebook introduces Gaussian Processes and their implementation in NIFTy.
+# Gaussian Processes are a powerful tool for modeling smooth functions. In the
+# context of NIFTy, we commonly use Gaussian Processes as a prior model. The
+# Gaussian Process prior encodes the assumption that smooth functions are a
+# priori more likely than functions with wild variations.
+# If you are not familiar with NIFTy, please read the notebooks [Models](0_models)
+# and [Inference](1_inference) first.
+
+
+# %% [markdown]
+# Before starting with the actual notebook, let's import NIFTy and the relevant
+# libraries.
+
+# %%
+import nifty.re as jft
+
+import jax
+import jax.numpy as jnp
+import jax.random as random
+
+import matplotlib.pyplot as plt
+
+jax.config.update("jax_enable_x64", True)
+seed = 42
+key = random.PRNGKey(seed)
+
+# %% [markdown]
+# ## Motivation
+
+# %% [markdown]
+# As with many concepts, Gaussian Processes are best introduced with an example.
+# In this notebook, let's consider modeling the temperature in a room as a
+# function of time. We assume that the average temperature in the room is $21$
+# degrees and that it fluctuates with a standard deviation of $2$ degrees. Our
+# goal is to model these fluctuations around $21$ degrees.In this example, the
+# fluctuations of the temperature around $21$ degrees will be our signal $s$,
+# which we want to reconstruct. The simplest statistical model for $s$, encoding
+# this prior knowledge, would be a Gaussian distribution with a mean of $0$ and
+# a standard deviation of $2$.
+
+# %% [markdown]
+# The first notebook `0_models.py` already introduced a prior model for Gaussian
+# random numbers in NIFTy, namely `jft.NormalPrior`. While `0_models.py` used
+# this model for a single number, we now need a model for multiple numbers,
+# specifically the temperature at different time steps. Using the `shape`
+# argument, multiple random numbers can be generated at once. Assuming we want
+# to model the temperature at $100$ time steps, the code below implements the
+# prior model for a vector of $100$ Gaussian random numbers with a mean of $0$
+# and a standard deviation of $2$.
+
+# %%
+s = jft.NormalPrior(mean=0, std=2, shape=(100))
+
+# %% [markdown]
+# Let's draw a sample of this prior model and visualize it with matplotlib.
+
+# %%
+key, subkey = random.split(key)
+latent_sample = jft.random_like(subkey, s.domain)
+sample = s(latent_sample)
+
+plt.plot(sample)
+plt.xlabel("Time")
+plt.ylabel("Temperature Deviation from mean")
+plt.show()
+
+# %% [markdown]
+# As expected, the values of the `s` sample fluctuate around $0$ with a standard
+# deviation of about $2$.
+
+# %% [markdown]
+# Neighboring entries in the random sample from $s$ are uncorrelated. Thus, in
+# this prior sample, the temperature deviations from $21$ degrees jump wildly
+# from one time step to the next. Expressed as a formula, this means that the
+# correlation between the temperature deviations at time steps $i$ and $j$ is
+# zero, $\left<s_x s_y\right> = 0$ if $x \neq y$. If the neighboring time steps
+# are close to each other, this is unphysical. From physical considerations, we
+# expect the temperature to change gradually as a function of time. Thus, we
+# expect that the values of the temperature at nearby time steps are strongly
+# correlated ($\left<s_x x_y\right> > 0$ for $x \approx y$). A technique to
+# model such correlations between neighboring points and impose them as a prior
+# on possible functions is the use of Gaussian Processes. In the next section,
+# we will introduce the mathematical background of Gaussian Processes before
+# showcasing their implementation in NIFTy.
+#
+
+# %% [markdown]
+# ## Mathematical background
+
+# %% [markdown]
+# In the code above, we modeled each time step $s_i$ with an a priori
+# independent Gaussian random variable $\xi_i$, known as a latent space
+# parameter. Instead of thinking of $s$ as a collection of independent Gaussian
+# random variables, we can also view $s$ as a whole as a multivariate Gaussian
+# random variable. The probability density function of the multivariate normal
+# distribution for the vector $s$ is given by
+#
+# $$ \mathcal{G}(s, S) = \frac{1}{\sqrt{|2\pi S|}} \exp{\left( -\frac{1}{2} s^\dagger S^{-1} s \right)}, $$
+#
+# where $S$ is the covariance matrix. In the code above, $S$ was a diagonal
+# matrix with $\left< s_i s_i \right> = 2^2 = 4$ on the diagonal, while the
+# off-diagonal elements, which encode correlations between time steps, were
+# zero. To include correlations between time steps in the prior model, we need
+# to develop a generative model that samples from a multivariate Gaussian with a
+# non-diagonal covariance matrix.
+#
+
+# %% [markdown]
+# The most straightforward generative model for $s$ is to multiply the latent
+# space standard normally distributed vector $\xi$ with the matrix square root
+# of $S$:
+#
+# $$ s = \sqrt{S} \, \xi. $$
+#
+# We can easily verify that an $s$ generated by this procedure has the
+# covariance $S$:
+#
+# $$ \left< s s^{\dagger} \right> = \left< \sqrt{S} \xi \xi^{\dagger} {\sqrt{S}}^{\dagger} \right> = \sqrt{S} \left< \xi \xi^{\dagger} \right> {\sqrt{S}}^{\dagger} = \sqrt{S} \mathbb{1} {\sqrt{S}}^{\dagger} = S. $$
+#
+# In the second-to-last step, we used the fact that the covariance of the latent
+# parameter vector $\xi$ is the identity matrix, since all latent parameters are
+# a priori independent and standard normally distributed.
+
+# %% [markdown]
+# The covariance $S$ is an $n \times n$ square matrix, where $n$ is the number
+# of entries in the vector $s$. In our example, $n = 100$, so $S$ is a
+# $100 \times 100$ matrix. However, NIFTy is designed to work with much larger
+# parameter spaces. For example, astronomical imaging applications often deal
+# with images containing a million or more pixels. If $s$ has a million entries,
+# then $S$ would have $(10^6)^2 = 10^{12}$ entries. This is computationally
+# infeasible, as $10^{12}$ floating-point numbers with 64-bit precision would
+# require 8 terabytes of memory. Therefore, to enable applications with large
+# parameter spaces, we need to circumvent the quadratic scaling and cannot
+# directly work with $S$ or $\sqrt{S}$.
+
+# %% [markdown]
+# ### Wiener-Khintchin Theorem
+
+# %% [markdown]
+# To circumvent the quadratic scaling, we a priori assume statistical
+# homogeneity and isotropy of the signal $s$, meaning translation invariance and
+# directional independence of the covariance matrix $S$. In terms of our
+# example, this means that we assume a priori that the correlation between
+# temperature fluctuations at two time steps depends only on the distance
+# between them. Expressed as a formula, the entries of the covariance matrix
+# depend only on the distance between the time steps:
+#
+# $$ S_{xy} = \left< s_{x} s_{y} \right> = C_{s}(|x-y|). $$
+#
+# Under the assumptions of statistical homogeneity and isotropy, the
+# Wiener–Khinchin theorem states that the covariance becomes diagonal in
+# harmonic space:
+#
+# $$ \tilde{S}_{kk'} = \left< s_{k} s_{k'}^{\dagger} \right> = 2\pi \delta(k - k') P(|k|), $$
+#
+# where $\tilde{S}$ is the harmonic space covariance matrix, and the diagonal is
+# populated by the one-dimensional power spectrum.
+
+# %% [markdown]
+# ### NIFTy Gaussian Process Model
+
+# %% [markdown]
+# The assumptions of statistical homogeneity and isotropy, combined with the
+# Wiener–Khinchin theorem, are the central ingredients of the Gaussian Process
+# model in NIFTy. Through the Wiener–Khinchin theorem, the covariance matrix can
+# be fully represented by the power spectrum, avoiding quadratic scaling. To map
+# latent independent standard Gaussian random variables $\vec{\xi}$ to a
+# multivariate Gaussian random variable $\vec{s}$, NIFTy uses the following
+# procedure. It starts with a standard normal random vector $\vec{\xi}$, where
+# each entry in the vector corresponds to one harmonic frequency $k$ of the
+# signal we want to generate. Next, NIFTy multiplies $\vec{\xi}$ by the square
+# root of the harmonic space covariance matrix $\sqrt{\tilde{S}_{kk'}}$ and then
+# applies a harmonic transform to the result. Expressed as a formula, the
+# procedure is:
+#
+# $$ s = \mathrm{HT} \, \sqrt{\tilde{S}} \, \xi. $$
+#
+# The square root of $S_{kk'}$ can easily be computed since $S_{kk'}$ is a
+# diagonal matrix. We can verify that the covariance of $s$ is indeed $S$ as
+# desired:
+#
+# $$ \left< s_{x} s_{x'}^{\dagger} \right> = \left< \mathrm{HT} \sqrt{\tilde{S}} \xi \xi^{\dagger} \sqrt{\tilde{S}}^\dagger \mathrm{HT}^\dagger \right> = \mathrm{HT} \sqrt{\tilde{S}} \left< \xi \xi^{\dagger} \right> \sqrt{\tilde{S}}^\dagger \mathrm{HT}^\dagger = \mathrm{HT} \sqrt{\tilde{S}} \mathbb{1} \sqrt{\tilde{S}}^\dagger \mathrm{HT}^\dagger = S. $$
+
+# %% [markdown]
+# This is the idea of the fixed power spectrum Gaussian process model in NIFTy.
+# In the remainder of the notebook, we will explain the implementation of this
+# model.
+
+# %% [markdown]
+# ## Implementation in NIFTy
+
+# %% [markdown]
+# We begin the implementation by defining the grid on which our signal lives.
+# For this, we specify `dims=100` to indicate that we have $100$ time steps.
+# Furthermore, we specify the distance between the time steps with
+# `distances = 0.01`. In this example, the units of the time distances are
+# arbitrary. However, in your applications, you should, of course, always be
+# aware of the units.
+
+# %%
+dims = 100
+distances = 0.01
+
+# %% [markdown]
+# With this information on the number of pixels and the distances between them,
+# we now initialize a NIFTy grid containing this information. To do this, we use
+# a utility function from `jft.correlated_field`. `jft.correlated_field` is a
+# model for generating Gaussian processes with unknown power spectra, which you
+# will learn more about in later notebooks. Here, we focus on generating a
+# Gaussian process model with a known power spectrum.
+#
+# To initialize the grid, we pass to the `jft.correlated_field.make_grid`
+# function, besides `dims` and `distances`, information about the harmonic
+# counterpart of the space in which our signal lives. This is necessary because
+# we need to perform a harmonic transformation to generate a Gaussian process
+# via the Wiener–Khinchin theorem. Here, we set `harmonic_type="fourier"`. If
+# our signal lived on a sphere instead of a regular Cartesian grid, we would set
+# it to `"spherical"`.
+#
+
+# %%
+grid = jft.correlated_field.make_grid(
+    dims, distances=distances, harmonic_type="fourier"
+)
+
+
+# %% [markdown]
+# Next, we define a Python function for the power spectrum—or more precisely,
+# for the square root of the power spectrum, which we refer to as the amplitude
+# spectrum. The `amplitude_spectrum` function takes as input the length of the
+# harmonic factor `k` and evaluates the amplitude spectrum for this $k$-mode.
+#
+
+
+# %%
+def amplitude_spectrum(k):
+    return 2.5 / (5 + k**2)
+
+
+# %% [markdown]
+# After defining the Python function for the power spectrum, we can initialize
+# the array containing the square root of the signal covariance in harmonic
+# space. To do this, we first evaluate the amplitude spectrum function at all
+# lengths of the Fourier vectors in our grid. The grid property
+# `grid.harmonic_grid.mode_lengths` returns a vector containing all unique
+# lengths of $k$-vectors in our Fourier grid. We evaluate the amplitude spectrum
+# function at these $k$-vector lengths.
+#
+
+# %%
+k_lengths = grid.harmonic_grid.mode_lengths
+amplitudes = amplitude_spectrum(k_lengths)
+print("k_length: ", k_lengths)
+print("amplitudes: ", amplitudes)
+
+# %% [markdown]
+# We now have the corresponding amplitudes for all unique $k$-vector lengths in
+# our grid. From these amplitudes, we need to construct the diagonal of the
+# Fourier space representation of the square root of the covariance matrix. This
+# is somewhat tedious, as multiple Fourier vectors can share the same length. In
+# our 1D example, there is the zero mode—i.e., the $k$-vector with length 0—but
+# then there are two next longer $k$-vectors: $k=0.01$ and $k=-0.01$. In
+# higher-dimensional spaces, even more Fourier vectors share the same length.
+#
+# To simplify mapping from the amplitude array to the diagonal of the harmonic
+# space square root covariance matrix, the `grid` contains the property
+# `grid.harmonic_grid.power_distributor`. The `power_distributor` is an array
+# containing, for each element of the diagonal of the harmonic space covariance
+# matrix, the index of the corresponding $k$-vector length in the
+# `grid.harmonic_grid.mode_lengths` array. Using this index array, we can easily
+# obtain the diagonal of the square root covariance from the amplitude array.
+#
+
+# %%
+sqrt_harmonic_cov = amplitudes[grid.harmonic_grid.power_distributor]
+
+
+# %% [markdown]
+# Now we have all the components to initialize a NIFTy model that transforms a
+# standard normally distributed $\xi$ into a multivariate Gaussian with the
+# power spectrum we defined. To the constructor of `FixedPowerCorrelatedField`,
+# we pass `sqrt_harmonic_cov` and the `grid`. Inside the constructor, we store
+# the harmonic transformation `ht` as an attribute of the class. For the
+# harmonic transformation, we use the `jft.correlated_field.hartley` function.
+# The Hartley transformation is closely related to the Fourier transformation,
+# but for our application, it has the advantage of transforming real-valued
+# functions to real-valued functions. To avoid dealing with complex numbers, we
+# use the Hartley transformation instead of a normal Fourier transformation.
+# Furthermore, we store a volume scaling factor `harmonic_dvol` as a property.
+# In the `__call__` method, we scale the result of the Hartley transformation
+# with this factor to comply with the NIFTy convention.
+#
+# The `__call__` method performs the mapping from the latent parameters to the
+# Gaussian process realizations. Following the formulas in the mathematical
+# background section, we multiply the input vector by the square root of the
+# harmonic space covariance matrix `sqrt_harmonic_cov` and then apply a harmonic
+# transformation to the result.
+#
+
+
+# %%
+class FixedPowerCorrelatedField(jft.Model):
+    def __init__(self, sqrt_harmonic_cov, grid):
+        self.sqrt_harmonic_cov = sqrt_harmonic_cov
+        self.ht = jft.correlated_field.hartley
+        self.harmonic_dvol = 1 / grid.total_volume
+
+        super().__init__(
+            domain=jax.ShapeDtypeStruct(shape=grid.shape, dtype=jnp.float64)
+        )
+
+    def __call__(self, x):
+        return self.harmonic_dvol * self.ht(self.sqrt_harmonic_cov * x)
+
+
+s = FixedPowerCorrelatedField(sqrt_harmonic_cov, grid)
+
+# %% [markdown]
+# To visualize our fixed-power spectrum Gaussian process model, we draw $10$
+# standard normal distributed input vectors, map them through our model to a
+# correlated multivariate Gaussian sample, and plot the results. As expected,
+# the samples are now no longer wildly jumping from one time step to the next,
+# but smoothly fluctuate.
+
+# %%
+for i in range(10):
+    key, subkey = random.split(key)
+    latent_sample = jft.random_like(subkey, s.domain)
+    sample = s(latent_sample)
+    plt.plot(sample)
+    plt.xlabel(r"$x$")
+    plt.ylabel(r"$s$")
+plt.show()
+
+
+# %% [markdown]
+# ## Summary
+
+# %% [markdown]
+# This notebook introduced a model for Gaussian processes and its implementation
+# in `NIFTy`. By utilizing the Wiener–Khinchin theorem and the assumptions of a
+# priori statistical homogeneity and isotropy, the implementation does not
+# explicitly parameterize the covariance matrix of the Gaussian process or any
+# other quantity that scales quadratically with the number of pixels. This makes
+# the model applicable even in settings with a large number of pixels. In the
+# next notebook, [Wiener Filter](3_wiener_filter), we will continue with the Gaussian
+# process model presented here and showcase some reconstructions. Thereby, we
+# will introduce an alternative to the variational inference algorithm presented
+# in the [inference notebook](1_inference).
+#
+# The Gaussian process model presented in this notebook assumes that the power
+# spectrum of the signal is known. However, in many real-world applications,
+# this is not the case. A more flexible model applicable to settings where the
+# underlying power spectrum is unknown will be presented in
+# [this notebook](4_correlated_field_model).

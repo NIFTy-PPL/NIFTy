@@ -81,6 +81,10 @@ merge_coverage:
 pages:
   stage: release
   script:
+    - apt-get update && apt-get install -y --no-install-recommends
+        texlive-full
+        latexmk
+        pandoc
     - pip install .[doc]
     - git config --global --add safe.directory /builds/ift/nifty
     - git clean -xfd docs/source
