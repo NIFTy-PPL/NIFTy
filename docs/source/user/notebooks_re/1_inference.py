@@ -1,5 +1,7 @@
+# %% [markdown]
 # # Inference with NIFTy
 
+# %% [markdown]
 # This notebook is the continuation of the previous NIFTy models
 # [notebook](0_models). While the previous notebook gives a basic
 # introduction to prior models and likelihoods in NIFTy, this notebook
@@ -10,13 +12,17 @@
 # [previous notebook](0_models). For this reason, please read the introduction
 # to generative models first.
 
+# %% [markdown]
 # ## Recap
 
+# %% [markdown]
 # The previous notebook introduced a NIFTy model for linear regression in one
 # dimension. Specifically, the model was
 
+# %% [markdown]
 # $$ \vec{d} = a \vec{x} + b \vec{1} + \vec{n}, $$
 
+# %% [markdown]
 # with $\vec{d}$ being the measured data, $\vec{x}$ the locations at which we
 # measured, $\vec{n}$ some unknown noise in the measurements, and $a$ and $b$ the
 # scalar parameters of the linear function we fit. We imposed a lognormal prior
@@ -36,7 +42,7 @@
 # again. Thus, if you are not familiar with NIFTy and have not read the previous
 # notebook, please do so first.
 
-# +
+# %%
 import nifty.re as jft
 
 import numpy as np
@@ -85,16 +91,18 @@ my_model = LinearModel(x, a, b)
 cov = 10**2
 noise_cov_inv = lambda x: x / cov  # diagonal matrix
 lh = jft.Gaussian(data=d, noise_cov_inv=noise_cov_inv).amend(my_model)
-# -
 
+# %% [markdown]
 # To summarize, the above code implements a generative model that maps the latent
 # parameters $(\xi_a, \xi_b)$ to $\vec{y} = a(\xi_a) \vec{x} + b(\xi_b) \vec{1}$,
 # and defines the likelihood $P(d|\xi_a, \xi_b)$. The generative process for
 # $a$ and $b$ is designed such that the latent parameters $\xi_a$ and $\xi_b$
 # follow standard normal (unit Gaussian) priors.
 
+# %% [markdown]
 # ## Theory
 
+# %% [markdown]
 # Using Bayes' Theorem, we can express the posterior distribution
 # $P(\vec{\xi} \,|\, d)$ corresponding to the above prior and likelihood as:
 #
@@ -132,8 +140,10 @@ lh = jft.Gaussian(data=d, noise_cov_inv=noise_cov_inv).amend(my_model)
 # to avoid explicit high-dimensional integration.
 #
 
+# %% [markdown]
 # ### Maximum a posteriori
 
+# %% [markdown]
 # The simplest, though often inaccurate, inference method is to compute only
 # the maximum of the posterior distribution and use this as an estimate. This
 # approach, known as maximum a posteriori (MAP) estimation, is computationally
@@ -175,8 +185,10 @@ lh = jft.Gaussian(data=d, noise_cov_inv=noise_cov_inv).amend(my_model)
 # variational inference is typically computationally more efficient. For this
 # reason, NIFTy primarily relies on variational inference.
 
+# %% [markdown]
 # ### Variational Inference
 
+# %% [markdown]
 # This section explains the basic idea behind the variational inference
 # algorithms of NIFTy. For a detailed mathematical introduction, please refer to
 # the original publications, specifically
@@ -207,6 +219,7 @@ lh = jft.Gaussian(data=d, noise_cov_inv=noise_cov_inv).amend(my_model)
 # Gaussian approximation is minimized with respect to the posterior mean of the
 # approximating Gaussian.
 
+# %% [markdown]
 # The closer the true posterior distribution is to a Gaussian, the more accurate
 # the approximation becomes. This is one reason why NIFTy enforces a standard
 # Gaussian prior on $\vec{\xi}$, while non-Gaussianities are captured in the
@@ -235,8 +248,10 @@ lh = jft.Gaussian(data=d, noise_cov_inv=noise_cov_inv).amend(my_model)
 # 5. Output the final set of samples from the approximate distribution to the
 #    user.
 
+# %% [markdown]
 # ## NIFTy implementation
 
+# %% [markdown]
 # In the following, we will discuss how to use the variational inference
 # algorithms presented above in NIFTy. For simplicity, we demonstrate the use of
 # MGVI here. For examples utilizing the more accurate geoVI algorithm, see the
@@ -256,6 +271,7 @@ lh = jft.Gaussian(data=d, noise_cov_inv=noise_cov_inv).amend(my_model)
 # latent space vectors, Python cannot add two dictionaries. This issue is
 # resolved by converting the dictionary into a `jft.Vector`.
 
+# %%
 key, subkey = random.split(key, 2)
 init_pos = lh.init(subkey)
 print("initial position: ", init_pos)
@@ -263,25 +279,32 @@ init_pos = jft.Vector(init_pos)
 print("initial position vector: ", init_pos)
 
 
+# %% [markdown]
 # Next, we specify how many iterations of drawing samples and minimizing the
 # Kullback-Leibler divergence we want to do:
 
+# %%
 n_vi_iterations = 6
 
+# %% [markdown]
 # Furthermore, we specify that the number of independent samples used to
 # approximate the Kullback-Leibler divergence should be 4. Note that NIFTy draws
 # pairs of antithetical samples, meaning we will actually have $4 \cdot 2 = 8$
 # samples.
 
 
+# %%
 n_samples = 4
 
+# %% [markdown]
 # Drawing random samples from the approximating distribution requires generating
 # JAX random numbers. To do so, we as always need to generate a new JAX random
 # key:
 
+# %%
 key, sampling_key = random.split(key, 2)
 
+# %% [markdown]
 # It is not possible to directly draw samples from the Gaussian posterior
 # approximation due to subtleties in the parametrization of the Gaussian
 # covariance. Therefore, sampling from the current approximation requires not
@@ -295,11 +318,13 @@ key, sampling_key = random.split(key, 2)
 # where we define a convergence criterion `absdelta=1e-5 * jft.size(lh.domain)`
 # and a maximum number of iterations `maxiter=100` for the CG algorithm.
 
+# %%
 draw_linear_kwargs = dict(
     cg_name=None,
     cg_kwargs=dict(absdelta=1e-5 * jft.size(lh.domain), maxiter=100),
 )
 
+# %% [markdown]
 # Similar to sampling, the minimization of the Kullback-Leibler divergence
 # between the true posterior and the approximation is performed using a numerical
 # optimization algorithm, in this case, the Newton conjugate gradient scheme.
@@ -308,8 +333,10 @@ draw_linear_kwargs = dict(
 # setting a descriptive string for `name`. Additionally, we define a convergence
 # criterion `xtol=1e-4` and set the maximum number of iterations to `maxiter=35`.
 
+# %%
 kl_kwargs = dict(minimize_kwargs=dict(name=None, xtol=1e-4, maxiter=35))
 
+# %% [markdown]
 # As a final step, we specify the `sampling_mode`. This argument allows the user
 # to choose which variational inference algorithm to use. Here, we set it to
 # `"linear_resample"`, which corresponds to the MGVI algorithm described in
@@ -317,11 +344,14 @@ kl_kwargs = dict(minimize_kwargs=dict(name=None, xtol=1e-4, maxiter=35))
 # can be found on the
 # [API reference page](https://ift.pages.mpcdf.de/nifty/mod/nifty.re.optimize_kl.html).
 
+# %%
 sample_mode = "linear_resample"
 
+# %% [markdown]
 # After having specified all necessary arguments for the variational inference
 # algorithm, we collect these arguments in a Python dictionary.
 
+# %%
 optimize_kl_args = dict(
     likelihood=lh,
     position_or_samples=init_pos,
@@ -333,6 +363,7 @@ optimize_kl_args = dict(
     sample_mode=sample_mode,
 )
 
+# %% [markdown]
 # Now we can run the variational inference using the `jft.optimize_kl` function.
 # After each iteration, NIFTy prints a summary that includes:
 #
@@ -357,8 +388,10 @@ optimize_kl_args = dict(
 #   a standard Gaussian prior in the latent space, $\chi^2$ values significantly
 #   greater than 1 indicate tension between the prior model and the likelihood.
 
+# %%
 samples, state = jft.optimize_kl(**optimize_kl_args)
 
+# %% [markdown]
 # The `optimize_kl` function returns `samples` and `state`. In most use cases,
 # only the `samples` object is relevant as it contains the samples of the
 # approximating distribution from the final iteration. These samples are samples
@@ -368,18 +401,22 @@ samples, state = jft.optimize_kl(**optimize_kl_args)
 #
 # In our examples, this transformation can be done as follows:
 
+# %%
 a_samples = tuple(a(s) for s in samples)
 b_samples = tuple(b(s) for s in samples)
 y_samples = tuple(my_model(s) for s in samples)
 
+# %% [markdown]
 # Now we can compute the posterior mean values of our parameters and print them.
 
+# %%
 a_mean = jft.mean(a_samples)
 b_mean = jft.mean(b_samples)
 y_mean = jft.mean(y_samples)
 print("mean of a: ", a_mean)
 print("mean of b: ", b_mean)
 
+# %% [markdown]
 # Often, it is insightful to plot the reconstruction alongside the data. Such a
 # plot can also be very helpful to detect potential problems in the inference.
 # The plot below visualizes again the data as a scatter plot. On top, the
@@ -387,7 +424,7 @@ print("mean of b: ", b_mean)
 # individual samples are shown.
 
 
-# + slideshow={"slide_type": "-"}
+# %% slideshow={"slide_type": "-"}
 plt.figure(figsize=(8, 5))
 plt.scatter(x, d, label="data")
 plt.plot(x, y_mean, label="posterior mean", linewidth=3.0, color="red")
@@ -395,10 +432,11 @@ for ys in y_samples:
     plt.plot(x, ys, linewidth=2.0, color="black", alpha=0.5, zorder=0)
 plt.legend()
 plt.show()
-# -
 
+# %% [markdown]
 # ## Summary
 
+# %% [markdown]
 # This notebook introduced the concept of variational inference. Variational
 # inference is a technique for accessing information from the posterior
 # distribution in a computationally efficient way. The core idea is to

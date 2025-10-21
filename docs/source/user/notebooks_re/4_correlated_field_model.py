@@ -1,3 +1,4 @@
+# %% [markdown]
 # # Gaussian Processes with a variable kernel
 #
 # In this notebook we explain the implementation of Gaussian processes with
@@ -15,6 +16,7 @@
 # Let us begin with a brief recap of the generative Gaussian process model with
 # a fixed power spectrum from the previous notebook.
 
+# %% [markdown]
 # ## Fixed Power Spectrum Model
 #
 # In `NIFTy`, we leverage the Wiener-Khinchin theorem to build our Gaussian
@@ -29,6 +31,7 @@
 # harmonic space covariance matrix, and $P(|k|)$ is the power spectrum.
 #
 
+# %% [markdown]
 # With the Wiener-Khinchin theorem, modeling the correlation structure of an
 # $n$-dimensional system is reduced from scaling as $\mathcal{O}(n^2)$ to
 # scaling as $\mathcal{O}(n)$.
@@ -41,10 +44,12 @@
 # the amplitude spectrum related to $\tilde{S}$ as $A = \sqrt{\tilde{S}}$, and
 # $\mathrm{HT}$ is the harmonic transform.
 
+# %% [markdown]
 # Since $A$ is fixed in this case, we can only define Gaussian processes with a
 # fixed power spectrum. This narrows the range of the signal realizations we can
 # capture with the model.
 
+# %% [markdown]
 # To circumvent this constraint and to capture a wider span of signals, we make
 # the amplitude spectrum $A$ a part of the model. This means that we build a
 # generative model for $A$, which is then applied to the previously introduced
@@ -69,6 +74,7 @@
 # non-parametric model for the amplitude spectrum. In the following, we will
 # showcase the non-parametric model.
 
+# %% [markdown]
 # ## Non-parametric correlated field model
 #
 # Many physical processes lead to power-law-like power spectra. For this reason,
@@ -86,13 +92,14 @@
 # [this publication](https://www.nature.com/articles/s41550-021-01548-0).
 #
 
+# %% [markdown]
 # Let us begin by importing the required modules and initializing our space to
 # build our prior models on. For this notebook, we will work with a
 # 1-dimensional space with 256 points, and the distance between those points is
 # given as 1, in the appropriate units.
 #
 
-# +
+# %%
 import nifty.re as jft
 from jax import random
 from jax import numpy as jnp
@@ -109,11 +116,12 @@ shape = 256
 distances = 1
 seed = 50
 key = random.PRNGKey(seed)
-# -
 
 
+# %% [markdown]
 # ### `CorrelatedFieldMaker` overview
 
+# %% [markdown]
 # The Gaussian process models in NIFTy with variable amplitude spectra are
 # constructed using the `jft.CorrelatedFieldMaker` helper class. In most NIFTy
 # applications, the `CorrelatedFieldMaker` is directly used to generate a
@@ -152,6 +160,7 @@ key = random.PRNGKey(seed)
 # [API reference](https://ift.pages.mpcdf.de/nifty/mod/nifty.re.correlated_field.html).
 
 
+# %%
 def fieldmaker(shape, distances, prefix, **args):
     cfm = jft.CorrelatedFieldMaker(prefix=f"{prefix}")
     cfm.set_amplitude_total_offset(
@@ -169,8 +178,10 @@ def fieldmaker(shape, distances, prefix, **args):
     return cf_model, cfm.power_spectrum
 
 
+# %% [markdown]
 # ### `CorrelatedFieldMaker` parameters
 
+# %% [markdown]
 # The overview of the `CorrelatedFieldMaker` above left out detailed
 # explanations about the `offset_mean` and `offset_std` arguments of the
 # `set_amplitude_total_offset` method as well as the additional keyword
@@ -238,6 +249,7 @@ def fieldmaker(shape, distances, prefix, **args):
 # applications where oscillatory patterns are expected, as for example day/night
 # temperature fluctuations, enabling `asperity` makes sense.
 
+# %% [markdown]
 # To visualize the Gaussian process model we initialize its parameters. We set
 # the prior mean of the average value to $21$ with a standard deviation of $1$.
 # Furthermore, we set the mean on the fluctuations of the Gaussian process to
@@ -245,6 +257,7 @@ def fieldmaker(shape, distances, prefix, **args):
 # amplitude spectrum to $-2$ (with a std of $0.3$) and activate the flexibility
 # and asperity components to model deviations from a power law.
 
+# %%
 cf_kwargs = {
     "offset_mean": 21.0,
     "offset_std": (1.0, 1e-3),
@@ -255,25 +268,30 @@ cf_kwargs = {
     "prefix": "",
 }
 
+# %% [markdown]
 # Using this set of parameters and the helper function from above we initialize
 # a Gaussian process model. `model` will be the Gaussian process model itself
 # and `ps` the power spectrum model.
 
+# %%
 model, ps = fieldmaker(shape=shape, distances=distances, **cf_kwargs)
 
+# %% [markdown]
 # Next we want to look at random samples from this generative Gaussian process
 # model. To do so we first initialize latent space standard normal samples on
 # the input domain of the Gaussian process model.
 
+# %%
 key, *subkeys = random.split(key, 5)
 xi_samples = [jft.random_like(sk, model.domain) for sk in subkeys]
 
+# %% [markdown]
 # Now we can plot for each latent space sample the corresponding Gaussian
 # process sample and amplitude spectrum sample. In the left column are the
 # Gaussian process samples and in the right the corresponding amplitude spectra.
 # Note that the model implies periodic boundary conditions.
 
-# +
+# %%
 x_vec = model.target_grids[0].distances[0] * np.arange(
     shape
 )  # sampling points of Gaussian process
@@ -286,15 +304,17 @@ for i, xi in enumerate(xi_samples):
     axes[i, 0].plot(x_vec, model(xi))
     axes[i, 1].loglog(k_vec, ps(xi))
 plt.show()
-# -
 
+# %% [markdown]
 # ### Parameter visualization
 
+# %% [markdown]
 # The remaining part of the notebook visualizes prior samples of the Gaussian
 # process model to give an intuitive understanding of how to set the parameters.
 # To do so, we define below a base choice of parameters and will then vary the
 # parameters one by one to visualize the impact of each of them.
 
+# %%
 cf_kwargs = {
     "offset_mean": 0.0,
     "offset_std": (0.5, 0.2),
@@ -305,13 +325,14 @@ cf_kwargs = {
     "prefix": "",
 }
 
+# %% [markdown]
 # Now, with a model generator `fieldmaker` and the grid in place, let us look at
 # how varying each of these parameters changes the output power spectrum. For
 # this, we build a function `vary_parameter` that takes a hyperparameter of the
 # correlated field model, an array of values it takes, and outputs plots of the
 # power spectra as given by the parameter it inputs.
 
-# +
+# %%
 realisations = 5
 
 
@@ -348,8 +369,7 @@ def vary_parameter(parameter, values, **args):
             )
 
 
-# -
-
+# %% [markdown]
 # ### `loglogavgslope`
 #
 # First, let us look at a hyperparameter that governs the power law nature of
@@ -373,12 +393,14 @@ def vary_parameter(parameter, values, **args):
 # $\mu_m$, but such a low value is used here only for demonstration purposes and
 # does not reflect a practical choice of $\sigma_m$.
 
+# %%
 vary_parameter(
     "loglogavgslope",
     [(-6.0, 1e-16), (-2.0, 1e-16), (2.0, 1e-16)],
     **cf_kwargs,
 )
 
+# %% [markdown]
 # We notice here that the steeper the falling slope, the smoother the signal
 # realisations. This is intuitively understood as, the higher the power to the
 # lowest modes (i.e. the largest scales) the more larger scale structures are
@@ -387,9 +409,11 @@ vary_parameter(
 # Now let us look at the influence of the variation of $\sigma_m$ on the signal
 # realisations and the power spectra.
 
+# %%
 vary_parameter("loglogavgslope", [(-2.0, 0.02), (-2.0, 0.2), (-2.0, 2.0)], **cf_kwargs)
 cf_kwargs["loglogavgslope"] = (-2.0, 1e-16)
 
+# %% [markdown]
 # Here we vary the relative absolute deviation of the `loglogavgslope` by $1\%$,
 # $10\%$ and $100\%$. This translates in the first case to the signal
 # realisations being similarly smooth, in the second case to the signals varying
@@ -398,6 +422,7 @@ cf_kwargs["loglogavgslope"] = (-2.0, 1e-16)
 # reflects our choice of being uncertain of the smoothness of the signal
 # (or equivalently the steepness of the power spectrum).
 
+# %% [markdown]
 # ### `offset_mean`
 #
 # The `offset_mean` parameter sets the average mean of the standardized signal
@@ -410,15 +435,18 @@ cf_kwargs["loglogavgslope"] = (-2.0, 1e-16)
 # $-3$. Comparing to the plots above, we see that a value of $-3$ results in a
 # relatively smooth signal, and a falling power spectrum.
 
+# %%
 cf_kwargs["fluctuations"] = (1.0, 1e-16)
 cf_kwargs["flexibility"] = (1e-3, 1e-16)
 cf_kwargs["asperity"] = (1e-3, 1e-16)
 cf_kwargs["loglogavgslope"] = (-3, 1e-16)
 cf_kwargs["offset_std"] = (1e-3, 1e-16)
 
+# %%
 vary_parameter("offset_mean", [3.0, 0.0, -2.0], **cf_kwargs)
 cf_kwargs["offset_mean"] = 0.0
 
+# %% [markdown]
 # ### `offset_std`
 #
 # The `offset_std` sets uncertanty of the average value of the signal. Although
@@ -432,14 +460,15 @@ cf_kwargs["offset_mean"] = 0.0
 #
 # We start by inspecting variations in $\mu_\alpha$, and then $\sigma_\alpha$.
 
+# %%
 vary_parameter("offset_std", [(1e-16, 1e-16), (0.5, 1e-16), (2.0, 1e-16)], **cf_kwargs)
 
-# +
+# %%
 vary_parameter("offset_std", [(1.0, 0.01), (1.0, 0.1), (1.0, 1.0)], **cf_kwargs)
 
 cf_kwargs["offset_std"] = (0.5, 0.2)
-# -
 
+# %% [markdown]
 # ### `fluctuations`
 #
 # The `fluctuations` parameter steers how much the samples fluctuate around the
@@ -452,13 +481,16 @@ cf_kwargs["offset_std"] = (0.5, 0.2)
 # Again, let us first look at the influence of $\mu_a$ on the signal realisations,
 # then at the one of $\sigma_a$.
 
+# %%
 vary_parameter("fluctuations", [(0.05, 1e-16), (0.5, 1e-16), (1.0, 1e-16)], **cf_kwargs)
 cf_kwargs["fluctuations"] = (1.0, 1e-16)
 
+# %%
 vary_parameter("fluctuations", [(1.0, 0.01), (1.0, 0.1), (1.0, 1.0)], **cf_kwargs)
 cf_kwargs["fluctuations"] = (1.0, 1e-16)
 
 
+# %% [markdown]
 # ### `flexibility` and `asperity`
 #
 #
@@ -477,21 +509,28 @@ cf_kwargs["fluctuations"] = (1.0, 1e-16)
 # First, let us look at the impact on the signal and power spectra upon varying
 # `flexibility`. First, we vary $\mu_\eta$ and then $\sigma_\eta$.
 
+# %%
 vary_parameter(
     "flexibility", [(0.001, 1e-16), (1.0, 1e-16), (10.0, 1e-16)], **cf_kwargs
 )
 
+# %%
 vary_parameter("flexibility", [(1.0, 0.01), (1.0, 0.1), (1.0, 1.0)], **cf_kwargs)
 
+# %% [markdown]
 # To look at `asperity`, we reset the value of `flexibility` to $5.0$.
 
+# %%
 cf_kwargs["flexibility"] = (5.0, 1e-16)
 
+# %%
 vary_parameter("asperity", [(0.001, 1e-16), (1.0, 1e-16), (100.0, 1e-16)], **cf_kwargs)
 
+# %%
 vary_parameter("asperity", [(1.0, 0.01), (1.0, 0.1), (1.0, 1.0)], **cf_kwargs)
 cf_kwargs["asperity"] = (1.0, 1e-16)
 
+# %% [markdown]
 # ## Summary
 #
 #
