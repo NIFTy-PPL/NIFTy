@@ -40,6 +40,9 @@
             docs = [
               pkgs.jupyter # python3Packages.jupyter is broken, see https://github.com/NixOS/nixpkgs/issues/299385
               pyPkgs.jupytext
+              pyPkgs.jupyter-book
+              pkgs.texliveFull
+              pkgs.pandoc
               pyPkgs.pydata-sphinx-theme
               pyPkgs.sphinx
               pyPkgs.sphinxcontrib-bibtex
