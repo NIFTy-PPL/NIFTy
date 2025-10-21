@@ -1,4 +1,3 @@
-# %% [markdown]
 # # Wiener Filter
 #
 # NIFTy primarily uses Variational Inference to approximate posterior
@@ -12,7 +11,6 @@
 # [this script](https://wwwmpa.mpa-garching.mpg.de/~ensslin/lectures/Files/ScriptIT\&IFT.pdf).
 #
 
-# %% [markdown]
 # Before we start with the Wiener filter implementation in `NIFTy.re`, let us
 # quickly review the mathematical background.
 #
@@ -52,7 +50,6 @@
 # In some applications, $D$ is called the information propagator and
 # $j = R^\dagger N^{-1} d$ the information source.
 
-# %% [markdown]
 # To summarize, under the assumptions of the Wiener filter, the posterior is a
 # Gaussian distribution, and the posterior mean $m$ can be computed via
 # $m = F_W d$ with:
@@ -67,7 +64,6 @@
 # which is designed to minimize the expected root mean square between the signal
 # $s$ and the posterior mean $m$.
 
-# %% [markdown]
 # As introduced in previous notebooks, NIFTy builds on generative models mapping
 # from a standard normal distribution to the desired prior signal distribution.
 # For this reason, the prior covariance $S$ is (in `NIFTy.re`) always given by
@@ -77,10 +73,8 @@
 #
 # $$ F_W = \left( \mathbb{1} + R^\dagger N^{-1} R \right)^{-1} R^\dagger N^{-1}. $$
 
-# %% [markdown]
 # ## Wiener Filter in NIFTy
 
-# %% [markdown]
 # To demonstrate the Wiener filter, we will continue the Gaussian process example
 # from the [previous notebook](2_gaussian_processes). To recapitulate, in
 # the previous notebook we coded a generative Gaussian process model of the form:
@@ -96,14 +90,16 @@
 # generative model and instrument response. The following code block contains the
 # generative model from the previous notebook.
 
-# %%
+# +
 import nifty.re as jft
 
 import jax
 import jax.numpy as jnp
 import jax.random as random
 
+# %matplotlib inline
 import matplotlib.pyplot as plt
+plt.rcParams['figure.dpi'] = 100
 
 jax.config.update("jax_enable_x64", True)
 seed = 42
@@ -143,20 +139,17 @@ class FixedPowerCorrelatedField(jft.Model):
 
 
 signal = FixedPowerCorrelatedField(sqrt_hamonic_cov, grid)
+# -
 
-# %% [markdown]
 # For an initial example, we will assume a perfect instrument, meaning that we set
 # $R_\text{I} = \mathbb{1}$ to the unit matrix. In later examples, we will
 # consider a more complicated response function. Thus, for now, the signal
 # response $Rs$ is equal to $s$.
 
-# %%
 signal_response = signal
 
-# %% [markdown]
 # ### Synthetic data generation
 
-# %% [markdown]
 # In the previous notebooks, we loaded a data file as you would do in an
 # application to real data. In this notebook, we will generate synthetic data by
 # drawing prior samples with the following procedure. First, we draw a standard
@@ -164,41 +157,33 @@ signal_response = signal
 # `pos_truth` as it will be the ground truth. We pass this latent space sample
 # through our model to compute the corresponding signal response.
 
-# %%
 key, subkey = random.split(key)
 pos_truth = jft.random_like(subkey, signal_response.domain)
 signal_response_truth = signal_response(pos_truth)
 
-# %% [markdown]
 # To generate synthetic data consistent with the measurement equation
 # $d = Rs + n$, we draw a random noise sample. For the example in this notebook,
 # we will assume that the noise is uncorrelated between the data points and has a
 # standard deviation of $0.3$.
 
-# %%
 noise_std = 0.3
 noise_cov = lambda x: noise_std**2 * x
 noise_cov_inv = lambda x: noise_std**-2 * x
 key, subkey = random.split(key)
 noise_truth = noise_std * jft.random_like(key, signal_response.target)
 
-# %% [markdown]
 # Having now random realizations for $s$ and $n$, we can construct the synthetic
 # data $d = Rs + n$.
 
-# %%
 data = signal_response_truth + noise_truth
 
-# %% [markdown]
 # Let's plot the synthetic data together with the ground truth.
 
-# %%
 plt.plot(axis, data, ".", color="tab:blue", label="Data")
 plt.plot(axis, signal(pos_truth), color="tab:orange", label="Ground truth")
 plt.legend()
 plt.show()
 
-# %% [markdown]
 # `wiener_filter_posterior` does not directly take data as an input parameter,
 # but rather the likelihood connected to the data. As we assume a linear
 # measurement model with Gaussian signal and noise, the likelihood is a
@@ -206,10 +191,8 @@ plt.show()
 #
 # $$  \mathcal{P}(d|s) = \mathcal{G}(d - Rs,N) $$
 
-# %%
 lh = jft.Gaussian(data, noise_cov_inv).amend(signal_response)
 
-# %% [markdown]
 # The following parameters are most important for the `wiener_filter_posterior`.
 # Additional parameters for further options are documented in the API reference.
 # * `likelihood`: The NIFTy likelihood of the inference problem contains the
@@ -236,7 +219,7 @@ lh = jft.Gaussian(data, noise_cov_inv).amend(signal_response)
 # computed via the Wiener filter formulas, as the samples are drawn
 # synthetically around the mean.
 
-# %%
+# +
 # The Wiener filter
 
 delta = 1e-6
@@ -250,16 +233,14 @@ samples, _ = jft.wiener_filter_posterior(
         cg_kwargs=dict(absdelta=delta * jft.size(lh.domain) / 10.0, maxiter=100),
     ),
 )
+# -
 
-# %% [markdown]
 # With the drawn `samples` around the Wiener filter solution, we can now
 # calculate the posterior statistics, its mean and standard deviation of the
 # `signal`, and compare it to the ground truth.
 
-# %%
 post_mean, post_std = jft.mean_and_std(tuple(signal(s) for s in samples))
 
-# %%
 plt.plot(axis, data, ".", color="tab:blue", label="Data")
 plt.plot(axis, signal(pos_truth), color="tab:orange", label="Ground truth")
 plt.plot(axis, post_mean, label="Posterior mean", color="tab:green")
@@ -274,13 +255,11 @@ plt.fill_between(
 plt.legend()
 plt.show()
 
-# %% [markdown]
 # The plot above shows, besides the data and the ground truth signal, the
 # Wiener filter reconstruction of the `signal` together with its $1\sigma$
 # band. The Wiener filter solution mostly captures the ground truth signal of the
 # synthetic data.
 
-# %% [markdown]
 # ## Wiener Filter on incomplete data
 #
 # As a second example, let's change the signal response to a more complicated
@@ -293,7 +272,7 @@ plt.show()
 # with the `sensitivity` array.
 
 
-# %%
+# +
 class SignalResponse(jft.Model):
     def __init__(self, signal, sensitivity):
         self.signal = signal
@@ -307,12 +286,12 @@ class SignalResponse(jft.Model):
 sensitivity = jnp.ones(shape=dims)
 sensitivity = sensitivity.at[25:80].set(0.0)
 signal_response = SignalResponse(signal, sensitivity)
+# -
 
-# %% [markdown]
 # As before, we generate synthetic data consistent with the measurement equation
 # $d = Rs+n$.
 
-# %%
+# +
 noise_std = 0.1
 noise_cov = lambda x: noise_std**2 * x
 noise_cov_inv = lambda x: noise_std**-2 * x
@@ -323,13 +302,13 @@ signal_response_truth = signal_response(pos_truth)
 key, subkey = random.split(key)
 noise_true = noise_std * jft.random_like(subkey, signal_response.domain)
 data = signal_response_truth + noise_true
+# -
 
-# %% [markdown]
 # Again, we assume Gaussian noise to construct the likelihood for the problem
 # and call the `wiener_filter_posterior` function. We compute the posterior mean
 # and standard deviation for the reconstructed `signal`.
 
-# %%
+# +
 lh = jft.Gaussian(data, noise_cov_inv).amend(signal_response)
 
 key, subkey = random.split(key)
@@ -341,13 +320,13 @@ samples, info = jft.wiener_filter_posterior(
 )
 
 post_mean, post_std = jft.mean_and_std(tuple(signal(s) for s in samples))
+# -
 
-# %% [markdown]
 # As before, we plot the reconstruction alongside the ground truth of the signal
 # and the data. Furthermore, we shade the area where the `sensitivity` is zero
 # in grey.
 
-# %%
+# +
 plt.axvspan(25, 80, color="gray", alpha=0.25, label="Missing data area")
 plt.plot(jnp.arange(len(data)), signal_truth, color="tab:orange", label="Ground Truth")
 plt.plot(jnp.arange(len(data)), post_mean, color="tab:green", label="Posterior mean")
@@ -364,15 +343,14 @@ data = data.at[25:80].set(jnp.nan)  # Remove masked data from plotting
 plt.scatter(jnp.arange(len(data)), data, label="Noisy Data", s=15, color="tab:blue")
 plt.legend()
 plt.show()
+# -
 
-# %% [markdown]
 # Again, we can see that the Wiener filter solution recovers the signal in
 # regions where data is available. We can see that it interpolates in the area where
 # we have no data, given the fixed covariance structure. Furthermore, the Wiener
 # filter solution assigns greater posterior uncertainty to the regions
 # unconstrained by the data.
 
-# %% [markdown]
 # ## Summary
 #
 # This notebook introduced the Wiener filter and showed how to apply the Wiener

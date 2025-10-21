@@ -1,17 +1,15 @@
-# %% [markdown] vscode={"languageId": "plaintext"}
+# + [markdown] vscode={"languageId": "plaintext"}
 # # NIFTy Models
+# -
 
-# %% [markdown]
 # This notebook provides an overview of the theory and implementation of
 # statistical models in NIFTy. The first part introduces the mathematical
 # background on how prior models are handled in NIFTy. The subsequent section
 # discusses the implementation of prior models, and the final section focuses
 # on likelihoods.
 
-# %% [markdown]
 # ## Introduction
 
-# %% [markdown]
 # Bayesian statistics allows us to combine the likelihood, which contains new
 # information such as measurements, with prior knowledge encoded in a prior
 # distribution. In NIFTy, the quantity we want to infer is typically called the
@@ -32,10 +30,8 @@
 # notebook, you will learn about how to infer the posterior distribution once
 # you have a NIFTy model.
 
-# %% [markdown]
 # ## Prior Models in NIFTy
 
-# %% [markdown]
 # In many real-world applications, the prior distribution we want to impose on
 # the quantity we infer (in NIFTy often called signal $s$) can be quite
 # complicated. Nevertheless, the variational inference methods used in NIFTy to
@@ -52,10 +48,10 @@
 # models and explains how to code such models in NIFTy to map to the desired
 # prior distribution.
 
-# %% [markdown] vscode={"languageId": "plaintext"}
+# + [markdown] vscode={"languageId": "plaintext"}
 # ### Standardized Models
+# -
 
-# %% [markdown]
 # The inference algorithms of NIFTy assume that all parameters of the model are
 # a priori standard normally distributed. We often denote these standard normally
 # distributed parameters with $\xi$. If we now have a signal $s$ that we want to
@@ -90,21 +86,19 @@
 # mathematical introduction tailored towards the application in NIFTy, see
 # [arXiv:1812.04403](https://arxiv.org/abs/1812.04403).
 
-# %% [markdown]
 # To summarize, all the complexity of the desired prior distribution on $s$ is
 # now encoded in the mapping $\xi \rightarrow s$. The posterior inference
 # algorithms discussed in the next notebook will infer the posterior
 # distribution $P(\xi|d)$. Via the mapping from $\xi \rightarrow s$, the
 # posterior of $\xi$ determines the posterior distribution for $s$.
 
-# %% [markdown]
 # ### Implementation in NIFTy
 
-# %% [markdown] vscode={"languageId": "plaintext"}
+# + [markdown] vscode={"languageId": "plaintext"}
 # The previous section introduced the mathematical foundation of standardized
 # prior models. In this section, we will focus on the implementation in NIFTy.
+# -
 
-# %% [markdown]
 # As discussed, NIFTy always assumes that the model is standardized such that
 # $P(\xi)$ is standard normally distributed. For this reason, NIFTy will
 # automatically construct the corresponding standard Gaussian prior $P(\xi)$ for
@@ -114,10 +108,8 @@
 # impose and the statistics of the data. In this section, we discuss with an
 # example how to implement $\xi \rightarrow s$. Afterwards, we will explain the implementation of $P(d|s)$.
 
-# %% [markdown]
 # #### Example Model
 
-# %% [markdown]
 # Implementation details of NIFTy models are best explained with examples. In
 # this notebook, we will discuss a simple example: reconstructing the slope and
 # offset of a linear function from measured data points. In other words,
@@ -126,7 +118,6 @@
 # for image and volume reconstructions in the
 # [demos folder](https://gitlab.mpcdf.mpg.de/ift/nifty/-/tree/main/demos/re?ref_type=heads).
 
-# %% [markdown]
 # For our example, let us assume that we have measured the data
 # $\vec{d} \in \mathbb{R}^{N}$ at some locations $\vec{x} \in \mathbb{R}^{N}$,
 # and that there is a relation between $\vec{d}$ and $\vec{x}$ following the
@@ -143,7 +134,6 @@
 # likelihood function, which we will do in this notebook. The next notebook will
 # demonstrate how to obtain the posterior given the NIFTy model.
 
-# %% [markdown]
 # To implement the likelihood function, we code a generative model mapping from
 # some latent a priori standard Gaussian distributed parameters $\vec{\xi}$ to
 # the parameters $a(\vec{\xi})$ and $b(\vec{\xi})$ and then mapping to the
@@ -151,45 +141,41 @@
 # Thus, in the end, we will have a function mapping $\vec{\xi}$ to the
 # corresponding values $\vec{y}$.
 
-# %% [markdown]
 # Before starting with the actual implementation, let us import NIFTy and the
 # relevant JAX libraries. Furthermore, we activate the float64 precision in JAX,
 # which is recommended for NIFTy.
 
-# %%
+# +
 import nifty.re as jft
 
 import numpy as np
 
 import jax
-import jax.numpy as jnp
 import jax.random as random
 
+# %matplotlib inline
 import matplotlib.pyplot as plt
+plt.rcParams['figure.dpi'] = 100
 
 jax.config.update("jax_enable_x64", True)
+# -
 
-# %% [markdown]
 # Furthermore, let us define the positions $x$ at which we have measured and the
 # actual data $d$ we obtained. In an application to real data, you would load
 # your dataset here.
 
-# %%
 x, d = np.loadtxt("data.txt", delimiter="\t", skiprows=1, unpack=True)
 
-# %% [markdown]
 # A first good step when dealing with new data is to visualize it. To visualize
 # our data, we will plot the locations at which we have measured on the x-axis
 # and the corresponding datapoint on the y-axis.
 
-# %%
 plt.figure(figsize=(8, 5))
 plt.scatter(x, d)
 plt.xlabel("x")
 plt.ylabel("d")
 plt.show()
 
-# %% [markdown]
 # For this data, we now want to do a Bayesian linear regression. Let us assume
 # that we have some prior knowledge of the value of the parameters $a$ and $b$.
 # Namely, let us assume about $a$ that we already know that it must be a
@@ -201,15 +187,12 @@ plt.show()
 # on the
 # [API reference page](https://ift.pages.mpcdf.de/nifty/mod/nifty.re.prior.html).
 
-# %% [markdown]
 # We specify a NIFTy model for a Log-Normal distribution with `mean=4` and
 # `std=3`. The meaning of the parameter `name` will be explained in the cell
 # below.
 
-# %%
 a = jft.LogNormalPrior(mean=4, std=3, name="a_input")
 
-# %% [markdown]
 # `a` is now a NIFTy model implementing the mapping of a standard normal
 # distributed $\xi$ to the Log-Normal distributed parameters $a$. Besides this
 # mapping, the NIFTy model implements additional useful functionality, including
@@ -217,10 +200,8 @@ a = jft.LogNormalPrior(mean=4, std=3, name="a_input")
 # `a.domain` contains information on how the input to the mapping function
 # should be formatted.
 
-# %%
 print(a.domain)
 
-# %% [markdown]
 # As we see, the input to the model `a` should be a Python dictionary. This
 # dictionary should include a key named `a_input` containing a single float.
 # This float will be mapped to the log-normal distributed quantity. Why it is
@@ -231,23 +212,18 @@ print(a.domain)
 # components of our prior model, such as the models $a$ and $b$, must use
 # different keys.
 
-# %% [markdown]
 # The `target` property contains information about the model's output. We see
 # that the output of the model is a single float:
 
-# %%
 print(a.target)
 
-# %% [markdown]
 # We can also create some test input and apply the model `a` to it to showcase
 # how to apply the model:
 
-# %%
 a_test_input = {"a_input": 0.0}
 res = a(a_test_input)
 print(res)
 
-# %% [markdown]
 # To showcase how the Gaussian distribution on the domain of `a` is mapped to a
 # Log-Normal distribution, let us draw Gaussian samples and pass them into `a`.
 # Before doing so, we first need to introduce the JAX random number generator.
@@ -274,7 +250,7 @@ print(res)
 # matplotlib. The left plot visualizes the latent Gaussian samples, while the
 # right plot shows the log-normal distributed samples from `a`.
 
-# %%
+# +
 seed = 42
 key = random.PRNGKey(seed)
 
@@ -293,29 +269,24 @@ axs[0].set_title(r"Gaussian samples of $\xi_a$")
 axs[1].hist(a_sample_list, bins=20)
 axs[1].set_title(r"Log-Normal samples of $a$")
 plt.show()
+# -
 
-# %% [markdown]
 # Besides the prior model for $a$, we have to specify a model for $b$. Let us
 # assume that we want to use a Gaussian prior with a mean of 0 and a standard
 # deviation of 3 for $b$.
 
-# %%
 b = jft.NormalPrior(mean=0, std=3, name="b_input")
 
-# %% [markdown]
 # As for `a`, we can look at the domain and target properties of `b`, giving
 # information on how the input to `b` should look, and what the output will be:
 
-# %%
 print(b.domain)
 print(b.target)
 
 
-# %% [markdown]
 # Analogous to `a`, the input should be a dictionary with the value of the
 # `name` parameter as a key. The output of `b` will be a single float.
 
-# %% [markdown]
 # Now we have implemented the generative models for $\xi \rightarrow s$.
 # Specifically, we have implemented the models $\xi_a \rightarrow a$ and
 # $\xi_b \rightarrow b$. The next step is to code a model for linear regression.
@@ -324,7 +295,6 @@ print(b.target)
 # given locations $x$. While for the models `a` and `b` we could use already
 # existing models in NIFTy, this time we have to code our own model.
 
-# %% [markdown]
 # In its most basic form, a NIFTy model can simply be a Python function that
 # implements the mapping from standard normal distributed parameters to the
 # desired quantity. In our example case, the final quantity our model should map
@@ -340,7 +310,7 @@ print(b.target)
 # recommend reading one of the numerous tutorials on the web first.
 
 
-# %%
+# +
 class LinearModel(jft.Model):
     def __init__(self, x, a, b):
         self.x = x
@@ -353,8 +323,8 @@ class LinearModel(jft.Model):
 
 
 my_model = LinearModel(x, a, b)
+# -
 
-# %% [markdown]
 # The class `LinearModel` inherits from the base class `jft.Model` and
 # implements our model $\vec{y}(\xi_a, \xi_b) = a(\xi_a)\vec{x} + b(\xi_b)$ for
 # the data. To the `__init__` function of the class, we pass the locations $x$ at
@@ -386,19 +356,15 @@ my_model = LinearModel(x, a, b)
 # instructs NIFTy to initialize the inference of our model with uncorrelated
 # standard Gaussian random numbers.
 
-# %%
 print(a.domain | b.domain)
 
-# %% [markdown]
 # This union `a.domain | b.domain` is then passed as the `domain` to the init
 # method of `jft.Model`, from which our `LinearModel` has inherited from. The
 # `jft.Model` class implements the functionality that our model now also has a
 # property `domain`.
 
-# %%
 print(my_model.domain)
 
-# %% [markdown]
 # That the domain of our model is also a Python dict is not a necessity, but a
 # consequence of how we have implemented the call function. If we had implemented
 # the call function differently, the domain could also have been something else.
@@ -415,7 +381,6 @@ print(my_model.domain)
 # Python dictionaries for the input, this is much easier, as we just have to
 # ensure that the new components use distinct keys in the dictionary.
 
-# %% [markdown]
 # Before continuing with implementing a likelihood, let us once more visualize
 # our model by plotting prior samples from it. This time, we plot prior samples
 # of our model alongside the data. We start with a scatter plot of our data.
@@ -426,7 +391,7 @@ print(my_model.domain)
 # of our model.
 
 
-# %%
+# +
 plt.figure(figsize=(8, 5))
 plt.scatter(x, d)
 
@@ -439,12 +404,11 @@ for i in range(10):
 plt.xlabel("x")
 plt.ylabel("d")
 plt.show()
+# -
 
-# %% [markdown]
 # ## Likelihood Models in NIFTy
 
 
-# %% [markdown]
 # To summarize, so far we have coded a model taking $(\xi_a, \xi_b)$ as an
 # input and computing the corresponding
 # $y(\xi_a, \xi_b) = a(\xi_a)\vec{x} + b(\xi_b)\vec{1}$. As a next step, we will
@@ -458,7 +422,6 @@ plt.show()
 # measurement setups can be found on the
 # [API reference page](https://ift.pages.mpcdf.de/nifty/mod/nifty.re.likelihood_impl.html).
 
-# %% [markdown]
 # Assuming that $n$ is Gaussian distributed, the likelihood is given by
 #
 # $$ P(d|\xi_a, \xi_b) = P(d|y(\xi_a,\xi_b)) = P(n = d - y(\xi_a,\xi_b)) = G(d-y, 10^2).$$
@@ -475,36 +438,29 @@ plt.show()
 #
 # The corresponding NIFTy code looks like this:
 
-# %%
 cov = 10**2
 noise_cov_inv = lambda x: x / cov  # diagonal matrix
 lh = jft.Gaussian(data=d, noise_cov_inv=noise_cov_inv).amend(my_model)
 
-# %% [markdown]
 # Conceptually, as well as in the implementation, the likelihood `lh` shares
 # many similarities with normal models in NIFTy. For example, the model and the
 # likelihood are a mapping of the same latent parameters $(\xi_a, \xi_b)$. We
 # can verify this by looking at the `.domain` properties of the likelihood and
 # model:
 
-# %%
 print("domain of model: ", my_model.domain)
 print("domain of lh: ", lh.domain)
 
-# %% [markdown]
 # The likelihood and the model both have a `.target` property indicating the
 # type of the output. While the model maps to an array of 20 floats
 # (the values of $y$), the likelihood maps to the log of the probability, which
 # is a single float.
 
-# %%
 print("target of model: ", my_model.target)
 print("target of lh: ", lh.target)
 
-# %% [markdown]
 # ## Summary
 
-# %% [markdown]
 # This notebook introduces the concept of standardized generative models. These
 # models encode a potentially complex probability distribution of some
 # parameters via a non-linear mapping from independent and identically

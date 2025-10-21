@@ -1,21 +1,20 @@
 # ---
 # jupyter:
 #   jupytext:
+#     formats: ipynb,py:light
 #     text_representation:
 #       extension: .py
-#       format_name: percent
-#       format_version: '1.3'
+#       format_name: light
+#       format_version: '1.5'
 #       jupytext_version: 1.17.2
 #   kernelspec:
-#     display_name: Python 3
+#     display_name: Python 3 (ipykernel)
 #     language: python
 #     name: python3
 # ---
 
-# %% [markdown]
 # # Event rate reconstruction
 
-# %% [markdown]
 # This notebook explains how to model a process that produces
 # integer-valued count data, for example, from a photon source or the decay of a
 # radioactive element. It introduces the Poisson distribution as the
@@ -24,24 +23,26 @@
 # If you are not familiar with NIFTy, please start with the notebooks [Models](0_models)
 # and [Inference](1_inference).
 
-# %%
+# +
 import nifty.re as jft
 
+import numpy as np
 import jax.numpy as jnp
 import jax.random as random
 
+# %matplotlib inline
 import matplotlib.pyplot as plt
+plt.rcParams['figure.dpi'] = 100
+
 from functools import partial
 
 seed = 42
 rng_key = random.PRNGKey(seed)
+# -
 
-import numpy as np
 
-# %% [markdown]
 # ## Poisson process
 
-# %% [markdown]
 # A Poisson process is a counting process with a strictly positive
 # rate function $\rho (x)$. Under a counting process, we can understand a
 # stochastic process that keeps track of all registered events in a given space
@@ -63,10 +64,8 @@ import numpy as np
 # $$ \mathcal{H}(n | \lambda) = - \text{ln} \big[ P(n | \lambda) \big] = \lambda - n \, \text{ln}(\lambda) + \text{ln}(n!) $$
 #
 
-# %% [markdown]
 # ## Log-normal Poisson model
 
-# %% [markdown]
 # The generative log-normal Poisson model first starts with a normally
 # distributed random field $s(x)$ drawn from a normal distribution
 # $\mathcal{G}(s,S)$. To ensure positivity and allow for variations over several
@@ -98,7 +97,6 @@ import numpy as np
 #
 # is just a product of all single bin likelihoods.
 
-# %% [markdown]
 # ### Log-normal Poisson model with the correlated field
 #
 # This section should be an example of how to model Poisson count data in time.
@@ -107,13 +105,13 @@ import numpy as np
 #
 # First, let us read the data contained in `data_poisson.txt`.
 
-# %%
+# +
 events = np.loadtxt("data_poisson.txt")
 
 for k in range(15):
     print(events[k])
+# -
 
-# %% [markdown]
 # `events` now contains all recorded events' time stamps, but
 # there is still no count data. Therefore, we take all events and bin them over
 # the viewed interval $[0,T]$ with a resolution of `t_res`. In this analysis, we
@@ -123,7 +121,7 @@ for k in range(15):
 #
 # Now let us visualize the binned count data.
 
-# %%
+# +
 t_res = 2**8
 T = events.max()
 data, bins = jnp.histogram(events, t_res, (0, T))
@@ -135,14 +133,13 @@ plt.ylabel("Counts")
 plt.plot(bins, data, ".", label="Data", color="tab:blue")
 plt.legend(loc="upper right")
 plt.show()
+# -
 
-# %% [markdown]
 # The plot shows us that roughly between 30 and 70 seconds, we
 # have more counts than at the beginning and end of the interval. Therefore, it
 # is plausible that the underlying rate function $\rho(t)$ must be higher in
 # this region, meaning $\rho(t)$ allows for a greater number of events.
 
-# %% [markdown]
 # Now let us model the rate function $\rho(t)$ itself.
 #
 # The exact form of $\rho(t)$ is unavailable in a real-world scenario.
@@ -158,7 +155,7 @@ plt.show()
 # This saves us transformations between (differently binned) data and Poisson rates,
 # simplifying  operators or fields of the model for the expected counts.
 
-# %%
+# +
 cf_offset_dct = dict(
     offset_mean=1,
     offset_std=(0.5, 0.1),
@@ -178,9 +175,9 @@ cf_maker = jft.CorrelatedFieldMaker("signal_")
 cf_maker.set_amplitude_total_offset(**cf_offset_dct)
 cf_maker.add_fluctuations(**cf_ps_dct)
 s = cf_maker.finalize()
+# -
 
 
-# %% [markdown]
 # The forward model mainly consists of the log-normal Poisson model described at the beginning.
 #
 # 1. We choose the correlated field's timeline to coincide with the data's
@@ -207,7 +204,7 @@ s = cf_maker.finalize()
 #    and multiplies all array entries by the bin width.
 
 
-# %%
+# +
 class LogNormalPoisson(jft.Model):
     def __init__(self, signal_field, res, T):
         self.s = signal_field
@@ -227,19 +224,17 @@ class LogNormalPoisson(jft.Model):
 
 
 lamb = LogNormalPoisson(s, t_res, T)
+# -
 
-# %% [markdown]
 # To see if the chosen hyperparameters of our correlated field
 # prior are reasonable, let us look at some prior samples of our forward model.
 
-# %%
 plt.plot(bins, data, ".")
 key, k1 = random.split(rng_key, 2)
 for k in range(20):
     k0, k1 = random.split(k1, 2)
     plt.plot(bins, lamb(lamb.init(k0)))
 
-# %% [markdown]
 # The plot above displays the data count by the points, and 20
 # prior samples as graphs. We can see that the hyperparameters are set to
 # reasonable values, as the different prior samples show enough variance in
@@ -248,7 +243,6 @@ for k in range(20):
 # allows for a wide range of possible realizations, thus enabling the search for
 # the correct values of the hyperparameters.
 
-# %% [markdown]
 # Next, we have to define the likelihood of our inference problem.
 # For count data, as we are using the log-normal Poisson model, we choose a
 # Poissonian likelihood. `NIFTy.re` implements a Poissonian likelihood as the
@@ -262,11 +256,9 @@ for k in range(20):
 # As the likelihood does not know about the model, we must amend an instance of
 # the model class.
 
-# %%
 lh = jft.Poissonian(data).amend(lamb)
 
 
-# %% [markdown]
 # The last part is again the inference algorithm. For an introduction on using the
 # `optimize_kl` function, please look at the [inference notebook](1_inference).
 # For visualization, we evaluate the mean and standard deviation of the
@@ -276,7 +268,6 @@ lh = jft.Poissonian(data).amend(lamb)
 # field is shown next to it.
 
 
-# %%
 def callback(samples, state):
     exp_mean, exp_std = jft.mean_and_std(tuple(lamb.exp_signal(s) for s in samples))
     ps_mean, ps_std = jft.mean_and_std(
@@ -303,7 +294,6 @@ def callback(samples, state):
     plt.show()
 
 
-# %% [markdown]
 # We will now use the geometric Variational Inference (geoVI) algorithm that is better
 # in approximating non-Gaussian posteriors than Metric Gaussian Variational
 # Inference (MGVI),
@@ -328,7 +318,7 @@ def callback(samples, state):
 # Now, let us visualize the unnormalized posterior distribution.
 
 
-# %%
+# +
 def joint_PDF_curve(x, d, sigma):
     return x ** (d - 1) * jnp.exp(-x - jnp.log(x) ** 2 / (2 * sigma**2))
 
@@ -338,8 +328,8 @@ y = joint_PDF_curve(x, 5, 1)
 
 plt.plot(x, y)
 plt.show()
+# -
 
-# %% [markdown]
 # As we can see, the posterior
 #
 # $$ \mathcal{P}(\lambda|d) = \frac{\mathcal{P}(d,\lambda)}{\mathcal{P}(d)} \propto \lambda^{d-1} \, \text{exp}\bigg[ -\lambda -\frac{\text{ln}^2(\lambda)}{2\sigma^2} \bigg] $$
@@ -349,11 +339,10 @@ plt.show()
 # (see https://arxiv.org/abs/2105.10470) algorithm, which uses the Fisher
 # Information metric to construct non-Gaussian posterior distributions.
 
-# %% [markdown]
 # Now let us specify the `optimize_kl` arguments.
 #
 
-# %%
+# +
 delta = 1e-6
 key, k_i, k_o = random.split(key, 3)
 
@@ -383,8 +372,8 @@ optimize_kl_args = dict(
     sample_mode="nonlinear_resample",
     callback=callback,
 )
+# -
 
-# %% [markdown]
 # By setting the `sample_mode` of the `optimize_kl` to
 # `nonlinear_resample`, we will use the geoVI algorithm in the inference
 # process. Furthermore, we must now set the `nonlinearly_update_kwargs` in the
@@ -396,11 +385,9 @@ optimize_kl_args = dict(
 # the' callback' argument. As an example, like we did here, we can repeatedly
 # compute plots of specific quantities during the inference.
 
-# %%
 samples, state = jft.optimize_kl(**optimize_kl_args)
 
 
-# %% [markdown]
 # ## Summary
 #
 # This notebook introduces how to implement the log-normal Poisson process in
@@ -410,7 +397,6 @@ samples, state = jft.optimize_kl(**optimize_kl_args)
 # (geoVI) algorithm. The notebook also showed how to set up `optimize_kl` to use
 # geoVI.
 
-# %% [markdown]
 # ## Appendix
 #
 # The given data was generated by the rate function
@@ -423,7 +409,6 @@ samples, state = jft.optimize_kl(**optimize_kl_args)
 # distributed over time.
 
 
-# %%
 def rho(t, c):
     t0 = c[0]
     w = c[1]
@@ -431,7 +416,7 @@ def rho(t, c):
     return A * jnp.exp(-((t - t0) ** 2) / (2 * w**2))
 
 
-# %%
+# +
 def generate_poisson_data(key, f, f_max, T):
     t = 0
     events = []

@@ -1,7 +1,5 @@
-# %% [markdown]
 # # Gaussian Processes with a fixed kernel
 
-# %% [markdown]
 # This notebook introduces Gaussian Processes and their implementation in NIFTy.
 # Gaussian Processes are a powerful tool for modeling smooth functions. In the
 # context of NIFTy, we commonly use Gaussian Processes as a prior model. The
@@ -11,27 +9,27 @@
 # and [Inference](1_inference) first.
 
 
-# %% [markdown]
 # Before starting with the actual notebook, let's import NIFTy and the relevant
 # libraries.
 
-# %%
+# +
 import nifty.re as jft
 
 import jax
 import jax.numpy as jnp
 import jax.random as random
 
+# %matplotlib inline
 import matplotlib.pyplot as plt
+plt.rcParams['figure.dpi'] = 100
 
 jax.config.update("jax_enable_x64", True)
 seed = 42
 key = random.PRNGKey(seed)
+# -
 
-# %% [markdown]
 # ## Motivation
 
-# %% [markdown]
 # As with many concepts, Gaussian Processes are best introduced with an example.
 # In this notebook, let's consider modeling the temperature in a room as a
 # function of time. We assume that the average temperature in the room is $21$
@@ -42,7 +40,6 @@ key = random.PRNGKey(seed)
 # this prior knowledge, would be a Gaussian distribution with a mean of $0$ and
 # a standard deviation of $2$.
 
-# %% [markdown]
 # The first notebook `0_models.py` already introduced a prior model for Gaussian
 # random numbers in NIFTy, namely `jft.NormalPrior`. While `0_models.py` used
 # this model for a single number, we now need a model for multiple numbers,
@@ -52,13 +49,11 @@ key = random.PRNGKey(seed)
 # prior model for a vector of $100$ Gaussian random numbers with a mean of $0$
 # and a standard deviation of $2$.
 
-# %%
 s = jft.NormalPrior(mean=0, std=2, shape=(100))
 
-# %% [markdown]
 # Let's draw a sample of this prior model and visualize it with matplotlib.
 
-# %%
+# +
 key, subkey = random.split(key)
 latent_sample = jft.random_like(subkey, s.domain)
 sample = s(latent_sample)
@@ -67,12 +62,11 @@ plt.plot(sample)
 plt.xlabel("Time")
 plt.ylabel("Temperature Deviation from mean")
 plt.show()
+# -
 
-# %% [markdown]
 # As expected, the values of the `s` sample fluctuate around $0$ with a standard
 # deviation of about $2$.
 
-# %% [markdown]
 # Neighboring entries in the random sample from $s$ are uncorrelated. Thus, in
 # this prior sample, the temperature deviations from $21$ degrees jump wildly
 # from one time step to the next. Expressed as a formula, this means that the
@@ -88,10 +82,8 @@ plt.show()
 # showcasing their implementation in NIFTy.
 #
 
-# %% [markdown]
 # ## Mathematical background
 
-# %% [markdown]
 # In the code above, we modeled each time step $s_i$ with an a priori
 # independent Gaussian random variable $\xi_i$, known as a latent space
 # parameter. Instead of thinking of $s$ as a collection of independent Gaussian
@@ -109,7 +101,6 @@ plt.show()
 # non-diagonal covariance matrix.
 #
 
-# %% [markdown]
 # The most straightforward generative model for $s$ is to multiply the latent
 # space standard normally distributed vector $\xi$ with the matrix square root
 # of $S$:
@@ -125,7 +116,6 @@ plt.show()
 # parameter vector $\xi$ is the identity matrix, since all latent parameters are
 # a priori independent and standard normally distributed.
 
-# %% [markdown]
 # The covariance $S$ is an $n \times n$ square matrix, where $n$ is the number
 # of entries in the vector $s$. In our example, $n = 100$, so $S$ is a
 # $100 \times 100$ matrix. However, NIFTy is designed to work with much larger
@@ -137,10 +127,8 @@ plt.show()
 # parameter spaces, we need to circumvent the quadratic scaling and cannot
 # directly work with $S$ or $\sqrt{S}$.
 
-# %% [markdown]
 # ### Wiener-Khintchin Theorem
 
-# %% [markdown]
 # To circumvent the quadratic scaling, we a priori assume statistical
 # homogeneity and isotropy of the signal $s$, meaning translation invariance and
 # directional independence of the covariance matrix $S$. In terms of our
@@ -160,10 +148,8 @@ plt.show()
 # where $\tilde{S}$ is the harmonic space covariance matrix, and the diagonal is
 # populated by the one-dimensional power spectrum.
 
-# %% [markdown]
 # ### NIFTy Gaussian Process Model
 
-# %% [markdown]
 # The assumptions of statistical homogeneity and isotropy, combined with the
 # Wiener–Khinchin theorem, are the central ingredients of the Gaussian Process
 # model in NIFTy. Through the Wiener–Khinchin theorem, the covariance matrix can
@@ -185,15 +171,12 @@ plt.show()
 #
 # $$ \left< s_{x} s_{x'}^{\dagger} \right> = \left< \mathrm{HT} \sqrt{\tilde{S}} \xi \xi^{\dagger} \sqrt{\tilde{S}}^\dagger \mathrm{HT}^\dagger \right> = \mathrm{HT} \sqrt{\tilde{S}} \left< \xi \xi^{\dagger} \right> \sqrt{\tilde{S}}^\dagger \mathrm{HT}^\dagger = \mathrm{HT} \sqrt{\tilde{S}} \mathbb{1} \sqrt{\tilde{S}}^\dagger \mathrm{HT}^\dagger = S. $$
 
-# %% [markdown]
 # This is the idea of the fixed power spectrum Gaussian process model in NIFTy.
 # In the remainder of the notebook, we will explain the implementation of this
 # model.
 
-# %% [markdown]
 # ## Implementation in NIFTy
 
-# %% [markdown]
 # We begin the implementation by defining the grid on which our signal lives.
 # For this, we specify `dims=100` to indicate that we have $100$ time steps.
 # Furthermore, we specify the distance between the time steps with
@@ -201,11 +184,9 @@ plt.show()
 # arbitrary. However, in your applications, you should, of course, always be
 # aware of the units.
 
-# %%
 dims = 100
 distances = 0.01
 
-# %% [markdown]
 # With this information on the number of pixels and the distances between them,
 # we now initialize a NIFTy grid containing this information. To do this, we use
 # a utility function from `jft.correlated_field`. `jft.correlated_field` is a
@@ -222,13 +203,11 @@ distances = 0.01
 # it to `"spherical"`.
 #
 
-# %%
 grid = jft.correlated_field.make_grid(
     dims, distances=distances, harmonic_type="fourier"
 )
 
 
-# %% [markdown]
 # Next, we define a Python function for the power spectrum—or more precisely,
 # for the square root of the power spectrum, which we refer to as the amplitude
 # spectrum. The `amplitude_spectrum` function takes as input the length of the
@@ -236,12 +215,10 @@ grid = jft.correlated_field.make_grid(
 #
 
 
-# %%
 def amplitude_spectrum(k):
     return 2.5 / (5 + k**2)
 
 
-# %% [markdown]
 # After defining the Python function for the power spectrum, we can initialize
 # the array containing the square root of the signal covariance in harmonic
 # space. To do this, we first evaluate the amplitude spectrum function at all
@@ -251,13 +228,11 @@ def amplitude_spectrum(k):
 # function at these $k$-vector lengths.
 #
 
-# %%
 k_lengths = grid.harmonic_grid.mode_lengths
 amplitudes = amplitude_spectrum(k_lengths)
 print("k_length: ", k_lengths)
 print("amplitudes: ", amplitudes)
 
-# %% [markdown]
 # We now have the corresponding amplitudes for all unique $k$-vector lengths in
 # our grid. From these amplitudes, we need to construct the diagonal of the
 # Fourier space representation of the square root of the covariance matrix. This
@@ -275,11 +250,9 @@ print("amplitudes: ", amplitudes)
 # obtain the diagonal of the square root covariance from the amplitude array.
 #
 
-# %%
 sqrt_harmonic_cov = amplitudes[grid.harmonic_grid.power_distributor]
 
 
-# %% [markdown]
 # Now we have all the components to initialize a NIFTy model that transforms a
 # standard normally distributed $\xi$ into a multivariate Gaussian with the
 # power spectrum we defined. To the constructor of `FixedPowerCorrelatedField`,
@@ -302,7 +275,7 @@ sqrt_harmonic_cov = amplitudes[grid.harmonic_grid.power_distributor]
 #
 
 
-# %%
+# +
 class FixedPowerCorrelatedField(jft.Model):
     def __init__(self, sqrt_harmonic_cov, grid):
         self.sqrt_harmonic_cov = sqrt_harmonic_cov
@@ -318,15 +291,14 @@ class FixedPowerCorrelatedField(jft.Model):
 
 
 s = FixedPowerCorrelatedField(sqrt_harmonic_cov, grid)
+# -
 
-# %% [markdown]
 # To visualize our fixed-power spectrum Gaussian process model, we draw $10$
 # standard normal distributed input vectors, map them through our model to a
 # correlated multivariate Gaussian sample, and plot the results. As expected,
 # the samples are now no longer wildly jumping from one time step to the next,
 # but smoothly fluctuate.
 
-# %%
 for i in range(10):
     key, subkey = random.split(key)
     latent_sample = jft.random_like(subkey, s.domain)
@@ -337,10 +309,8 @@ for i in range(10):
 plt.show()
 
 
-# %% [markdown]
 # ## Summary
 
-# %% [markdown]
 # This notebook introduced a model for Gaussian processes and its implementation
 # in `NIFTy`. By utilizing the Wiener–Khinchin theorem and the assumptions of a
 # priori statistical homogeneity and isotropy, the implementation does not
