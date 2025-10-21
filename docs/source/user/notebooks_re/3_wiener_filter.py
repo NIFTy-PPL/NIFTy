@@ -105,7 +105,8 @@ import jax.random as random
 
 # %matplotlib inline
 import matplotlib.pyplot as plt
-plt.rcParams['figure.dpi'] = 100
+
+plt.rcParams["figure.dpi"] = 100
 
 jax.config.update("jax_enable_x64", True)
 seed = 42
@@ -244,7 +245,7 @@ lh = jft.Gaussian(data, noise_cov_inv).amend(signal_response)
 delta = 1e-6
 key, k_w = random.split(key)
 samples, _ = jft.wiener_filter_posterior(
-    likelihood = lh,
+    likelihood=lh,
     key=k_w,
     n_samples=20,
     draw_linear_kwargs=dict(

@@ -108,7 +108,8 @@ import jax
 
 # %matplotlib inline
 import matplotlib.pyplot as plt
-plt.rcParams['figure.dpi'] = 100
+
+plt.rcParams["figure.dpi"] = 100
 
 jax.config.update("jax_enable_x64", True)
 
