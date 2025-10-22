@@ -81,6 +81,13 @@ merge_coverage:
 pages:
   stage: release
   script:
+    - apt-get update && apt-get install -y --no-install-recommends
+        texlive-latex-extra
+        texlive-fonts-extra
+        texlive-fonts-recommended
+        texlive-xetex
+        latexmk
+        fonts-freefont-otf
     - pip install .[doc]
     - git config --global --add safe.directory /builds/ift/nifty
     - git clean -xfd docs/source

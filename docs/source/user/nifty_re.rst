@@ -16,5 +16,4 @@ Furthermore we showcases simple examples, and demonstrate the Correlated field m
         :maxdepth: 1
 
         paper
-        0_intro
-        a_correlated_field
+        Introductory Notebooks <notebooks_re/notebooks>

@@ -1,0 +1,11 @@
+title: NIFTy Introduction
+author: Jakob Roth, Andreas Popp, Ananya Shankar
+
+execute:
+  execute_notebooks: force
+  timeout: -1
+
+latex:
+  latex_documents:
+    targetname: NIFTy_Introduction.tex
+

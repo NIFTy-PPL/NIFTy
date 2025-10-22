@@ -56,6 +56,12 @@ or dive into NIFTy by running the scrips in the demos folder.  The subfolders
 
 ## NIFTy.re
 
+### First Steps
+
+The best way to get started with NIFTy.re is by exploring the [introductory notebooks](https://ift.pages.mpcdf.de/nifty/user/notebooks_re/notebooks.html).
+For additional background information, visit the NIFTy [webpage](https://ift.pages.mpcdf.de/nifty/user/) and which also contains the [API reference](https://ift.pages.mpcdf.de/nifty/mod/nifty.re.html).
+You can also find practical examples in the [demos folder](https://gitlab.mpcdf.mpg.de/ift/nifty/-/tree/main/demos/re?ref_type=heads) of this repository.
+
 ### Installation
 
 NIFTy is distributed on PyPI. For a minimal installation of `nifty.re` run:

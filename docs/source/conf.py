@@ -55,6 +55,7 @@ add_module_names = False
 html_theme = "pydata_sphinx_theme"
 html_context = {"default_mode": "light"}
 html_logo = "nifty_logo_black.png"
+html_static_path = ["_static"]
 
 html_theme_options = {
     "logo": {

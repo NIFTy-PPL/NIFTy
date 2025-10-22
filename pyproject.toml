@@ -60,6 +60,7 @@ doc = [
     "sphinxcontrib-bibtex",
     "myst-parser",
     "jupyter",
+    "jupyter-book",
     "nbconvert",
     "jupytext",
 ]

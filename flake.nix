@@ -40,6 +40,19 @@
             docs = [
               pkgs.jupyter # python3Packages.jupyter is broken, see https://github.com/NixOS/nixpkgs/issues/299385
               pyPkgs.jupytext
+              pyPkgs.jupyter-book
+
+              (pkgs.texlive.combine {
+                inherit (pkgs.texlive)
+                  scheme-medium
+                  collection-latexextra
+                  collection-fontsextra
+                  collection-fontsrecommended
+                  xetex
+                  latexmk
+                  gnu-freefont;
+              })
+
               pyPkgs.pydata-sphinx-theme
               pyPkgs.sphinx
               pyPkgs.sphinxcontrib-bibtex

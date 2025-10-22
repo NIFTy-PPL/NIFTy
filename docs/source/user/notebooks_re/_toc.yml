@@ -1,0 +1,9 @@
+format: jb-book
+root: intro
+chapters:
+- file: 0_models
+- file: 1_inference
+- file: 2_gaussian_processes
+- file: 3_wiener_filter
+- file: 4_correlated_field_model
+- file: 5_log_normal_poisson
