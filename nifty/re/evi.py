@@ -45,6 +45,8 @@ def _parse_jit(jit):
         return jax.jit if jit else _no_jit
     raise TypeError(f"expected `jit` to be callable or boolean; got {jit!r}")
 
+def _is_no_jit(jit):
+    return jit == _no_jit
 
 @jax.jit
 def concatenate_zip(*arrays):
@@ -74,6 +76,8 @@ def sample_likelihood(likelihood: Likelihood, primals, key):
     white_sample = random_like(key, likelihood.left_sqrt_metric_tangents_shape)
     return likelihood.left_sqrt_metric(primals, white_sample)
 
+def _ham_metric(likelihood, primals, tangents, **primals_kw):
+    return likelihood.metric(primals, tangents, **primals_kw) + tangents
 
 def draw_linear_residual(
     likelihood: Likelihood,
@@ -82,9 +86,10 @@ def draw_linear_residual(
     *,
     from_inverse: bool = True,
     point_estimates: Union[P, Tuple[str]] = (),
-    cg: Callable = conjugate_gradient.static_cg,
+    cg: Callable = conjugate_gradient.cg,
     cg_name: Optional[str] = None,
     cg_kwargs: Optional[dict] = None,
+    jit_metric=False,
     _raise_nonposdef: bool = False,
 ) -> tuple[P, int]:
     assert_arithmetics(pos)
@@ -96,8 +101,8 @@ def draw_linear_residual(
     if point_estimates:
         lh, p_liquid = likelihood.freeze(point_estimates=point_estimates, primals=pos)
 
-    def ham_metric(primals, tangents, **primals_kw):
-        return lh.metric(primals, tangents, **primals_kw) + tangents
+    jit = _parse_jit(jit_metric)
+    ham_metric = partial(jit(_ham_metric), likelihood)
 
     cg_kwargs = cg_kwargs if cg_kwargs is not None else {}
 
@@ -133,6 +138,35 @@ def draw_linear_residual(
     return smpl, info
 
 
+def _nonlinear_residual_vg(likelihood, point_estimates, e, lh_trafo_at_p, ms_at_p, x):
+    lh, e_liquid = likelihood.freeze(point_estimates=point_estimates, primals=e)
+
+    # t = likelihood.transformation(x) - lh_trafo_at_p
+    t = tree_map(jnp.subtract, lh.transformation(x), lh_trafo_at_p)
+    g = x - e_liquid + lh.left_sqrt_metric(e_liquid, t)
+    r = ms_at_p - g
+    res = 0.5 * vdot(r, r)
+
+    r = conj(r)
+    ngrad = r + lh.left_sqrt_metric(x, lh.right_sqrt_metric(e_liquid, r))
+    return (res, -ngrad)
+
+
+def _nonlinear_residual_metric(likelihood, point_estimates, e, primals, tangents):
+    lh, e_liquid = likelihood.freeze(point_estimates=point_estimates, primals=e)
+    lsm = lh.left_sqrt_metric
+    rsm = lh.right_sqrt_metric
+    tm = lsm(e_liquid, rsm(primals, tangents)) + tangents
+    return lsm(primals, rsm(e_liquid, tm)) + tm
+
+
+def _nonlinear_residual_sampnorm(likelihood, point_estimates, e, natgrad):
+    lh, e_liquid = likelihood.freeze(point_estimates=point_estimates, primals=e)
+    fpp = lh.right_sqrt_metric(e_liquid, natgrad)
+    return jnp.sqrt(vdot(natgrad, natgrad) + vdot(fpp, fpp))
+
+
+
 def nonlinearly_update_residual(
     likelihood=None,
     pos: P = None,
@@ -141,8 +175,9 @@ def nonlinearly_update_residual(
     metric_sample_sign=1.0,
     *,
     point_estimates=(),
-    minimize: Callable[..., optimize.OptimizeResults] = optimize._static_newton_cg,
+    minimize: Callable[..., optimize.OptimizeResults] = optimize._newton_cg,
     minimize_kwargs={},
+    jit_residual_funcs=False,
     _raise_notconverged=False,
 ) -> tuple[P, optimize.OptimizeResults]:
     assert_arithmetics(pos)
@@ -155,30 +190,10 @@ def nonlinearly_update_residual(
         point_estimates=point_estimates,
     )
 
-    def residual_vg(e, lh_trafo_at_p, ms_at_p, x):
-        lh, e_liquid = likelihood.freeze(point_estimates=point_estimates, primals=e)
-
-        # t = likelihood.transformation(x) - lh_trafo_at_p
-        t = tree_map(jnp.subtract, lh.transformation(x), lh_trafo_at_p)
-        g = x - e_liquid + lh.left_sqrt_metric(e_liquid, t)
-        r = ms_at_p - g
-        res = 0.5 * vdot(r, r)
-
-        r = conj(r)
-        ngrad = r + lh.left_sqrt_metric(x, lh.right_sqrt_metric(e_liquid, r))
-        return (res, -ngrad)
-
-    def metric(e, primals, tangents):
-        lh, e_liquid = likelihood.freeze(point_estimates=point_estimates, primals=e)
-        lsm = lh.left_sqrt_metric
-        rsm = lh.right_sqrt_metric
-        tm = lsm(e_liquid, rsm(primals, tangents)) + tangents
-        return lsm(primals, rsm(e_liquid, tm)) + tm
-
-    def sampnorm(e, natgrad):
-        lh, e_liquid = likelihood.freeze(point_estimates=point_estimates, primals=e)
-        fpp = lh.right_sqrt_metric(e_liquid, natgrad)
-        return jnp.sqrt(vdot(natgrad, natgrad) + vdot(fpp, fpp))
+    jit = _parse_jit(jit_residual_funcs)
+    residual_vg = partial(jit(_nonlinear_residual_vg), likelihood, point_estimates)
+    metric = partial(jit(_nonlinear_residual_metric), likelihood, point_estimates)
+    sampnorm = partial(jit(_nonlinear_residual_sampnorm), likelihood, point_estimates)
 
     sample = pos + residual_sample
     del residual_sample
@@ -226,7 +241,7 @@ def draw_residual(
     cg: Callable = conjugate_gradient.static_cg,
     cg_name: Optional[str] = None,
     cg_kwargs: Optional[dict] = None,
-    minimize: Callable[..., optimize.OptimizeResults] = optimize._static_newton_cg,
+    minimize: Callable[..., optimize.OptimizeResults] = optimize._newton_cg,
     minimize_kwargs={},
     _raise_nonposdef: bool = False,
     _raise_notconverged: bool = False,
