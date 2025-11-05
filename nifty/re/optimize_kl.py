@@ -263,9 +263,9 @@ class OptimizeVI:
         likelihood: Likelihood,
         n_total_iterations: int,
         *,
+        jit=True,
         linear_minimizer_jit=True,
         nonlinear_minimizer_jit=False,
-        jit=True,
         kl_map=jax.vmap,
         residual_map="lmap",
         kl_reduce=_reduce,
@@ -289,14 +289,31 @@ class OptimizeVI:
         n_total_iterations: int
             Total number of iterations. One iteration consists of the steps
             1) - 3).
-        kl_jit: bool or callable
-            Whether to jit the KL minimization.
-        linear_residual_jit: bool or callable
-            Whether to jit the linear residual sampling functions.
-        nonlinear_residual_jit: bool or callable
-            Whether to jit the nonlinear residual sampling functions. If set to
-            True a static minimizer needs to be passed in
-            `nonlinearly_update_kwargs` argument of the draw sample method.
+        jit : bool or callable, default=True
+            Whether to JIT-compile all functions used in minimization, sampling,
+            and KL-minimization. When True, enables JIT compilation for better
+            performance.
+        linear_minimizer_jit : bool or callable, default=False
+            Whether to JIT-compile the minimizer used for linear residual sampling.
+
+            Note: JIT-compiling the minimizer typically provides minimal benefit
+            since the objective function is already JIT-compiled when `jit=True`.
+
+            If enabling this option, you must provide a JIT-compatible minimizer
+            through `draw_linear_kwargs`. Example::
+
+                draw_linear_kwargs={'cg': jft.conjugate_gradient.static_cg}
+        nonlinear_minimizer_jit : bool or callable, default=False
+            Whether to JIT-compile the minimizer used for nonlinear residual
+            sampling.
+
+            Note: JIT-compiling the minimizer typically provides minimal benefit
+            since the objective function is already JIT-compiled when `jit=True`.
+
+            If enabling this option, you must provide a JIT-compatible minimizer
+            through `nonlinearly_update_kwargs`. Example::
+
+                nonlinearly_update_kwargs={'minimize': jft.optimize.static_newton_cg}
         kl_map: callable or str
             Map function used for the KL minimization.
         residual_map: callable or str
