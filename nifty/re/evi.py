@@ -74,13 +74,15 @@ def _process_point_estimate(x, primals, point_estimates, insert):
     return in_out(x)
 
 
-def sample_likelihood(likelihood: Likelihood, primals, key):
-    white_sample = random_like(key, likelihood.left_sqrt_metric_tangents_shape)
-    return likelihood.left_sqrt_metric(primals, white_sample)
+def sample_likelihood(likelihood: Likelihood, point_estimates, primals, key):
+    lh, p_liquid = likelihood.freeze(point_estimates=point_estimates, primals=primals)
+    white_sample = random_like(key, lh.left_sqrt_metric_tangents_shape)
+    return lh.left_sqrt_metric(p_liquid, white_sample)
 
 
-def _ham_metric(likelihood, primals, tangents, **primals_kw):
-    return likelihood.metric(primals, tangents, **primals_kw) + tangents
+def _ham_metric(likelihood, point_estimates, primals, tangents, **primals_kw):
+    lh, p_liquid = likelihood.freeze(point_estimates=point_estimates, primals=primals)
+    return lh.metric(p_liquid, tangents, **primals_kw) + tangents
 
 
 def draw_linear_residual(
@@ -101,17 +103,19 @@ def draw_linear_residual(
     if not isinstance(likelihood, Likelihood):
         te = f"`likelihood` of invalid type; got '{type(likelihood)}'"
         raise TypeError(te)
-    lh, p_liquid = likelihood, pos
+    p_liquid = pos
     if point_estimates:
-        lh, p_liquid = likelihood.freeze(point_estimates=point_estimates, primals=pos)
+        _, p_liquid = likelihood.freeze(point_estimates=point_estimates, primals=pos)
 
     jit = _parse_jit(jit_metric)
-    ham_metric = partial(jit(_ham_metric), likelihood)
+    ham_metric = partial(
+        jit(_ham_metric, static_argnames="point_estimates"), likelihood, point_estimates
+    )
 
     cg_kwargs = cg_kwargs if cg_kwargs is not None else {}
 
     subkey_nll, subkey_prr = random.split(key, 2)
-    nll_smpl = sample_likelihood(lh, p_liquid, key=subkey_nll)
+    nll_smpl = sample_likelihood(likelihood, point_estimates, pos, key=subkey_nll)
     prr_inv_metric_smpl = random_like(key=subkey_prr, primals=p_liquid)
     # One may transform any metric sample to a sample of the inverse
     # metric by simply applying the inverse metric to it
@@ -130,7 +134,7 @@ def draw_linear_residual(
     if from_inverse:
         inv_metric_at_p = partial(
             cg,
-            Partial(ham_metric, p_liquid),
+            Partial(ham_metric, pos),
             **{"name": cg_name, "_raise_nonposdef": _raise_nonposdef, **cg_kwargs},
         )
         smpl, info = inv_metric_at_p(smpl, x0=prr_inv_metric_smpl)
@@ -194,9 +198,21 @@ def nonlinearly_update_residual(
     )
 
     jit = _parse_jit(jit_residual_funcs)
-    residual_vg = partial(jit(_nonlinear_residual_vg), likelihood, point_estimates)
-    metric = partial(jit(_nonlinear_residual_metric), likelihood, point_estimates)
-    sampnorm = partial(jit(_nonlinear_residual_sampnorm), likelihood, point_estimates)
+    residual_vg = partial(
+        jit(_nonlinear_residual_vg, static_argnames="point_estimates"),
+        likelihood,
+        point_estimates,
+    )
+    metric = partial(
+        jit(_nonlinear_residual_metric, static_argnames="point_estimates"),
+        likelihood,
+        point_estimates,
+    )
+    sampnorm = partial(
+        jit(_nonlinear_residual_sampnorm, static_argnames="point_estimates"),
+        likelihood,
+        point_estimates,
+    )
 
     sample = pos + residual_sample
     del residual_sample
