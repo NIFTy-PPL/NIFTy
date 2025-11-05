@@ -18,8 +18,6 @@ jax.config.update("jax_enable_x64", True)
 
 pmp = pytest.mark.parametrize
 
-jax.config.update("jax_enable_x64", True)
-
 
 def random_draw(key, shape, dtype, method):
     def _isleaf(x):
@@ -232,8 +230,7 @@ def test_optimize_kl_sample_consistency(
             minimize=jft.optimize._newton_cg, minimize_kwargs=dict(name="M", maxiter=0)
         ),
         sample_mode=sample_mode,
-        kl_jit=False,
-        residual_jit=False,
+        jit=False,
         odir=None,
     )
     _assert_zero_point_estimate_residuals(samples_opt._samples, point_estimates)
@@ -302,8 +299,7 @@ def test_optimize_kl_constants(seed, shape, lh_init):
             minimize=jft.optimize._newton_cg, minimize_kwargs=dict(name="M", maxiter=5)
         ),
         sample_mode="linear_resample",
-        kl_jit=False,
-        residual_jit=False,
+        jit=False,
         odir=None,
     )
     move, _ = jax.tree_util.tree_flatten(samples_opt.pos - pos)
@@ -386,8 +382,7 @@ def test_optimize_kl_device_consistency(
         odir=None,
         residual_map="vmap",
         kl_map="vmap",
-        kl_jit=False,
-        residual_jit=False,
+        jit=False,
     )
     samples_single_device, _ = jft.optimize_kl(**opt_kl_kwargs, devices=None)
     samples_multiple_devices, _ = jft.optimize_kl(
