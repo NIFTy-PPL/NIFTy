@@ -123,7 +123,10 @@ def test_mgvi_wiener_filter_consistency(
     forward = partial(jnp.matmul, prior_lsm)
     lh = lh.amend(partial(jnp.matmul, response)).amend(forward)
     lh._domain = jax.ShapeDtypeStruct(shape, dtype=jnp.float64)
-    draw_linear_kwargs = dict(cg_kwargs=dict(absdelta=1e-10, maxiter=size))
+    draw_linear_kwargs = dict(
+        cg=jft.conjugate_gradient.static_cg,
+        cg_kwargs=dict(absdelta=1e-10, maxiter=size),
+    )
     draw_linear_residual = partial(jft.draw_linear_residual, lh, **draw_linear_kwargs)
     draw_linear_residual = jft.smap(draw_linear_residual, in_axes=(None, 0))
     # Compare metric of Likelihood + Prior against true posterior covariance
@@ -206,6 +209,7 @@ def test_mgvi_wiener_filter_consistency(
         lh,
         key=w_key,
         n_samples=n_mgvi_cov_samples,
+        residual_map="smap",
         draw_linear_kwargs=draw_linear_kwargs,
     )
     wf_post_mean = jax.vmap(forward)(wiener_samples.samples).mean(axis=0)
