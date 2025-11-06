@@ -432,7 +432,9 @@ def wiener_filter_posterior(
             raise ValueError("conjugate gradient failed")
     else:
         if noise_covariance is None:
-            raise ValueError("To use the Wiener filter in data space, please set the noise_covariance")
+            raise ValueError(
+                "To use the Wiener filter in data space, please set the noise_covariance"
+            )
 
         def post_dspace_cov_inv(tangents):
             (R_dagger_d,) = forward_lin_T(tangents)
@@ -448,7 +450,7 @@ def wiener_filter_posterior(
         (post_mean,) = forward_lin_T(post_mean_dspace)
         if post_info is not None and post_info < 0:
             raise ValueError("conjugate gradient failed")
-        
+
     ks = random.split(key, n_samples)
     draw = Partial(draw_linear_residual, likelihood, **draw_linear_kwargs)
     draw = residual_map(draw, in_axes=(None, 0))
