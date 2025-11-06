@@ -103,13 +103,11 @@ samples, state = jft.optimize_kl(
     # point_estimates=("cfax1flexibility", "cfax1asperity"),
     # Arguments for the conjugate gradient method used to drawing samples
     draw_linear_kwargs=dict(
-        # cg=jft.conjugate_gradient.static_cg,
         cg_name="SL",
         cg_kwargs=dict(absdelta=delta * jft.size(lh.domain) / 10.0, maxiter=100),
     ),
     # Arguements for the minimizer in the nonlinear updating of the samples
     nonlinearly_update_kwargs=dict(
-        # minimize=jft.optimize._static_newton_cg,
         minimize_kwargs=dict(
             name="SN",
             xtol=delta,
@@ -126,9 +124,6 @@ samples, state = jft.optimize_kl(
     sample_mode="nonlinear_resample",
     odir="results_intro",
     resume=False,
-    jit=True,
-    linear_minimizer_jit=False,
-    nonlinear_minimizer_jit=False,
 )
 
 # %%
