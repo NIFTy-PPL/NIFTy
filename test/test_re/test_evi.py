@@ -208,10 +208,24 @@ def test_mgvi_wiener_filter_consistency(
         n_samples=n_mgvi_cov_samples,
         draw_linear_kwargs=draw_linear_kwargs,
     )
-    wiener_post_mean = jax.vmap(forward)(wiener_samples.samples).mean(axis=0)
-    wiener_post_cov = jnp.cov(jax.vmap(forward)(wiener_samples.samples), rowvar=False)
-    assert_allclose(post_mean, wiener_post_mean, atol=7e-7, rtol=7e-7)
-    assert_allclose(post_cov, wiener_post_cov, atol=tol**0.5)
+    wf_post_mean = jax.vmap(forward)(wiener_samples.samples).mean(axis=0)
+    wf_post_cov = jnp.cov(jax.vmap(forward)(wiener_samples.samples), rowvar=False)
+    assert_allclose(post_mean, wf_post_mean, atol=7e-7, rtol=7e-7)
+    assert_allclose(post_cov, wf_post_cov, atol=tol**0.5)
+
+    # Wiener filter data space
+    key, w_key = random.split(key)
+    wiener_samples_data_space, _ = jft.wiener_filter_posterior(
+        lh,
+        key=w_key,
+        n_samples=0,
+        draw_linear_kwargs=draw_linear_kwargs,
+        signal_space=False,
+        noise_covariance=partial(jnp.multiply, noise_cov),
+    )
+
+    wf_post_mean_data_space = forward(wiener_samples_data_space.pos)
+    assert_allclose(wf_post_mean, wf_post_mean_data_space, atol=7e-7, rtol=7e-7)
 
 
 if __name__ == "__main__":

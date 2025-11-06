@@ -1,6 +1,6 @@
 # Copyright(C) 2023 Gordian Edenhofer
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
-# Authors: Gordian Edenhofer, Philipp Frank, Jakob Roth
+# Authors: Gordian Edenhofer, Philipp Frank, Jakob Roth, Vincent Eberle
 
 from functools import partial
 from operator import getitem
@@ -367,14 +367,16 @@ def wiener_filter_posterior(
     residual_map="smap",
     draw_linear_kwargs: Optional[dict] = None,
     model_is_linear: Optional[bool] = True,
+    signal_space: Optional[bool] = True,
+    noise_covariance: Optional[callable] = None,
 ) -> Tuple[Samples, Tuple]:
-    """Computes wiener filter solution for a standardized model. For non-linear
-    models, the wiener filter solution is computed for a linearized model.
+    """Computes Wiener filter solution for a standardized model. For non-linear
+    models, the Wiener filter solution is computed for a linearized model.
 
     Parameters
     ----------
     likelihood : :class:`~nifty.re.likelihood.LikelihoodWithModel`
-        Likelihood to be used for the wiener filter.
+        Likelihood to be used for the Wiener filter.
     position : tree-like
         Position around which to linearize (if the model is non-linear).
     key : jax random number generation key
@@ -390,6 +392,13 @@ def wiener_filter_posterior(
         specify a position around which to linearize it. For non-linear models,
         consider applying variational inference via
         :func:`~nifty.re.optimize_kl.optimize_kl` instead.
+    signal_space: bool
+        Wheter the Wiener filter should be solved in signal or data space.
+        The result should be equal, up to numerical precision, thus depends
+        on the condition number of the forward model.
+    noise_covariance: callable
+        Noise covariance of the data. This callable is only needed for the
+        Wiener filter in data space.
     """
     if not isinstance(likelihood, LikelihoodWithModel):
         msg = f"likelihood must be of LikelihoodWithModel type; got {likelihood}"
@@ -409,24 +418,45 @@ def wiener_filter_posterior(
         _, forward_lin = jax.linearize(likelihood.forward, position)
         data = data - likelihood.forward(position) + forward_lin(position)
 
+    cg = draw_linear_kwargs.get("cg", conjugate_gradient.static_cg)
     forward_lin_T = jax.linear_transpose(forward_lin, likelihood.domain)
     forward_lin_T = _functional_conj(forward_lin_T)
 
-    n_inv = Partial(likelihood.likelihood.metric, likelihood.forward(position))
-    (j,) = forward_lin_T(n_inv(data))
+    if signal_space:
+        n_inv = Partial(likelihood.likelihood.metric, likelihood.forward(position))
+        (j,) = forward_lin_T(n_inv(data))
 
-    def post_cov_inv(tangents):
-        return forward_lin_T(n_inv(forward_lin(tangents)))[0] + tangents
+        def post_cov_inv(tangents):
+            return forward_lin_T(n_inv(forward_lin(tangents)))[0] + tangents
 
-    cg = draw_linear_kwargs.get("cg", conjugate_gradient.static_cg)
-    post_mean, post_info = cg(
-        post_cov_inv,
-        j,
-        name=draw_linear_kwargs.get("cg_name", None),
-        **draw_linear_kwargs.get("cg_kwargs", {}),
-    )
-    if post_info is not None and post_info < 0:
-        raise ValueError("conjugate gradient failed")
+        post_mean, post_info = cg(
+            jax.jit(post_cov_inv),
+            j,
+            name=draw_linear_kwargs.get("cg_name", None),
+            **draw_linear_kwargs.get("cg_kwargs", {}),
+        )
+        if post_info is not None and post_info < 0:
+            raise ValueError("conjugate gradient failed")
+    else:
+        if noise_covariance is None:
+            raise ValueError(
+                "To use the Wiener filter in data space, please set the noise_covariance"
+            )
+
+        def post_dspace_cov_inv(tangents):
+            (R_dagger_d,) = forward_lin_T(tangents)
+            RR_dagger_d = forward_lin(R_dagger_d)
+            return RR_dagger_d + noise_covariance(tangents)
+
+        post_mean_dspace, post_info = cg(
+            jax.jit(post_dspace_cov_inv),
+            data,
+            name=draw_linear_kwargs.get("cg_name", None),
+            **draw_linear_kwargs.get("cg_kwargs", {}),
+        )
+        (post_mean,) = forward_lin_T(post_mean_dspace)
+        if post_info is not None and post_info < 0:
+            raise ValueError("conjugate gradient failed")
 
     ks = random.split(key, n_samples)
     draw = Partial(draw_linear_residual, likelihood, **draw_linear_kwargs)
