@@ -89,6 +89,8 @@ samples, info = jft.wiener_filter_posterior(
         cg_name="W",
         cg_kwargs=dict(absdelta=delta * jft.size(lh.domain) / 10.0, maxiter=100),
     ),
+    signal_space=True, # to run the WF in data space, set to False
+    noise_covariance=noise_cov,
 )
 
 # %%
