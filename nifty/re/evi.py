@@ -384,6 +384,7 @@ def wiener_filter_posterior(
     n_samples: int = 0,
     residual_map="lmap",
     draw_linear_kwargs: Optional[dict] = None,
+    jit=True,
     model_is_linear: Optional[bool] = True,
     signal_space: Optional[bool] = True,
     noise_covariance: Optional[callable] = None,
@@ -405,6 +406,8 @@ def wiener_filter_posterior(
     draw_linear_kwargs : dict
         Optional parameters for the conjugate gradient used to compute the
         posterior mean and to draw samples.
+    jit : bool or callable, default=True
+        Whether to JIT-compile the Wiener filter covariance.
     model_is_linear : bool
         Whether the model is linear. If the model is non-linear, you must
         specify a position around which to linearize it. For non-linear models,
@@ -426,6 +429,7 @@ def wiener_filter_posterior(
         raise ValueError(msg)
 
     residual_map = get_map(residual_map)
+    jit = _parse_jit(jit)
     position = zeros_like(likelihood.domain) if position is None else position
 
     data = likelihood.likelihood.data
@@ -447,8 +451,9 @@ def wiener_filter_posterior(
         def post_cov_inv(tangents):
             return forward_lin_T(n_inv(forward_lin(tangents)))[0] + tangents
 
+        post_cov_inv = jit(post_cov_inv)
         post_mean, post_info = cg(
-            jax.jit(post_cov_inv),
+            post_cov_inv,
             j,
             name=draw_linear_kwargs.get("cg_name", None),
             **draw_linear_kwargs.get("cg_kwargs", {}),
@@ -466,8 +471,9 @@ def wiener_filter_posterior(
             RR_dagger_d = forward_lin(R_dagger_d)
             return RR_dagger_d + noise_covariance(tangents)
 
+        post_dspace_cov_inv = jit(post_dspace_cov_inv)
         post_mean_dspace, post_info = cg(
-            jax.jit(post_dspace_cov_inv),
+            post_dspace_cov_inv,
             data,
             name=draw_linear_kwargs.get("cg_name", None),
             **draw_linear_kwargs.get("cg_kwargs", {}),
@@ -477,7 +483,9 @@ def wiener_filter_posterior(
             raise ValueError("conjugate gradient failed")
 
     ks = random.split(key, n_samples)
-    draw = Partial(draw_linear_residual, likelihood, **draw_linear_kwargs)
+    draw = Partial(
+        draw_linear_residual, likelihood, jit_metric=jit, **draw_linear_kwargs
+    )
     draw = residual_map(draw, in_axes=(None, 0))
     smpls, smpls_info = draw(post_mean, ks)
 
