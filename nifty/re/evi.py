@@ -397,7 +397,7 @@ def wiener_filter_posterior(
         The result should be equal, up to numerical precision, thus depends
         on the condition number of the forward model.
     noise_covariance: callable
-        Noise covariance of the data. This callable is only needed for the 
+        Noise covariance of the data. This callable is only needed for the
         Wiener filter in data space.
     """
     if not isinstance(likelihood, LikelihoodWithModel):
