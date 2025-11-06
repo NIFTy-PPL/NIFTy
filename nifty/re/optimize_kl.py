@@ -360,7 +360,6 @@ class OptimizeVI:
         jit = _parse_jit(jit)
         linear_minimizer_jit = _parse_jit(linear_minimizer_jit)
         nonlinear_minimizer_jit = _parse_jit(nonlinear_minimizer_jit)
-        jit = _parse_jit(jit)
         residual_map = get_map(residual_map)
         self.named_sharding = None
         if (not devices is None) and len(devices) > 1:
