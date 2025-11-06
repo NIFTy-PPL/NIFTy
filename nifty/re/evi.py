@@ -370,13 +370,13 @@ def wiener_filter_posterior(
     signal_space: Optional[bool] = True,
     noise_covariance: Optional[callable] = None,
 ) -> Tuple[Samples, Tuple]:
-    """Computes wiener filter solution for a standardized model. For non-linear
-    models, the wiener filter solution is computed for a linearized model.
+    """Computes Wiener filter solution for a standardized model. For non-linear
+    models, the Wiener filter solution is computed for a linearized model.
 
     Parameters
     ----------
     likelihood : :class:`~nifty.re.likelihood.LikelihoodWithModel`
-        Likelihood to be used for the wiener filter.
+        Likelihood to be used for the Wiener filter.
     position : tree-like
         Position around which to linearize (if the model is non-linear).
     key : jax random number generation key
@@ -392,6 +392,13 @@ def wiener_filter_posterior(
         specify a position around which to linearize it. For non-linear models,
         consider applying variational inference via
         :func:`~nifty.re.optimize_kl.optimize_kl` instead.
+    signal_space: bool
+        Wheter the Wiener filter should be solved in signal or data space.
+        The result should be equal, up to numerical precision, thus depends
+        on the condition number of the forward model.
+    noise_covariance: callable
+        Noise covariance of the data. This callable is only needed for the 
+        Wiener filter in data space.
     """
     if not isinstance(likelihood, LikelihoodWithModel):
         msg = f"likelihood must be of LikelihoodWithModel type; got {likelihood}"
