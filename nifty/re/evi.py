@@ -498,12 +498,16 @@ def wiener_filter_posterior(
         if post_info is not None and post_info < 0:
             raise ValueError("conjugate gradient failed")
 
-    ks = random.split(key, n_samples)
-    draw = Partial(
-        draw_linear_residual, likelihood, jit_metric=jit, **draw_linear_kwargs
-    )
-    draw = residual_map(draw, in_axes=(None, 0))
-    smpls, smpls_info = draw(post_mean, ks)
+    if n_samples > 0:
+        ks = random.split(key, n_samples)
+        draw = Partial(
+            draw_linear_residual, likelihood, jit_metric=jit, **draw_linear_kwargs
+        )
+        draw = residual_map(draw, in_axes=(None, 0))
+        smpls, smpls_info = draw(post_mean, ks)
+        smpls = Samples(pos=post_mean, samples=concatenate_zip(smpls, -smpls), keys=ks)
+    else:
+        smpls = Samples(pos=post_mean, samples=None)
+        smpls_info = None
 
-    smpls = Samples(pos=post_mean, samples=concatenate_zip(smpls, -smpls), keys=ks)
     return smpls, (post_info, smpls_info)
