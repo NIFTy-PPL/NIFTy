@@ -45,8 +45,10 @@ def _parse_jit(jit):
         return jax.jit if jit else _no_jit
     raise TypeError(f"expected `jit` to be callable or boolean; got {jit!r}")
 
+
 def _is_no_jit(jit):
     return jit == _no_jit
+
 
 @jax.jit
 def concatenate_zip(*arrays):
@@ -76,8 +78,10 @@ def sample_likelihood(likelihood: Likelihood, primals, key):
     white_sample = random_like(key, likelihood.left_sqrt_metric_tangents_shape)
     return likelihood.left_sqrt_metric(primals, white_sample)
 
+
 def _ham_metric(likelihood, primals, tangents, **primals_kw):
     return likelihood.metric(primals, tangents, **primals_kw) + tangents
+
 
 def draw_linear_residual(
     likelihood: Likelihood,
@@ -164,7 +168,6 @@ def _nonlinear_residual_sampnorm(likelihood, point_estimates, e, natgrad):
     lh, e_liquid = likelihood.freeze(point_estimates=point_estimates, primals=e)
     fpp = lh.right_sqrt_metric(e_liquid, natgrad)
     return jnp.sqrt(vdot(natgrad, natgrad) + vdot(fpp, fpp))
-
 
 
 def nonlinearly_update_residual(
@@ -379,7 +382,7 @@ def wiener_filter_posterior(
     *,
     key,
     n_samples: int = 0,
-    residual_map="smap",
+    residual_map="lmap",
     draw_linear_kwargs: Optional[dict] = None,
     model_is_linear: Optional[bool] = True,
     signal_space: Optional[bool] = True,
@@ -433,7 +436,7 @@ def wiener_filter_posterior(
         _, forward_lin = jax.linearize(likelihood.forward, position)
         data = data - likelihood.forward(position) + forward_lin(position)
 
-    cg = draw_linear_kwargs.get("cg", conjugate_gradient.static_cg)
+    cg = draw_linear_kwargs.get("cg", conjugate_gradient.cg)
     forward_lin_T = jax.linear_transpose(forward_lin, likelihood.domain)
     forward_lin_T = _functional_conj(forward_lin_T)
 
