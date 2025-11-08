@@ -56,7 +56,6 @@ def test_lanczos_tridiag(seed, shape0):
 
 @pmp("seed", tuple(range(12, 44, 5)))
 @pmp("shape0", (128, 64))
-@pytest.mark.xfail(reason="stochastic_lq_logdet may return NaN (known issue)")
 def test_stochastic_lq_logdet(seed, shape0, lq_order=15, n_lq_samples=10):
     rng = np.random.default_rng(seed)
     rng_key = random.PRNGKey(rng.integers(12, 42))
