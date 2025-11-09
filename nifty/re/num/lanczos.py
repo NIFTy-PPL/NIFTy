@@ -1,11 +1,13 @@
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 
 import warnings
+from operator import matmul
 from typing import Callable, Optional, TypeVar, Union
 
 import jax
 from jax import numpy as jnp
 from jax import random
+from jax.tree_util import Partial
 
 from ..lax import fori_loop
 from ..tree_math import ShapeWithDtype
@@ -119,7 +121,11 @@ def lanczos_tridiag(
 
 
 def stochastic_logdet_from_lanczos(
-    tridiag_stack: jnp.ndarray, matrix_shape0: int, func: Callable = jnp.log
+    tridiag_stack: jnp.ndarray,
+    matrix_shape0: int,
+    func: Callable = jnp.log,
+    *,
+    tol=1e-14,
 ):
     """Computes a stochastic estimate of the log-determinate of a matrix using
     its Lanczos decomposition.
@@ -127,14 +133,14 @@ def stochastic_logdet_from_lanczos(
     Implemented via the stoachstic Lanczos quadrature.
     """
     eig_vals, eig_vecs = jnp.linalg.eigh(tridiag_stack)
-    # TODO: Mask Eigenvalues <= 0?
+    eig_vals = jnp.where(eig_vals < tol, jnp.nan, eig_vals)
 
     num_random_probes = tridiag_stack.shape[0]
 
     eig_ves_first_component = eig_vecs[..., 0, :]
     func_of_eig_vals = func(eig_vals)
 
-    dot_products = jnp.sum(eig_ves_first_component**2 * func_of_eig_vals)
+    dot_products = jnp.nansum(eig_ves_first_component**2 * func_of_eig_vals)
     return matrix_shape0 / float(num_random_probes) * dot_products
 
 
@@ -151,19 +157,13 @@ def stochastic_lq_logdet(
     """Computes a stochastic estimate of the log-determinate of a matrix using
     the stochastic Lanczos quadrature algorithm.
     """
-    warnings.warn(
-        "stochastic_lq_logdet is known to sometimes return NaN. "
-        "Use at your own risk and fix it.",
-        UserWarning,
-        stacklevel=2,
-    )
     if not isinstance(key, jnp.ndarray):
         key = random.PRNGKey(key)
 
     if callable(mat):
         mat_fn = mat
     else:
-        mat_fn = mat.__matmul__
+        mat_fn = Partial(matmul, mat)
         shape0 = mat.shape[0] if shape0 is None else None
     if shape0 is None:
         msg = "shape0 must be provided if `mat` is callable or has no shape attribute"
