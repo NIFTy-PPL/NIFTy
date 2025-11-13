@@ -46,6 +46,10 @@ def _parse_jit(jit):
     raise TypeError(f"expected `jit` to be callable or boolean; got {jit!r}")
 
 
+def _is_no_jit(jit):
+    return jit == _no_jit
+
+
 @jax.jit
 def concatenate_zip(*arrays):
     return tree_map(
@@ -70,9 +74,15 @@ def _process_point_estimate(x, primals, point_estimates, insert):
     return in_out(x)
 
 
-def sample_likelihood(likelihood: Likelihood, primals, key):
-    white_sample = random_like(key, likelihood.left_sqrt_metric_tangents_shape)
-    return likelihood.left_sqrt_metric(primals, white_sample)
+def sample_likelihood(likelihood: Likelihood, point_estimates, primals, key):
+    lh, p_liquid = likelihood.freeze(point_estimates=point_estimates, primals=primals)
+    white_sample = random_like(key, lh.left_sqrt_metric_tangents_shape)
+    return lh.left_sqrt_metric(p_liquid, white_sample)
+
+
+def _ham_metric(likelihood, point_estimates, primals, tangents, **primals_kw):
+    lh, p_liquid = likelihood.freeze(point_estimates=point_estimates, primals=primals)
+    return lh.metric(p_liquid, tangents, **primals_kw) + tangents
 
 
 def draw_linear_residual(
@@ -82,9 +92,10 @@ def draw_linear_residual(
     *,
     from_inverse: bool = True,
     point_estimates: Union[P, Tuple[str]] = (),
-    cg: Callable = conjugate_gradient.static_cg,
+    cg: Callable = conjugate_gradient.cg,
     cg_name: Optional[str] = None,
     cg_kwargs: Optional[dict] = None,
+    jit_metric=False,
     _raise_nonposdef: bool = False,
 ) -> tuple[P, int]:
     assert_arithmetics(pos)
@@ -92,17 +103,19 @@ def draw_linear_residual(
     if not isinstance(likelihood, Likelihood):
         te = f"`likelihood` of invalid type; got '{type(likelihood)}'"
         raise TypeError(te)
-    lh, p_liquid = likelihood, pos
+    p_liquid = pos
     if point_estimates:
-        lh, p_liquid = likelihood.freeze(point_estimates=point_estimates, primals=pos)
+        _, p_liquid = likelihood.freeze(point_estimates=point_estimates, primals=pos)
 
-    def ham_metric(primals, tangents, **primals_kw):
-        return lh.metric(primals, tangents, **primals_kw) + tangents
+    jit = _parse_jit(jit_metric)
+    ham_metric = partial(
+        jit(_ham_metric, static_argnames="point_estimates"), likelihood, point_estimates
+    )
 
     cg_kwargs = cg_kwargs if cg_kwargs is not None else {}
 
     subkey_nll, subkey_prr = random.split(key, 2)
-    nll_smpl = sample_likelihood(lh, p_liquid, key=subkey_nll)
+    nll_smpl = sample_likelihood(likelihood, point_estimates, pos, key=subkey_nll)
     prr_inv_metric_smpl = random_like(key=subkey_prr, primals=p_liquid)
     # One may transform any metric sample to a sample of the inverse
     # metric by simply applying the inverse metric to it
@@ -121,7 +134,7 @@ def draw_linear_residual(
     if from_inverse:
         inv_metric_at_p = partial(
             cg,
-            Partial(ham_metric, p_liquid),
+            Partial(ham_metric, pos),
             **{"name": cg_name, "_raise_nonposdef": _raise_nonposdef, **cg_kwargs},
         )
         smpl, info = inv_metric_at_p(smpl, x0=prr_inv_metric_smpl)
@@ -133,6 +146,34 @@ def draw_linear_residual(
     return smpl, info
 
 
+def _nonlinear_residual_vg(likelihood, point_estimates, e, lh_trafo_at_p, ms_at_p, x):
+    lh, e_liquid = likelihood.freeze(point_estimates=point_estimates, primals=e)
+
+    # t = likelihood.transformation(x) - lh_trafo_at_p
+    t = tree_map(jnp.subtract, lh.transformation(x), lh_trafo_at_p)
+    g = x - e_liquid + lh.left_sqrt_metric(e_liquid, t)
+    r = ms_at_p - g
+    res = 0.5 * vdot(r, r)
+
+    r = conj(r)
+    ngrad = r + lh.left_sqrt_metric(x, lh.right_sqrt_metric(e_liquid, r))
+    return (res, -ngrad)
+
+
+def _nonlinear_residual_metric(likelihood, point_estimates, e, primals, tangents):
+    lh, e_liquid = likelihood.freeze(point_estimates=point_estimates, primals=e)
+    lsm = lh.left_sqrt_metric
+    rsm = lh.right_sqrt_metric
+    tm = lsm(e_liquid, rsm(primals, tangents)) + tangents
+    return lsm(primals, rsm(e_liquid, tm)) + tm
+
+
+def _nonlinear_residual_sampnorm(likelihood, point_estimates, e, natgrad):
+    lh, e_liquid = likelihood.freeze(point_estimates=point_estimates, primals=e)
+    fpp = lh.right_sqrt_metric(e_liquid, natgrad)
+    return jnp.sqrt(vdot(natgrad, natgrad) + vdot(fpp, fpp))
+
+
 def nonlinearly_update_residual(
     likelihood=None,
     pos: P = None,
@@ -141,8 +182,9 @@ def nonlinearly_update_residual(
     metric_sample_sign=1.0,
     *,
     point_estimates=(),
-    minimize: Callable[..., optimize.OptimizeResults] = optimize._static_newton_cg,
+    minimize: Callable[..., optimize.OptimizeResults] = optimize._newton_cg,
     minimize_kwargs={},
+    jit_residual_funcs=False,
     _raise_notconverged=False,
 ) -> tuple[P, optimize.OptimizeResults]:
     assert_arithmetics(pos)
@@ -155,30 +197,22 @@ def nonlinearly_update_residual(
         point_estimates=point_estimates,
     )
 
-    def residual_vg(e, lh_trafo_at_p, ms_at_p, x):
-        lh, e_liquid = likelihood.freeze(point_estimates=point_estimates, primals=e)
-
-        # t = likelihood.transformation(x) - lh_trafo_at_p
-        t = tree_map(jnp.subtract, lh.transformation(x), lh_trafo_at_p)
-        g = x - e_liquid + lh.left_sqrt_metric(e_liquid, t)
-        r = ms_at_p - g
-        res = 0.5 * vdot(r, r)
-
-        r = conj(r)
-        ngrad = r + lh.left_sqrt_metric(x, lh.right_sqrt_metric(e_liquid, r))
-        return (res, -ngrad)
-
-    def metric(e, primals, tangents):
-        lh, e_liquid = likelihood.freeze(point_estimates=point_estimates, primals=e)
-        lsm = lh.left_sqrt_metric
-        rsm = lh.right_sqrt_metric
-        tm = lsm(e_liquid, rsm(primals, tangents)) + tangents
-        return lsm(primals, rsm(e_liquid, tm)) + tm
-
-    def sampnorm(e, natgrad):
-        lh, e_liquid = likelihood.freeze(point_estimates=point_estimates, primals=e)
-        fpp = lh.right_sqrt_metric(e_liquid, natgrad)
-        return jnp.sqrt(vdot(natgrad, natgrad) + vdot(fpp, fpp))
+    jit = _parse_jit(jit_residual_funcs)
+    residual_vg = partial(
+        jit(_nonlinear_residual_vg, static_argnames="point_estimates"),
+        likelihood,
+        point_estimates,
+    )
+    metric = partial(
+        jit(_nonlinear_residual_metric, static_argnames="point_estimates"),
+        likelihood,
+        point_estimates,
+    )
+    sampnorm = partial(
+        jit(_nonlinear_residual_sampnorm, static_argnames="point_estimates"),
+        likelihood,
+        point_estimates,
+    )
 
     sample = pos + residual_sample
     del residual_sample
@@ -226,7 +260,7 @@ def draw_residual(
     cg: Callable = conjugate_gradient.static_cg,
     cg_name: Optional[str] = None,
     cg_kwargs: Optional[dict] = None,
-    minimize: Callable[..., optimize.OptimizeResults] = optimize._static_newton_cg,
+    minimize: Callable[..., optimize.OptimizeResults] = optimize._newton_cg,
     minimize_kwargs={},
     _raise_nonposdef: bool = False,
     _raise_notconverged: bool = False,
@@ -364,8 +398,9 @@ def wiener_filter_posterior(
     *,
     key,
     n_samples: int = 0,
-    residual_map="smap",
+    residual_map="lmap",
     draw_linear_kwargs: Optional[dict] = None,
+    jit=True,
     model_is_linear: Optional[bool] = True,
     signal_space: Optional[bool] = True,
     noise_covariance: Optional[callable] = None,
@@ -387,6 +422,8 @@ def wiener_filter_posterior(
     draw_linear_kwargs : dict
         Optional parameters for the conjugate gradient used to compute the
         posterior mean and to draw samples.
+    jit : bool or callable, default=True
+        Whether to JIT-compile the Wiener filter covariance.
     model_is_linear : bool
         Whether the model is linear. If the model is non-linear, you must
         specify a position around which to linearize it. For non-linear models,
@@ -408,6 +445,7 @@ def wiener_filter_posterior(
         raise ValueError(msg)
 
     residual_map = get_map(residual_map)
+    jit = _parse_jit(jit)
     position = zeros_like(likelihood.domain) if position is None else position
 
     data = likelihood.likelihood.data
@@ -418,7 +456,7 @@ def wiener_filter_posterior(
         _, forward_lin = jax.linearize(likelihood.forward, position)
         data = data - likelihood.forward(position) + forward_lin(position)
 
-    cg = draw_linear_kwargs.get("cg", conjugate_gradient.static_cg)
+    cg = draw_linear_kwargs.get("cg", conjugate_gradient.cg)
     forward_lin_T = jax.linear_transpose(forward_lin, likelihood.domain)
     forward_lin_T = _functional_conj(forward_lin_T)
 
@@ -429,8 +467,9 @@ def wiener_filter_posterior(
         def post_cov_inv(tangents):
             return forward_lin_T(n_inv(forward_lin(tangents)))[0] + tangents
 
+        post_cov_inv = jit(post_cov_inv)
         post_mean, post_info = cg(
-            jax.jit(post_cov_inv),
+            post_cov_inv,
             j,
             name=draw_linear_kwargs.get("cg_name", None),
             **draw_linear_kwargs.get("cg_kwargs", {}),
@@ -448,8 +487,9 @@ def wiener_filter_posterior(
             RR_dagger_d = forward_lin(R_dagger_d)
             return RR_dagger_d + noise_covariance(tangents)
 
+        post_dspace_cov_inv = jit(post_dspace_cov_inv)
         post_mean_dspace, post_info = cg(
-            jax.jit(post_dspace_cov_inv),
+            post_dspace_cov_inv,
             data,
             name=draw_linear_kwargs.get("cg_name", None),
             **draw_linear_kwargs.get("cg_kwargs", {}),
@@ -458,10 +498,16 @@ def wiener_filter_posterior(
         if post_info is not None and post_info < 0:
             raise ValueError("conjugate gradient failed")
 
-    ks = random.split(key, n_samples)
-    draw = Partial(draw_linear_residual, likelihood, **draw_linear_kwargs)
-    draw = residual_map(draw, in_axes=(None, 0))
-    smpls, smpls_info = draw(post_mean, ks)
+    if n_samples > 0:
+        ks = random.split(key, n_samples)
+        draw = Partial(
+            draw_linear_residual, likelihood, jit_metric=jit, **draw_linear_kwargs
+        )
+        draw = residual_map(draw, in_axes=(None, 0))
+        smpls, smpls_info = draw(post_mean, ks)
+        smpls = Samples(pos=post_mean, samples=concatenate_zip(smpls, -smpls), keys=ks)
+    else:
+        smpls = Samples(pos=post_mean, samples=None)
+        smpls_info = None
 
-    smpls = Samples(pos=post_mean, samples=concatenate_zip(smpls, -smpls), keys=ks)
     return smpls, (post_info, smpls_info)

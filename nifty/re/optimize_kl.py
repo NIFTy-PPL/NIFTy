@@ -24,6 +24,7 @@ from . import optimize
 from .evi import (
     Samples,
     _parse_jit,
+    _is_no_jit,
     concatenate_zip,
     draw_linear_residual,
     nonlinearly_update_residual,
@@ -262,8 +263,9 @@ class OptimizeVI:
         likelihood: Likelihood,
         n_total_iterations: int,
         *,
-        kl_jit=True,
-        residual_jit=True,
+        jit=True,
+        linear_minimizer_jit=True,
+        nonlinear_minimizer_jit=False,
         kl_map=jax.vmap,
         residual_map="lmap",
         kl_reduce=_reduce,
@@ -287,10 +289,31 @@ class OptimizeVI:
         n_total_iterations: int
             Total number of iterations. One iteration consists of the steps
             1) - 3).
-        kl_jit: bool or callable
-            Whether to jit the KL minimization.
-        residual_jit: bool or callable
-            Whether to jit the residual sampling functions.
+        jit : bool or callable, default=True
+            Whether to JIT-compile all functions used in minimization, sampling,
+            and KL-minimization. When True, enables JIT compilation for better
+            performance.
+        linear_minimizer_jit : bool or callable, default=False
+            Whether to JIT-compile the minimizer used for linear residual sampling.
+
+            Note: JIT-compiling the minimizer typically provides minimal benefit
+            since the objective function is already JIT-compiled when `jit=True`.
+
+            If enabling this option, you must provide a JIT-compatible minimizer
+            through `draw_linear_kwargs`. Example::
+
+                draw_linear_kwargs={'cg': jft.conjugate_gradient.static_cg}
+        nonlinear_minimizer_jit : bool or callable, default=False
+            Whether to JIT-compile the minimizer used for nonlinear residual
+            sampling.
+
+            Note: JIT-compiling the minimizer typically provides minimal benefit
+            since the objective function is already JIT-compiled when `jit=True`.
+
+            If enabling this option, you must provide a JIT-compatible minimizer
+            through `nonlinearly_update_kwargs`. Example::
+
+                nonlinearly_update_kwargs={'minimize': jft.optimize.static_newton_cg}
         kl_map: callable or str
             Map function used for the KL minimization.
         residual_map: callable or str
@@ -334,8 +357,9 @@ class OptimizeVI:
         step 3) is always performed at the end of one iteration. A full loop
         consists of repeatedly iterating over the steps 1) - 3).
         """
-        kl_jit = _parse_jit(kl_jit)
-        residual_jit = _parse_jit(residual_jit)
+        jit = _parse_jit(jit)
+        linear_minimizer_jit = _parse_jit(linear_minimizer_jit)
+        nonlinear_minimizer_jit = _parse_jit(nonlinear_minimizer_jit)
         residual_map = get_map(residual_map)
         self.named_sharding = None
         if (not devices is None) and len(devices) > 1:
@@ -349,7 +373,7 @@ class OptimizeVI:
 
         if _kl_value_and_grad is None:
             _kl_value_and_grad = partial(
-                kl_jit(
+                jit(
                     _kl_vg,
                     static_argnames=(
                         "map",
@@ -366,7 +390,7 @@ class OptimizeVI:
             )
         if _kl_metric is None:
             _kl_metric = partial(
-                kl_jit(
+                jit(
                     _kl_met,
                     static_argnames=(
                         "map",
@@ -383,11 +407,22 @@ class OptimizeVI:
             )
         if _draw_linear_residual is None:
             _draw_linear_residual = partial(
-                residual_jit(draw_linear_residual), likelihood
+                linear_minimizer_jit(
+                    draw_linear_residual, static_argnames=("jit_metric", "cg")
+                ),
+                likelihood,
+                jit_metric=jit if _is_no_jit(linear_minimizer_jit) else False,
             )
         if _nonlinearly_update_residual is None:
             _nonlinearly_update_residual = partial(
-                residual_jit(nonlinearly_update_residual), likelihood
+                nonlinear_minimizer_jit(
+                    nonlinearly_update_residual,
+                    static_argnames=("jit_residual_funcs", "minimize"),
+                ),
+                likelihood,
+                jit_residual_funcs=(
+                    jit if _is_no_jit(nonlinear_minimizer_jit) else False
+                ),
             )
         if _get_status_message is None:
             _get_status_message = partial(
@@ -592,7 +627,7 @@ class OptimizeVI:
     def kl_minimize(
         self,
         samples: Samples,
-        minimize: Callable[..., optimize.OptimizeResults] = optimize._static_newton_cg,
+        minimize: Callable[..., optimize.OptimizeResults] = optimize._newton_cg,
         minimize_kwargs={},
         constants=(),
         **kwargs,
@@ -796,8 +831,9 @@ def optimize_kl(
     n_samples,
     point_estimates=(),
     constants=(),
-    kl_jit=True,
-    residual_jit=True,
+    jit=True,
+    linear_minimizer_jit=False,
+    nonlinear_minimizer_jit=False,
     kl_map=jax.vmap,
     residual_map="lmap",
     kl_reduce=_reduce,
@@ -845,8 +881,9 @@ def optimize_kl(
         opt_vi = OptimizeVI(
             likelihood,
             n_total_iterations=n_total_iterations,
-            kl_jit=kl_jit,
-            residual_jit=residual_jit,
+            jit=jit,
+            linear_minimizer_jit=linear_minimizer_jit,
+            nonlinear_minimizer_jit=nonlinear_minimizer_jit,
             kl_map=kl_map,
             residual_map=residual_map,
             kl_reduce=kl_reduce,
