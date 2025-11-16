@@ -1,6 +1,5 @@
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 
-import warnings
 from operator import matmul
 from typing import Callable, Optional, TypeVar, Union
 
@@ -30,6 +29,10 @@ def lanczos_tridiag(
     * This version avoids NaNs by guarding beta==0 (Lanczos breakdown).
     * It keeps fixed shapes (pads with zeros) rather than terminating early.
     """
+    # The implementation is inspired by
+    # * https://en.wikipedia.org/wiki/Lanczos_algorithm with re-orthogonalization https://en.wikipedia.org/wiki/Lanczos_algorithm#Numerical_stability
+    # * https://github.com/cornellius-gp/linear_operator/blob/main/linear_operator/utils/lanczos.py
+
     swd = ShapeWithDtype.from_leave(v)
     shape, dtype = swd.shape, swd.dtype
     if order < 1:
