@@ -48,7 +48,7 @@ def test_lanczos_tridiag(seed, shape0):
     m = m @ m.T  # ensure positive-definiteness
 
     v = random.rademacher(rng_key, (shape0,), float)
-    tridiag, vecs = jft.lanczos.lanczos_tridiag(partial(matmul, m), v, shape0)
+    tridiag, vecs = jft.lanczos.lanczos_tridiag(partial(matmul, m), v, order=shape0)
     m_est = vecs.T @ tridiag @ vecs
 
     assert_allclose(m_est, m, atol=1e-13, rtol=1e-13)
