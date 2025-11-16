@@ -142,7 +142,7 @@ def stochastic_logdet_from_lanczos(
     *,
     tol=1e-14,
 ):
-    """Computes a stochastic estimate of the log-determinate of a matrix using
+    """Computes a stochastic estimate of the log-determinant of a matrix using
     its Lanczos decomposition.
 
     Implemented via the stoachstic Lanczos quadrature.
@@ -152,10 +152,10 @@ def stochastic_logdet_from_lanczos(
 
     num_random_probes = tridiag_stack.shape[0]
 
-    eig_ves_first_component = eig_vecs[..., 0, :]
+    eig_vecs_first_component = eig_vecs[..., 0, :]
     func_of_eig_vals = func(eig_vals)
 
-    dot_products = jnp.nansum(eig_ves_first_component**2 * func_of_eig_vals)
+    dot_products = jnp.nansum(eig_vecs_first_component**2 * func_of_eig_vals)
     return matrix_shape0 / float(num_random_probes) * dot_products
 
 
@@ -169,7 +169,7 @@ def stochastic_lq_logdet(
     dtype=None,
     cmap=jax.vmap,
 ):
-    """Computes a stochastic estimate of the log-determinate of a matrix using
+    """Computes a stochastic estimate of the log-determinant of a matrix using
     the stochastic Lanczos quadrature algorithm.
     """
     if not isinstance(key, jnp.ndarray):
