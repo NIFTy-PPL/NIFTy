@@ -17,8 +17,10 @@ V = TypeVar("V")
 def lanczos_tridiag(
     mat: Callable[[jnp.ndarray], jnp.ndarray],
     v: jnp.ndarray,
+    *,
     order: int,
     tol: float = 1e-12,
+    # n_reortho_steps: int = 10,
 ):
     """Compute the Lanczos decomposition into a tri-diagonal matrix and its
     corresponding orthonormal projection matrix.
@@ -72,9 +74,19 @@ def lanczos_tridiag(
     def reortho_step(j, state):
         vecs, w = state
         tau = vecs[j].reshape(shape)
-        coeff = jnp.dot(w, tau)
-        w -= coeff * tau
+        w -= jnp.dot(w, tau) * tau  # assume `tau` to be fully normalized
         return vecs, w
+
+    # def reortho_full(_, state):
+    #     vecs, orig_vec = state
+    #     vecs, new_vec = fori_loop(0, order, reortho_step, (vecs, orig_vec))
+    #     new_vec /= jnp.linalg.norm(new_vec)
+
+    #     # NOTE, could terminate early if converged but would require special
+    #     # casing for AD
+    #     diff = jnp.linalg.norm(new_vec - orig_vec)
+    #     new_vec = jnp.where(diff > 1e-1 * tol, new_vec, orig_vec)
+    #     return vecs, new_vec
 
     def lanczos_step(i, state):
         tridiag, vecs, beta = state
@@ -91,12 +103,12 @@ def lanczos_tridiag(
         # NOTE, in theory the loop could terminate at `i` but this would make
         # JAX's default backwards pass not work
         vecs, w = fori_loop(0, order, reortho_step, (vecs, w))
-
         beta = jnp.linalg.norm(w)
-
         # avoid dividing by zero: if beta_local small -> set next vec to zeros
-        new_vec = jnp.where(beta > tol, w / beta, jnp.zeros_like(w))
         tridiag = tridiag.at[(i, i + 1)].set(beta).at[(i + 1, i)].set(beta)
+        new_vec = jnp.where(beta > tol, w / beta, jnp.zeros_like(w))
+        # # More re-orthogonalization for numerical stability
+        # vecs, new_vec = fori_loop(0, n_reortho_steps, reortho_full, (vecs, new_vec))
         vecs = vecs.at[i + 1].set(new_vec)
 
         return tridiag, vecs, beta
