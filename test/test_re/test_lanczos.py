@@ -78,5 +78,5 @@ def test_stochastic_lq_logdet(seed, shape0, lq_order=15, n_lq_samples=10):
 
     _, logdet = jnp.linalg.slogdet(m)
     logdet_est = jft.stochastic_lq_logdet(m, lq_order, n_lq_samples, rng_key)
-    assert_allclose(logdet_est, logdet, rtol=2.0, atol=20.0)
+    assert_allclose(logdet_est, logdet, rtol=0.8, atol=10.0)
     print(f"{logdet=} :: {logdet_est=}", file=sys.stderr)
