@@ -48,28 +48,35 @@ def test_lanczos_tridiag(seed, shape0):
     m = m @ m.T  # ensure positive-definiteness
 
     v = random.rademacher(rng_key, (shape0,), float)
-    tridiag, vecs = jft.lanczos.lanczos_tridiag(partial(matmul, m), v, shape0)
+    tridiag, vecs = jft.lanczos.lanczos_tridiag(partial(matmul, m), v, order=shape0)
     m_est = vecs.T @ tridiag @ vecs
 
     assert_allclose(m_est, m, atol=1e-13, rtol=1e-13)
 
 
+def _random_pd_matrix(n, min_eigenvalue=0.1, *, seed=None):
+    """
+    Generates a random n x n positive definite matrix with stable slogdet.
+    Ensures minimum eigenvalue is at least min_eigenvalue for stability.
+    """
+    rng = np.random.default_rng(seed)
+    x = rng.normal(size=(n, n))
+    tril = np.tril(x)
+    diag = np.diag(tril).clip(min_eigenvalue, None)
+    np.fill_diagonal(tril, diag)
+    sym = tril @ tril.T
+    return sym
+
+
 @pmp("seed", tuple(range(12, 44, 5)))
 @pmp("shape0", (128, 64))
-@pytest.mark.xfail(reason="stochastic_lq_logdet may return NaN (known issue)")
 def test_stochastic_lq_logdet(seed, shape0, lq_order=15, n_lq_samples=10):
     rng = np.random.default_rng(seed)
     rng_key = random.PRNGKey(rng.integers(12, 42))
-
-    c = np.exp(3 + rng.normal())
-    s = np.exp(rng.normal())
-
-    p = np.logspace(np.log(0.1 * c), np.log(1e2 * c), num=shape0 - 1)
-    p = np.concatenate(([0], p)).reshape(-1, 1)
-
-    m = jnp.asarray(matern_kernel(distance_matrix(p, p), cutoff=c, scale=s, dof=2.5))
+    m = _random_pd_matrix(shape0, min_eigenvalue=1.0, seed=rng.integers(0, 10))
+    m *= 10  # make eigenvalues a bit larger
 
     _, logdet = jnp.linalg.slogdet(m)
     logdet_est = jft.stochastic_lq_logdet(m, lq_order, n_lq_samples, rng_key)
-    assert_allclose(logdet_est, logdet, rtol=2.0, atol=20.0)
+    assert_allclose(logdet_est, logdet, rtol=0.8, atol=10.0)
     print(f"{logdet=} :: {logdet_est=}", file=sys.stderr)

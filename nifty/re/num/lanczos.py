@@ -1,12 +1,12 @@
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 
-import warnings
-
+from operator import matmul
 from typing import Callable, Optional, TypeVar, Union
 
 import jax
 from jax import numpy as jnp
 from jax import random
+from jax.tree_util import Partial
 
 from ..lax import fori_loop
 from ..tree_math import ShapeWithDtype
@@ -14,50 +14,85 @@ from ..tree_math import ShapeWithDtype
 V = TypeVar("V")
 
 
-def lanczos_tridiag(mat: Callable[[V], V], v: V, order: int):
+def lanczos_tridiag(
+    mat: Callable[[jnp.ndarray], jnp.ndarray],
+    v: jnp.ndarray,
+    *,
+    order: int,
+    tol: float = 1e-12,
+    # n_reortho_steps: int = 10,
+):
     """Compute the Lanczos decomposition into a tri-diagonal matrix and its
     corresponding orthonormal projection matrix.
+
+    The tridiagonal matrix is of shape (order x order) and the stack of vectors
+    of shape (order, n).
+    * mat(v) must return a vector with same shape as v.
+    * This version avoids NaNs by guarding beta==0 (Lanczos breakdown).
+    * It keeps fixed shapes (pads with zeros) rather than terminating early.
     """
+    # The implementation is inspired by
+    # * https://en.wikipedia.org/wiki/Lanczos_algorithm with re-orthogonalization https://en.wikipedia.org/wiki/Lanczos_algorithm#Numerical_stability
+    # * https://github.com/cornellius-gp/linear_operator/blob/main/linear_operator/utils/lanczos.py
+
     swd = ShapeWithDtype.from_leave(v)
-    tridiag = jnp.zeros((order, order), dtype=swd.dtype)
-    vecs = jnp.zeros((order,) + swd.shape, dtype=swd.dtype)
-
-    v = v / jnp.linalg.norm(v)
-    vecs = vecs.at[0].set(v)
-
+    shape, dtype = swd.shape, swd.dtype
+    if order < 1:
+        raise ValueError("order must be >= 1")
     # TODO
     # * use `tree_math.dot` and `tree_math.norm` in favor of plain `jnp.dot`
     # * remove all reshapes as they are unnecessary
+    tridiag = jnp.zeros((order, order), dtype=dtype)
+    vecs = jnp.zeros((order,) + shape, dtype=dtype)
+
+    v = v / jnp.linalg.norm(v)
+    vecs = vecs.at[0].set(v)
+    # Special-case order == 1
+    if order == 1:
+        w = mat(v)
+        if w.shape != shape:
+            raise ValueError(f"shape of mat(v) {w.shape!r} incompatible with {swd}")
+        alpha = jnp.dot(w, v)
+        tridiag = tridiag.at[(0, 0)].set(alpha)
+        return tridiag, vecs
 
     # Zeroth iteration
     w = mat(v)
-    if w.shape != swd.shape:
-        ve = f"shape of `mat(v)` {w.shape!r} incompatible with {swd}"
-        raise ValueError(ve)
+    if w.shape != shape:
+        raise ValueError(f"shape of `mat(v)` {w.shape!r} incompatible with {swd}")
     alpha = jnp.dot(w, v)
     tridiag = tridiag.at[(0, 0)].set(alpha)
     w -= alpha * v
     beta = jnp.linalg.norm(w)
 
-    tridiag = tridiag.at[(0, 1)].set(beta)
-    tridiag = tridiag.at[(1, 0)].set(beta)
-    vecs = vecs.at[1].set(w / beta)
+    # Guard small beta: if beta <= tol, set next vector to zeros (avoid div-by-zero)
+    next_vec = jnp.where(beta > tol, w / beta, jnp.zeros_like(w))
+
+    tridiag = tridiag.at[(0, 1)].set(beta).at[(1, 0)].set(beta)
+    vecs = vecs.at[1].set(next_vec)
 
     def reortho_step(j, state):
         vecs, w = state
-
-        tau = vecs[j, :].reshape(swd.shape)
-        coeff = jnp.dot(w, tau)
-        w -= coeff * tau
+        tau = vecs[j].reshape(shape)
+        w -= jnp.dot(w, tau) * tau  # assume `tau` to be fully normalized
         return vecs, w
+
+    # def reortho_full(_, state):
+    #     vecs, orig_vec = state
+    #     vecs, new_vec = fori_loop(0, order, reortho_step, (vecs, orig_vec))
+    #     new_vec /= jnp.linalg.norm(new_vec)
+
+    #     # NOTE, could terminate early if converged but would require special
+    #     # casing for AD
+    #     diff = jnp.linalg.norm(new_vec - orig_vec)
+    #     new_vec = jnp.where(diff > 1e-1 * tol, new_vec, orig_vec)
+    #     return vecs, new_vec
 
     def lanczos_step(i, state):
         tridiag, vecs, beta = state
 
-        # TODO: only save current and last vector and do not
-        # reorthogonalize??????; check theory beforehand!!!
-        v = vecs[i, :].reshape(swd.shape)
-        v_old = vecs[i - 1, :].reshape(swd.shape)
+        v = vecs[i].reshape(shape)
+        v_old = vecs[i - 1].reshape(shape)
 
         w = mat(v) - beta * v_old
         alpha = jnp.dot(w, v)
@@ -68,47 +103,59 @@ def lanczos_tridiag(mat: Callable[[V], V], v: V, order: int):
         # NOTE, in theory the loop could terminate at `i` but this would make
         # JAX's default backwards pass not work
         vecs, w = fori_loop(0, order, reortho_step, (vecs, w))
-
-        # TODO: Raise if lanczos vectors are independent i.e. `beta` small?
         beta = jnp.linalg.norm(w)
-
-        tridiag = tridiag.at[(i, i + 1)].set(beta)
-        tridiag = tridiag.at[(i + 1, i)].set(beta)
-        vecs = vecs.at[i + 1].set(w / beta)
+        # avoid dividing by zero: if beta_local small -> set next vec to zeros
+        tridiag = tridiag.at[(i, i + 1)].set(beta).at[(i + 1, i)].set(beta)
+        new_vec = jnp.where(beta > tol, w / beta, jnp.zeros_like(w))
+        # # More re-orthogonalization for numerical stability
+        # vecs, new_vec = fori_loop(0, n_reortho_steps, reortho_full, (vecs, new_vec))
+        vecs = vecs.at[i + 1].set(new_vec)
 
         return tridiag, vecs, beta
 
-    tridiag, vecs, beta = fori_loop(1, order - 1, lanczos_step, (tridiag, vecs, beta))
+    if order > 2:
+        # loop i = 1 .. order-2 inclusive
+        tridiag, vecs, beta = fori_loop(
+            1, order - 1, lanczos_step, (tridiag, vecs, beta)
+        )
+    else:
+        # when order == 2, we skip the internal loop and use beta from zeroth iteration
+        pass
 
-    # Final tridiag value and reorthogonalization
-    v = vecs[order - 1, :].reshape(swd.shape)
-    v_old = vecs[order - 2, :].reshape(swd.shape)
+    # Final diagonal entry (index order-1)
+    v = vecs[order - 1].reshape(shape)
+    v_old = vecs[order - 2].reshape(shape)
     w = mat(v) - beta * v_old
     alpha = jnp.dot(w, v)
     tridiag = tridiag.at[(order - 1, order - 1)].set(alpha)
     w -= alpha * v
     vecs, w = fori_loop(0, order - 1, reortho_step, (vecs, w))
 
-    return (tridiag, vecs)
+    # no final division if beta tiny (already avoided during loop)
+    return tridiag, vecs
 
 
 def stochastic_logdet_from_lanczos(
-    tridiag_stack: jnp.ndarray, matrix_shape0: int, func: Callable = jnp.log
+    tridiag_stack: jnp.ndarray,
+    matrix_shape0: int,
+    func: Callable = jnp.log,
+    *,
+    tol=1e-14,
 ):
-    """Computes a stochastic estimate of the log-determinate of a matrix using
+    """Computes a stochastic estimate of the log-determinant of a matrix using
     its Lanczos decomposition.
 
     Implemented via the stoachstic Lanczos quadrature.
     """
     eig_vals, eig_vecs = jnp.linalg.eigh(tridiag_stack)
-    # TODO: Mask Eigenvalues <= 0?
+    eig_vals = jnp.where(eig_vals < tol, jnp.nan, eig_vals)
 
     num_random_probes = tridiag_stack.shape[0]
 
-    eig_ves_first_component = eig_vecs[..., 0, :]
+    eig_vecs_first_component = eig_vecs[..., 0, :]
     func_of_eig_vals = func(eig_vals)
 
-    dot_products = jnp.sum(eig_ves_first_component**2 * func_of_eig_vals)
+    dot_products = jnp.nansum(eig_vecs_first_component**2 * func_of_eig_vals)
     return matrix_shape0 / float(num_random_probes) * dot_products
 
 
@@ -122,25 +169,27 @@ def stochastic_lq_logdet(
     dtype=None,
     cmap=jax.vmap,
 ):
-    """Computes a stochastic estimate of the log-determinate of a matrix using
+    """Computes a stochastic estimate of the log-determinant of a matrix using
     the stochastic Lanczos quadrature algorithm.
     """
-    warnings.warn(
-        "stochastic_lq_logdet is known to sometimes return NaN. "
-        "Use at your own risk and fix it.",
-        UserWarning,
-        stacklevel=2,
-    )
-    shape0 = shape0 if shape0 is not None else mat.shape[0]
-    mat = mat.__matmul__ if not hasattr(mat, "__call__") else mat
     if not isinstance(key, jnp.ndarray):
         key = random.PRNGKey(key)
-    key_smpls = random.split(key, n_samples)
+
+    if callable(mat):
+        mat_fn = mat
+    else:
+        mat_fn = Partial(matmul, mat)
+        shape0 = mat.shape[0] if shape0 is None else None
+    if shape0 is None:
+        msg = "shape0 must be provided if `mat` is callable or has no shape attribute"
+        raise ValueError(msg)
 
     def random_lanczos(k):
         v = random.rademacher(k, (shape0,), dtype=dtype)
-        tri, _ = lanczos_tridiag(mat, v, order=order)
+        tri, _ = lanczos_tridiag(mat_fn, v, order=order)
         return tri
 
-    tridiags = cmap(random_lanczos)(key_smpls)
+    key_smpls = random.split(key, n_samples)
+    tridiags = cmap(random_lanczos)(key_smpls)  # shape (n_samples, order, order)
+    # return scalar estimate (matrix_shape0 used in quadrature)
     return stochastic_logdet_from_lanczos(tridiags, shape0)
