@@ -12,6 +12,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Copyright(C) 2013-2021 Max-Planck-Society
+# Copyright(C) 2025 Philipp Arras
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -127,6 +128,36 @@ def test_bernoulli(field):
     d = ift.random.current_rng().binomial(1, 0.1, size=space.shape)
     d = ift.Field(space, d)
     energy = ift.BernoulliEnergy(d)
+    ift.extra.check_operator(energy, field, tol=1e-10)
+
+
+def test_categorical(field):
+    if isinstance(field.domain, ift.MultiDomain):
+        pytest.skip()
+
+    space = field.domain
+    if len(space.shape) < 1:
+        pytest.skip()  # need at least one dimension for categories
+
+    n_categories = space.shape[0]
+    spatial_shape = space.shape[1:] if len(space.shape) > 1 else (1,)
+
+    # Apply softmax along axis 0 to get valid probabilities
+    field = field.ptw("exp")
+    field = ift.Field(field.domain, field.val / np.sum(field.val, axis=0))
+
+    # Generate one-hot encoded categorical data
+    # Draw random category indices for each spatial location
+    n_spatial = int(np.prod(spatial_shape))
+    category_indices = ift.random.current_rng().integers(0, n_categories, size=n_spatial)
+
+    # One-hot encode
+    d = np.zeros((n_categories, n_spatial), dtype=int)
+    d[category_indices, np.arange(n_spatial)] = 1
+    d = d.reshape(space.shape)
+    d = ift.Field(space, d)
+
+    energy = ift.CategoricalEnergy(d, axis=0)
     ift.extra.check_operator(energy, field, tol=1e-10)
 
 
