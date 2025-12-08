@@ -793,7 +793,21 @@ class BernoulliEnergy(LikelihoodEnergyOperator):
 
 
 class CategoricalEnergy(LikelihoodEnergyOperator):
-    """
+    """This operator is used to calculate the negative log-likelihood energy
+    for a categorical distribution when the observed data is
+    one-hot encoded. It measures the discrepancy between an input
+    probability distribution (x) and the observed one-hot encoded data (d).
+
+    The energy is computed as the negative dot product between the logarithm
+    of the input probabilities and the one-hot encoded data:
+
+    .. math ::
+        E = - \\sum_{i} d_i \\log (x_i)
+
+    The input `x` is expected to represent probabilities and is
+    **assumed to be normalized** such that it sums to 1 along the
+    category axis.
+
     Parameters
     ----------
     d : Field
