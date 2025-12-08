@@ -19,7 +19,6 @@ from functools import reduce
 from operator import add
 
 import nifty.cl as ift
-import numpy as np
 import pytest
 
 from ..common import setup_function, teardown_function
@@ -36,14 +35,14 @@ def test_likelihood_single(with_names, dom):
     icov = ift.from_random(dom).exp()
     lh = ift.GaussianEnergy(data=data, inverse_covariance=ift.makeOp(icov))
     if with_names == 1:
-        lh.name = f"myname"
-        assert lh.name == f"myname"
+        lh.name = "myname"
+        assert lh.name == "myname"
     if isinstance(dom, ift.DomainTuple):
         lh = lh.ducktape("b")
     if with_names == 2:
-        lh.name = f"myname"
+        lh.name = "myname"
     if with_names in [1, 2]:
-        assert lh.name == f"myname"
+        assert lh.name == "myname"
     print(lh)
     samples = ift.SampleList([ift.from_random(lh.domain) for _ in range(2)])
     print(ift.extra.minisanity(lh, samples))
@@ -64,7 +63,7 @@ def test_likelihood_sum(with_names):
         if with_names == 2:
             lh.name = f"myname{ii}"
         if with_names == 3:
-            lh.name = f"myname"
+            lh.name = "myname"
         lhs.append(lh)
     if with_names == 3:
         with pytest.raises(ValueError):

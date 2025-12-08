@@ -12,6 +12,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Copyright(C) 2013-2022 Max-Planck-Society, Philipp Arras
+# Copyright(C) 2025 Philipp Arras
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -789,6 +790,64 @@ class BernoulliEnergy(LikelihoodEnergyOperator):
         res = 1. + ScalingOperator(self._domain, -1)
         res = res * Operator.identity_operator(self._domain).reciprocal()
         return np.float64, -2.*res.sqrt().arctan()
+
+
+class CategoricalEnergy(LikelihoodEnergyOperator):
+    """This operator is used to calculate the negative log-likelihood energy
+    for a categorical distribution when the observed data is
+    one-hot encoded. It measures the discrepancy between an input
+    probability distribution (x) and the observed one-hot encoded data (d).
+
+    The energy is computed as the negative dot product between the logarithm
+    of the input probabilities and the one-hot encoded data:
+
+    .. math ::
+        E = - \\sum_{i} d_i \\log (x_i)
+
+    The input `x` is expected to represent probabilities and is
+    **assumed to be normalized** such that it sums to 1 along the
+    category axis.
+
+    Parameters
+    ----------
+    d : Field
+        One-hot encoded categorical data. Must contain only 0 and 1,
+        and must sum to 1 along the specified axis.
+    axis : int
+        The axis along which categories are defined (default: 0).
+        Probabilities must sum to 1 along this axis.
+    """
+    def __init__(self, d, axis=0):
+        if not isinstance(d, Field) or not np.issubdtype(d.dtype, np.integer):
+            raise TypeError(f"d needs to be a Field with integer values. Got:\n{d}")
+        d_np = d.asnumpy()
+        actualvals = set(np.unique(d_np))
+        if (actualvals | set([0, 1])) != set([0, 1]):
+            raise ValueError(f"d can only contain 0 and 1. Got: {actualvals}")
+        if not np.all(np.sum(d_np, axis=axis) == 1):
+            raise ValueError("d must sum to 1 along the category axis (one-hot encoded)")
+
+        self._d = d
+        self._axis = axis
+        self._domain = DomainTuple.make(d.domain)
+        super(CategoricalEnergy, self).__init__(
+            Adder(d, neg=True), lambda x: self.get_metric_at(x).get_sqrt()
+        )
+
+    def _device_preparation(self, x):
+        self._d = self._d.at(x.device_id)
+
+    def apply(self, x):
+        self._check_input(x)
+        self._device_preparation(x)
+        res = -x.log().vdot(self._d)
+        if not x.want_metric:
+            return res
+        return res.add_metric(self.get_metric_at(x.val))
+
+    def get_transformation(self):
+        return np.float64, Operator.identity_operator(self._domain).sqrt().scale(2)
+
 
 
 class StandardHamiltonian(EnergyOperator):

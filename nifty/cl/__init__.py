@@ -49,7 +49,7 @@ from .operators.energy_operators import (
     EnergyOperator, GaussianEnergy, PoissonianEnergy, InverseGammaEnergy,
     BernoulliEnergy, StandardHamiltonian, AveragedEnergy, QuadraticFormOperator,
     Squared2NormOperator, StudentTEnergy, VariableCovarianceGaussianEnergy,
-    LikelihoodEnergyOperator)
+    LikelihoodEnergyOperator, CategoricalEnergy)
 from .operators.convolution_operators import FuncConvolutionOperator
 from .operators.normal_operators import NormalTransform, LognormalTransform
 from .operators.multifield2vector import Multifield2Vector
