@@ -171,7 +171,7 @@ def _nonlinear_residual_metric(likelihood, point_estimates, e, primals, tangents
 def _nonlinear_residual_sampnorm(likelihood, point_estimates, e, natgrad):
     lh, e_liquid = likelihood.freeze(point_estimates=point_estimates, primals=e)
     fpp = lh.right_sqrt_metric(e_liquid, natgrad)
-    return jnp.sqrt(vdot(natgrad, natgrad) + vdot(fpp, fpp))
+    return jnp.sqrt(vdot(natgrad, natgrad) + jnp.real(vdot(fpp, fpp)))
 
 
 def nonlinearly_update_residual(
