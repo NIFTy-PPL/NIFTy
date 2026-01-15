@@ -46,6 +46,13 @@ def _explicify(M):
     return np.column_stack([M.matvec(v) for v in identity])
 
 
+def _estimate_eigenvalues(metric, eigenvectors):
+    eigenvalues = np.empty(eigenvectors.shape[1], dtype=np.float64)
+    for i, vec in enumerate(eigenvectors.T):
+        eigenvalues[i] = np.vdot(vec, metric.matvec(vec))
+    return np.real_if_close(eigenvalues)
+
+
 def _save_eigensystem(output_directory, prefix, eigenvalues, eigenvectors, *, verbose):
     if output_directory is None:
         return
@@ -90,15 +97,63 @@ def _eigsh(
     verbose=True,
     output_directory=None,
     save_eigensystem_prefix="metric",
+    resume_eigenvectors=None,
+    resume_eigenvalues=None,
 ):
     eigenvectors = None
+    eigenvalues = None
+    if resume_eigenvalues is not None and resume_eigenvectors is None:
+        raise ValueError("resume_eigenvalues requires resume_eigenvectors.")
     if n_eigenvalues > tot_dofs:
         raise ValueError(
             "Number of requested eigenvalues "
             "exceeds the number of relevant degrees of freedom!"
         )
 
-    if tot_dofs == n_eigenvalues:
+    if resume_eigenvectors is not None:
+        eigenvectors = np.asarray(resume_eigenvectors)
+        if eigenvectors.ndim != 2:
+            raise ValueError("resume_eigenvectors must be a 2D array.")
+        if eigenvectors.shape[0] != metric_size:
+            raise ValueError(
+                "resume_eigenvectors does not match the metric size."
+            )
+        if resume_eigenvalues is None:
+            eigenvalues = _estimate_eigenvalues(metric, eigenvectors)
+        else:
+            eigenvalues = np.asarray(resume_eigenvalues)
+        if eigenvalues.ndim != 1:
+            raise ValueError("resume_eigenvalues must be a 1D array.")
+        if eigenvalues.size != eigenvectors.shape[1]:
+            raise ValueError(
+                "resume_eigenvalues and resume_eigenvectors have mismatched sizes."
+            )
+        order = np.argsort(-eigenvalues)
+        eigenvalues = eigenvalues[order]
+        eigenvectors = eigenvectors[:, order]
+        if eigenvalues.size > n_eigenvalues:
+            eigenvalues = eigenvalues[:n_eigenvalues]
+            eigenvectors = eigenvectors[:, :n_eigenvalues]
+        if verbose:
+            logger.info(
+                f"Resuming eigenvalue computation with {eigenvalues.size} "
+                f"precomputed eigenvalues."
+            )
+
+    if eigenvalues is not None and eigenvalues.size > tot_dofs:
+        raise ValueError(
+            "Number of provided eigenvectors exceeds relevant degrees of freedom."
+        )
+
+    if eigenvalues is not None and abs(1.0 - np.min(eigenvalues)) < min_lh_eval:
+        return eigenvalues, eigenvectors
+
+    n_precomputed = 0 if eigenvalues is None else eigenvalues.size
+    remaining_eigenvalues = n_eigenvalues - n_precomputed
+    if remaining_eigenvalues <= 0:
+        return eigenvalues, eigenvectors
+
+    if tot_dofs == n_eigenvalues and n_precomputed == 0:
         # Compute exact eigensystem
         if verbose:
             logger.info(f"Computing all {tot_dofs} relevant metric eigenvalues.")
@@ -127,11 +182,14 @@ def _eigsh(
             )
     else:
         # Set up batches
-        batch_size = n_eigenvalues // n_batches
-        remainder = n_eigenvalues % batch_size
-        batches = [batch_size] * n_batches
-        batches += [remainder] if remainder > 0 else []
-        eigenvalues, projected_metric = None, metric
+        base = remaining_eigenvalues // n_batches
+        remainder = remaining_eigenvalues % n_batches
+        batches = [base + 1] * remainder + [base] * (n_batches - remainder)
+        batches = [batch for batch in batches if batch > 0]
+        projected_metric = metric
+        if eigenvectors is not None:
+            projector = _Projector(eigenvectors)
+            projected_metric = projector @ metric @ projector.T
 
         for batch in batches:
             if verbose:
@@ -178,6 +236,8 @@ def estimate_evidence_lower_bound(
     metric_jit=True,
     output_directory=None,
     save_eigensystem_prefix="metric",
+    resume_eigenvectors=None,
+    resume_eigenvalues=None,
 ):
     """Provides an estimate for the Evidence Lower Bound (ELBO).
 
@@ -251,6 +311,12 @@ def estimate_evidence_lower_bound(
         `{output_directory}/{prefix}_eigenvectors.npy`.
     save_eigensystem_prefix : str
         Prefix for eigensystem filenames. Default is "metric".
+    resume_eigenvectors : Optional[np.ndarray]
+        Precomputed eigenvectors to resume the eigenvalue calculation. The
+        array is expected to be shaped `(metric_size, n_vectors)`.
+    resume_eigenvalues : Optional[np.ndarray]
+        Eigenvalues corresponding to `resume_eigenvectors`. If not provided,
+        they are estimated via the metric.
 
     Returns
     -------
@@ -292,8 +358,9 @@ def estimate_evidence_lower_bound(
     For further details we refer to:
 
     - Analytic geoVI parametrization: P. Frank et al., Geometric Variational
-        Inference <https://arxiv.org/pdf/2105.10470.pdf> (Sec. 5.1)
-    - Conceptualization: A. Kostić et al. (manuscript in preparation).
+        Inference <https://doi.org/10.3390/e23070853> (Sec. 5.1)
+    - Conceptualization: M. Guardiani et al., Towards Moment-constrained
+        Causal Modeling <https://doi.org/10.3390/psf2022005007> (Sec. 3.7).
     """
     if not isinstance(samples, Samples):
         raise TypeError("samples attribute should be of type `Samples`.")
@@ -320,6 +387,8 @@ def estimate_evidence_lower_bound(
         verbose=verbose,
         output_directory=output_directory,
         save_eigensystem_prefix=save_eigensystem_prefix,
+        resume_eigenvectors=resume_eigenvectors,
+        resume_eigenvalues=resume_eigenvalues,
     )
     if verbose:
         logger.info(
