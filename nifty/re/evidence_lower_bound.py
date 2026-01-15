@@ -215,6 +215,12 @@ def _eigsh(
                 eigenvectors,
                 verbose=verbose,
             )
+            if verbose:
+                done = eigenvalues.size
+                pct = 100.0 * done / n_eigenvalues
+                logger.info(
+                    f"Eigenvalue progress: {done}/{n_eigenvalues} ({pct:.1f}%)"
+                )
 
             if abs(1.0 - np.min(eigenvalues)) < min_lh_eval:
                 break
