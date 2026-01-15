@@ -323,3 +323,32 @@ def test_elbo_early_stop_saves_partial_eigenvalues(tmp_path):
 
     eigvals = np.load(output_directory / "metric_eigenvalues.npy")
     assert eigvals.size < 4
+
+
+def test_elbo_orthonormalize_requires_resume_eigenvalues():
+    likelihood, samples = _make_simple_likelihood_and_samples(seed=3, dim=3)
+    resume_vecs = np.eye(3)[:, :1]
+    with pytest.raises(ValueError, match="resume_eigenvalues is required"):
+        jft.estimate_evidence_lower_bound(
+            likelihood,
+            samples,
+            2,
+            metric_jit=False,
+            resume_eigenvectors=resume_vecs,
+            orthonormalize_eigenvectors=True,
+        )
+
+
+def test_elbo_orthonormalize_runs():
+    likelihood, samples = _make_simple_likelihood_and_samples(seed=4, dim=3)
+    elbo, _ = jft.estimate_evidence_lower_bound(
+        likelihood,
+        samples,
+        2,
+        n_batches=2,
+        metric_jit=False,
+        orthonormalize_eigenvectors=True,
+        orthonormalize_every_n_batches=2,
+        orthonormalize_threshold=None,
+    )
+    assert elbo.shape == (len(samples),)
