@@ -24,6 +24,21 @@ from .common import setup_function, teardown_function
 pmp = pytest.mark.parametrize
 
 
+def _make_simple_hamiltonian_and_samples(*, seed=0, dim=3, n_samples=2):
+    rng = np.random.default_rng(seed)
+    domain = ift.UnstructuredDomain(dim)
+    data = ift.makeField(domain, rng.standard_normal(dim))
+    likelihood = ift.GaussianEnergy(data=data)
+    hamiltonian = ift.StandardHamiltonian(lh=likelihood)
+    mean = ift.makeField(domain, np.zeros(dim))
+    residuals = [
+        ift.makeField(domain, rng.standard_normal(dim)) for _ in range(n_samples)
+    ]
+    neg = [False] * n_samples
+    samples = ift.ResidualSampleList(mean, residuals, neg)
+    return hamiltonian, samples
+
+
 def _explicify(operator):
     tmp = _DomRemover(operator.domain)
     operator = operator @ tmp.adjoint
@@ -138,3 +153,66 @@ def test_estimate_evidence_lower_bound():
     # Estimate the ELBO
     elbo, stats = ift.estimate_evidence_lower_bound(ift.StandardHamiltonian(lh=likelihood_energy), samples, 2)
     assert (stats['elbo_lw'].asnumpy() <= nifty_adjusted_evidence <= stats['elbo_up'].asnumpy())
+
+
+def test_elbo_save_and_resume(tmp_path):
+    hamiltonian, samples = _make_simple_hamiltonian_and_samples(seed=0, dim=3)
+    output_directory = tmp_path / "eig"
+
+    elbo_a, _ = ift.estimate_evidence_lower_bound(
+        hamiltonian,
+        samples,
+        2,
+        n_batches=2,
+        output_directory=str(output_directory),
+    )
+
+    eigvals = np.load(output_directory / "metric_eigenvalues.npy")
+    eigvecs = np.load(output_directory / "metric_eigenvectors.npy")
+    assert eigvecs.shape == (3, eigvals.size)
+
+    elbo_b, _ = ift.estimate_evidence_lower_bound(
+        hamiltonian,
+        samples,
+        2,
+        n_batches=2,
+        resume_eigenvalues=eigvals,
+        resume_eigenvectors=eigvecs,
+    )
+
+    a = np.array([s.asnumpy() for s in elbo_a.iterator()])
+    b = np.array([s.asnumpy() for s in elbo_b.iterator()])
+    assert np.allclose(a, b)
+
+
+def test_elbo_compute_all_saves_all_eigenvalues(tmp_path):
+    hamiltonian, samples = _make_simple_hamiltonian_and_samples(seed=1, dim=3)
+    output_directory = tmp_path / "all"
+
+    ift.estimate_evidence_lower_bound(
+        hamiltonian,
+        samples,
+        1,
+        compute_all=True,
+        output_directory=str(output_directory),
+    )
+
+    eigvals = np.load(output_directory / "metric_eigenvalues.npy")
+    assert eigvals.size == 3
+
+
+def test_elbo_early_stop_saves_partial_eigenvalues(tmp_path):
+    hamiltonian, samples = _make_simple_hamiltonian_and_samples(seed=2, dim=5)
+    output_directory = tmp_path / "early"
+
+    ift.estimate_evidence_lower_bound(
+        hamiltonian,
+        samples,
+        4,
+        n_batches=4,
+        min_lh_eval=2.0,
+        output_directory=str(output_directory),
+    )
+
+    eigvals = np.load(output_directory / "metric_eigenvalues.npy")
+    assert eigvals.size < 4
