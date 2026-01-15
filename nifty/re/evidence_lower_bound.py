@@ -2,6 +2,7 @@
 
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 
+import os
 from functools import partial
 
 import jax.flatten_util
@@ -45,6 +46,23 @@ def _explicify(M):
     return np.column_stack([M.matvec(v) for v in identity])
 
 
+def _save_eigensystem(output_directory, prefix, eigenvalues, eigenvectors, *, verbose):
+    if output_directory is None:
+        return
+    if output_directory == "":
+        output_directory = "."
+    os.makedirs(output_directory, exist_ok=True)
+    base = os.path.join(output_directory, prefix)
+    if verbose:
+        logger.info(
+            f"Saving metric eigensystem to "
+            f"{base}_eigenvalues.npy and {base}_eigenvectors.npy."
+        )
+    np.save(f"{base}_eigenvalues.npy", eigenvalues)
+    if eigenvectors is not None:
+        np.save(f"{base}_eigenvectors.npy", eigenvectors)
+
+
 def _ravel_metric(metric, position, dtype, metric_jit):
     def ravel(x):
         return jax.flatten_util.ravel_pytree(x)[0]
@@ -70,6 +88,8 @@ def _eigsh(
     n_batches=10,
     tol=0.0,
     verbose=True,
+    output_directory=None,
+    save_eigensystem_prefix="metric",
 ):
     eigenvectors = None
     if n_eigenvalues > tot_dofs:
@@ -82,12 +102,29 @@ def _eigsh(
         # Compute exact eigensystem
         if verbose:
             logger.info(f"Computing all {tot_dofs} relevant metric eigenvalues.")
-        eigenvalues = slg.eigh(
-            _explicify(metric),
-            eigvals_only=True,
-            subset_by_index=[metric_size - tot_dofs, metric_size - 1],
-        )
-        eigenvalues = np.flip(eigenvalues)
+        if output_directory is None:
+            eigenvalues = slg.eigh(
+                _explicify(metric),
+                eigvals_only=True,
+                subset_by_index=[metric_size - tot_dofs, metric_size - 1],
+            )
+            eigenvalues = np.flip(eigenvalues)
+        else:
+            eigvals, eigvecs = slg.eigh(
+                _explicify(metric),
+                eigvals_only=False,
+                subset_by_index=[metric_size - tot_dofs, metric_size - 1],
+            )
+            idx = np.argsort(-eigvals)
+            eigenvalues = eigvals[idx]
+            eigenvectors = eigvecs[:, idx]
+            _save_eigensystem(
+                output_directory,
+                save_eigensystem_prefix,
+                eigenvalues,
+                eigenvectors,
+                verbose=verbose,
+            )
     else:
         # Set up batches
         batch_size = n_eigenvalues // n_batches
@@ -113,6 +150,13 @@ def _eigsh(
             eigenvectors = (
                 eigvecs if eigenvectors is None else np.hstack((eigenvectors, eigvecs))
             )
+            _save_eigensystem(
+                output_directory,
+                save_eigensystem_prefix,
+                eigenvalues,
+                eigenvectors,
+                verbose=verbose,
+            )
 
             if abs(1.0 - np.min(eigenvalues)) < min_lh_eval:
                 break
@@ -132,6 +176,8 @@ def estimate_evidence_lower_bound(
     tol=0.0,
     verbose=True,
     metric_jit=True,
+    output_directory=None,
+    save_eigensystem_prefix="metric",
 ):
     """Provides an estimate for the Evidence Lower Bound (ELBO).
 
@@ -199,6 +245,12 @@ def estimate_evidence_lower_bound(
         is True.
     metric_jit : bool or callable
         Whether to jit the metric. Default is True.
+    output_directory : Optional[str]
+        If set, saves the cumulative metric eigenvalues and eigenvectors after
+        each batch to `{output_directory}/{prefix}_eigenvalues.npy` and
+        `{output_directory}/{prefix}_eigenvectors.npy`.
+    save_eigensystem_prefix : str
+        Prefix for eigensystem filenames. Default is "metric".
 
     Returns
     -------
@@ -266,6 +318,8 @@ def estimate_evidence_lower_bound(
         n_batches=n_batches,
         tol=tol,
         verbose=verbose,
+        output_directory=output_directory,
+        save_eigensystem_prefix=save_eigensystem_prefix,
     )
     if verbose:
         logger.info(
