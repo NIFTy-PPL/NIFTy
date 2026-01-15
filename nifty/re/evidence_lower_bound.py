@@ -94,6 +94,7 @@ def _eigsh(
     min_lh_eval=1e-4,
     n_batches=10,
     tol=0.0,
+    early_stop=True,
     verbose=True,
     output_directory=None,
     save_eigensystem_prefix="metric",
@@ -145,7 +146,11 @@ def _eigsh(
             "Number of provided eigenvectors exceeds relevant degrees of freedom."
         )
 
-    if eigenvalues is not None and abs(1.0 - np.min(eigenvalues)) < min_lh_eval:
+    if (
+        early_stop
+        and eigenvalues is not None
+        and abs(1.0 - np.min(eigenvalues)) < min_lh_eval
+    ):
         return eigenvalues, eigenvectors
 
     n_precomputed = 0 if eigenvalues is None else eigenvalues.size
@@ -222,7 +227,7 @@ def _eigsh(
                     f"Eigenvalue progress: {done}/{n_eigenvalues} ({pct:.1f}%)"
                 )
 
-            if abs(1.0 - np.min(eigenvalues)) < min_lh_eval:
+            if early_stop and abs(1.0 - np.min(eigenvalues)) < min_lh_eval:
                 break
             # Project out subspace of already computed eigenvalues
             projector = _Projector(eigenvectors)
@@ -235,12 +240,13 @@ def estimate_evidence_lower_bound(
     samples,
     n_eigenvalues,
     *,
+    compute_all=False,
     min_lh_eval=1e-3,
     n_batches=10,
     tol=0.0,
     verbose=True,
     metric_jit=True,
-    output_directory=None,
+    output_directory="",
     save_eigensystem_prefix="metric",
     resume_eigenvectors=None,
     resume_eigenvalues=None,
@@ -293,6 +299,9 @@ def estimate_evidence_lower_bound(
         the total number of relevant degrees of freedom of the problem, all
         relevant eigenvalues are always computed irrespective of other stopping
         criteria.
+    compute_all : bool
+        If True, compute all eigenvalues and eigenvectors of the relevant
+        metric subspace. Overrides `n_eigenvalues`.
     min_lh_eval : float
         Smallest eigenvalue of the likelihood to be considered. If the
         estimated eigenvalues become smaller than 1 + `min_lh_eval`, the
@@ -381,6 +390,13 @@ def estimate_evidence_lower_bound(
     )
     n_data_points = size(likelihood.lsm_tangents_shape) if not None else metric_size
     n_relevant_dofs = min(n_data_points, metric_size)
+    if compute_all:
+        if verbose:
+            logger.info(
+                f"compute_all=True; computing all {n_relevant_dofs} relevant "
+                f"eigenvalues."
+            )
+        n_eigenvalues = n_relevant_dofs
 
     eigenvalues, _ = _eigsh(
         metric,
@@ -390,6 +406,7 @@ def estimate_evidence_lower_bound(
         min_lh_eval=min_lh_eval,
         n_batches=n_batches,
         tol=tol,
+        early_stop=not compute_all,
         verbose=verbose,
         output_directory=output_directory,
         save_eigensystem_prefix=save_eigensystem_prefix,
