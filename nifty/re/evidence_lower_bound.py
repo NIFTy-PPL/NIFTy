@@ -61,12 +61,16 @@ def _orthonormalize_columns(eigenvectors):
     return q
 
 
-def _orthonormality_error(eigenvectors):
+def _orthonormality_error(eigenvectors, n_probes):
     if eigenvectors.size == 0:
         return 0.0
-    gram = eigenvectors.conj().T @ eigenvectors
-    gram -= np.eye(gram.shape[0], dtype=gram.dtype)
-    return float(np.max(np.abs(gram)))
+    n_vectors = eigenvectors.shape[1]
+    n_probes = min(n_probes, n_vectors)
+    rng = np.random.default_rng(0)
+    probes = rng.standard_normal((n_vectors, n_probes))
+    projected = eigenvectors.conj().T @ (eigenvectors @ probes)
+    diff = projected - probes
+    return float(np.max(np.abs(diff)))
 
 
 def _save_eigensystem(output_directory, prefix, eigenvalues, eigenvectors, *, verbose):
@@ -119,6 +123,7 @@ def _eigsh(
     orthonormalize_eigenvectors=True,
     orthonormalize_every_n_batches=5,
     orthonormalize_threshold=1e-6,
+    orthonormalize_n_probes=2,
 ):
     eigenvectors = None
     eigenvalues = None
@@ -134,6 +139,11 @@ def _eigsh(
             )
         if orthonormalize_threshold is not None and orthonormalize_threshold <= 0:
             raise ValueError("orthonormalize_threshold must be positive.")
+        if (
+            not isinstance(orthonormalize_n_probes, int)
+            or orthonormalize_n_probes < 1
+        ):
+            raise ValueError("orthonormalize_n_probes must be a positive integer.")
         if resume_eigenvectors is not None and resume_eigenvalues is None:
             raise ValueError(
                 "resume_eigenvalues is required when orthonormalize_eigenvectors=True."
@@ -171,7 +181,7 @@ def _eigsh(
             eigenvectors = eigenvectors[:, :n_eigenvalues]
         if orthonormalize_eigenvectors and eigenvectors is not None:
             error = (
-                _orthonormality_error(eigenvectors)
+                _orthonormality_error(eigenvectors, orthonormalize_n_probes)
                 if orthonormalize_threshold is not None
                 else None
             )
@@ -243,7 +253,7 @@ def _eigsh(
         if eigenvectors is not None:
             if orthonormalize_eigenvectors:
                 error = (
-                    _orthonormality_error(eigenvectors)
+                    _orthonormality_error(eigenvectors, orthonormalize_n_probes)
                     if orthonormalize_threshold is not None
                     else None
                 )
@@ -278,7 +288,7 @@ def _eigsh(
             batch_counter += 1
             if orthonormalize_eigenvectors:
                 error = (
-                    _orthonormality_error(eigenvectors)
+                    _orthonormality_error(eigenvectors, orthonormalize_n_probes)
                     if orthonormalize_threshold is not None
                     else None
                 )
@@ -335,6 +345,7 @@ def estimate_evidence_lower_bound(
     orthonormalize_eigenvectors=True,
     orthonormalize_every_n_batches=5,
     orthonormalize_threshold=1e-6,
+    orthonormalize_n_probes=2,
 ):
     """Provides an estimate for the Evidence Lower Bound (ELBO).
 
@@ -425,9 +436,12 @@ def estimate_evidence_lower_bound(
         Re-orthonormalize every N batches when `orthonormalize_eigenvectors`
         is True. Default is 5.
     orthonormalize_threshold : Optional[float]
-        Re-orthonormalize whenever the maximum absolute deviation of
-        `V.T @ V` from the identity exceeds this threshold. Set to `None` to
-        disable this check. Default is 1e-6.
+        Re-orthonormalize whenever a randomized probe of `V.T @ V` deviates
+        from the identity by more than this threshold. Set to `None` to disable
+        this check. Default is 1e-6.
+    orthonormalize_n_probes : int
+        Number of randomized probe vectors used to estimate the orthonormality
+        error. Default is 2.
 
     Returns
     -------
@@ -511,6 +525,7 @@ def estimate_evidence_lower_bound(
         orthonormalize_eigenvectors=orthonormalize_eigenvectors,
         orthonormalize_every_n_batches=orthonormalize_every_n_batches,
         orthonormalize_threshold=orthonormalize_threshold,
+        orthonormalize_n_probes=orthonormalize_n_probes,
     )
     if verbose:
         logger.info(
