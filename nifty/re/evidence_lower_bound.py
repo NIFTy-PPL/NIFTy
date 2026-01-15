@@ -429,8 +429,8 @@ def estimate_evidence_lower_bound(
     if verbose:
         s = (
             f"\nELBO decomposition (in log units)"
-            f"\nELBO mean : {elbo_mean:.4e} (upper: {elbo_up:.4e}, "
-            f"lower: {elbo_lw:.4e})"
+            f"\nELBO mean : {elbo_mean:.4e} (lower: {elbo_lw:.4e}, "
+            f"upper: {elbo_up:.4e})"
         )
         logger.info(s)
 
