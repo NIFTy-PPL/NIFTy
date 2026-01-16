@@ -139,10 +139,7 @@ def _eigsh(
             )
         if orthonormalize_threshold is not None and orthonormalize_threshold <= 0:
             raise ValueError("orthonormalize_threshold must be positive.")
-        if (
-            not isinstance(orthonormalize_n_probes, int)
-            or orthonormalize_n_probes < 1
-        ):
+        if not isinstance(orthonormalize_n_probes, int) or orthonormalize_n_probes < 1:
             raise ValueError("orthonormalize_n_probes must be a positive integer.")
         if resume_eigenvectors is not None and resume_eigenvalues is None:
             raise ValueError(
@@ -160,9 +157,7 @@ def _eigsh(
         if eigenvectors.ndim != 2:
             raise ValueError("resume_eigenvectors must be a 2D array.")
         if eigenvectors.shape[0] != metric_size:
-            raise ValueError(
-                "resume_eigenvectors does not match the metric size."
-            )
+            raise ValueError("resume_eigenvectors does not match the metric size.")
         if resume_eigenvalues is None:
             eigenvalues = _estimate_eigenvalues(metric, eigenvectors)
         else:
@@ -301,9 +296,7 @@ def _eigsh(
                             if error is not None and error > orthonormalize_threshold
                             else f"batch cadence every {orthonormalize_every_n_batches}"
                         )
-                        logger.info(
-                            f"Re-orthonormalizing eigenvectors ({reason})."
-                        )
+                        logger.info(f"Re-orthonormalizing eigenvectors ({reason}).")
                     eigenvectors = _orthonormalize_columns(eigenvectors)
             _save_eigensystem(
                 output_directory,
@@ -315,9 +308,7 @@ def _eigsh(
             if verbose:
                 done = eigenvalues.size
                 pct = math.ceil(100.0 * done / n_eigenvalues)
-                logger.info(
-                    f"Eigenvalue progress: {done}/{n_eigenvalues} ({pct}%)"
-                )
+                logger.info(f"Eigenvalue progress: {done}/{n_eigenvalues} ({pct}%)")
 
             if early_stop and abs(1.0 - np.min(eigenvalues)) < min_lh_eval:
                 break

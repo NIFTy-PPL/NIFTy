@@ -235,8 +235,9 @@ def test_estimate_elbo_nifty_re_vs_nifty(seed):
         neg.append(False)
 
     n_pos = {
-        k[1:]: ift.makeField(cf.domain[k[1:]],
-                             np.array(v) if k != "cf_spectrum" else np.array(v.T))
+        k[1:]: ift.makeField(
+            cf.domain[k[1:]], np.array(v) if k != "cf_spectrum" else np.array(v.T)
+        )
         for k, v in samples.pos.tree.items()
     }
     n_pos = ift.MultiField.from_dict(n_pos, cf.domain)
