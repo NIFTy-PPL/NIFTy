@@ -152,10 +152,7 @@ def _eigsh(
             )
         if orthonormalize_threshold is not None and orthonormalize_threshold <= 0:
             raise ValueError("orthonormalize_threshold must be positive.")
-        if (
-            not isinstance(orthonormalize_n_probes, int)
-            or orthonormalize_n_probes < 1
-        ):
+        if not isinstance(orthonormalize_n_probes, int) or orthonormalize_n_probes < 1:
             raise ValueError("orthonormalize_n_probes must be a positive integer.")
         if resume_eigenvectors is not None and resume_eigenvalues is None:
             raise ValueError(
@@ -312,9 +309,7 @@ def _eigsh(
                             if error is not None and error > orthonormalize_threshold
                             else f"batch cadence every {orthonormalize_every_n_batches}"
                         )
-                        logger.info(
-                            f"Re-orthonormalizing eigenvectors ({reason})."
-                        )
+                        logger.info(f"Re-orthonormalizing eigenvectors ({reason}).")
                     eigenvectors = _orthonormalize_columns(eigenvectors)
             _save_eigensystem(
                 output_directory,
@@ -326,9 +321,7 @@ def _eigsh(
             if verbose:
                 done = eigenvalues.size
                 pct = math.ceil(100.0 * done / n_eigenvalues)
-                logger.info(
-                    f"Eigenvalue progress: {done}/{n_eigenvalues} ({pct}%)"
-                )
+                logger.info(f"Eigenvalue progress: {done}/{n_eigenvalues} ({pct}%)")
 
             if early_stop and abs(1.0 - np.min(eigenvalues)) < min_lh_eval:
                 break
@@ -493,8 +486,10 @@ def estimate_evidence_lower_bound(
     --------
     For further details we refer to:
 
-    * Analytic formulation: P. Frank et al., Geometric Variational Inference <https://arxiv.org/pdf/2105.10470.pdf> (Sec. 5.1)
-    * Conceptualization: A. Kostić et al. (manuscript in preparation).
+    - Analytic geoVI parametrization: P. Frank et al., Geometric Variational
+        Inference <https://doi.org/10.3390/e23070853> (Sec. 5.1)
+    - Conceptualization: M. Guardiani et al., Towards Moment-constrained
+        Causal Modeling <https://doi.org/10.3390/psf2022005007> (Sec. 3.7).
     """
     if not isinstance(samples, ResidualSampleList):
         raise TypeError("samples attribute should be of type ResidualSampleList.")
