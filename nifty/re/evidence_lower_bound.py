@@ -343,7 +343,7 @@ def estimate_evidence_lower_bound(
     resume_eigenvectors=None,
     resume_eigenvalues=None,
     orthonormalize_eigenvectors=True,
-    orthonormalize_every_n_batches=5,
+    orthonormalize_every_n_batches=8,
     orthonormalize_threshold=1e-6,
     orthonormalize_n_probes=2,
 ):
@@ -434,7 +434,7 @@ def estimate_evidence_lower_bound(
         projecting out the corresponding subspace. Default is True.
     orthonormalize_every_n_batches : int
         Re-orthonormalize every N batches when `orthonormalize_eigenvectors`
-        is True. Default is 5.
+        is True. Default is 8.
     orthonormalize_threshold : Optional[float]
         Re-orthonormalize whenever a randomized probe of `V.T @ V` deviates
         from the identity by more than this threshold. Set to `None` to disable
