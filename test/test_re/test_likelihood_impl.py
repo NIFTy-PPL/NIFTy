@@ -369,7 +369,7 @@ def test_nifty_vcgaussian_vs_niftyre_vcgaussian_consistency(seed, iscomplex):
     def op_jft(x):
         return [val * x["res"], jnp.sqrt(jnp.exp(x["invcov"]))]
 
-    varcov_jft = jft.VariableCovarianceGaussian(data.asnumpy(), iscomplex).amend(op_jft)
+    varcov_jft = jft.VariableCovarianceGaussian(data.asnumpy()).amend(op_jft)
 
     def shapewithdtype_from_domain(domain, dtype=float):
         if isinstance(dtype, dict):
