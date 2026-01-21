@@ -33,10 +33,25 @@ class _Projector(ssl.LinearOperator):
         self.eigenvectors = eigenvectors
 
     def _matvec(self, x):
-        res = x.copy()
-        for eigenvector in self.eigenvectors.T:
-            res -= eigenvector * np.vdot(eigenvector, x)
-        return res
+        V = self.eigenvectors
+        # coefficients (k,)
+        c = V.T.conj() @ x
+        # projection
+        return x - V @ c
+
+    def _rmatvec(self, x):
+        return self._matvec(x)
+
+class _ProjectedMetric(ssl.LinearOperator):
+    def __init__(self, metric, projector):
+        super().__init__(dtype=metric.dtype, shape=metric.shape)
+        self.metric = metric
+        self.projector = projector
+
+    def _matvec(self, x):
+        px = self.projector.matvec(x)
+        mpx = self.metric.matvec(px)
+        return self.projector.matvec(mpx)
 
     def _rmatvec(self, x):
         return self._matvec(x)
@@ -261,14 +276,18 @@ def _eigsh(
                         )
                     eigenvectors = _orthonormalize_columns(eigenvectors)
             projector = _Projector(eigenvectors)
-            projected_metric = projector @ metric @ projector.T
+            projected_metric = _ProjectedMetric(metric, projector)
 
         for batch in batches:
             if verbose:
                 logger.info(f"\nNumber of eigenvalues being computed: {batch}")
             # Get eigensystem for current batch
             eigvals, eigvecs = ssl.eigsh(
-                projected_metric, k=batch, tol=tol, return_eigenvectors=True, which="LM"
+                projected_metric, 
+                k=batch, 
+                tol=tol,
+                return_eigenvectors=True, 
+                which="LM",
             )
             i = np.argsort(-eigvals)
             eigvals, eigvecs = eigvals[i], eigvecs[:, i]
@@ -314,7 +333,7 @@ def _eigsh(
                 break
             # Project out subspace of already computed eigenvalues
             projector = _Projector(eigenvectors)
-            projected_metric = projector @ metric @ projector.T
+            projected_metric = _ProjectedMetric(metric, projector)
     return eigenvalues, eigenvectors
 
 
