@@ -256,10 +256,9 @@ class VariableCovarianceGaussian(Likelihood):
 
     Parameters
     ----------
-    data : tree-like structure of jnp.ndarray and float
+    data : `jnp.ndarray` of float or `jft.Vector` of tree-like structure
+        of `jnp.ndarray`.
         Data with additive noise following a Gaussian distribution.
-    iscomplex: Boolean, optional
-        Whether the parameters are complex-valued.
 
     Notes
     -----
@@ -269,19 +268,21 @@ class VariableCovarianceGaussian(Likelihood):
     """
 
     data: Any = dataclasses.field(metadata=dict(static=False))
-    iscomplex: bool = False
 
-    def __init__(self, data, iscomplex=False):
+    def __init__(self, data):
         # TODO: make configurable whether `std_inv` or `std` is passed
         self.data = data
-        self.iscomplex = iscomplex
-        shp = tree_map(ShapeWithDtype.from_leave, (data, data.real))
+        self.iscomplex = tree_map(
+            lambda x: jnp.issubdtype(x.dtype, jnp.complexfloating), data
+        )
+        data_real = tree_map(jnp.real, data)
+        shp = tree_map(ShapeWithDtype.from_leave, (data, data_real))
         super().__init__(domain=shp, lsm_tangents_shape=shp)
 
     def energy(self, primals):
         res = (self.data - primals[0]) * primals[1]
         fct = 1 + self.iscomplex
-        return 0.5 * vdot(res, res).real - fct * sum(tree_map(jnp.log, primals[1]))
+        return 0.5 * vdot(res, res).real - sum(fct * tree_map(jnp.log, primals[1]))
 
     def metric(self, primals, tangents):
         fct = 2 * (1 + self.iscomplex)
