@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 # Authors: Philipp Frank, Gordian Edenhofer
 
-from dataclasses import field
 import operator
 from collections import namedtuple
 from functools import partial, reduce
@@ -12,47 +11,81 @@ from typing import Optional, Tuple
 import jax.numpy as jnp
 import numpy as np
 from jax import eval_shape, jit, vmap
-from jax.tree_util import register_pytree_node
 from jax.lax import scan
 from numpy import typing as npt
 
-from ..model import ModelMeta
 from ..num import amend_unique_
 from .grid import FlatGrid, Grid, OpenGridAtLevel
 from .grid_impl import HEALPixGridAtLevel
 from ..tree_math import solve, sqrtm
 
 
-def apply_kernel(x, *, kernel, indices=None):
-    """Applies the kernel to values on an entire multigrid"""
+def apply_kernel(x, *, kernel):
+    """Apply `kernel` to values on an entire multigrid.
+
+    Supports both scalar fields (arrays shaped like the grid) and vector-valued
+    fields (arrays shaped like the grid + (ncomp,)). For vector fields, `kernel`
+    should expose an integer attribute `ncomp`.
+    """
     if len(x) != (kernel.grid.depth + 1):
         msg = f"input depth {len(x)} does not match grid depth {kernel.grid.depth}"
         raise ValueError(msg)
+
+    g0 = kernel.grid.at(0)
+    ncomp = int(getattr(kernel, "ncomp", 0) or (x[0].shape[-1] if x[0].ndim == g0.ndim + 1 else 1))
+
     for lvl, xx in enumerate(x):
         g = kernel.grid.at(lvl)
-        if xx.size != g.size:
-            msg = f"input at level {lvl} of size {xx.size} does not match grid of size {g.size}"
-            raise ValueError(msg)
+        if xx.ndim == g.ndim:
+            if xx.size != g.size:
+                raise ValueError(
+                    f"input at level {lvl} of size {xx.size} does not match grid of size {g.size}"
+                )
+        elif xx.ndim == g.ndim + 1:
+            if xx.shape[-1] != ncomp:
+                raise ValueError(
+                    f"input at level {lvl} has ncomp={xx.shape[-1]} but expected {ncomp}"
+                )
+            if xx.size != g.size * ncomp:
+                raise ValueError(
+                    f"input at level {lvl} of size {xx.size} does not match grid of size {g.size} with ncomp={ncomp}"
+                )
+        else:
+            raise ValueError(
+                f"input at level {lvl} has ndim={xx.ndim} but grid has ndim={g.ndim}"
+            )
 
     def apply_at(index, level, x):
         assert index.ndim == 1
         iout, iin = kernel.get_output_input_indices(index, level)
         kernels = kernel.get_matrices(index, level)
+
+        # IMPORTANT: normalize "single kernel matrix" to a 1-tuple
+        if not isinstance(kernels, (tuple, list)):
+            kernels = (kernels,)
+
         assert len(iin) == len(kernels)
-        res = reduce(
-            operator.add,
-            (kk @ x[x_lvl][tuple(idx)] for kk, (idx, x_lvl) in zip(kernels, iin)),
-        )
-        return iout, res.reshape(iout[0].shape[1:])
+
+        acc = 0.0
+        for kk, (idx, x_lvl) in zip(kernels, iin):
+            xin = x[x_lvl][tuple(idx)]
+            if ncomp == 1:
+                xin = xin.reshape(xin.shape[:-1] + (-1,))
+            else:
+                # xin: batch... + (n_points, ncomp) -> batch... + (n_points*ncomp,)
+                xin = xin.reshape(xin.shape[:-2] + (-1,))
+            acc = acc + kk @ xin
+
+        out_shape = iout[0].shape[1:]
+        if ncomp == 1:
+            return iout, acc.reshape(out_shape)
+        return iout, acc.reshape(out_shape + (ncomp,))
 
     x = list(x)
-    _, x[0] = apply_at(
-        indices[0] if indices is not None else jnp.array([-1]), None, x
-    )  # Use dummy index for base
+    _, x[0] = apply_at(jnp.array([-1]), None, x)  # base kernel application
     for lvl in range(kernel.grid.depth):
         g = kernel.grid.at(lvl)
-        index = indices[lvl + 1] if indices is not None else g.refined_indices()
-        # TODO this selects window for each index individually
+        index = g.refined_indices()
         f = apply_at
         for i in range(g.ndim):
             f = vmap(f, (1, None, None), ((g.ndim - i, None), g.ndim - i - 1))
@@ -66,27 +99,15 @@ _CompressedIndexMap = namedtuple(
     "_CompressedIndexMap",
     ("base_kernel", "kernels", "uindices", "indexmaps", "invindices"),
 )
-def tree_flatten(self):
-    dynamic = [self.base_kernel, self.kernels, self.uindices, self.invindices]
-    static = [self.indexmaps]
-    return (tuple(dynamic), tuple(static))
-
-def tree_unflatten(aux, children):
-    static, dynamic = aux, children
-    return _CompressedIndexMap(base_kernel=dynamic[0], kernels=dynamic[1],
-                               uindices=dynamic[2], indexmaps=static[0], invindices=dynamic[3])
-register_pytree_node(_CompressedIndexMap, tree_flatten, tree_unflatten)
 
 
-class Kernel(metaclass=ModelMeta):
+class Kernel:
     """
     - Apply linear operators with inputs accross an arbitrary grid
     - A Kernel could be as simple as coarse graining children to a parent; or a full
       ICR or MSC implementation
     - Fully jax transformable to allow seamlessly being used in larger models
     """
-    _grid: Grid = field(metadata=dict(static=False))
-    _cim: Optional[_CompressedIndexMap] = field(metadata=dict(static=False), default=None)
 
     def __init__(self, grid, *, _cim: Optional[_CompressedIndexMap] = None):
         self._grid = grid
@@ -121,17 +142,6 @@ class Kernel(metaclass=ModelMeta):
         """Compute kernel matrices from scratch."""
         raise NotImplementedError()
 
-    def _lookup_indices(self, index, level):
-        if self._cim is None:
-            msg = "kernel needs to be compressed first for fast lookups"
-            raise NotImplementedError(msg)
-
-        if level is None:
-            return self._cim.base_kernel
-        index = self._cim.indexmaps[level].index2flatindex(index)[0]
-        index = self._cim.invindices[level][index - self._cim.indexmaps[level].shift]
-        return index
-
     def lookup_matrices(self, index, level):
         """Efficient retrieval of kernel matrices for a compressed kernel."""
         if self._cim is None:
@@ -140,7 +150,8 @@ class Kernel(metaclass=ModelMeta):
 
         if level is None:
             return self._cim.base_kernel
-        index = self._lookup_indices(index, level)
+        index = self._cim.indexmaps[level].index2flatindex(index)[0]
+        index = self._cim.invindices[level][index - self._cim.indexmaps[level].shift]
         return tuple(kk[index] for kk in self._cim.kernels[level])
 
     def compress_indices(
@@ -170,11 +181,7 @@ class Kernel(metaclass=ModelMeta):
             assert index.ndim == ids.ndim - 1
             return (distance_norm(out[..., jnp.newaxis] - ids[..., jnp.newaxis, :]),)
 
-        gridf = (
-            FlatGrid(self.grid)
-            if not isinstance(self.grid, FlatGrid)
-            else FlatGrid(self.grid, ordering=self.grid.ordering)
-        )
+        gridf = self.grid if isinstance(self.grid, FlatGrid) else FlatGrid(self.grid)
         uindices = []
         invindices = []
         indexmaps = []
@@ -279,23 +286,22 @@ def refinement_matrices(cov, n_fsz: int):
 class ICRKernel(Kernel):
     """Full ICR implementation taking an arbitrary grid and a covariance function."""
 
-
     def __init__(self, grid, covariance, *, window_size=None, _cim=None):
         self._covariance_elem = covariance
         if window_size is None:
             window_size = tuple(
                 _default_window_size(grid.at(lvl)) for lvl in range(grid.depth)
             )
-        elif not isinstance(window_size, tuple):
-            window_size = (window_size) * grid.depth
-        self._window_size = window_size
+        self._window_size = tuple(
+            np.broadcast_to(window_size, (grid.depth, grid.at(0).ndim))
+        )
         super().__init__(grid=grid, _cim=_cim)
 
     def replace(self, *, covariance=None, window_size=None, _cim=None):
         cim = self._cim if _cim is None else _cim
         if covariance is not None and cim is not None:
             cim = cim._replace(base_kernel=None, kernels=None)
-        elif covariance is None:
+        else:
             covariance = self._covariance_elem
         window_size = self.window_size if window_size is None else window_size
         return self.__class__(self.grid, covariance, window_size=window_size, _cim=cim)
@@ -312,12 +318,6 @@ class ICRKernel(Kernel):
         return self._window_size
 
     def get_output_input_indices(self, index, level):
-        """Index mappings defining matrix elements to refine `index`.
-
-        Each `index` at `level` is refined onto children `gout` at `level + 1`.
-        The indices of neighbors at `level` and inputs at `level + 1` needed to
-        gather the array elements of the input are returned.
-        """
         if level is None:
             grid_at_lvl = self.grid.at(0)
             pixel_indices = np.mgrid[tuple(slice(0, sz) for sz in grid_at_lvl.shape)]
@@ -332,35 +332,7 @@ class ICRKernel(Kernel):
         gf = gout.reshape(index.shape + (-1,))
         return (gout, level + 1), ((gc, level), (gf, level + 1))
 
-    def get_kernel_distmat(self, index, level):
-        """Distance matrix between fine and coarse points.
-        
-        Distances between all points involved in one local refinement operation.
-        In addition to the distance matrix, the number of features in the output
-        grid is returned, defining the number of columns in the distance matrix
-        that belong to the `fine` points.
-        """
-        if level is None:
-            _, ((ids, _),) = self.get_output_input_indices(index, None)
-            coords = self.grid.at(0).index2coord(ids)
-            dists = coords[..., jnp.newaxis] - coords[..., jnp.newaxis, :]
-            dists = jnp.linalg.norm(dists, axis=0)
-            return dists
-        _, ((idc, _), (idf, _)) = self.get_output_input_indices(index, level)
-        gc = self.grid.at(level).index2coord(idc)
-        gf = self.grid.at(level + 1).index2coord(idf)
-        coords = jnp.concatenate((gc, gf), axis=-1)
-        dists = coords[..., jnp.newaxis] - coords[..., jnp.newaxis, :]
-        dists = jnp.linalg.norm(dists, axis=0)
-        return dists, gf.shape[-1]
-
     def compute_matrices(self, index, level):
-        """Kernel matrices for a given index and level.
-        
-        Computes and returns the matrix elements required to refine `index`
-        onto it's children. These matrix elements are to be combined with array
-        elements gathered from the output of `self.get_output_input_indices`.
-        """
         if level is None:
             _, ((ids, _),) = self.get_output_input_indices(index, None)
             gc = self.grid.at(0).index2coord(ids)
@@ -383,3 +355,70 @@ class ICRKernel(Kernel):
         for _ in range(index.ndim - 1):
             f = vmap(f, in_axes=(1, 1))
         return f(idc, idf)
+
+class VectorICRKernel(ICRKernel):
+    """ICR kernel for vector-valued fields with fully coupled components.
+
+    The supplied covariance element function must have signature
+
+        covariance(x: (ndim,), y: (ndim,)) -> (ncomp, ncomp)
+
+    and return a symmetric positive definite matrix for x==y (and more generally
+    yield an SPD block covariance on any finite set of points).
+    """
+
+    def __init__(self, grid, covariance, *, ncomp: int = 3, window_size=None, _cim=None):
+        self.ncomp = int(ncomp)
+        super().__init__(grid=grid, covariance=covariance, window_size=window_size, _cim=_cim)
+
+    def replace(self, *, covariance=None, window_size=None, ncomp=None, _cim=None):
+        cim = self._cim if _cim is None else _cim
+        if covariance is not None and cim is not None:
+            cim = cim._replace(base_kernel=None, kernels=None)
+        else:
+            covariance = self._covariance_elem
+        window_size = self.window_size if window_size is None else window_size
+        ncomp = self.ncomp if ncomp is None else int(ncomp)
+        return self.__class__(self.grid, covariance, ncomp=ncomp, window_size=window_size, _cim=cim)
+
+    @property
+    def covariance_outer(self):
+        k = self._covariance_elem
+        ncomp = self.ncomp
+
+        def outer(cx, cy):
+            # cx: (ndim, Nx), cy: (ndim, Ny) -> (Nx*ncomp, Ny*ncomp)
+            def for_x(x):
+                # x: (ndim,)
+                return vmap(lambda y: k(x, y), in_axes=1, out_axes=0)(cy)  # (Ny, ncomp, ncomp)
+            blocks = vmap(for_x, in_axes=1, out_axes=0)(cx)  # (Nx, Ny, ncomp, ncomp)
+            # Reorder to (Nx, ncomp, Ny, ncomp) then flatten
+            blocks = jnp.transpose(blocks, (0, 2, 1, 3))
+            return blocks.reshape((blocks.shape[0] * ncomp, blocks.shape[2] * ncomp))
+
+        return outer
+
+    def compute_matrices(self, index, level):
+        if level is None:
+            _, ((ids, _),) = self.get_output_input_indices(index, None)
+            gc = self.grid.at(0).index2coord(ids)
+            cov = self.covariance_outer(gc, gc)
+            return (sqrtm(cov),)
+
+        _, ((idc, _), (idf, _)) = self.get_output_input_indices(index, level)
+        ncomp = self.ncomp
+
+        def get_mat(gc, gf):
+            gc = self.grid.at(level).index2coord(gc)
+            gf = self.grid.at(level + 1).index2coord(gf)
+            assert gc.shape[0] == gf.shape[0]
+            assert gc.ndim == gf.ndim == 2
+            coord = jnp.concatenate((gc, gf), axis=-1)
+            cov = self.covariance_outer(coord, coord)
+            return refinement_matrices(cov, gf.shape[1] * ncomp)
+
+        f = get_mat
+        for _ in range(index.ndim - 1):
+            f = vmap(f, in_axes=(1, 1))
+        return f(idc, idf)
+

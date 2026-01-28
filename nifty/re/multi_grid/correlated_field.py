@@ -14,7 +14,7 @@ from ..model import Model, WrappedCall
 from ..prior import NormalPrior
 from ..tree_math import ShapeWithDtype
 from .grid import Grid
-from .kernel import ICRKernel, Kernel, apply_kernel
+from .kernel import ICRKernel, Kernel, apply_kernel, VectorICRKernel
 
 
 class ICRField(Model):
@@ -139,3 +139,99 @@ class ICRField(Model):
                 kernel = kernel.compress_matrices()
         off = self.offset(x) if isinstance(self.offset, Model) else self.offset
         return off + apply_kernel(x[self._name_exc], kernel=kernel)[-1]
+
+class VectorICRField(Model):
+    """Vector-valued correlated field model utilizing ICR on multigrids.
+
+    This is the physically coupled (non-separable) variant: the covariance element
+    must return a full (ncomp, ncomp) matrix and may depend on the displacement
+    direction (e.g. divergence-free isotropic vector kernels).
+
+    Notes
+    -----
+    - For performance and correctness with direction-dependent kernels, the default
+      compression uses `use_distances=False`.
+    """
+
+    grid: Grid
+    kernel: Kernel
+    covariance: Union[Model, Callable] = field(metadata=dict(static=False))
+    offset: Model = field(metadata=dict(static=False))
+    compress: bool
+    fixed_kernel: bool
+    ncomp: int
+
+    def __init__(
+        self,
+        grid: Grid,
+        *,
+        ncomp: int = 3,
+        kernel: Union[dict, Model, Callable[[npt.NDArray, npt.NDArray], npt.NDArray]],
+        offset=0.0,
+        window_size=None,
+        compress: Union[bool, dict] = dict(
+            rtol=1e-5, atol=1e-10, buffer_size=10_000, use_distances=False
+        ),
+        prefix="mgvcfm",
+    ):
+        self.grid = grid
+        self.ncomp = int(ncomp)
+
+        shapes = [
+            ShapeWithDtype(tuple(self.grid.at(lvl).shape) + (self.ncomp,), jnp.float_)
+            for lvl in range(grid.depth + 1)
+        ]
+        self._name_exc = str(prefix) + "excitations"
+        domain = {self._name_exc: shapes}
+
+        # Parse kernel (must yield a covariance element returning (ncomp, ncomp))
+        fixed_kernel, covariance = False, None
+        if isinstance(kernel, dict):
+            raise ValueError(
+                "VectorICRField currently expects `kernel` to be a callable or Model producing a callable covariance element returning (ncomp,ncomp)."  # noqa: E501
+            )
+        elif isinstance(kernel, Model):
+            covariance = kernel
+        elif callable(kernel):
+            fixed_kernel = True
+            covariance = Partial(kernel)
+        else:
+            raise TypeError(f"invalid kernel type; got {kernel!r}")
+        self.fixed_kernel = fixed_kernel
+        self.covariance = covariance
+        if not self.fixed_kernel:
+            domain |= self.covariance.domain
+
+        # Parse offset
+        name_off = prefix + "offset"
+        if isinstance(offset, (tuple, list)):
+            offset = NormalPrior(*offset, name=name_off)
+        elif callable(offset) and not isinstance(offset, Model):
+            offset = WrappedCall(offset, name=name_off, white_init=True)
+        if not (isinstance(offset, Model) or isinstance(offset, float)):
+            raise ValueError(f"invalid `offset`; got {offset!r}")
+        if isinstance(offset, Model):
+            domain |= offset.domain
+        self.offset = offset
+
+        self.compress = isinstance(compress, dict) and len(compress) > 0
+        ker = VectorICRKernel(self.grid, None, ncomp=self.ncomp, window_size=window_size)
+        if self.compress:
+            ker = ker.compress_indices(**compress)
+        if self.fixed_kernel:
+            ker = ker.replace(covariance=self.covariance)
+            if self.compress:
+                ker = ker.compress_matrices()
+        self.kernel = ker
+
+        super().__init__(domain=domain, white_init=True)
+
+    def __call__(self, x):
+        if not self.fixed_kernel:
+            ker = self.kernel.replace(covariance=self.covariance(x))
+            if self.compress:
+                ker = ker.compress_matrices()
+        else:
+            ker = self.kernel
+        off = self.offset(x) if isinstance(self.offset, Model) else self.offset
+        return off + apply_kernel(x[self._name_exc], kernel=ker)[-1]
