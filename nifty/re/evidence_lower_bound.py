@@ -42,6 +42,7 @@ class _Projector(ssl.LinearOperator):
     def _rmatvec(self, x):
         return self._matvec(x)
 
+
 class _ProjectedMetric(ssl.LinearOperator):
     def __init__(self, metric, projector):
         super().__init__(dtype=metric.dtype, shape=metric.shape)
@@ -283,10 +284,10 @@ def _eigsh(
                 logger.info(f"\nNumber of eigenvalues being computed: {batch}")
             # Get eigensystem for current batch
             eigvals, eigvecs = ssl.eigsh(
-                projected_metric, 
-                k=batch, 
+                projected_metric,
+                k=batch,
                 tol=tol,
-                return_eigenvectors=True, 
+                return_eigenvectors=True,
                 which="LM",
             )
             i = np.argsort(-eigvals)
