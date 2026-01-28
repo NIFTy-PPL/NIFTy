@@ -2,6 +2,8 @@
 
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 
+import math
+import os
 from functools import partial
 
 import jax.flatten_util
@@ -31,10 +33,26 @@ class _Projector(ssl.LinearOperator):
         self.eigenvectors = eigenvectors
 
     def _matvec(self, x):
-        res = x.copy()
-        for eigenvector in self.eigenvectors.T:
-            res -= eigenvector * np.vdot(eigenvector, x)
-        return res
+        V = self.eigenvectors
+        # coefficients (k,)
+        c = V.T.conj() @ x
+        # projection
+        return x - V @ c
+
+    def _rmatvec(self, x):
+        return self._matvec(x)
+
+
+class _ProjectedMetric(ssl.LinearOperator):
+    def __init__(self, metric, projector):
+        super().__init__(dtype=metric.dtype, shape=metric.shape)
+        self.metric = metric
+        self.projector = projector
+
+    def _matvec(self, x):
+        px = self.projector.matvec(x)
+        mpx = self.metric.matvec(px)
+        return self.projector.matvec(mpx)
 
     def _rmatvec(self, x):
         return self._matvec(x)
@@ -43,6 +61,49 @@ class _Projector(ssl.LinearOperator):
 def _explicify(M):
     identity = np.identity(M.shape[0], dtype=np.float64)
     return np.column_stack([M.matvec(v) for v in identity])
+
+
+def _estimate_eigenvalues(metric, eigenvectors):
+    eigenvalues = np.empty(eigenvectors.shape[1], dtype=np.float64)
+    for i, vec in enumerate(eigenvectors.T):
+        eigenvalues[i] = np.vdot(vec, metric.matvec(vec))
+    return np.real_if_close(eigenvalues)
+
+
+def _orthonormalize_columns(eigenvectors):
+    if eigenvectors.size == 0:
+        return eigenvectors
+    q, _ = np.linalg.qr(eigenvectors)
+    return q
+
+
+def _orthonormality_error(eigenvectors, n_probes):
+    if eigenvectors.size == 0:
+        return 0.0
+    n_vectors = eigenvectors.shape[1]
+    n_probes = min(n_probes, n_vectors)
+    rng = np.random.default_rng(0)
+    probes = rng.standard_normal((n_vectors, n_probes))
+    projected = eigenvectors.conj().T @ (eigenvectors @ probes)
+    diff = projected - probes
+    return float(np.max(np.abs(diff)))
+
+
+def _save_eigensystem(output_directory, prefix, eigenvalues, eigenvectors, *, verbose):
+    if output_directory is None:
+        return
+    if output_directory == "":
+        output_directory = "."
+    os.makedirs(output_directory, exist_ok=True)
+    base = os.path.join(output_directory, prefix)
+    if verbose:
+        logger.info(
+            f"Saving metric eigensystem to "
+            f"{base}_eigenvalues.npy and {base}_eigenvectors.npy."
+        )
+    np.save(f"{base}_eigenvalues.npy", eigenvalues)
+    if eigenvectors is not None:
+        np.save(f"{base}_eigenvectors.npy", eigenvectors)
 
 
 def _ravel_metric(metric, position, dtype, metric_jit):
@@ -69,39 +130,165 @@ def _eigsh(
     min_lh_eval=1e-4,
     n_batches=10,
     tol=0.0,
+    early_stop=True,
     verbose=True,
+    output_directory=None,
+    save_eigensystem_prefix="metric",
+    resume_eigenvectors=None,
+    resume_eigenvalues=None,
+    orthonormalize_eigenvectors=True,
+    orthonormalize_every_n_batches=5,
+    orthonormalize_threshold=1e-6,
+    orthonormalize_n_probes=2,
 ):
     eigenvectors = None
+    eigenvalues = None
+    if resume_eigenvalues is not None and resume_eigenvectors is None:
+        raise ValueError("resume_eigenvalues requires resume_eigenvectors.")
+    if orthonormalize_eigenvectors:
+        if (
+            not isinstance(orthonormalize_every_n_batches, int)
+            or orthonormalize_every_n_batches < 1
+        ):
+            raise ValueError(
+                "orthonormalize_every_n_batches must be a positive integer."
+            )
+        if orthonormalize_threshold is not None and orthonormalize_threshold <= 0:
+            raise ValueError("orthonormalize_threshold must be positive.")
+        if not isinstance(orthonormalize_n_probes, int) or orthonormalize_n_probes < 1:
+            raise ValueError("orthonormalize_n_probes must be a positive integer.")
+        if resume_eigenvectors is not None and resume_eigenvalues is None:
+            raise ValueError(
+                "resume_eigenvalues is required when orthonormalize_eigenvectors=True."
+            )
     if n_eigenvalues > tot_dofs:
         raise ValueError(
             "Number of requested eigenvalues "
             "exceeds the number of relevant degrees of freedom!"
         )
 
-    if tot_dofs == n_eigenvalues:
+    batch_counter = 0
+    if resume_eigenvectors is not None:
+        eigenvectors = np.asarray(resume_eigenvectors)
+        if eigenvectors.ndim != 2:
+            raise ValueError("resume_eigenvectors must be a 2D array.")
+        if eigenvectors.shape[0] != metric_size:
+            raise ValueError("resume_eigenvectors does not match the metric size.")
+        if resume_eigenvalues is None:
+            eigenvalues = _estimate_eigenvalues(metric, eigenvectors)
+        else:
+            eigenvalues = np.asarray(resume_eigenvalues)
+        if eigenvalues.ndim != 1:
+            raise ValueError("resume_eigenvalues must be a 1D array.")
+        if eigenvalues.size != eigenvectors.shape[1]:
+            raise ValueError(
+                "resume_eigenvalues and resume_eigenvectors have mismatched sizes."
+            )
+        order = np.argsort(-eigenvalues)
+        eigenvalues = eigenvalues[order]
+        eigenvectors = eigenvectors[:, order]
+        if eigenvalues.size > n_eigenvalues:
+            eigenvalues = eigenvalues[:n_eigenvalues]
+            eigenvectors = eigenvectors[:, :n_eigenvalues]
+        if orthonormalize_eigenvectors and eigenvectors is not None:
+            error = (
+                _orthonormality_error(eigenvectors, orthonormalize_n_probes)
+                if orthonormalize_threshold is not None
+                else None
+            )
+            if error is not None and error > orthonormalize_threshold:
+                if verbose:
+                    logger.info(
+                        "Re-orthonormalizing eigenvectors ("
+                        f"orthonormality error {error:.2e} > "
+                        f"{orthonormalize_threshold:.2e})."
+                    )
+                eigenvectors = _orthonormalize_columns(eigenvectors)
+        if verbose:
+            logger.info(
+                f"Resuming eigenvalue computation with {eigenvalues.size} "
+                f"precomputed eigenvalues."
+            )
+
+    if eigenvalues is not None and eigenvalues.size > tot_dofs:
+        raise ValueError(
+            "Number of provided eigenvectors exceeds relevant degrees of freedom."
+        )
+
+    if (
+        early_stop
+        and eigenvalues is not None
+        and abs(1.0 - np.min(eigenvalues)) < min_lh_eval
+    ):
+        return eigenvalues, eigenvectors
+
+    n_precomputed = 0 if eigenvalues is None else eigenvalues.size
+    remaining_eigenvalues = n_eigenvalues - n_precomputed
+    if remaining_eigenvalues <= 0:
+        return eigenvalues, eigenvectors
+
+    if tot_dofs == n_eigenvalues and n_precomputed == 0:
         # Compute exact eigensystem
         if verbose:
             logger.info(f"Computing all {tot_dofs} relevant metric eigenvalues.")
-        eigenvalues = slg.eigh(
-            _explicify(metric),
-            eigvals_only=True,
-            subset_by_index=[metric_size - tot_dofs, metric_size - 1],
-        )
-        eigenvalues = np.flip(eigenvalues)
+        if output_directory is None:
+            eigenvalues = slg.eigh(
+                _explicify(metric),
+                eigvals_only=True,
+                subset_by_index=[metric_size - tot_dofs, metric_size - 1],
+            )
+            eigenvalues = np.flip(eigenvalues)
+        else:
+            eigvals, eigvecs = slg.eigh(
+                _explicify(metric),
+                eigvals_only=False,
+                subset_by_index=[metric_size - tot_dofs, metric_size - 1],
+            )
+            idx = np.argsort(-eigvals)
+            eigenvalues = eigvals[idx]
+            eigenvectors = eigvecs[:, idx]
+            _save_eigensystem(
+                output_directory,
+                save_eigensystem_prefix,
+                eigenvalues,
+                eigenvectors,
+                verbose=verbose,
+            )
     else:
         # Set up batches
-        batch_size = n_eigenvalues // n_batches
-        remainder = n_eigenvalues % batch_size
-        batches = [batch_size] * n_batches
-        batches += [remainder] if remainder > 0 else []
-        eigenvalues, projected_metric = None, metric
+        base = remaining_eigenvalues // n_batches
+        remainder = remaining_eigenvalues % n_batches
+        batches = [base + 1] * remainder + [base] * (n_batches - remainder)
+        batches = [batch for batch in batches if batch > 0]
+        projected_metric = metric
+        if eigenvectors is not None:
+            if orthonormalize_eigenvectors:
+                error = (
+                    _orthonormality_error(eigenvectors, orthonormalize_n_probes)
+                    if orthonormalize_threshold is not None
+                    else None
+                )
+                if error is not None and error > orthonormalize_threshold:
+                    if verbose:
+                        logger.info(
+                            "Re-orthonormalizing eigenvectors ("
+                            f"orthonormality error {error:.2e} > "
+                            f"{orthonormalize_threshold:.2e})."
+                        )
+                    eigenvectors = _orthonormalize_columns(eigenvectors)
+            projector = _Projector(eigenvectors)
+            projected_metric = _ProjectedMetric(metric, projector)
 
         for batch in batches:
             if verbose:
                 logger.info(f"\nNumber of eigenvalues being computed: {batch}")
             # Get eigensystem for current batch
             eigvals, eigvecs = ssl.eigsh(
-                projected_metric, k=batch, tol=tol, return_eigenvectors=True, which="LM"
+                projected_metric,
+                k=batch,
+                tol=tol,
+                return_eigenvectors=True,
+                which="LM",
             )
             i = np.argsort(-eigvals)
             eigvals, eigvecs = eigvals[i], eigvecs[:, i]
@@ -113,12 +300,41 @@ def _eigsh(
             eigenvectors = (
                 eigvecs if eigenvectors is None else np.hstack((eigenvectors, eigvecs))
             )
+            batch_counter += 1
+            if orthonormalize_eigenvectors:
+                error = (
+                    _orthonormality_error(eigenvectors, orthonormalize_n_probes)
+                    if orthonormalize_threshold is not None
+                    else None
+                )
+                cadence = batch_counter % orthonormalize_every_n_batches == 0
+                if (error is not None and error > orthonormalize_threshold) or cadence:
+                    if verbose:
+                        reason = (
+                            f"orthonormality error {error:.2e} > "
+                            f"{orthonormalize_threshold:.2e}"
+                            if error is not None and error > orthonormalize_threshold
+                            else f"batch cadence every {orthonormalize_every_n_batches}"
+                        )
+                        logger.info(f"Re-orthonormalizing eigenvectors ({reason}).")
+                    eigenvectors = _orthonormalize_columns(eigenvectors)
+            _save_eigensystem(
+                output_directory,
+                save_eigensystem_prefix,
+                eigenvalues,
+                eigenvectors,
+                verbose=verbose,
+            )
+            if verbose:
+                done = eigenvalues.size
+                pct = math.ceil(100.0 * done / n_eigenvalues)
+                logger.info(f"Eigenvalue progress: {done}/{n_eigenvalues} ({pct}%)")
 
-            if abs(1.0 - np.min(eigenvalues)) < min_lh_eval:
+            if early_stop and abs(1.0 - np.min(eigenvalues)) < min_lh_eval:
                 break
             # Project out subspace of already computed eigenvalues
             projector = _Projector(eigenvectors)
-            projected_metric = projector @ metric @ projector.T
+            projected_metric = _ProjectedMetric(metric, projector)
     return eigenvalues, eigenvectors
 
 
@@ -127,11 +343,20 @@ def estimate_evidence_lower_bound(
     samples,
     n_eigenvalues,
     *,
+    compute_all=False,
     min_lh_eval=1e-3,
     n_batches=10,
     tol=0.0,
     verbose=True,
     metric_jit=True,
+    output_directory="",
+    save_eigensystem_prefix="metric",
+    resume_eigenvectors=None,
+    resume_eigenvalues=None,
+    orthonormalize_eigenvectors=True,
+    orthonormalize_every_n_batches=8,
+    orthonormalize_threshold=1e-6,
+    orthonormalize_n_probes=2,
 ):
     """Provides an estimate for the Evidence Lower Bound (ELBO).
 
@@ -181,6 +406,9 @@ def estimate_evidence_lower_bound(
         the total number of relevant degrees of freedom of the problem, all
         relevant eigenvalues are always computed irrespective of other stopping
         criteria.
+    compute_all : bool
+        If True, compute all eigenvalues and eigenvectors of the relevant
+        metric subspace. Overrides `n_eigenvalues`.
     min_lh_eval : float
         Smallest eigenvalue of the likelihood to be considered. If the
         estimated eigenvalues become smaller than 1 + `min_lh_eval`, the
@@ -199,6 +427,32 @@ def estimate_evidence_lower_bound(
         is True.
     metric_jit : bool or callable
         Whether to jit the metric. Default is True.
+    output_directory : Optional[str]
+        If set, saves the cumulative metric eigenvalues and eigenvectors after
+        each batch to `{output_directory}/{prefix}_eigenvalues.npy` and
+        `{output_directory}/{prefix}_eigenvectors.npy`.
+    save_eigensystem_prefix : str
+        Prefix for eigensystem filenames. Default is "metric".
+    resume_eigenvectors : Optional[np.ndarray]
+        Precomputed eigenvectors to resume the eigenvalue calculation. The
+        array is expected to be shaped `(metric_size, n_vectors)`.
+    resume_eigenvalues : Optional[np.ndarray]
+        Eigenvalues corresponding to `resume_eigenvectors`. If not provided,
+        they are estimated via the metric. Required when
+        `orthonormalize_eigenvectors` is True and `resume_eigenvectors` is set.
+    orthonormalize_eigenvectors : bool
+        If True, re-orthonormalize the cumulative eigenvector basis before
+        projecting out the corresponding subspace. Default is True.
+    orthonormalize_every_n_batches : int
+        Re-orthonormalize every N batches when `orthonormalize_eigenvectors`
+        is True. Default is 8.
+    orthonormalize_threshold : Optional[float]
+        Re-orthonormalize whenever a randomized probe of `V.T @ V` deviates
+        from the identity by more than this threshold. Set to `None` to disable
+        this check. Default is 1e-6.
+    orthonormalize_n_probes : int
+        Number of randomized probe vectors used to estimate the orthonormality
+        error. Default is 2.
 
     Returns
     -------
@@ -240,8 +494,9 @@ def estimate_evidence_lower_bound(
     For further details we refer to:
 
     - Analytic geoVI parametrization: P. Frank et al., Geometric Variational
-        Inference <https://arxiv.org/pdf/2105.10470.pdf> (Sec. 5.1)
-    - Conceptualization: A. Kostić et al. (manuscript in preparation).
+        Inference <https://doi.org/10.3390/e23070853> (Sec. 5.1)
+    - Conceptualization: M. Guardiani et al., Towards Moment-constrained
+        Causal Modeling <https://doi.org/10.3390/psf2022005007> (Sec. 3.7).
     """
     if not isinstance(samples, Samples):
         raise TypeError("samples attribute should be of type `Samples`.")
@@ -256,6 +511,13 @@ def estimate_evidence_lower_bound(
     )
     n_data_points = size(likelihood.lsm_tangents_shape) if not None else metric_size
     n_relevant_dofs = min(n_data_points, metric_size)
+    if compute_all:
+        if verbose:
+            logger.info(
+                f"compute_all=True; computing all {n_relevant_dofs} relevant "
+                f"eigenvalues."
+            )
+        n_eigenvalues = n_relevant_dofs
 
     eigenvalues, _ = _eigsh(
         metric,
@@ -265,7 +527,16 @@ def estimate_evidence_lower_bound(
         min_lh_eval=min_lh_eval,
         n_batches=n_batches,
         tol=tol,
+        early_stop=not compute_all,
         verbose=verbose,
+        output_directory=output_directory,
+        save_eigensystem_prefix=save_eigensystem_prefix,
+        resume_eigenvectors=resume_eigenvectors,
+        resume_eigenvalues=resume_eigenvalues,
+        orthonormalize_eigenvectors=orthonormalize_eigenvectors,
+        orthonormalize_every_n_batches=orthonormalize_every_n_batches,
+        orthonormalize_threshold=orthonormalize_threshold,
+        orthonormalize_n_probes=orthonormalize_n_probes,
     )
     if verbose:
         logger.info(
@@ -300,8 +571,8 @@ def estimate_evidence_lower_bound(
     if verbose:
         s = (
             f"\nELBO decomposition (in log units)"
-            f"\nELBO mean : {elbo_mean:.4e} (upper: {elbo_up:.4e}, "
-            f"lower: {elbo_lw:.4e})"
+            f"\nELBO mean : {elbo_mean:.4e} (lower: {elbo_lw:.4e}, "
+            f"upper: {elbo_up:.4e})"
         )
         logger.info(s)
 

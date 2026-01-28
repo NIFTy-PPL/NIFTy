@@ -4,6 +4,7 @@
 # Author: Matteo Guardiani
 
 import jax
+import jax.numpy as jnp
 import jax.random as random
 import numpy as np
 import pytest
@@ -14,6 +15,17 @@ import nifty.re as jft
 jax.config.update("jax_enable_x64", True)
 
 pmp = pytest.mark.parametrize
+
+
+def _make_simple_likelihood_and_samples(*, seed=0, dim=3, n_samples=2):
+    key = random.PRNGKey(seed)
+    key, subkey = random.split(key)
+    data = random.normal(subkey, shape=(dim,))
+    likelihood = jft.Gaussian(data)
+    key, subkey = random.split(key)
+    samples = random.normal(subkey, shape=(n_samples, dim))
+    pos = jnp.zeros_like(data)
+    return likelihood, jft.Samples(pos=pos, samples=samples)
 
 
 def _explicify(M, position):
@@ -223,8 +235,9 @@ def test_estimate_elbo_nifty_re_vs_nifty(seed):
         neg.append(False)
 
     n_pos = {
-        k[1:]: ift.makeField(cf.domain[k[1:]],
-                             np.array(v) if k != "cf_spectrum" else np.array(v.T))
+        k[1:]: ift.makeField(
+            cf.domain[k[1:]], np.array(v) if k != "cf_spectrum" else np.array(v.T)
+        )
         for k, v in samples.pos.tree.items()
     }
     n_pos = ift.MultiField.from_dict(n_pos, cf.domain)
@@ -247,3 +260,96 @@ def test_estimate_elbo_nifty_re_vs_nifty(seed):
     n_elbo_samples = np.array(n_elbo_samples)
 
     assert np.allclose(elbo, n_elbo_samples, atol=1e-8)
+
+
+def test_elbo_save_and_resume(tmp_path):
+    likelihood, samples = _make_simple_likelihood_and_samples(seed=0, dim=3)
+    output_directory = tmp_path / "eig"
+
+    elbo_a, _ = jft.estimate_evidence_lower_bound(
+        likelihood,
+        samples,
+        2,
+        n_batches=2,
+        output_directory=str(output_directory),
+        metric_jit=False,
+    )
+
+    eigvals = np.load(output_directory / "metric_eigenvalues.npy")
+    eigvecs = np.load(output_directory / "metric_eigenvectors.npy")
+    assert eigvecs.shape == (3, eigvals.size)
+
+    elbo_b, _ = jft.estimate_evidence_lower_bound(
+        likelihood,
+        samples,
+        2,
+        n_batches=2,
+        metric_jit=False,
+        resume_eigenvalues=eigvals,
+        resume_eigenvectors=eigvecs,
+    )
+    assert np.allclose(elbo_a, elbo_b)
+
+
+def test_elbo_compute_all_saves_all_eigenvalues(tmp_path):
+    likelihood, samples = _make_simple_likelihood_and_samples(seed=1, dim=3)
+    output_directory = tmp_path / "all"
+
+    jft.estimate_evidence_lower_bound(
+        likelihood,
+        samples,
+        1,
+        compute_all=True,
+        output_directory=str(output_directory),
+        metric_jit=False,
+    )
+
+    eigvals = np.load(output_directory / "metric_eigenvalues.npy")
+    assert eigvals.size == 3
+
+
+def test_elbo_early_stop_saves_partial_eigenvalues(tmp_path):
+    likelihood, samples = _make_simple_likelihood_and_samples(seed=2, dim=5)
+    output_directory = tmp_path / "early"
+
+    jft.estimate_evidence_lower_bound(
+        likelihood,
+        samples,
+        4,
+        n_batches=4,
+        min_lh_eval=2.0,
+        output_directory=str(output_directory),
+        metric_jit=False,
+    )
+
+    eigvals = np.load(output_directory / "metric_eigenvalues.npy")
+    assert eigvals.size < 4
+
+
+def test_elbo_orthonormalize_requires_resume_eigenvalues():
+    likelihood, samples = _make_simple_likelihood_and_samples(seed=3, dim=3)
+    resume_vecs = np.eye(3)[:, :1]
+    with pytest.raises(ValueError, match="resume_eigenvalues is required"):
+        jft.estimate_evidence_lower_bound(
+            likelihood,
+            samples,
+            2,
+            metric_jit=False,
+            resume_eigenvectors=resume_vecs,
+            orthonormalize_eigenvectors=True,
+        )
+
+
+def test_elbo_orthonormalize_runs():
+    likelihood, samples = _make_simple_likelihood_and_samples(seed=4, dim=3)
+    elbo, _ = jft.estimate_evidence_lower_bound(
+        likelihood,
+        samples,
+        2,
+        n_batches=2,
+        metric_jit=False,
+        orthonormalize_eigenvectors=True,
+        orthonormalize_every_n_batches=2,
+        orthonormalize_threshold=None,
+    )
+    assert elbo.shape == (len(samples),)
