@@ -1,7 +1,7 @@
 import jax
 import jax.numpy as jnp
 
-def slq_gauss_radau(A, f, order, num_samples=1, key=None, deflate_eigvecs=None, fixed_endpoint=None):
+def slq_gauss_radau(A, f, order, num_samples=1, key=None, deflate_eigvecs=None, fixed_endpoint=None, lam_min=None, lam_max=None,):
     """
     Estimate trace(f(A)) for a symmetric positive-definite matrix A using Stochastic Lanczos Quadrature (SLQ) 
     with Gauss-Radau quadrature. In particular, setting f(x)=log(x) estimates log(det(A)).
@@ -32,99 +32,126 @@ def slq_gauss_radau(A, f, order, num_samples=1, key=None, deflate_eigvecs=None, 
     The implementation uses Hutchinson's method with Rademacher vectors [oai_citation:8‡openreview.net](https://openreview.net/pdf?id=nPtmUTt8iWl#:~:text=log%20det%28K%CE%BD%29%20%3D%20tr%28log%20K%CE%BD%29,log%20K%CE%BDz%5D%2C%20%283) and Lanczos quadrature [oai_citation:9‡gerard-meurant.fr](https://gerard-meurant.fr/cgql_2012.pdf#:~:text=AVn%20%3D%20VnTn%20%E2%87%92%20f,A%29Vne1%20%3D%20v). 
     Gauss-Radau quadrature is employed with one fixed node at the spectrum's end to improve accuracy for singular functions [oai_citation:10‡openreview.net](https://openreview.net/pdf?id=nPtmUTt8iWl#:~:text=Gauss,the%20largest%20eigenvalue%20of%20K%CE%BD).
     """
-    # 1. Handle input matrix or linear operator
+    if fixed_endpoint is not None and (lam_min is not None or lam_max is not None):
+        raise ValueError("Use either fixed_endpoint OR (lam_min, lam_max), not both.")
+    if (lam_min is None) ^ (lam_max is None):
+        raise ValueError("Provide both lam_min and lam_max, or neither.")
+    if key is None:
+        raise ValueError("PRNG key is required.")
+
+    # --- matvec & dimension ---
     if callable(A):
         matvec = A
+        if deflate_eigvecs is None:
+            raise ValueError("If A is callable, provide deflate_eigvecs to infer n (or add an explicit n argument).")
+        n = deflate_eigvecs.shape[0]
     else:
         matvec = lambda v: A @ v
-    # Determine matrix dimension
-    n = A.shape[0] if not callable(A) else (deflate_eigvecs.shape[0] if deflate_eigvecs is not None else None)
-    if n is None:
-        raise ValueError("Must provide matrix dimension (via A shape or deflate_eigvecs) when A is a function.")
-    if key is None:
-        raise ValueError("PRNG key is required for random vector generation.")
-    
-    # 2. Generate Rademacher random vectors (num_samples x n) with entries ±1
-    rademacher_vecs = 2 * jax.random.bernoulli(key, 0.5, shape=(num_samples, n)).astype(jnp.float64) - 1.0
-    
-    # 3. Deflate known eigenvectors from random vectors (if provided)
+        n = A.shape[0]
+
+    # --- probes ---
+    z = 2 * jax.random.bernoulli(key, 0.5, shape=(num_samples, n)).astype(jnp.float64) - 1.0
+
     if deflate_eigvecs is not None:
-        Q = jnp.array(deflate_eigvecs)  # ensure JAX array
-        # Project out components along Q's columns: v <- v - Q (Q^T v)
-        proj = Q @ (Q.T @ rademacher_vecs.T)  # shape (n, num_samples)
-        rademacher_vecs = (rademacher_vecs.T - proj).T
-    
-    # 4. Normalize the random vectors (so that ||v||=1 for Lanczos)
-    norms = jnp.linalg.norm(rademacher_vecs, axis=1)
-    norms = jnp.where(norms == 0, 1.0, norms)         # avoid zero norm
-    V0 = rademacher_vecs / norms[:, None]             # shape (num_samples, n)
-    
-    # 5. Lanczos algorithm for each probe vector (fixed number of steps = order)
+        Q = jnp.asarray(deflate_eigvecs, dtype=z.dtype)
+        z = z - (Q @ (Q.T @ z.T)).T
+
+    norm2 = jnp.sum(z * z, axis=1)
+    norm = jnp.sqrt(jnp.where(norm2 == 0, 1.0, norm2))
+    v0 = z / norm[:, None]
+
+    # --- lanczos ---
     def lanczos_one(v1):
         alpha = jnp.zeros(order, dtype=v1.dtype)
-        beta = jnp.zeros(order, dtype=v1.dtype)
+        beta  = jnp.zeros(order, dtype=v1.dtype)   # beta[i] is residual norm after step i
         v_prev = jnp.zeros_like(v1)
         v_curr = v1
-        # (Using a Python loop for clarity; for JIT, ensure `order` is static or use jax.lax.fori_loop)
+
         for i in range(order):
-            w = matvec(v_curr)                          # w = A * v_curr
-            alpha_i = jnp.dot(v_curr, w)                # α_i = v_i^T A v_i
-            w = w - alpha_i * v_curr - (beta[i-1] * v_prev if i > 0 else 0)  # orthogonalize against previous two vectors
-            beta_i1 = jnp.linalg.norm(w)                # β_{i+1} = ||w||
-            beta_i1 = jnp.where(beta_i1 == 0, 0.0, beta_i1)  # if zero, Lanczos has converged early
-            v_next = jnp.where(beta_i1 != 0, w / beta_i1, v_prev)
-            alpha = alpha.at[i].set(alpha_i)
-            beta  = beta.at[i].set(beta_i1)
+            w = matvec(v_curr)
+            a = jnp.dot(v_curr, w)
+            w = w - a * v_curr - (beta[i - 1] * v_prev if i > 0 else 0.0)
+            b = jnp.linalg.norm(w)
+            v_next = jnp.where(b != 0, w / b, v_prev)
+
+            alpha = alpha.at[i].set(a)
+            beta  = beta.at[i].set(b)
             v_prev, v_curr = v_curr, v_next
-        # Construct tridiagonal T (order x order) with alphas on diag and betas on off-diags
-        T_diag    = alpha
-        T_subdiag = beta[:-1]       # length order-1
-        T = jnp.diag(T_diag) + jnp.diag(T_subdiag, 1) + jnp.diag(T_subdiag, -1)
+
+        T = jnp.diag(alpha) + jnp.diag(beta[:-1], 1) + jnp.diag(beta[:-1], -1)
         return alpha, beta, T
-    
-    # Vectorize Lanczos over all probe vectors
-    alphas, betas, Ts = jax.vmap(lanczos_one, in_axes=0, out_axes=(0,0,0))(V0)
-    
-    # 6. Determine Gauss-Radau endpoint μ (fixed node for quadrature)
-    if fixed_endpoint is None:
-        # Estimate largest eigenvalue from Lanczos: use max Ritz value plus last beta
-        eigs_T = jnp.linalg.eigvalsh(Ts)           # eigenvalues of each T (shape num_samples x order)
-        lam_max_est = jnp.max(eigs_T)              # maximum approximate eigenvalue
-        beta_m_max = jnp.max(betas[:, -1])         # largest β_m among runs
-        mu = lam_max_est + beta_m_max             # choose μ slightly above estimated λ_max
-    else:
-        mu = fixed_endpoint
-    mu = jnp.array(mu, dtype=Ts.dtype)
-    
-    # 7. Gauss-Radau quadrature: integrate using T extended with node at μ
-    def quad_one(alpha, beta):
+
+    alphas, betas, Ts = jax.vmap(lanczos_one)(v0)
+
+    # --- Gauss (point estimate) ---
+    def gauss_unit(T):
+        evals, evecs = jnp.linalg.eigh(T)
+        w = evecs[0, :] ** 2
+        return jnp.dot(w, f(evals))
+
+    gauss = jax.vmap(gauss_unit)(Ts) * norm2
+
+    gauss_mean = jnp.mean(gauss)
+    gauss_se = jnp.std(gauss, ddof=1) / jnp.sqrt(num_samples)
+
+    # --- Radau helper (unit-vector quadratic form) ---
+    def radau_unit(alpha, beta, T, mu_local):
         m = alpha.shape[0]
-        # Compute p_m(μ) and p_{m-1}(μ) via recurrence (for the characteristic polynomial of T)
-        p_prev = jnp.array(1.0, dtype=alpha.dtype)         # p_0(μ) = 1
-        p_curr = mu - alpha[0]                             # p_1(μ) = μ - α_1
-        for j in range(2, m+1):
-            # recurrence: p_j(μ) = (μ - α_j) * p_{j-1}(μ) - (β_{j-1}^2) * p_{j-2}(μ)
-            p_next = (mu - alpha[j-1]) * p_curr - (beta[j-2] ** 2) * p_prev
+        p_prev = jnp.array(1.0, dtype=alpha.dtype)
+        p_curr = mu_local - alpha[0]
+        for j in range(2, m + 1):
+            p_next = (mu_local - alpha[j - 1]) * p_curr - (beta[j - 2] ** 2) * p_prev
             p_prev, p_curr = p_curr, p_next
         p_m = p_curr
         p_m_minus_1 = p_prev
-        # Modified last diagonal: c = μ - (β_m^2 * p_{m-1}(μ) / p_m(μ))
-        # (Ensures μ is an eigenvalue of the extended (m+1)x(m+1) matrix)
-        c = jnp.where(p_m != 0, mu - (beta[m-1] ** 2) * p_m_minus_1 / p_m, mu)
-        # Form extended tridiagonal matrix T_ext of size (m+1)
-        T_ext = jnp.pad(jnp.diag(alpha), [(0,1),(0,1)], mode='constant')
-        T_ext = T_ext.at[m-1, m].set(beta[m-1])   # last subdiag element
-        T_ext = T_ext.at[m,   m-1].set(beta[m-1])
-        T_ext = T_ext.at[m,   m].set(c)
-        # Compute Gauss-Radau quadrature: e1^T f(T_ext) e1 = sum_k f(λ_k) * (e1·v_k)^2
+
+        c = jnp.where(p_m != 0, mu_local - (beta[m - 1] ** 2) * p_m_minus_1 / p_m, mu_local)
+
+        T_ext = jnp.pad(T, [(0, 1), (0, 1)], mode="constant")
+        T_ext = T_ext.at[m - 1, m].set(beta[m - 1])
+        T_ext = T_ext.at[m, m - 1].set(beta[m - 1])
+        T_ext = T_ext.at[m, m].set(c)
+
         evals, evecs = jnp.linalg.eigh(T_ext)
-        f_evals = f(evals)
-        w_weights = evecs[0, :] ** 2              # (e1 · eigenvector_k)^2
-        return jnp.dot(w_weights, f_evals)
-    
-    # Vectorize quadrature over all samples
-    quad_vals = jax.vmap(quad_one, in_axes=(0,0))(alphas, betas)
-    
-    # 8. Average over samples and scale by n to get trace(f(A))
-    trace_estimate = jnp.mean(quad_vals) * n
-    return trace_estimate
+        w = evecs[0, :] ** 2
+        return jnp.dot(w, f(evals))
+
+    out = {
+        "estimate": gauss_mean,         # make Gauss the default point estimate
+        "stochastic_se": gauss_se,
+        "gauss_estimate": gauss_mean,
+        "gauss_se": gauss_se,
+    }
+
+    # --- One-endpoint Radau (diagnostic) ---
+    if fixed_endpoint is not None or (lam_min is None and lam_max is None):
+        if fixed_endpoint is None:
+            # heuristic endpoint ≥ λ_max: max Ritz + max residual norm
+            ritz_max = jnp.max(jnp.linalg.eigvalsh(Ts))
+            residual_max = jnp.max(betas[:, -1])
+            mu = ritz_max + residual_max
+        else:
+            mu = jnp.array(fixed_endpoint, dtype=Ts.dtype)
+
+        radau = jax.vmap(lambda a, b, T: radau_unit(a, b, T, mu))(alphas, betas, Ts) * norm2
+        out["radau_estimate"] = jnp.mean(radau)
+        out["radau_se"] = jnp.std(radau, ddof=1) / jnp.sqrt(num_samples)
+        out["radau_endpoint"] = mu
+
+    # --- Two-endpoint Radau width (quadrature diagnostic) ---
+    if lam_min is not None and lam_max is not None:
+        mu_lo = jnp.array(lam_min, dtype=Ts.dtype)
+        mu_hi = jnp.array(lam_max, dtype=Ts.dtype)
+
+        lo = jax.vmap(lambda a, b, T: radau_unit(a, b, T, mu_lo))(alphas, betas, Ts) * norm2
+        hi = jax.vmap(lambda a, b, T: radau_unit(a, b, T, mu_hi))(alphas, betas, Ts) * norm2
+
+        lo_m = jnp.mean(lo)
+        hi_m = jnp.mean(hi)
+        out["radau_lo"] = lo_m
+        out["radau_hi"] = hi_m
+        out["quadrature_width"] = jnp.abs(hi_m - lo_m)
+        out["lam_min"] = lam_min
+        out["lam_max"] = lam_max
+
+    return out
