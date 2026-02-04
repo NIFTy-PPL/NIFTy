@@ -275,18 +275,47 @@ def _lanczos_tridiag_one(
 # -----------------------------------------------------------------------------
 # Online statistics (Welford)
 # -----------------------------------------------------------------------------
-def _welford_init(dtype: jnp.dtype):
-    mean = jnp.asarray(0.0, dtype=dtype)
-    m2 = jnp.asarray(0.0, dtype=dtype)
+def _welford_init(dtype: jnp.dtype, shape=()):
+    mean = jnp.zeros(shape, dtype=dtype)
+    m2 = jnp.zeros(shape, dtype=dtype)
     count = jnp.asarray(0, dtype=jnp.int32)
     return mean, m2, count
 
 
 def _welford_from_samples(x: Array):
     n = jnp.asarray(x.shape[0], dtype=jnp.int32)
-    mean = jnp.mean(x, dtype=x.dtype)
-    m2 = jnp.sum((x - mean) * (x - mean), dtype=x.dtype)
+    mean = jnp.mean(x, axis=0, dtype=x.dtype)
+    m2 = jnp.sum((x - mean) * (x - mean), axis=0, dtype=x.dtype)
     return mean, m2, n
+
+
+def _gauss_unit_multi(
+    alpha: Array,
+    off: Array,
+    fns: Tuple[Callable[[Array], Array], ...],
+    *,
+    clip_eigs: bool,
+    eig_clip: float,
+    clip_eigs_max: Optional[float],
+    nan_to_num: bool,
+) -> Array:
+    """Compute e1^T f(T) e1 for multiple scalar functions."""
+    T = _dense_tridiag(alpha, off)
+    evals, evecs = jnp.linalg.eigh(T)
+    w0 = evecs[0, :] ** 2
+
+    def apply_fn(fn):
+        fe = _apply_f_safely(
+            fn,
+            evals,
+            clip_eigs=clip_eigs,
+            eig_clip=eig_clip,
+            clip_eigs_max=clip_eigs_max,
+            nan_to_num=nan_to_num,
+        )
+        return jnp.dot(w0, fe)
+
+    return jnp.stack([apply_fn(fn) for fn in fns])
 
 
 def _welford_merge(a, b):
@@ -321,6 +350,7 @@ def slq_gauss_radau(
     fixed_endpoint: Optional[float] = None,
     lam_min: Optional[float] = None,
     lam_max: Optional[float] = None,
+    extra_fns: Optional[Dict[str, Callable[[Array], Array]]] = None,
     # robustness knobs
     eps: float = 1e-12,
     jitter: float = 0.0,
@@ -358,6 +388,11 @@ def slq_gauss_radau(
         Number of Hutchinson probe vectors (Rademacher).
     key:
         PRNGKey.
+    extra_fns:
+        Optional dict of additional scalar functions evaluated with the same
+        Lanczos tridiagonals. These are reported via
+        `extra_{name}_estimate` and `extra_{name}_se` in the output and use
+        Gauss quadrature only (no Radau diagnostics).
 
     Deflation
     ---------
@@ -369,6 +404,7 @@ def slq_gauss_radau(
     ---------------------
     - "estimate" / "gauss_estimate": Gauss SLQ point estimate (mean of z^T f(A) z)
     - "stochastic_se" / "gauss_se": standard error of the Hutchinson estimator
+    - For each entry in extra_fns: "extra_{name}_estimate", "extra_{name}_se"
     - If fixed_endpoint is provided:
         "radau_estimate", "radau_se", "radau_endpoint"
     - If lam_min and lam_max are both provided:
@@ -415,6 +451,16 @@ def slq_gauss_radau(
 
     reorth_mode = {"none": 0, "partial": 1, "full": 2}[reorthogonalize]
     dtype = jnp.float64
+
+    extra_names: Tuple[str, ...] = ()
+    extra_fns_tuple: Tuple[Callable[[Array], Array], ...] = ()
+    if extra_fns is not None:
+        if not isinstance(extra_fns, dict):
+            raise ValueError("extra_fns must be a dict of name -> callable.")
+        if extra_fns:
+            extra_items = tuple(extra_fns.items())
+            extra_names = tuple(k for k, _ in extra_items)
+            extra_fns_tuple = tuple(v for _, v in extra_items)
 
     # --- matvec & dimension ---
     if callable(A):
@@ -479,16 +525,31 @@ def slq_gauss_radau(
         )
 
     # --- per-probe quadrature functions (unit) ---
-    def gauss_one(alpha, off):
-        return _gauss_unit(
-            alpha,
-            off,
-            f,
-            clip_eigs=clip_eigs,
-            eig_clip=eig_clip,
-            clip_eigs_max=clip_eigs_max,
-            nan_to_num=nan_to_num,
-        )
+    if extra_fns_tuple:
+        fns_all = (f,) + extra_fns_tuple
+
+        def gauss_one(alpha, off):
+            return _gauss_unit_multi(
+                alpha,
+                off,
+                fns_all,
+                clip_eigs=clip_eigs,
+                eig_clip=eig_clip,
+                clip_eigs_max=clip_eigs_max,
+                nan_to_num=nan_to_num,
+            )
+    else:
+
+        def gauss_one(alpha, off):
+            return _gauss_unit(
+                alpha,
+                off,
+                f,
+                clip_eigs=clip_eigs,
+                eig_clip=eig_clip,
+                clip_eigs_max=clip_eigs_max,
+                nan_to_num=nan_to_num,
+            )
 
     def radau_one(alpha, off, mu):
         return _radau_unit(
@@ -521,7 +582,10 @@ def slq_gauss_radau(
         return v0, norm2
 
     # --- Welford accumulators for Gauss and Radau variants ---
-    ga_mean, ga_m2, ga_n = _welford_init(dtype)
+    if extra_fns_tuple:
+        ga_mean, ga_m2, ga_n = _welford_init(dtype, shape=(1 + len(extra_fns_tuple),))
+    else:
+        ga_mean, ga_m2, ga_n = _welford_init(dtype)
     ra_mean, ra_m2, ra_n = _welford_init(dtype)
     lo_mean, lo_m2, lo_n = _welford_init(dtype)
     hi_mean, hi_m2, hi_n = _welford_init(dtype)
@@ -551,7 +615,10 @@ def slq_gauss_radau(
 
         # Gauss values for this batch (scaled back to z^T f(A) z)
         g_unit = jax.vmap(gauss_one)(alphas_b, offs_b)
-        g = g_unit * norm2_b
+        if extra_fns_tuple:
+            g = g_unit * norm2_b[:, None]
+        else:
+            g = g_unit * norm2_b
 
         # update Welford for gauss
         ga_state2 = _welford_merge(ga_state, _welford_from_samples(g))
@@ -607,7 +674,11 @@ def slq_gauss_radau(
         v0_r, norm2_r = make_batch_probes(rem_key, rem)
         alphas_r, offs_r, _ = jax.vmap(one_probe)(v0_r)
 
-        g_r = jax.vmap(gauss_one)(alphas_r, offs_r) * norm2_r
+        g_unit_r = jax.vmap(gauss_one)(alphas_r, offs_r)
+        if extra_fns_tuple:
+            g_r = g_unit_r * norm2_r[:, None]
+        else:
+            g_r = g_unit_r * norm2_r
         ga_state = _welford_merge(ga_state, _welford_from_samples(g_r))
 
         if have_auto_endpoint:
@@ -674,14 +745,29 @@ def slq_gauss_radau(
     # Finalize stats + outputs
     # -------------------------------------------------------------------------
     ga_mean, ga_var, ga_n = _welford_finalize(*ga_state)
-    ga_se = jnp.sqrt(ga_var) / jnp.sqrt(jnp.asarray(num_samples, dtype=dtype)) if num_samples > 1 else jnp.asarray(0.0, dtype=dtype)
+    ga_se = (
+        jnp.sqrt(ga_var) / jnp.sqrt(jnp.asarray(num_samples, dtype=dtype))
+        if num_samples > 1
+        else jnp.asarray(0.0, dtype=dtype)
+    )
 
-    out: Dict[str, Array] = {
-        "estimate": ga_mean,
-        "stochastic_se": ga_se,
-        "gauss_estimate": ga_mean,
-        "gauss_se": ga_se,
-    }
+    if extra_fns_tuple:
+        out: Dict[str, Array] = {
+            "estimate": ga_mean[0],
+            "stochastic_se": ga_se[0],
+            "gauss_estimate": ga_mean[0],
+            "gauss_se": ga_se[0],
+        }
+        for idx, name in enumerate(extra_names, start=1):
+            out[f"extra_{name}_estimate"] = ga_mean[idx]
+            out[f"extra_{name}_se"] = ga_se[idx]
+    else:
+        out = {
+            "estimate": ga_mean,
+            "stochastic_se": ga_se,
+            "gauss_estimate": ga_mean,
+            "gauss_se": ga_se,
+        }
 
     if need_one_endpoint:
         rm, rvar, rn = _welford_finalize(*ra_state)
