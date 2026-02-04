@@ -282,13 +282,11 @@ def _welford_init(dtype: jnp.dtype):
     return mean, m2, count
 
 
-def _welford_update(mean, m2, count, x):
-    count2 = count + 1
-    delta = x - mean
-    mean2 = mean + delta / count2
-    delta2 = x - mean2
-    m2_2 = m2 + delta * delta2
-    return mean2, m2_2, count2
+def _welford_from_samples(x: Array):
+    n = jnp.asarray(x.shape[0], dtype=jnp.int32)
+    mean = jnp.mean(x, dtype=x.dtype)
+    m2 = jnp.sum((x - mean) * (x - mean), dtype=x.dtype)
+    return mean, m2, n
 
 
 def _welford_merge(a, b):
@@ -556,12 +554,7 @@ def slq_gauss_radau(
         g = g_unit * norm2_b
 
         # update Welford for gauss
-        ga_mean_, ga_m2_, ga_n_ = ga_state
-        def upd_ga(i, st):
-            m, m2, n_ = st
-            return _welford_update(m, m2, n_, g[i])
-        ga_mean_, ga_m2_, ga_n_ = lax.fori_loop(0, B, upd_ga, (ga_mean_, ga_m2_, ga_n_))
-        ga_state2 = (ga_mean_, ga_m2_, ga_n_)
+        ga_state2 = _welford_merge(ga_state, _welford_from_samples(g))
 
         # ritz max (for auto endpoint)
         ritz_max_next = ritz_max_so_far
@@ -584,23 +577,13 @@ def slq_gauss_radau(
             mu = jnp.asarray(fixed_endpoint, dtype=dtype)
             r_unit = jax.vmap(lambda a, o: radau_one(a, o, mu))(alphas_b, offs_b)
             r = r_unit * norm2_b
-            rm, rm2, rn = ra_state
-            def upd_ra(i, st):
-                m, m2, n_ = st
-                return _welford_update(m, m2, n_, r[i])
-            rm, rm2, rn = lax.fori_loop(0, B, upd_ra, (rm, rm2, rn))
-            ra_state2 = (rm, rm2, rn)
+            ra_state2 = _welford_merge(ra_state, _welford_from_samples(r))
 
         if have_auto_endpoint and (not auto_endpoint_two_pass):
             mu = ritz_max_next * (1.0 + endpoint_pad_rel) + endpoint_pad_abs
             r_unit = jax.vmap(lambda a, o: radau_one(a, o, mu))(alphas_b, offs_b)
             r = r_unit * norm2_b
-            rm, rm2, rn = ra_state2
-            def upd_ra_running(i, st):
-                m, m2, n_ = st
-                return _welford_update(m, m2, n_, r[i])
-            rm, rm2, rn = lax.fori_loop(0, B, upd_ra_running, (rm, rm2, rn))
-            ra_state2 = (rm, rm2, rn)
+            ra_state2 = _welford_merge(ra_state2, _welford_from_samples(r))
 
         if need_two_endpoint:
             mu_lo = jnp.asarray(lam_min, dtype=dtype)
@@ -609,22 +592,8 @@ def slq_gauss_radau(
             hi_unit = jax.vmap(lambda a, o: radau_one(a, o, mu_hi))(alphas_b, offs_b)
             lo = lo_unit * norm2_b
             hi = hi_unit * norm2_b
-
-            lm, lm2, ln = lo_state
-            hm, hm2, hn = hi_state
-
-            def upd_lo(i, st):
-                m, m2, n_ = st
-                return _welford_update(m, m2, n_, lo[i])
-
-            def upd_hi(i, st):
-                m, m2, n_ = st
-                return _welford_update(m, m2, n_, hi[i])
-
-            lm, lm2, ln = lax.fori_loop(0, B, upd_lo, (lm, lm2, ln))
-            hm, hm2, hn = lax.fori_loop(0, B, upd_hi, (hm, hm2, hn))
-            lo_state2 = (lm, lm2, ln)
-            hi_state2 = (hm, hm2, hn)
+            lo_state2 = _welford_merge(lo_state, _welford_from_samples(lo))
+            hi_state2 = _welford_merge(hi_state, _welford_from_samples(hi))
 
         return (ga_state2, ra_state2, lo_state2, hi_state2, ritz_max_next), None
 
@@ -639,10 +608,7 @@ def slq_gauss_radau(
         alphas_r, offs_r, _ = jax.vmap(one_probe)(v0_r)
 
         g_r = jax.vmap(gauss_one)(alphas_r, offs_r) * norm2_r
-        gm, gm2, gn = ga_state
-        for i in range(rem):
-            gm, gm2, gn = _welford_update(gm, gm2, gn, g_r[i])
-        ga_state = (gm, gm2, gn)
+        ga_state = _welford_merge(ga_state, _welford_from_samples(g_r))
 
         if have_auto_endpoint:
             def ritz_one(a, o):
@@ -653,31 +619,20 @@ def slq_gauss_radau(
         if fixed_endpoint is not None:
             mu = jnp.asarray(fixed_endpoint, dtype=dtype)
             r_r = jax.vmap(lambda a, o: radau_one(a, o, mu))(alphas_r, offs_r) * norm2_r
-            rm, rm2, rn = ra_state
-            for i in range(rem):
-                rm, rm2, rn = _welford_update(rm, rm2, rn, r_r[i])
-            ra_state = (rm, rm2, rn)
+            ra_state = _welford_merge(ra_state, _welford_from_samples(r_r))
 
         if have_auto_endpoint and (not auto_endpoint_two_pass):
             mu = ritz_max_stream * (1.0 + endpoint_pad_rel) + endpoint_pad_abs
             r_r = jax.vmap(lambda a, o: radau_one(a, o, mu))(alphas_r, offs_r) * norm2_r
-            rm, rm2, rn = ra_state
-            for i in range(rem):
-                rm, rm2, rn = _welford_update(rm, rm2, rn, r_r[i])
-            ra_state = (rm, rm2, rn)
+            ra_state = _welford_merge(ra_state, _welford_from_samples(r_r))
 
         if need_two_endpoint:
             mu_lo = jnp.asarray(lam_min, dtype=dtype)
             mu_hi = jnp.asarray(lam_max, dtype=dtype)
             lo_r = jax.vmap(lambda a, o: radau_one(a, o, mu_lo))(alphas_r, offs_r) * norm2_r
             hi_r = jax.vmap(lambda a, o: radau_one(a, o, mu_hi))(alphas_r, offs_r) * norm2_r
-            lm, lm2, ln = lo_state
-            hm, hm2, hn = hi_state
-            for i in range(rem):
-                lm, lm2, ln = _welford_update(lm, lm2, ln, lo_r[i])
-                hm, hm2, hn = _welford_update(hm, hm2, hn, hi_r[i])
-            lo_state = (lm, lm2, ln)
-            hi_state = (hm, hm2, hn)
+            lo_state = _welford_merge(lo_state, _welford_from_samples(lo_r))
+            hi_state = _welford_merge(hi_state, _welford_from_samples(hi_r))
 
     # -------------------------------------------------------------------------
     # PASS 2 (optional): auto-endpoint Radau (single fixed endpoint)
@@ -701,11 +656,7 @@ def slq_gauss_radau(
                 v0_b, norm2_b = make_batch_probes(batch_key, B)
                 alphas_b, offs_b, _ = jax.vmap(one_probe)(v0_b)
                 r_b = jax.vmap(lambda a, o: radau_one(a, o, mu_auto))(alphas_b, offs_b) * norm2_b
-                def upd(i, st):
-                    m, m2, n_ = st
-                    return _welford_update(m, m2, n_, r_b[i])
-                rm, rm2, rn = lax.fori_loop(0, B, upd, (rm, rm2, rn))
-                return (rm, rm2, rn), None
+                return _welford_merge((rm, rm2, rn), _welford_from_samples(r_b)), None
 
             (ra_mean2, ra_m2_2, ra_n2), _ = lax.scan(batch_body2, (ra_mean2, ra_m2_2, ra_n2), batch_keys2)
 
@@ -713,8 +664,9 @@ def slq_gauss_radau(
                 v0_r2, norm2_r2 = make_batch_probes(rem_key2, rem)
                 alphas_r2, offs_r2, _ = jax.vmap(one_probe)(v0_r2)
                 r_r2 = jax.vmap(lambda a, o: radau_one(a, o, mu_auto))(alphas_r2, offs_r2) * norm2_r2
-                for i in range(rem):
-                    ra_mean2, ra_m2_2, ra_n2 = _welford_update(ra_mean2, ra_m2_2, ra_n2, r_r2[i])
+                ra_mean2, ra_m2_2, ra_n2 = _welford_merge(
+                    (ra_mean2, ra_m2_2, ra_n2), _welford_from_samples(r_r2)
+                )
 
             ra_state = (ra_mean2, ra_m2_2, ra_n2)
 
