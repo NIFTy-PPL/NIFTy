@@ -8,6 +8,7 @@ import jax.numpy as jnp
 import jax.random as random
 import numpy as np
 import pytest
+from jax.tree_util import tree_map
 
 import nifty.cl as ift
 import nifty.re as jft
@@ -353,3 +354,80 @@ def test_elbo_orthonormalize_runs():
         orthonormalize_threshold=None,
     )
     assert elbo.shape == (len(samples),)
+
+
+def test_elbo_trace_log_slq_vs_exact_lognormal():
+    key = random.PRNGKey(0)
+    shape = (8,)
+
+    cf_zm = {"offset_mean": 0.0, "offset_std": (1e-3, 1e-4)}
+    cf_fl = {
+        "fluctuations": (1e-1, 5e-3),
+        "loglogavgslope": (-3.0, 1e-2),
+        "flexibility": None,
+        "asperity": None,
+    }
+
+    cfm = jft.CorrelatedFieldMaker("jcf_")
+    cfm.set_amplitude_total_offset(**cf_zm)
+    cfm.add_fluctuations(
+        shape,
+        distances=1.0 / shape[0],
+        **cf_fl,
+        prefix="",
+        non_parametric_kind="power",
+    )
+    cf = cfm.finalize()
+    logn_cf = jft.Model(lambda x: jnp.exp(cf(x)), domain=jft.Vector(cf.domain))
+
+    key, subkey = random.split(key)
+    pos_true = jft.random_like(subkey, logn_cf.domain)
+    signal = logn_cf(pos_true)
+
+    noise_level = 0.2
+    key, subkey = random.split(key)
+    noise = random.normal(subkey, shape=signal.shape) * noise_level
+    data = signal + noise
+
+    like = jft.Gaussian(
+        data=data, noise_cov_inv=lambda x: (1.0 / noise_level**2) * x
+    ).amend(logn_cf)
+
+    key, subkey = random.split(key)
+    pos = jft.random_like(subkey, logn_cf.domain)
+    n_samples = 4
+    keys = random.split(key, n_samples)
+    offsets_list = [jft.random_like(k, logn_cf.domain) for k in keys]
+    offsets = tree_map(lambda *xs: jnp.stack(xs, axis=0), *offsets_list)
+    offsets = tree_map(lambda x: 0.1 * x, offsets)
+    samples = jft.Samples(pos=pos, samples=offsets)
+
+    _, stats_exact = jft.estimate_evidence_lower_bound(
+        like,
+        samples,
+        3,
+        compute_all=True,
+        trace_log_method="slq",
+        trace_log_space="signal",
+        metric_jit=False,
+    )
+
+    _, stats_slq = jft.estimate_evidence_lower_bound(
+        like,
+        samples,
+        0,
+        compute_all=False,
+        trace_log_method="slq",
+        trace_log_space="signal",
+        metric_jit=False,
+        slq_order=12,
+        slq_num_samples=16,
+        slq_key=0,
+    )
+
+
+    exact_total = stats_exact["trace_log_exact"] + stats_exact["trace_log_slq"]
+    approx_total = stats_slq["trace_log_exact"] + stats_slq["trace_log_slq"]
+    tol = stats_slq["trace_log_se"]
+
+    assert np.abs(approx_total - exact_total) < tol
