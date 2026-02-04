@@ -19,7 +19,7 @@ from .likelihood import Likelihood
 from .logger import logger
 from .num.lanczos_new import slq_gauss_radau
 from .optimize_kl import _StandardHamiltonian as StandardHamiltonian
-from .tree_math.vector_math import size
+from .tree_math.vector_math import size, vdot
 
 
 class _Projector(ssl.LinearOperator):
@@ -414,6 +414,7 @@ def estimate_evidence_lower_bound(
     slq_kwargs=None,
     use_radau_as_bound=False,
     slq_jit=False,
+    analytic_prior_term=False,
 ):
     """Provides an estimate for the Evidence Lower Bound (ELBO).
 
@@ -538,7 +539,7 @@ def estimate_evidence_lower_bound(
     slq_kwargs : Optional[dict]
         Additional kwargs forwarded to `slq_gauss_radau` (excluding A, f,
         order, num_samples, key, n, deflate_eigvecs, lam_min, lam_max, and
-        fixed_endpoint).
+        fixed_endpoint, and extra_fns).
     use_radau_as_bound : bool
         If True, and SLQ returns two-endpoint Radau bounds (requires valid
         `lam_min`/`lam_max`), use the upper Radau bound on the *remaining*
@@ -553,6 +554,15 @@ def estimate_evidence_lower_bound(
         JAX tracer errors with callables. Useful when running multiple SLQ
         evaluations with the same shapes; for one-off runs the compile cost
         may outweigh the speedup. Default is False.
+    analytic_prior_term : bool
+        If True, compute the quadratic prior term
+        :math:`\\frac{1}{2}\\langle \\xi^\\dagger \\xi \\rangle_q` analytically
+        as :math:`\\frac{1}{2}(\\mathrm{Tr}\\,\\Sigma + \\bar\\xi^\\dagger\\bar\\xi)`
+        with :math:`\\Sigma = \\Lambda^{-1}`. The trace is estimated from the
+        exact eigenvalues plus (if needed) an SLQ remainder using
+        :math:`f(x)=1/x` (signal space) or :math:`f(x)=1/(1+x)` (data space).
+        Requires `trace_log_method="slq"` or `compute_all=True` when not all
+        eigenvalues are computed. Default is False.
 
     Returns
     -------
@@ -575,6 +585,10 @@ def estimate_evidence_lower_bound(
           For `trace_log_method="eigsh"` this is the legacy lower-bound term
           based on the smallest computed eigenvalue. For `trace_log_method="slq"`
           it is based on the SLQ standard error of the remaining trace-log.
+          If `analytic_prior_term=True`, an additional term from the SLQ
+          standard error of the trace-inverse estimate is included.
+        - `trace_inv_exact`, `trace_inv_slq`, `trace_inv_se`, `trace_inv_total`,
+          `prior_mean_sq`, `prior_term`: returned when `analytic_prior_term=True`.
 
     Warning
     -------
@@ -715,6 +729,33 @@ def estimate_evidence_lower_bound(
     tail_lo = None
     tail_hi = None
 
+    trace_inv_exact = 0.0
+    trace_inv_remainder = 0.0
+    trace_inv_remainder_se = 0.0
+    trace_inv_const = float(max(0, metric_size - n_relevant_dofs))
+    prior_mean_sq = 0.0
+
+    if analytic_prior_term:
+        if trace_log_method == "eigsh" and n_relevant_dofs > log_eigenvalues.size:
+            raise ValueError(
+                "analytic_prior_term requires trace_log_method='slq' or "
+                "compute_all=True when not all eigenvalues are computed."
+            )
+        if samples.pos is not None:
+            mean = samples.pos
+        elif len(samples) > 0:
+            mean = tree_map(lambda x: jnp.mean(x, axis=0), samples.samples)
+        else:
+            mean = None
+        if mean is not None:
+            prior_mean_sq = float(np.asarray(vdot(mean, mean)))
+        if eigenvalues.size > 0:
+            if use_data_space:
+                inv_eigs = 1.0 / (1.0 + eigenvalues)
+            else:
+                inv_eigs = 1.0 / eigenvalues
+            trace_inv_exact = float(np.sum(inv_eigs))
+
     if trace_log_method == "eigsh":
         tr_log_lat_cov = -0.5 * np.sum(log_eigenvalues)
         if log_eigenvalues.size > 0:
@@ -755,6 +796,7 @@ def estimate_evidence_lower_bound(
                 "lam_min",
                 "lam_max",
                 "fixed_endpoint",
+                "extra_fns",
             }
             overlap = forbidden.intersection(slq_kwargs)
             if overlap:
@@ -771,6 +813,15 @@ def estimate_evidence_lower_bound(
                     lam_min = None
                     lam_max = None
             deflate = None if eigenvectors is None else jnp.asarray(eigenvectors)
+            extra_fns = None
+            if analytic_prior_term:
+                if use_data_space:
+                    def inv_f(x):
+                        return 1.0 / (1.0 + x)
+                else:
+                    def inv_f(x):
+                        return 1.0 / x
+                extra_fns = {"inv": inv_f}
 
             if slq_jit:
                 if deflate is None:
@@ -786,6 +837,7 @@ def estimate_evidence_lower_bound(
                             key=key,
                             n=op_size,
                             deflate_eigvecs=deflate_eigvecs,
+                            extra_fns=extra_fns,
                             **slq_kwargs,
                         )
                 else:
@@ -800,6 +852,7 @@ def estimate_evidence_lower_bound(
                             deflate_eigvecs=deflate_eigvecs,
                             lam_min=lam_min,
                             lam_max=lam_max,
+                            extra_fns=extra_fns,
                             **slq_kwargs,
                         )
                 slq_out = jax.jit(_call_slq)(slq_key, deflate)
@@ -814,10 +867,14 @@ def estimate_evidence_lower_bound(
                     deflate_eigvecs=deflate,
                     lam_min=lam_min,
                     lam_max=lam_max,
+                    extra_fns=extra_fns,
                     **slq_kwargs,
                 )
             slq_remainder = float(np.asarray(slq_out["estimate"]))
             slq_remainder_se = float(np.asarray(slq_out["stochastic_se"]))
+            if analytic_prior_term and "extra_inv_estimate" in slq_out:
+                trace_inv_remainder = float(np.asarray(slq_out["extra_inv_estimate"]))
+                trace_inv_remainder_se = float(np.asarray(slq_out["extra_inv_se"]))
             if "radau_lo" in slq_out and "radau_hi" in slq_out:
                 lo = float(np.asarray(slq_out["radau_lo"]))
                 hi = float(np.asarray(slq_out["radau_hi"]))
@@ -834,12 +891,35 @@ def estimate_evidence_lower_bound(
                 f"SLQ remainder: {slq_remainder:.4e} "
                 f"(SE {slq_remainder_se:.2e})."
             )
+    trace_inv_total = 0.0
+    prior_term = 0.0
+    if analytic_prior_term:
+        trace_inv_total = trace_inv_exact + trace_inv_remainder + trace_inv_const
+        prior_term = 0.5 * (trace_inv_total + prior_mean_sq)
+        if trace_inv_remainder_se > 0.0:
+            tr_log_lat_cov_lower += 0.5 * trace_inv_remainder_se
     posterior_contribution = tr_log_lat_cov + 0.5 * metric_size
-    elbo_samples = np.array(
-        list(posterior_contribution - hamiltonian(s) for s in samples)
-    )
+    if analytic_prior_term:
+        elbo_samples = np.array(
+            list(posterior_contribution - likelihood(s) - prior_term for s in samples)
+        )
+    else:
+        elbo_samples = np.array(
+            list(posterior_contribution - hamiltonian(s) for s in samples)
+        )
 
     stats = {"lower_error": tr_log_lat_cov_lower}
+    if analytic_prior_term:
+        stats.update(
+            {
+                "trace_inv_exact": float(trace_inv_exact),
+                "trace_inv_slq": float(trace_inv_remainder),
+                "trace_inv_se": float(trace_inv_remainder_se),
+                "trace_inv_total": float(trace_inv_total),
+                "prior_mean_sq": float(prior_mean_sq),
+                "prior_term": float(prior_term),
+            }
+        )
     if trace_log_method == "slq":
         stats.update(
             {
@@ -868,6 +948,7 @@ def estimate_evidence_lower_bound(
             stats["trace_log_total_hi"] = float(exact_log + tail_hi)
     elbo_mean = np.mean(elbo_samples)
     elbo_std = np.std(elbo_samples, ddof=1)
+    elbo_se = elbo_std / np.sqrt(len(samples)) if len(samples) > 0 else 0.0
     elbo_up = elbo_mean + elbo_std
     elbo_lw = elbo_mean - elbo_std - stats["lower_error"]
     stats["elbo_lw"], stats["elbo_mean"], stats["elbo_up"] = (
@@ -876,6 +957,7 @@ def estimate_evidence_lower_bound(
         elbo_up,
     )
     stats["elbo_std"] = elbo_std
+    stats["elbo_se"] = elbo_se
     if verbose:
         if trace_log_method == "eigsh":
             remainder = n_relevant_dofs - log_eigenvalues.size
@@ -898,6 +980,17 @@ def estimate_evidence_lower_bound(
             if tail_lo is not None and tail_hi is not None:
                 trace_msg += f"\nTail bounds    : [{tail_lo:.4e}, {tail_hi:.4e}]"
         logger.info(trace_msg)
+
+        if analytic_prior_term:
+            prior_msg = (
+                f"\nAnalytic prior term (in log units)"
+                f"\nTrace(inv) : {trace_inv_total:.4e} "
+                f"(exact {trace_inv_exact:.4e}, "
+                f"SLQ {trace_inv_remainder:.4e}, "
+                f"const {trace_inv_const:.4e})"
+                f"\nMean^2     : {prior_mean_sq:.4e}"
+            )
+            logger.info(prior_msg)
 
         s = (
             f"\nELBO decomposition (in log units)"
