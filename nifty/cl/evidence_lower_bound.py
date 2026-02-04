@@ -252,11 +252,21 @@ def _eigsh(
                 verbose=verbose,
             )
     else:
-        # Set up batches
-        base = remaining_eigenvalues // n_batches
-        remainder = remaining_eigenvalues % n_batches
-        batches = [base + 1] * remainder + [base] * (n_batches - remainder)
-        batches = [batch for batch in batches if batch > 0]
+        # Set up batches based on total n_eigenvalues, then skip precomputed.
+        base = n_eigenvalues // n_batches
+        remainder = n_eigenvalues % n_batches
+        full_batches = [base + 1] * remainder + [base] * (n_batches - remainder)
+        full_batches = [batch for batch in full_batches if batch > 0]
+        batches = []
+        skip = n_precomputed
+        for batch in full_batches:
+            if skip >= batch:
+                skip -= batch
+                continue
+            if skip > 0:
+                batch -= skip
+                skip = 0
+            batches.append(batch)
         projected_metric = M
         if eigenvectors is not None:
             if orthonormalize_eigenvectors:
@@ -410,9 +420,11 @@ def estimate_evidence_lower_bound(
         proxy for all remaining eigenvalues in the trace-log estimation.
         Default is 1e-3.
     n_batches : int
-        Number of batches into which the eigenvalue estimation gets subdivided
-        into. Only after completing one batch the early stopping criterion
-        based on `min_lh_eval` is checked for.
+        Number of batches into which the eigenvalue estimation gets subdivided.
+        The batch schedule is defined for the total `n_eigenvalues`; when
+        resuming, the remaining work continues with the tail of this schedule.
+        Only after completing one batch the early stopping criterion based on
+        `min_lh_eval` is checked for.
     tol : Optional[float]
         Tolerance on the eigenvalue calculation. Zero indicates machine
         precision. Default is 0.
@@ -426,7 +438,8 @@ def estimate_evidence_lower_bound(
         each batch to `{output_directory}/{prefix}_eigenvalues.npy` and
         `{output_directory}/{prefix}_eigenvectors.npy`.
     save_eigensystem_prefix : str
-        Prefix for eigensystem filenames. Default is "metric".
+        Prefix for eigensystem filenames. A suffix `_signal` is appended
+        automatically. Default is "metric".
     resume_eigenvectors : Optional[np.ndarray]
         Precomputed eigenvectors to resume the eigenvalue calculation. The
         array is expected to be shaped `(metric_size, n_vectors)`.
@@ -507,6 +520,7 @@ def estimate_evidence_lower_bound(
 
     metric = hamiltonian(Linearization.make_var(samples.mean, want_metric=True)).metric
     metric_size = metric.domain.size
+    save_eigensystem_prefix = f"{save_eigensystem_prefix}_signal"
     if compute_all:
         if verbose:
             logger.info(
