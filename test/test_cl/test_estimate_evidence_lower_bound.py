@@ -167,8 +167,8 @@ def test_elbo_save_and_resume(tmp_path):
         output_directory=str(output_directory),
     )
 
-    eigvals = np.load(output_directory / "metric_eigenvalues.npy")
-    eigvecs = np.load(output_directory / "metric_eigenvectors.npy")
+    eigvals = np.load(output_directory / "metric_signal_eigenvalues.npy")
+    eigvecs = np.load(output_directory / "metric_signal_eigenvectors.npy")
     assert eigvecs.shape == (3, eigvals.size)
 
     elbo_b, _ = ift.estimate_evidence_lower_bound(
@@ -197,7 +197,7 @@ def test_elbo_compute_all_saves_all_eigenvalues(tmp_path):
         output_directory=str(output_directory),
     )
 
-    eigvals = np.load(output_directory / "metric_eigenvalues.npy")
+    eigvals = np.load(output_directory / "metric_signal_eigenvalues.npy")
     assert eigvals.size == 3
 
 
@@ -214,5 +214,5 @@ def test_elbo_early_stop_saves_partial_eigenvalues(tmp_path):
         output_directory=str(output_directory),
     )
 
-    eigvals = np.load(output_directory / "metric_eigenvalues.npy")
+    eigvals = np.load(output_directory / "metric_signal_eigenvalues.npy")
     assert eigvals.size < 4
