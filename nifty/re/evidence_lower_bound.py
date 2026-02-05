@@ -573,14 +573,11 @@ def estimate_evidence_lower_bound(
         Dictionary with a summary of the statistics of the estimated ELBO.
         The keys of this dictionary are:
 
-        - `elbo_mean`: returns the mean value of the elbo estimate calculated
-          over posterior samples
-        - `elbo_std`: returns the standard deviation of the ELBO samples
-        - `elbo_se`: returns the standard error of the ELBO mean (sampling error)
-        - `elbo_up`: returns an upper bound to the elbo estimate (given by one
-          posterior-sample standard deviation)
-        - `elbo_lw`: returns a lower bound to the elbo estimate (one standard
-          deviation plus a maximal error on the metric trace-log)
+        - `elbo_mean`: mean of the ELBO samples.
+        - `elbo_std`: standard deviation of the ELBO samples (sampling spread).
+        - `elbo_se`: standard error of the ELBO mean (`elbo_std / sqrt(n_samples)`).
+        - `elbo_up`: `elbo_mean + elbo_std` (one-sigma upper envelope).
+        - `elbo_lw`: `elbo_mean - elbo_std - lower_error` (conservative lower envelope).
         - `lower_error`: estimate of the residual trace-log uncertainty.
           For `trace_log_method="eigsh"` this is the legacy lower-bound term
           based on the smallest computed eigenvalue. For `trace_log_method="slq"`
