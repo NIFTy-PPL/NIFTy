@@ -20,6 +20,8 @@ from jax.sharding import Mesh, NamedSharding
 from jax.sharding import PartitionSpec as Pspec
 from jax.tree_util import Partial, tree_map
 
+from nifty.re.tree_math.vector import Vector
+
 from . import optimize
 from .evi import (
     Samples,
@@ -782,6 +784,9 @@ class OptimizeVI:
         )
         # Make the `key` tick independently of whether samples are drawn or not
         key, sk = random.split(key, 2)
+
+        overwrite_params = kwargs.pop("overwrite_samples_with_old")
+
         samples, st_smpls = self.draw_samples(
             samples,
             key=sk,
@@ -792,6 +797,18 @@ class OptimizeVI:
             nonlinearly_update_kwargs=nonlinearly_update_kwargs,
             **kwargs,
         )
+
+        if overwrite_params:
+            old_samples = overwrite_params["old_samples"]
+            new_samples = {}
+            for k in samples.samples.tree.keys():
+                if k in old_samples.samples.tree.keys():
+                    new_samples[k] = old_samples.samples[k] - old_samples.pos[k]
+                else:
+                    new_samples[k] = samples.samples[k] - samples.pos[k]
+
+            samples = Samples(pos=old_samples.pos, samples=Vector(new_samples))
+            breakpoint()
 
         kl_kwargs = _getitem_at_nit(config, "kl_kwargs", nit).copy()
         kl_opt_state = self.kl_minimize(
@@ -852,6 +869,7 @@ def optimize_kl(
     residual_device_map="pmap",
     _optimize_vi=None,
     _optimize_vi_state=None,
+    overwrite_samples_with_old: dict | None = None,
 ) -> tuple[Samples, OptimizeVIState]:
     """One-stop-shop for MGVI/geoVI style VI approximation.
 
@@ -933,7 +951,9 @@ def optimize_kl(
     nm = "OPTIMIZE_KL"
     for i in range(opt_vi_st.nit, opt_vi.n_total_iterations):
         logger.info(f"{nm}: Starting {i + 1:04d}")
-        samples, opt_vi_st = opt_vi.update(samples, opt_vi_st)
+        samples, opt_vi_st = opt_vi.update(
+            samples, opt_vi_st, overwrite_samples_with_old=overwrite_samples_with_old
+        )
         msg = opt_vi.get_status_message(samples, opt_vi_st, name=nm)
         logger.info(msg)
         if sanity_fn is not None:

@@ -68,8 +68,8 @@ samples_opt, st = jft.optimize_kl(
     lh,
     jft.Vector(lh.init(ki)),
     key=ko,
-    n_total_iterations=5,
-    n_samples=12,
+    n_total_iterations=1,
+    n_samples=2,
     draw_linear_kwargs=dict(
         cg_kwargs=dict(absdelta=delta * jft.size(lh.domain) / 10.0),
     ),
@@ -80,6 +80,26 @@ samples_opt, st = jft.optimize_kl(
         minimize_kwargs=dict(name="M", xtol=delta, cg_kwargs=dict(name=None))
     ),
     sample_mode="nonlinear_resample",
+)
+
+delta = 1e-4
+samples_opt, st = jft.optimize_kl(
+    lh,
+    samples_opt.pos,
+    key=ko,
+    n_total_iterations=2,
+    n_samples=2,
+    draw_linear_kwargs=dict(
+        cg_kwargs=dict(absdelta=delta * jft.size(lh.domain) / 10.0),
+    ),
+    nonlinearly_update_kwargs=dict(
+        minimize_kwargs=dict(xtol=delta, cg_kwargs=dict(name=None))
+    ),
+    kl_kwargs=dict(
+        minimize_kwargs=dict(name="M", xtol=delta, cg_kwargs=dict(name=None))
+    ),
+    sample_mode="nonlinear_resample",
+    overwrite_samples_with_old=dict(old_samples=samples_opt),
 )
 
 # %%
