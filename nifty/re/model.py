@@ -18,10 +18,12 @@ from jax.tree_util import (
     tree_map,
     tree_structure,
     tree_unflatten,
+    tree_reduce,
 )
 
 from .misc import wrap
 from .tree_math import PyTreeString, ShapeWithDtype, random_like, Vector
+from .logger import logger
 
 
 class Initializer:
@@ -404,3 +406,45 @@ class VModel(LazyModel):
             axs_tr = axs_tr | {k: None for k in x_tr.keys() - axs_tr.keys()}
         axs = Vector(axs_tr) if isinstance(x, Vector) else axs_tr
         return vmap(self.model, (axs,), self.out_axes)(x)
+
+
+class ClipModel(LazyModel):
+    """
+    A wrapper around a NIFTy model that clips all input values to a specified
+    threshold before passing them to the underlying model.
+
+    This is useful for preventing numerical instabilities caused by extreme
+    values in latent variables.
+    """
+
+    def __init__(self, model: Model, threshold: float = 10.0, warn: bool = False):
+        """
+        Parameters
+        ----------
+        model : Model
+            The model to be wrapped.
+        threshold : float, default=10.0
+            The absolute value limit used for clipping. All input values
+            are clipped to the interval ``[-threshold, threshold]``.
+        warn : bool, default=False
+            If True, emit a warning when any element of the input pytree
+            exceeds the clipping threshold. If True, this model cannot be
+            JIT-Compiled.
+        """
+        self.model = model
+        self.threshold = threshold
+        self.warn = warn
+        super().__init__(init=model.init)
+
+    def __call__(self, x):
+        if self.warn:
+            max_abs = lambda x: jnp.max(jnp.abs(x))
+            max_abs_val = tree_reduce(
+                lambda a, b: jnp.maximum(a, b), tree_map(max_abs, x)
+            )
+            if max_abs_val > self.threshold:
+                msg = "WARNING: Clipping input parameters."
+                logger.warning(msg)
+
+        x = tree_map(lambda x: jnp.clip(x, min=-self.threshold, max=self.threshold), x)
+        return self.model(x)
