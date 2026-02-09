@@ -58,3 +58,4 @@ from .prior import (
     UniformPrior,
 )
 from .tree_math import *
+from .blackjax import blackjax_nuts
