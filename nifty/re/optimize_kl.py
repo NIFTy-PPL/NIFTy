@@ -10,6 +10,7 @@ from dataclasses import field
 from functools import partial
 from os import makedirs
 from typing import Any, Callable, Literal, NamedTuple, Optional, TypeVar, Union
+from pathlib import Path
 
 import jax
 import numpy as np
@@ -273,6 +274,7 @@ class OptimizeVI:
         devices: Optional[list] = None,
         kl_device_map="shard_map",
         residual_device_map="pmap",
+        intermediate_samples_save: Optional[str] = None,
         _kl_value_and_grad: Optional[Callable] = None,
         _kl_metric: Optional[Callable] = None,
         _draw_linear_residual: Optional[Callable] = None,
@@ -342,6 +344,8 @@ class OptimizeVI:
             n_samples equals the number of devices. For the other maps it is
             sufficient if 2*n_samples equals the number of devices, or
             n_samples can be evenly divided by the number of devices.
+        intermediate_samples_save: Optional[str]
+            Save the samples at str location, before optimizing the position.
 
         Notes
         -----
@@ -439,6 +443,16 @@ class OptimizeVI:
         self.residual_map = residual_map
         self.get_status_message = _get_status_message
 
+        self.intermediate_samples_save = None
+        if intermediate_samples_save is not None:
+            save_path = Path(intermediate_samples_save)
+            save_path.parent.mkdir(parents=True, exist_ok=True)
+
+            if not os.access(save_path.parent, os.W_OK):
+                raise PermissionError(f"Directory '{save_path.parent}' is not writable")
+
+            self.intermediate_samples_save = save_path
+
     def draw_linear_samples(self, primals, keys, **kwargs):
         # NOTE, use `Partial` in favor of `partial` to allow the (potentially)
         # re-jitting `residual_map` to trace the kwargs
@@ -524,6 +538,7 @@ class OptimizeVI:
             smpls, smpls_states = curver(
                 samples.pos, samples._samples, metric_sample_key, sgn
             )
+
         else:
             curver = Partial(self.nonlinearly_update_residual, samples.pos, **kwargs)
             if self.residual_device_map == "shard_map":
@@ -750,6 +765,29 @@ class OptimizeVI:
         )
         return OptimizeVIState(nit, key, config=config)
 
+    def _save_intermediate_samples(
+        self, nit: int, samples: Samples, st_smpls: dict
+    ) -> None:
+        if self.intermediate_samples_save is None:
+            return
+
+        with open(self.intermediate_samples_save, "wb") as f:
+            pickle.dump({"nit": nit, "samples": samples, "st_smpls": st_smpls}, f)
+
+    def _load_intermediate_samples(self, nit: int) -> None | tuple[Samples, dict]:
+        if (self.intermediate_samples_save is None) or (
+            not self.intermediate_samples_save.exists()
+        ):
+            return None
+
+        with open(self.intermediate_samples_save, "rb") as f:
+            data = pickle.load(f)
+
+        if data["nit"] != nit:
+            return None
+
+        return data["samples"], data["st_smpls"]
+
     def update(
         self,
         samples: Samples,
@@ -782,16 +820,21 @@ class OptimizeVI:
         )
         # Make the `key` tick independently of whether samples are drawn or not
         key, sk = random.split(key, 2)
-        samples, st_smpls = self.draw_samples(
-            samples,
-            key=sk,
-            sample_mode=sample_mode,
-            point_estimates=point_estimates,
-            n_samples=n_samples,
-            draw_linear_kwargs=draw_linear_kwargs,
-            nonlinearly_update_kwargs=nonlinearly_update_kwargs,
-            **kwargs,
-        )
+
+        if (loaded := self._load_intermediate_samples(nit)) is not None:
+            samples, st_smpls = loaded
+        else:
+            samples, st_smpls = self.draw_samples(
+                samples,
+                key=sk,
+                sample_mode=sample_mode,
+                point_estimates=point_estimates,
+                n_samples=n_samples,
+                draw_linear_kwargs=draw_linear_kwargs,
+                nonlinearly_update_kwargs=nonlinearly_update_kwargs,
+                **kwargs,
+            )
+            self._save_intermediate_samples(nit, samples, st_smpls)
 
         kl_kwargs = _getitem_at_nit(config, "kl_kwargs", nit).copy()
         kl_opt_state = self.kl_minimize(
@@ -850,6 +893,7 @@ def optimize_kl(
     devices: Optional[list] = None,
     kl_device_map="shard_map",
     residual_device_map="pmap",
+    intermediate_samples_save: Optional[str] = None,
     _optimize_vi=None,
     _optimize_vi_state=None,
 ) -> tuple[Samples, OptimizeVIState]:
@@ -891,6 +935,7 @@ def optimize_kl(
             devices=devices,
             kl_device_map=kl_device_map,
             residual_device_map=residual_device_map,
+            intermediate_samples_save=intermediate_samples_save,
         )
 
     last_fn = os.path.join(odir, LAST_FILENAME) if odir is not None else None
