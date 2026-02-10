@@ -844,6 +844,10 @@ class OptimizeVI:
         # Remove unnecessary references
         kl_opt_state = kl_opt_state._replace(x=None, jac=None, hess=None, hess_inv=None)
 
+        # Remove intermediate samples file
+        if self.intermediate_samples_save:
+            self.intermediate_samples_save.unlink(missing_ok=True)
+
         state = state._replace(
             nit=nit + 1,
             key=key,
