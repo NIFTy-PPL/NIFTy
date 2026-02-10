@@ -1,6 +1,6 @@
 # Copyright(C) 2022 Gordian Edenhofer
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
-# Authors: Gordian Edenhofer, Philipp Frank
+# Authors: Gordian Edenhofer, Philipp Frank, Jakob Roth
 
 import abc
 from dataclasses import dataclass, field
