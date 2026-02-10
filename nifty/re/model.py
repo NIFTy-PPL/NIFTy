@@ -13,6 +13,7 @@ from jax import eval_shape
 from jax import numpy as jnp
 from jax import random, vmap
 from jax.tree_util import (
+    Partial,
     register_pytree_node,
     tree_leaves,
     tree_map,
@@ -20,6 +21,7 @@ from jax.tree_util import (
     tree_unflatten,
     tree_reduce,
 )
+from jax.lax import cond
 
 from .misc import wrap
 from .tree_math import PyTreeString, ShapeWithDtype, random_like, Vector
@@ -408,7 +410,7 @@ class VModel(LazyModel):
         return vmap(self.model, (axs,), self.out_axes)(x)
 
 
-class ClipModel(LazyModel):
+class ClipModel(Model):
     """
     A wrapper around a NIFTy model that clips all input values to a specified
     threshold before passing them to the underlying model.
@@ -417,23 +419,41 @@ class ClipModel(LazyModel):
     values in latent variables.
     """
 
-    def __init__(self, model: Model, threshold: float = 10.0, warn: bool = False):
+    def __init__(
+        self,
+        model: Model,
+        threshold: float = 10.0,
+        warn: bool = False,
+        custom_clip_func=None,
+    ):
         """
         Parameters
         ----------
         model : Model
-            The model to be wrapped.
+            The NIFTy model to be wrapped. This model is called on the clipped
+            version of the input.
         threshold : float, default=10.0
-            The absolute value limit used for clipping. All input values
-            are clipped to the interval ``[-threshold, threshold]``.
+            The absolute value used for default clipping. When
+            ``custom_clip_func`` is not provided, every leaf array in the input
+            pytree is clipped elementwise to the interval
+            ``[-threshold, threshold]``.
         warn : bool, default=False
-            If True, emit a warning when any element of the input pytree
-            exceeds the clipping threshold. If True, this model cannot be
-            JIT-Compiled.
+            If ``True``, a warning is emitted whenever any element in the input
+            pytree exceeds ``threshold`` in absolute value prior to clipping.
+        custom_clip_func : callable, optional
+            A custom function applied to each leaf of the input pytree instead
+            of ``jnp.clip``. It should take a single JAX array and return a
+            transformed array. If provided, ``threshold`` is not used for
+            clipping, but is still used for the warning check.
         """
         self.model = model
         self.threshold = threshold
         self.warn = warn
+        if custom_clip_func is None:
+            self.clip = Partial(jnp.clip, min=-threshold, max=threshold)
+        else:
+            self.clip = custom_clip_func
+
         super().__init__(init=model.init)
 
     def __call__(self, x):
@@ -442,9 +462,8 @@ class ClipModel(LazyModel):
             max_abs_val = tree_reduce(
                 lambda a, b: jnp.maximum(a, b), tree_map(max_abs, x)
             )
-            if max_abs_val > self.threshold:
-                msg = "WARNING: Clipping input parameters."
-                logger.warning(msg)
+            warn = max_abs_val > self.threshold
+            msg = "WARNING: Clipping input parameters."
+            cond(warn, lambda _: logger.warning(msg), lambda _: None, None)
 
-        x = tree_map(lambda x: jnp.clip(x, min=-self.threshold, max=self.threshold), x)
-        return self.model(x)
+        return self.model(tree_map(self.clip, x))
