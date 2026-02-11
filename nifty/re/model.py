@@ -200,6 +200,22 @@ class Model(LazyModel):
     
         my_array: Any = dataclasses.field(metadata=dict(static=False))
 
+    Nested models
+    -------------
+    When composing models hierachically, sub-models should be marked as
+    dynamic:
+    
+        class SubModel(jft.Model):
+            ...
+    
+        class ParentModel(jft.Model):
+            sub: SubModel = dataclasses.field(metadata=dict(static=False))
+            
+    Note that the static/dynamic classification within the sub-model is
+    preserved: fields marked as static in the sub-model remain static, even
+    though the sub-model itself is marked as dynamic in the parent model. The
+    dynamic marking only ensures that JAX recursively flattens the sub-model's
+    PyTree structure instead of treating it as a single static leaf.
     
     Parameters
     ----------
