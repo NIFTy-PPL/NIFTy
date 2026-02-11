@@ -88,7 +88,7 @@ lh = jft.Gaussian(data, noise_cov_inv).amend(signal_response)
 key, key_init, key_nuts = random.split(key, 3)
 pos_init = lh.init(key_init)
 
-samples, state = jft.blackjax_nuts(
+samples, final_state_and_params = jft.blackjax_nuts(
     lh,
     pos_init,
     key_nuts,
