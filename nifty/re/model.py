@@ -88,10 +88,17 @@ class Initializer:
 
 
 class ModelMeta(abc.ABCMeta):
-    """Register all derived classes as PyTrees in JAX using metaprogramming.
-
-    For any dataclasses.Field property with a metadata-entry named "static",
-    we will either hide or expose the property to JAX depending on the value.
+    """Metaclass that registers derived classes as JAX PyTrees and 
+    wraps them in dataclasses.
+    
+    Fields are classified as either static or dynamic:
+    - Static (default): Treated as compile-time constants. Suitable for e.g. 
+    configuration parameters or hyperparameters.
+    - Dynamic: Treated as runtime values. Required to prevent large arrays
+    from being inlined into compiled code.
+    
+    To mark a field as dynamic, use:
+    my_array : Any = dataclasses.field(metadata=dict(static=False))
     """
 
     def __new__(mcs, name, bases, dict_, /, **kwargs):
@@ -130,6 +137,16 @@ class NoValue:
 
 
 class LazyModel(metaclass=ModelMeta):
+    """Base model with lazy evaluation of domain, target, and initializer.
+    
+    Properties automatically derive:
+    - `domain` from `init` via `eval_shape` (if not provided)
+    - `target` from `__call__` and `domain` via `eval_shape` (if not provided)
+    - A default white-noise initializer (if not provided)
+    
+    See `ModelMeta` for details on JAX PyTree registration and static vs.
+    dynamic fields.
+    """
     _domain: Any = field()
     _target: Any = field()
     _init: Any = field()
@@ -169,13 +186,38 @@ class LazyModel(metaclass=ModelMeta):
 
 
 class Model(LazyModel):
-    """Join a callable with a domain, target, and an init method.
+    """Main building block for Nifty.re models.
+    
+    Joins a callable with domain, target, and initializer method. From a 
+    domain and callable, automatically derives the target and instantiates
+    a default initializer if not set explicitly.
+    
+    This class is wrapped in a dataclass and registered as a JAX PyTree,
+    allowing it to be used with transformations such as `jit`, `vmap`, or 
+    `grad`. By default, all fields are marked as static (compile-time constants).
+    To prevent large arrays from being inlined into compiled code, mark them
+    as dynamic in the class definition:
+    
+        my_array: Any = dataclasses.field(metadata=dict(static=False))
 
-    From a domain and a callable, this class automatically derives the target as
-    well as instantiate a default initializer if not set explicitly. More
-    importantly though, it registers the class as PyTree in JAX using
-    metaprogramming. By default all properties are hidden from JAX except those
-    marked via `dataclasses.field(metadata=dict(static=False))` as non-static.
+    
+    Parameters
+    ----------
+    call : callable
+        Method acting on objects of type `domain`.
+    domain : tree-like structure of ShapeWithDtype, optional
+        PyTree of objects with a shape and dtype attribute. Inferred from
+        init if not specified.
+    target : tree-like structure of ShapeWithDtype, optional
+        PyTree of objects with a shape and dtype attribute akin to the
+        output of `call`. Inferred from `call` and `domain` if not set.
+    init : callable, optional
+        Initialization method taking a PRNG key as first argument and
+        creating an object of type `domain`. Inferred from `domain`
+        assuming a white normal prior if not set.
+    white_init : bool, optional
+        If `True`, the domain is set to a white normal prior. Defaults to
+        `False`.
     """
 
     def __init__(
@@ -187,26 +229,6 @@ class Model(LazyModel):
         init=NoValue,
         white_init=False,
     ):
-        """Wrap a callable and associate it with a `domain`.
-
-        Parameters
-        ----------
-        call : callable
-            Method acting on objects of type `domain`.
-        domain : tree-like structure of ShapeWithDtype, optional
-            PyTree of objects with a shape and dtype attribute. Inferred from
-            init if not specified.
-        target : tree-like structure of ShapeWithDtype, optional
-            PyTree of objects with a shape and dtype attribute akin to the
-            output of `call`. Inferrred from `call` and `domain` if not set.
-        init : callable, optional
-            Initialization method taking a PRNG key as first argument and
-            creating an object of type `domain`. Inferred from `domain`
-            assuming a white normal prior if not set.
-        white_init : bool, optional
-            If `True`, the domain is set to a white normal prior. Defaults to
-            `False`.
-        """
         self._call = call
         if init is NoValue and domain is not NoValue and white_init is True:
             init = tree_map(lambda p: partial(random_like, primals=p), domain)
@@ -249,6 +271,27 @@ class Model(LazyModel):
 
 
 class WrappedCall(Model):
+    """Model wrapper that selects a named subset from the input.
+    
+    Transforms `call` so that instead of acting on `input` directly,
+    it selects `input[name]` from a dict-like input structure.
+    
+    See :class:`Model` for details on the remaining arguments.
+
+    Parameters
+    ----------
+    call : callable
+        Callable to wrap.
+    name : hashable, optional
+        Key used to select from `input` before passing to `call`.
+    shape : tuple or tree-like structure of ShapeWithDtype
+        Shape of old `input` on which `call` acts. This can also be an
+        arbitrary shape-dtype structure in which case `dtype` is ignored.
+        Defaults to a scalar.
+    dtype : dtype or tree-like structure of ShapeWithDtype
+        Dtype of the old `input` on which `call` acts. Redundant if 
+        `shape` already encodes the `dtype`.    
+    """
     def __init__(
         self,
         call: Callable,
@@ -259,27 +302,6 @@ class WrappedCall(Model):
         white_init=False,
         target=NoValue,
     ):
-        """Transforms `call` such that instead of it acting on `input` it
-        selects `name` from `input` using `input[name]`.
-
-        Parameters
-        ----------
-        call : callable
-            Callable to wrap.
-        name : hashable, optional
-            New name of the `input` on which `call` acts.
-        shape : tuple or tree-like structure of ShapeWithDtype
-            Shape of old `input` on which `call` acts. This can also be an
-            arbitrary shape-dtype structure in which case `dtype` is ignored.
-            Defaults to a scalar.
-        dtype : dtype or tree-like structure of ShapeWithDtype
-            If `shape` is a tuple, this is the dtype of the old `input` on
-            which `call` acts. This is redundant if `shape` already encodes the
-            `dtype`.
-
-
-        See :class:`Model` for details on the remaining arguments.
-        """
         leaves = tree_leaves(shape)
         isswd = all(hasattr(e, "shape") and hasattr(e, "dtype") for e in leaves)
         isswd &= len(leaves) > 0
