@@ -88,15 +88,15 @@ class Initializer:
 
 
 class ModelMeta(abc.ABCMeta):
-    """Metaclass that registers derived classes as JAX PyTrees and 
+    """Metaclass that registers derived classes as JAX PyTrees and
     wraps them in dataclasses.
-    
+
     Fields are classified as either static or dynamic:
-    - Static (default): Treated as compile-time constants. Suitable for e.g. 
+    - Static (default): Treated as compile-time constants. Suitable for e.g.
     configuration parameters or hyperparameters.
     - Dynamic: Treated as runtime values. Required to prevent large arrays
     from being inlined into compiled code.
-    
+
     To mark a field as dynamic, use:
     my_array : Any = dataclasses.field(metadata=dict(static=False))
     """
@@ -138,15 +138,16 @@ class NoValue:
 
 class LazyModel(metaclass=ModelMeta):
     """Base model with lazy evaluation of domain, target, and initializer.
-    
+
     Properties automatically derive:
     - `domain` from `init` via `eval_shape` (if not provided)
     - `target` from `__call__` and `domain` via `eval_shape` (if not provided)
     - A default white-noise initializer (if not provided)
-    
+
     See `ModelMeta` for details on JAX PyTree registration and static vs.
     dynamic fields.
     """
+
     _domain: Any = field()
     _target: Any = field()
     _init: Any = field()
@@ -187,36 +188,36 @@ class LazyModel(metaclass=ModelMeta):
 
 class Model(LazyModel):
     """Main building block for Nifty.re models.
-    
-    Joins a callable with domain, target, and initializer method. From a 
+
+    Joins a callable with domain, target, and initializer method. From a
     domain and callable, automatically derives the target and instantiates
     a default initializer if not set explicitly.
-    
+
     This class is wrapped in a dataclass and registered as a JAX PyTree,
-    allowing it to be used with transformations such as `jit`, `vmap`, or 
+    allowing it to be used with transformations such as `jit`, `vmap`, or
     `grad`. By default, all fields are marked as static (compile-time constants).
     To prevent large arrays from being inlined into compiled code, mark them
     as dynamic in the class definition:
-    
+
         my_array: Any = dataclasses.field(metadata=dict(static=False))
 
     Nested models
     -------------
     When composing models hierachically, sub-models should be marked as
     dynamic:
-    
+
         class SubModel(jft.Model):
             ...
-    
+
         class ParentModel(jft.Model):
             sub: SubModel = dataclasses.field(metadata=dict(static=False))
-            
+
     Note that the static/dynamic classification within the sub-model is
     preserved: fields marked as static in the sub-model remain static, even
     though the sub-model itself is marked as dynamic in the parent model. The
     dynamic marking only ensures that JAX recursively flattens the sub-model's
     PyTree structure instead of treating it as a single static leaf.
-    
+
     Parameters
     ----------
     call : callable
@@ -288,10 +289,10 @@ class Model(LazyModel):
 
 class WrappedCall(Model):
     """Model wrapper that selects a named subset from the input.
-    
+
     Transforms `call` so that instead of acting on `input` directly,
     it selects `input[name]` from a dict-like input structure.
-    
+
     See :class:`Model` for details on the remaining arguments.
 
     Parameters
@@ -305,9 +306,10 @@ class WrappedCall(Model):
         arbitrary shape-dtype structure in which case `dtype` is ignored.
         Defaults to a scalar.
     dtype : dtype or tree-like structure of ShapeWithDtype
-        Dtype of the old `input` on which `call` acts. Redundant if 
-        `shape` already encodes the `dtype`.    
+        Dtype of the old `input` on which `call` acts. Redundant if
+        `shape` already encodes the `dtype`.
     """
+
     def __init__(
         self,
         call: Callable,
