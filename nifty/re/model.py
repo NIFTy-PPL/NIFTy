@@ -140,9 +140,9 @@ class LazyModel(metaclass=ModelMeta):
     """Base model with lazy evaluation of domain, target, and initializer.
 
     Properties automatically derive:
-    - `domain` from `init` via `eval_shape` (if not provided)
-    - `target` from `__call__` and `domain` via `eval_shape` (if not provided)
-    - A default white-noise initializer (if not provided)
+     * `domain` from `init` via `eval_shape` (if not provided)
+     * `target` from `__call__` and `domain` via `eval_shape` (if not provided)
+     * A default white-noise initializer (if not provided)
 
     See `ModelMeta` for details on JAX PyTree registration and static vs.
     dynamic fields.
@@ -203,7 +203,7 @@ class Model(LazyModel):
 
     Nested models
     -------------
-    When composing models hierachically, sub-models should be marked as
+    When composing models hierarchically, sub-models should be marked as
     dynamic:
 
         class SubModel(jft.Model):
