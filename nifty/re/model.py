@@ -419,6 +419,11 @@ class ClipModel(Model):
     values in latent variables.
     """
 
+    model: Model = field(metadata=dict(static=False))
+    threshold: float
+    warn: bool
+    clip: Callable
+
     def __init__(
         self,
         model: Model,
