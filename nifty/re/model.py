@@ -22,6 +22,7 @@ from jax.tree_util import (
     tree_reduce,
 )
 from jax.lax import cond
+from jax.debug import callback
 
 from .misc import wrap
 from .tree_math import PyTreeString, ShapeWithDtype, random_like, Vector
@@ -416,7 +417,8 @@ class ClipModel(Model):
     threshold before passing them to the underlying model.
 
     This is useful for preventing numerical instabilities caused by extreme
-    values in latent variables.
+    values in latent variables. However, this model is mostly intended for
+    testing and debugging rather than production codes.
     """
 
     model: Model = field(metadata=dict(static=False))
@@ -451,6 +453,7 @@ class ClipModel(Model):
             transformed array. If provided, ``threshold`` is not used for
             clipping, but is still used for the warning check.
         """
+
         self.model = model
         self.threshold = threshold
         self.warn = warn
@@ -469,6 +472,6 @@ class ClipModel(Model):
             )
             warn = max_abs_val > self.threshold
             msg = "WARNING: Clipping input parameters."
-            cond(warn, lambda _: logger.warning(msg), lambda _: None, None)
-
+            print_warning = lambda msg: logger.warning(msg)
+            cond(warn, lambda _: callback(print_warning, msg), lambda _: None, None)
         return self.model(tree_map(self.clip, x))
