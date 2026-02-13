@@ -92,13 +92,15 @@ class ModelMeta(abc.ABCMeta):
     wraps them in dataclasses.
 
     Fields are classified as either static or dynamic:
-    - Static (default): Treated as compile-time constants. Suitable for e.g.
-    configuration parameters or hyperparameters.
-    - Dynamic: Treated as runtime values. Required to prevent large arrays
-    from being inlined into compiled code.
+    
+    * Static (default): Treated as compile-time constants. Suitable for e.g.
+      configuration parameters or hyperparameters.
+    * Dynamic: Treated as runtime values. Required to prevent large arrays
+      from being inlined into compiled code.
 
-    To mark a field as dynamic, use:
-    my_array : Any = dataclasses.field(metadata=dict(static=False))
+    To mark a field as dynamic, use::
+    
+        my_array : Any = dataclasses.field(metadata=dict(static=False))
     """
 
     def __new__(mcs, name, bases, dict_, /, **kwargs):
@@ -140,11 +142,12 @@ class LazyModel(metaclass=ModelMeta):
     """Base model with lazy evaluation of domain, target, and initializer.
 
     Properties automatically derive:
-     * `domain` from `init` via `eval_shape` (if not provided)
-     * `target` from `__call__` and `domain` via `eval_shape` (if not provided)
-     * A default white-noise initializer (if not provided)
+    
+    * `domain` from `init` via `eval_shape` (if not provided)
+    * `target` from `__call__` and `domain` via `eval_shape` (if not provided)
+    * A default white-noise initializer (if not provided)
 
-    See `ModelMeta` for details on JAX PyTree registration and static vs.
+    See :class:`ModelMeta` for details on JAX PyTree registration and static vs.
     dynamic fields.
     """
 
@@ -197,14 +200,14 @@ class Model(LazyModel):
     allowing it to be used with transformations such as `jit`, `vmap`, or
     `grad`. By default, all fields are marked as static (compile-time constants).
     To prevent large arrays from being inlined into compiled code, mark them
-    as dynamic in the class definition:
+    as dynamic in the class definition::
 
         my_array: Any = dataclasses.field(metadata=dict(static=False))
 
     Nested models
     -------------
     When composing models hierarchically, sub-models should be marked as
-    dynamic:
+    dynamic::
 
         class SubModel(jft.Model):
             ...
