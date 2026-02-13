@@ -765,16 +765,45 @@ class OptimizeVI:
         )
         return OptimizeVIState(nit, key, config=config)
 
-    def _save_intermediate_samples(
+    def _optional_save_intermediate_samples(
         self, nit: int, samples: Samples, st_smpls: dict
     ) -> None:
+        """Saves intermediate samples to disk via pickle if intermediate_samples_save is
+        switched on.
+
+        Parameters
+        ----------
+        nit : int
+            Current iteration number.
+        samples : :class:`Samples`
+            Current samples to save.
+        st_smpls : dict
+            Dictionary of state samples to save.
+        """
         if self.intermediate_samples_save is None:
             return
 
         with open(self.intermediate_samples_save, "wb") as f:
             pickle.dump({"nit": nit, "samples": samples, "st_smpls": st_smpls}, f)
 
-    def _load_intermediate_samples(self, nit: int) -> None | tuple[Samples, dict]:
+    def _optional_load_intermediate_samples(
+        self, nit: int
+    ) -> None | tuple[Samples, dict]:
+        """Loads intermediate samples from disk if they exist and match the given
+        iteration.
+
+        Parameters
+        ----------
+        nit : int
+            Expected iteration number. If the saved data does not match this
+            iteration, ``None`` is returned.
+
+        Returns
+        -------
+        None or tuple[:class:`Samples`, dict]
+            ``None`` if no saved file exists or the iteration does not match.
+            Otherwise, a tuple of the saved samples and state samples dictionary.
+        """
         if (self.intermediate_samples_save is None) or (
             not self.intermediate_samples_save.exists()
         ):
@@ -821,7 +850,8 @@ class OptimizeVI:
         # Make the `key` tick independently of whether samples are drawn or not
         key, sk = random.split(key, 2)
 
-        if (loaded := self._load_intermediate_samples(nit)) is not None:
+        # Either load intermediate samples or
+        if (loaded := self._optional_load_intermediate_samples(nit)) is not None:
             samples, st_smpls = loaded
         else:
             samples, st_smpls = self.draw_samples(
@@ -834,7 +864,7 @@ class OptimizeVI:
                 nonlinearly_update_kwargs=nonlinearly_update_kwargs,
                 **kwargs,
             )
-            self._save_intermediate_samples(nit, samples, st_smpls)
+            self._optional_save_intermediate_samples(nit, samples, st_smpls)
 
         kl_kwargs = _getitem_at_nit(config, "kl_kwargs", nit).copy()
         kl_opt_state = self.kl_minimize(
