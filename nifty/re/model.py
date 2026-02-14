@@ -419,6 +419,25 @@ class ClipModel(Model):
     This is useful for preventing numerical instabilities caused by extreme
     values in latent variables. However, this model is mostly intended for
     testing and debugging rather than production codes.
+
+    Parameters
+    ----------
+    model : Model
+        The NIFTy model to be wrapped. This model is called on the clipped
+        version of the input.
+    threshold : float, default=10.0
+        The absolute value used for default clipping. When
+        ``custom_clip_func`` is not provided, every leaf array in the input
+        pytree is clipped elementwise to the interval
+        ``[-threshold, threshold]``.
+    warn : bool, default=False
+        If ``True``, a warning is emitted whenever any element in the input
+        pytree exceeds ``threshold`` in absolute value prior to clipping.
+    custom_clip_func : callable, optional
+        A custom function applied to each leaf of the input pytree instead
+        of ``jnp.clip``. It should take a single JAX array and return a
+        transformed array. If provided, ``threshold`` is not used for
+        clipping, but is still used for the warning check.
     """
 
     model: Model = field(metadata=dict(static=False))
@@ -433,26 +452,6 @@ class ClipModel(Model):
         warn: bool = False,
         custom_clip_func=None,
     ):
-        """
-        Parameters
-        ----------
-        model : Model
-            The NIFTy model to be wrapped. This model is called on the clipped
-            version of the input.
-        threshold : float, default=10.0
-            The absolute value used for default clipping. When
-            ``custom_clip_func`` is not provided, every leaf array in the input
-            pytree is clipped elementwise to the interval
-            ``[-threshold, threshold]``.
-        warn : bool, default=False
-            If ``True``, a warning is emitted whenever any element in the input
-            pytree exceeds ``threshold`` in absolute value prior to clipping.
-        custom_clip_func : callable, optional
-            A custom function applied to each leaf of the input pytree instead
-            of ``jnp.clip``. It should take a single JAX array and return a
-            transformed array. If provided, ``threshold`` is not used for
-            clipping, but is still used for the warning check.
-        """
 
         self.model = model
         self.threshold = threshold
