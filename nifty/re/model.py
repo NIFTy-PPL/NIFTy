@@ -97,14 +97,14 @@ class ModelMeta(abc.ABCMeta):
     wraps them in dataclasses.
 
     Fields are classified as either static or dynamic:
-    
+
     * Static (default): Treated as compile-time constants. Suitable for e.g.
       configuration parameters or hyperparameters.
     * Dynamic: Treated as runtime values. Required to prevent large arrays
       from being inlined into compiled code.
 
     To mark a field as dynamic, use::
-    
+
         my_array : Any = dataclasses.field(metadata=dict(static=False))
     """
 
@@ -147,7 +147,7 @@ class LazyModel(metaclass=ModelMeta):
     """Base model with lazy evaluation of domain, target, and initializer.
 
     Properties automatically derive:
-    
+
     * `domain` from `init` via `eval_shape` (if not provided)
     * `target` from `__call__` and `domain` via `eval_shape` (if not provided)
     * A default white-noise initializer (if not provided)
@@ -226,10 +226,10 @@ class Model(LazyModel):
     white_init : bool, optional
         If `True`, the domain is set to a white normal prior. Defaults to
         `False`.
-        
+
     Notes
     -----
-    
+
     When composing models hierarchically, sub-models should be marked as
     dynamic::
 
