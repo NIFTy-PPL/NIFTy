@@ -84,7 +84,6 @@ samples, state = jft.optimize_kl(
     ),
     sample_mode="linear_resample",
     odir="results_icr",
-    intermediate_samples_save="results_icr/intermediate.pkl",
     resume=False,
 )
 
