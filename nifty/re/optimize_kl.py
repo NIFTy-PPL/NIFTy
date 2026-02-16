@@ -274,7 +274,7 @@ class OptimizeVI:
         devices: Optional[list] = None,
         kl_device_map="shard_map",
         residual_device_map="pmap",
-        intermediate_samples_save: Optional[str] = None,
+        intermediate_samples_path: Optional[Path | str] = None,
         _kl_value_and_grad: Optional[Callable] = None,
         _kl_metric: Optional[Callable] = None,
         _draw_linear_residual: Optional[Callable] = None,
@@ -344,8 +344,9 @@ class OptimizeVI:
             n_samples equals the number of devices. For the other maps it is
             sufficient if 2*n_samples equals the number of devices, or
             n_samples can be evenly divided by the number of devices.
-        intermediate_samples_save: Optional[str]
-            Save the samples at str location, before optimizing the position.
+        intermediate_samples_path: Optional[Path | str]
+            If given, save the intermediate samples at Path | str location, before
+            optimizing the position.
 
         Notes
         -----
@@ -443,15 +444,15 @@ class OptimizeVI:
         self.residual_map = residual_map
         self.get_status_message = _get_status_message
 
-        self.intermediate_samples_save = None
-        if intermediate_samples_save is not None:
-            save_path = Path(intermediate_samples_save)
+        self.intermediate_samples_path = None
+        if intermediate_samples_path is not None:
+            save_path = Path(intermediate_samples_path)
             save_path.parent.mkdir(parents=True, exist_ok=True)
 
             if not os.access(save_path.parent, os.W_OK):
                 raise PermissionError(f"Directory '{save_path.parent}' is not writable")
 
-            self.intermediate_samples_save = save_path
+            self.intermediate_samples_path = save_path
 
     def draw_linear_samples(self, primals, keys, **kwargs):
         # NOTE, use `Partial` in favor of `partial` to allow the (potentially)
@@ -768,8 +769,8 @@ class OptimizeVI:
     def _optional_save_intermediate_samples(
         self, nit: int, samples: Samples, st_smpls: dict
     ) -> None:
-        """Saves intermediate samples to disk via pickle if intermediate_samples_save is
-        switched on.
+        """Saves intermediate samples to disk via pickle if intermediate_samples_path is
+        given.
 
         Parameters
         ----------
@@ -780,10 +781,10 @@ class OptimizeVI:
         st_smpls : dict
             Dictionary of state samples to save.
         """
-        if self.intermediate_samples_save is None:
+        if self.intermediate_samples_path is None:
             return
 
-        with open(self.intermediate_samples_save, "wb") as f:
+        with open(self.intermediate_samples_path, "wb") as f:
             pickle.dump({"nit": nit, "samples": samples, "st_smpls": st_smpls}, f)
 
     def _optional_load_intermediate_samples(
@@ -804,12 +805,12 @@ class OptimizeVI:
             ``None`` if no saved file exists or the iteration does not match.
             Otherwise, a tuple of the saved samples and state samples dictionary.
         """
-        if (self.intermediate_samples_save is None) or (
-            not self.intermediate_samples_save.exists()
+        if (self.intermediate_samples_path is None) or (
+            not self.intermediate_samples_path.exists()
         ):
             return None
 
-        with open(self.intermediate_samples_save, "rb") as f:
+        with open(self.intermediate_samples_path, "rb") as f:
             data = pickle.load(f)
 
         if data["nit"] != nit:
@@ -875,8 +876,8 @@ class OptimizeVI:
         kl_opt_state = kl_opt_state._replace(x=None, jac=None, hess=None, hess_inv=None)
 
         # Remove intermediate samples file
-        if self.intermediate_samples_save:
-            self.intermediate_samples_save.unlink(missing_ok=True)
+        if self.intermediate_samples_path:
+            self.intermediate_samples_path.unlink(missing_ok=True)
 
         state = state._replace(
             nit=nit + 1,
@@ -927,7 +928,7 @@ def optimize_kl(
     devices: Optional[list] = None,
     kl_device_map="shard_map",
     residual_device_map="pmap",
-    intermediate_samples_save: Optional[str] = None,
+    save_intermediate_samples: bool = False,
     _optimize_vi=None,
     _optimize_vi_state=None,
 ) -> tuple[Samples, OptimizeVIState]:
@@ -954,6 +955,11 @@ def optimize_kl(
     LAST_FILENAME = "last.pkl"
     MINISANITY_FILENAME = "minisanity.txt"
 
+    # Resolve intermediate samples path
+    intermediate_samples_path = None
+    if save_intermediate_samples and odir is not None:
+        intermediate_samples_path = Path(odir) / "intermediate_samples.pkl"
+
     opt_vi = _optimize_vi if _optimize_vi is not None else None
     if opt_vi is None:
         opt_vi = OptimizeVI(
@@ -969,7 +975,7 @@ def optimize_kl(
             devices=devices,
             kl_device_map=kl_device_map,
             residual_device_map=residual_device_map,
-            intermediate_samples_save=intermediate_samples_save,
+            intermediate_samples_path=intermediate_samples_path,
         )
 
     last_fn = os.path.join(odir, LAST_FILENAME) if odir is not None else None
