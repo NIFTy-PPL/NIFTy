@@ -1,6 +1,6 @@
 # Copyright(C) 2022 Gordian Edenhofer
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
-# Authors: Gordian Edenhofer, Philipp Frank
+# Authors: Gordian Edenhofer, Philipp Frank, Jakob Roth
 
 import abc
 from dataclasses import dataclass, field
@@ -13,15 +13,20 @@ from jax import eval_shape
 from jax import numpy as jnp
 from jax import random, vmap
 from jax.tree_util import (
+    Partial,
     register_pytree_node,
     tree_leaves,
     tree_map,
     tree_structure,
     tree_unflatten,
+    tree_reduce,
 )
+from jax.lax import cond
+from jax.debug import callback
 
 from .misc import wrap
 from .tree_math import PyTreeString, ShapeWithDtype, random_like, Vector
+from .logger import logger
 
 
 class Initializer:
@@ -92,14 +97,14 @@ class ModelMeta(abc.ABCMeta):
     wraps them in dataclasses.
 
     Fields are classified as either static or dynamic:
-    
+
     * Static (default): Treated as compile-time constants. Suitable for e.g.
       configuration parameters or hyperparameters.
     * Dynamic: Treated as runtime values. Required to prevent large arrays
       from being inlined into compiled code.
 
     To mark a field as dynamic, use::
-    
+
         my_array : Any = dataclasses.field(metadata=dict(static=False))
     """
 
@@ -142,7 +147,7 @@ class LazyModel(metaclass=ModelMeta):
     """Base model with lazy evaluation of domain, target, and initializer.
 
     Properties automatically derive:
-    
+
     * `domain` from `init` via `eval_shape` (if not provided)
     * `target` from `__call__` and `domain` via `eval_shape` (if not provided)
     * A default white-noise initializer (if not provided)
@@ -221,10 +226,10 @@ class Model(LazyModel):
     white_init : bool, optional
         If `True`, the domain is set to a white normal prior. Defaults to
         `False`.
-        
+
     Notes
     -----
-    
+
     When composing models hierarchically, sub-models should be marked as
     dynamic::
 
@@ -404,3 +409,68 @@ class VModel(LazyModel):
             axs_tr = axs_tr | {k: None for k in x_tr.keys() - axs_tr.keys()}
         axs = Vector(axs_tr) if isinstance(x, Vector) else axs_tr
         return vmap(self.model, (axs,), self.out_axes)(x)
+
+
+class ClipModel(Model):
+    """
+    A wrapper around a NIFTy model that clips all input values to a specified
+    threshold before passing them to the underlying model.
+
+    This is useful for preventing numerical instabilities caused by extreme
+    values in latent variables. However, this model is mostly intended for
+    testing and debugging rather than production codes.
+
+    Parameters
+    ----------
+    model : Model
+        The NIFTy model to be wrapped. This model is called on the clipped
+        version of the input.
+    threshold : float, default=10.0
+        The absolute value used for default clipping. When
+        ``custom_clip_func`` is not provided, every leaf array in the input
+        pytree is clipped elementwise to the interval
+        ``[-threshold, threshold]``.
+    warn : bool, default=False
+        If ``True``, a warning is emitted whenever any element in the input
+        pytree exceeds ``threshold`` in absolute value prior to clipping.
+    custom_clip_func : callable, optional
+        A custom function applied to each leaf of the input pytree instead
+        of ``jnp.clip``. It should take a single JAX array and return a
+        transformed array. If provided, ``threshold`` is not used for
+        clipping, but is still used for the warning check.
+    """
+
+    model: Model = field(metadata=dict(static=False))
+    threshold: float
+    warn: bool
+    clip: Callable
+
+    def __init__(
+        self,
+        model: Model,
+        threshold: float = 10.0,
+        warn: bool = False,
+        custom_clip_func=None,
+    ):
+
+        self.model = model
+        self.threshold = threshold
+        self.warn = warn
+        if custom_clip_func is None:
+            self.clip = Partial(jnp.clip, min=-threshold, max=threshold)
+        else:
+            self.clip = custom_clip_func
+
+        super().__init__(init=model.init)
+
+    def __call__(self, x):
+        if self.warn:
+            max_abs = lambda x: jnp.max(jnp.abs(x))
+            max_abs_val = tree_reduce(
+                lambda a, b: jnp.maximum(a, b), tree_map(max_abs, x)
+            )
+            warn = max_abs_val > self.threshold
+            msg = "WARNING: Clipping input parameters."
+            print_warning = lambda msg: logger.warning(msg)
+            cond(warn, lambda _: callback(print_warning, msg), lambda _: None, None)
+        return self.model(tree_map(self.clip, x))

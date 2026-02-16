@@ -35,7 +35,7 @@ from .likelihood_impl import (
 from .logger import logger
 from .minisanity import minisanity, reduced_residual_stats
 from .misc import hvp, interpolate, wrap, wrap_left
-from .model import Initializer, Model, VModel, WrappedCall
+from .model import Initializer, Model, VModel, WrappedCall, ClipModel
 from .multi_grid import (
     Grid,
     HEALPixGrid,
