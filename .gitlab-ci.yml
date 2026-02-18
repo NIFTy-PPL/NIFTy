@@ -16,8 +16,6 @@ default:
 
 test_cl:
   stage: test
-  tags:
-    - docker
   script:
     - pytest -n auto -q --cov=nifty.cl test/test_cl
     - mv .coverage .coverage.cl
@@ -27,8 +25,6 @@ test_cl:
 
 test_cl_nix:
   stage: test
-  tags:
-    - docker
   image: nixos/nix:latest
   before_script:
     - ls
@@ -40,8 +36,6 @@ test_cl_nix:
 
 test_re:
   stage: test
-  tags:
-    - docker
   script:
     - pytest -n auto -q --cov=nifty.re test/test_re
     - mv .coverage .coverage.re
@@ -51,8 +45,6 @@ test_re:
 
 test_cl_mpi:
   stage: test
-  tags:
-    - docker
   variables:
     OMPI_MCA_btl_vader_single_copy_mechanism: none
   script:
@@ -63,8 +55,6 @@ test_cl_mpi:
 
 merge_coverage:
   stage: test
-  tags:
-    - docker
   needs:
     - job: test_cl
       artifacts: true
