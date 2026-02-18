@@ -37,6 +37,9 @@ re = [
     "ducc0>=0.27.0",
     "healpy",
 ]
+re_extra = [
+    "blackjax"
+]
 cl_native = [
     "ducc0>=0.27.0",
 ]
@@ -72,7 +75,7 @@ test = [
     "nifty[re]",
     "nifty[cl_util]",
 ]
-all = ["nifty[re,cl_native,cl_parallel,cl_util,cl_finufft,test,doc]"]
+all = ["nifty[re,re_extra,cl_native,cl_parallel,cl_util,cl_finufft,test,doc]"]
 
 [build-system]
 requires = [
