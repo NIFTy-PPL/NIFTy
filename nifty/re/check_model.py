@@ -1,8 +1,14 @@
+# SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
+# Author: Jakob Roth
+
 import re
 import math
 import jax
 import time
 
+from jax.tree_util import Partial
+
+from .model import LazyModel
 from .logger import logger
 
 
@@ -55,22 +61,23 @@ def check_model(model, pos):
     """
     Benchmarks and analyzes a NIFTy model's forward pass, JVP, and VJP.
 
-    Runs three types of analysis for each of the three computation modes
-    (forward, JVP, VJP), both with and without JIT compilation:
+    Runs three types of analysis for each of the three evaluation modes
+    (forward, JVP, VJP):
 
     - **Timing:** Measures execution time with and without JIT compilation.
     - **Memory analysis:** Reports memory usage of the JIT-compiled computations.
-    - **HLO parsing:** Inspects the compiledHLO representation to analyze
-      constants, sizes, and byte usage.
+    - **HLO parsing:** Inspects the compiled HLO representation to analyze
+      inlined constants.
 
 
     Parameters
     ----------
-    model: :class:`~nifty.re.model.Model`
+    model: :class:`~nifty.re.model.Model` or callable
         The NIFTy Model to be benchmarked and analyzed.
     pos : Any
         Input to the model. Must be a JAX-compatible pytree of arrays.
     """
+    model = model if isinstance(model, LazyModel) else Partial(model)
     m_forward = lambda m, x: m(x)
     m_jvp = lambda m, p, t: jax.jvp(m, [p], [t])
     m_vjp = lambda m, p, t: jax.vjp(m, p)[1](t)
