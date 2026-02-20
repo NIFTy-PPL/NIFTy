@@ -13,6 +13,11 @@ def _benchmark(func, *args, **kwargs):
     return delta_t
 
 
+def _dtype_to_bits(dtype):
+    match = re.search(r"(\d+)$", str(dtype))
+    return int(match.group(1)) if match else float("nan")
+
+
 def _parse_hlo(hlo):
     pattern = r"^\s*%constant\.\d+\s*=\s*([a-zA-Z0-9]+)\[([0-9,\s]*)\]"
     matches = re.findall(pattern, hlo, re.MULTILINE)
@@ -34,7 +39,7 @@ def _parse_hlo(hlo):
             shapes, key=lambda s: math.prod(s) if s else 0, reverse=True
         )
         total_size[dtype] = sum(math.prod(s) for s in shapes)
-        memory_size[dtype] = int(dtype[1:]) * total_size[dtype] / 8
+        memory_size[dtype] = _dtype_to_bits(dtype) * total_size[dtype] / 8
     return results, total_size, memory_size
 
 
