@@ -167,6 +167,45 @@ def optax_wrapper(
     name=None,
     xtol=1e-5,
 ):
+    """
+    Minimize an objective function using an Optax optimizer.
+
+    This function wraps an ``optax`` optimizer to be used in an ``optimize_kl``
+    optimization in NIFTy.
+
+    Parameters
+    ----------
+    fun : Callable
+        Objective function to minimize. Must accept parameters ``x`` and
+        return a scalar value.
+    x0 : array-like or pytree
+        Initial parameters. Must be a JAX-compatible pytree.
+    optimizer : optax optimizer
+        Optax optimizer instance (e.g. ``optax.sdg(...)``,
+        ``optax.lbfgs(...)``). Must provide ``init`` and ``update`` methods.
+    maxiter : int, optional
+        Maximum number of iterations. Defaults to 200.
+    miniter : int, optional
+        Minimum number of iterations before convergence is checked.
+        Defaults to 0.
+    jac : Callable, optional
+        Function returning the gradient of ``fun``.
+    fun_and_grad : Callable, optional
+        Function returning both value and gradient.
+    hessp : Callable, optional
+        Hessian-vector product function. Included for API compatibility,
+        but not used.
+    name : str, optional
+        Optional label used for formatted iteration logging.
+    xtol : float, optional
+        Convergence tolerance on the gradient norm. Internally scaled by
+        the size of ``x0``.
+
+    Returns
+    -------
+    OptimizeResults
+        An optimization result object containing:
+    """
     import optax
     from jax.debug import callback
 
