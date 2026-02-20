@@ -27,34 +27,34 @@ def _dtype_to_bits(dtype):
 def _parse_hlo(hlo):
     pattern = r"^\s*%constant\.\d+\s*=\s*([a-zA-Z0-9]+)\[([0-9,\s]*)\]"
     matches = re.findall(pattern, hlo, re.MULTILINE)
-    results = {}
+    constants_shapes = {}
     for dtype, shape_str in matches:
         if shape_str.strip() == "":
             shape = []  # scalar
         else:
             shape = [int(x.strip()) for x in shape_str.split(",")]
         # results.append((dtype, shape))
-        prev_consts = results.get(dtype, [])
+        prev_consts = constants_shapes.get(dtype, [])
         prev_consts.append(shape)
-        results[dtype] = prev_consts
+        constants_shapes[dtype] = prev_consts
 
     total_size = {}
     memory_size = {}
-    for dtype, shapes in results.items():
-        results[dtype] = sorted(
+    for dtype, shapes in constants_shapes.items():
+        constants_shapes[dtype] = sorted(
             shapes, key=lambda s: math.prod(s) if s else 0, reverse=True
         )
         total_size[dtype] = sum(math.prod(s) for s in shapes)
         memory_size[dtype] = _dtype_to_bits(dtype) * total_size[dtype] / 8
-    return results, total_size, memory_size
+    return constants_shapes, total_size, memory_size
 
 
 def _logg_hlo_consts(consts, size, bytes):
     for dtype in consts.keys():
-        logger.info(f"constants of type {dtype}")
-        logger.info(f"5 largest constants: {consts[dtype][:5]}")
-        logger.info(f"total size of constants: {size[dtype]}")
-        logger.info(f"total memory of constants: {bytes[dtype]:.1e} bytes\n")
+        logger.info(f"  * constants of type {dtype}")
+        logger.info(f"      - 5 largest constants: {consts[dtype][:5]}")
+        logger.info(f"      - total size of constants: {size[dtype]}")
+        logger.info(f"      - total memory of constants: {bytes[dtype]:.1e} bytes")
 
 
 def check_model(model, pos):
@@ -93,24 +93,27 @@ def check_model(model, pos):
     time_forward = _benchmark(m_forward, model, pos)
     time_jvp = _benchmark(m_jvp, model, pos, pos)
     time_vjp = _benchmark(m_vjp, model, pos, res_forward)
-    logger.info(f"time forward: {time_forward:.1e} seconds")
-    logger.info(f"time jvp: {time_jvp:.1e} seconds")
-    logger.info(f"time vjp: {time_vjp:.1e} seconds\n")
+    logger.info("execution time without jit:")
+    logger.info(f"  * time forward: {time_forward:.1e} seconds")
+    logger.info(f"  * time jvp: {time_jvp:.1e} seconds")
+    logger.info(f"  * time vjp: {time_vjp:.1e} seconds\n")
 
     time_forward_jit = _benchmark(m_forward_jit, model, pos)
     time_jvp_jit = _benchmark(m_jvp_jit, model, pos, pos)
     time_vjp_jit = _benchmark(m_vjp_jit, model, pos, res_forward)
-    logger.info(f"time forward jit: {time_forward_jit:.1e} seconds")
-    logger.info(f"time jvp jit: {time_jvp_jit:.1e} seconds")
-    logger.info(f"time vjp jit: {time_vjp_jit:.1e} seconds\n")
+    logger.info("execution time with jit")
+    logger.info(f"  * time forward jit: {time_forward_jit:.1e} seconds")
+    logger.info(f"  * time jvp jit: {time_jvp_jit:.1e} seconds")
+    logger.info(f"  * time vjp jit: {time_vjp_jit:.1e} seconds\n")
 
     mem_forward = m_forward_jit.lower(model, pos).compile().memory_analysis()
     mem_jvp = m_jvp_jit.lower(model, pos, pos).compile().memory_analysis()
     mem_vjp = m_vjp_jit.lower(model, pos, res_forward).compile().memory_analysis()
 
-    msg_forward = "memory analysis forward:\n" + str(mem_forward) + "\n"
-    msg_jvp = "memory analysis jvp:\n" + str(mem_jvp) + "\n"
-    msg_vjp = "memory analysis vjp:\n" + str(mem_vjp) + "\n"
+    msg_forward = " * memory analysis forward:\n" + str(mem_forward)
+    msg_jvp = " * memory analysis jvp:\n" + str(mem_jvp)
+    msg_vjp = " * memory analysis vjp:\n" + str(mem_vjp)
+    logger.info("JAX memory_analysis:")
     logger.info(msg_forward)
     logger.info(msg_jvp)
     logger.info(msg_vjp)
@@ -123,11 +126,11 @@ def check_model(model, pos):
     const_jvp, size_jvp, bytes_jvp = _parse_hlo(hlo_jvp)
     const_vjp, size_vjp, bytes_vjp = _parse_hlo(hlo_vjp)
 
-    logger.info("hlo parsing forward:")
+    logger.info("\n hlo parsing forward:")
     _logg_hlo_consts(const_forward, size_forward, bytes_forward)
 
-    logger.info("hlo parsing jvp:")
+    logger.info("\n hlo parsing jvp:")
     _logg_hlo_consts(const_jvp, size_jvp, bytes_jvp)
 
-    logger.info("hlo parsing vjp:")
+    logger.info("\n hlo parsing vjp:")
     _logg_hlo_consts(const_vjp, size_vjp, bytes_vjp)
