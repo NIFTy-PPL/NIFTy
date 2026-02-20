@@ -97,8 +97,8 @@ def check_model(model, pos):
     mem_vjp = m_vjp_jit.lower(model, pos, res_forward).compile().memory_analysis()
 
     msg_forward = "memory analysis forward:\n" + str(mem_forward) + "\n"
-    msg_jvp = "memory analysis forward:\n" + str(mem_jvp) + "\n"
-    msg_vjp = "memory analysis forward:\n" + str(mem_vjp) + "\n"
+    msg_jvp = "memory analysis jvp:\n" + str(mem_jvp) + "\n"
+    msg_vjp = "memory analysis vjp:\n" + str(mem_vjp) + "\n"
     logger.info(msg_forward)
     logger.info(msg_jvp)
     logger.info(msg_vjp)
