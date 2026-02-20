@@ -58,3 +58,4 @@ from .prior import (
     UniformPrior,
 )
 from .tree_math import *
+from .check_model import check_model
