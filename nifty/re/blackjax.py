@@ -3,12 +3,14 @@
 
 import jax
 import jax.numpy as jnp
+from dataclasses import field
 
 from .likelihood import Likelihood
 from .tree_math import vdot
 from .evi import Samples
 from .minisanity import minisanity, _rpprint
 from .logger import logger
+from .model import Model
 
 
 def get_sample_size_estimate(samples):
@@ -47,6 +49,17 @@ def get_status_message(
         f"\n"
     )
     return msg
+
+
+class LogDensity(Model):
+    likelihood: Likelihood = field(metadata=dict(static=False))
+
+    def __init__(self, likelihood):
+        self.likelihood = likelihood
+        super().__init__(init=self.likelihood.init)
+
+    def __call__(self, x):
+        return -1.0 * self.likelihood(x) - 0.5 * vdot(x, x)
 
 
 def blackjax_nuts(
@@ -94,8 +107,7 @@ def blackjax_nuts(
     """
     import blackjax
 
-    def logdensity(pos):
-        return -1.0 * likelihood(pos) - 0.5 * vdot(pos, pos)
+    logdensity = LogDensity(likelihood)
 
     warmup_key, sample_key = jax.random.split(key)
     if state_and_parameters is None:
