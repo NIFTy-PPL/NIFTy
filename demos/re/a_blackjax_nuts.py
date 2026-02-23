@@ -133,5 +133,5 @@ for ax, v in zip(axs.flat, to_plot):
 for ax in axs.flat[len(to_plot) :]:
     ax.set_axis_off()
 fig.tight_layout()
-fig.savefig("results_intro_full_reconstruction.png", dpi=400)
+fig.savefig("results_blackjax_reconstruction.png", dpi=400)
 plt.show()
