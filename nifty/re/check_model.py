@@ -49,12 +49,16 @@ def _parse_hlo(hlo):
     return constants_shapes, total_size, memory_size
 
 
-def _logg_hlo_consts(consts, size, bytes):
+def _logg_hlo_consts(name, consts, size, bytes):
+    msg = f"\n hlo parsing {name}:\n"
     for dtype in consts.keys():
-        logger.info(f"  * constants of type {dtype}")
-        logger.info(f"      - 5 largest constants: {consts[dtype][:5]}")
-        logger.info(f"      - total size of constants: {size[dtype]}")
-        logger.info(f"      - total memory of constants: {bytes[dtype]:.1e} bytes")
+        msg += (
+            f"  * constants of type {dtype}:\n"
+            f"      - shapes of 5 largest constants: {consts[dtype][:5]}\n"
+            f"      - total size of constants: {size[dtype]}\n"
+            f"      - total memory of constants: {bytes[dtype]:.1e} bytes\n"
+        )
+    logger.info(msg)
 
 
 def check_model(model, pos):
@@ -93,30 +97,34 @@ def check_model(model, pos):
     time_forward = _benchmark(m_forward, model, pos)
     time_jvp = _benchmark(m_jvp, model, pos, pos)
     time_vjp = _benchmark(m_vjp, model, pos, res_forward)
-    logger.info("execution time without jit:")
-    logger.info(f"  * time forward: {time_forward:.1e} seconds")
-    logger.info(f"  * time jvp: {time_jvp:.1e} seconds")
-    logger.info(f"  * time vjp: {time_vjp:.1e} seconds\n")
+    msg = "execution time without jit:\n"
+    msg += (
+        f"  * time forward: {time_forward:.1e} seconds\n"
+        f"  * time jvp: {time_jvp:.1e} seconds\n"
+        f"  * time vjp: {time_vjp:.1e} seconds\n"
+    )
+    logger.info(msg)
 
     time_forward_jit = _benchmark(m_forward_jit, model, pos)
     time_jvp_jit = _benchmark(m_jvp_jit, model, pos, pos)
     time_vjp_jit = _benchmark(m_vjp_jit, model, pos, res_forward)
-    logger.info("execution time with jit")
-    logger.info(f"  * time forward jit: {time_forward_jit:.1e} seconds")
-    logger.info(f"  * time jvp jit: {time_jvp_jit:.1e} seconds")
-    logger.info(f"  * time vjp jit: {time_vjp_jit:.1e} seconds\n")
+    msg = "execution time with jit:\n"
+    msg += (
+        f"  * time forward jit: {time_forward_jit:.1e} seconds\n"
+        f"  * time jvp jit: {time_jvp_jit:.1e} seconds\n"
+        f"  * time vjp jit: {time_vjp_jit:.1e} seconds\n"
+    )
+    logger.info(msg)
 
     mem_forward = m_forward_jit.lower(model, pos).compile().memory_analysis()
     mem_jvp = m_jvp_jit.lower(model, pos, pos).compile().memory_analysis()
     mem_vjp = m_vjp_jit.lower(model, pos, res_forward).compile().memory_analysis()
 
-    msg_forward = " * memory analysis forward:\n" + str(mem_forward)
-    msg_jvp = " * memory analysis jvp:\n" + str(mem_jvp)
-    msg_vjp = " * memory analysis vjp:\n" + str(mem_vjp)
-    logger.info("JAX memory_analysis:")
-    logger.info(msg_forward)
-    logger.info(msg_jvp)
-    logger.info(msg_vjp)
+    msg = "JAX memory_analysis:\n"
+    msg += " * memory analysis forward:\n" + str(mem_forward) + "\n"
+    msg += " * memory analysis jvp:\n" + str(mem_jvp) + "\n"
+    msg += " * memory analysis vjp:\n" + str(mem_vjp) + "\n"
+    logger.info(msg)
 
     hlo_forward = m_forward_jit.lower(model, pos).compile().as_text()
     hlo_jvp = m_jvp_jit.lower(model, pos, pos).compile().as_text()
@@ -126,11 +134,6 @@ def check_model(model, pos):
     const_jvp, size_jvp, bytes_jvp = _parse_hlo(hlo_jvp)
     const_vjp, size_vjp, bytes_vjp = _parse_hlo(hlo_vjp)
 
-    logger.info("\n hlo parsing forward:")
-    _logg_hlo_consts(const_forward, size_forward, bytes_forward)
-
-    logger.info("\n hlo parsing jvp:")
-    _logg_hlo_consts(const_jvp, size_jvp, bytes_jvp)
-
-    logger.info("\n hlo parsing vjp:")
-    _logg_hlo_consts(const_vjp, size_vjp, bytes_vjp)
+    _logg_hlo_consts("forward", const_forward, size_forward, bytes_forward)
+    _logg_hlo_consts("jvp", const_jvp, size_jvp, bytes_jvp)
+    _logg_hlo_consts("vjp", const_vjp, size_vjp, bytes_vjp)
