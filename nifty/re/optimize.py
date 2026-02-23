@@ -149,8 +149,8 @@ def _ncg_pretty_print_it(
 
 
 @safeguard_arguments_against_accidental_calls_into_jax
-def _optdax_pretty_print_it(name, i, *, energy, energy_diff, descent_norm):
-    msg = f"{name}: Iteration {i} E:{energy:+.6e} ΔE:{energy_diff:.6e} DescentNorm:{descent_norm:.6e}"
+def _optdax_pretty_print_it(name, i, *, energy, descent_norm):
+    msg = f"{name}: Iteration {i} E:{energy:+.6e} DescentNorm:{descent_norm:.6e}"
     logger.info(msg)
 
 
@@ -215,49 +215,55 @@ def optax_wrapper(
     maxiter = 200 if maxiter is None else maxiter
     xtol = xtol * size(x0)
 
-    fun, fun_and_grad, hessp = _prepare_fun_vag_hessp(fun, jac, hessp, fun_and_grad)
-    value_and_grad_fun = optax.value_and_grad_from_state(fun)
+    fun, fun_and_grad_jax, hessp = _prepare_fun_vag_hessp(fun, jac, hessp, fun_and_grad)
+
+    is_lbfgs = optimizer.__class__.__name__ == "LBFGS"
+    if is_lbfgs:
+        fun_and_grad = optax.value_and_grad_from_state(fun)
+    else:
+        fun_and_grad = lambda params, state: fun_and_grad_jax(params)
     pp = partial(callback, _optdax_pretty_print_it, hide_strings(name))
 
+    initial_value, initial_grad = fun_and_grad_jax(x0)
+    initial_descent_norm = optax.tree.norm(initial_grad)
+
     def step(carry):
-        params, state = carry
-        value, grad = value_and_grad_fun(params, state=state)
+        params, state, nit, descent_norm = carry
+        value, grad = fun_and_grad(params, state=state)
         updates, state = optimizer.update(
             grad, state, params, value=value, grad=grad, value_fn=fun
         )
         params = optax.apply_updates(params, updates)
-        nit = optax.tree.get(state, "count")
-        value_new = optax.tree.get(state, "value")
-        grad = optax.tree.get(state, "grad")
+        nit = nit + 1
         descent_norm = optax.tree.norm(grad)
         pp(
             i=nit,
             energy=value,
-            energy_diff=value - value_new,
             descent_norm=descent_norm,
         )
-        return params, state
+        return params, state, nit, descent_norm
 
     def continue_condition(carry):
-        _, state = carry
-        nit = optax.tree.get(state, "count")
-        grad = optax.tree.get(state, "grad")
-        descent_norm = optax.tree.norm(grad)
+        _, _, nit, descent_norm = carry
         return (nit < miniter) | ((nit < maxiter) & (descent_norm > xtol))
 
-    init_carry = (x0, optimizer.init(x0))
-    pos, final_state = while_loop(continue_condition, step, init_carry)
-    value = optax.tree.get(final_state, "value")
-    grad = optax.tree.get(final_state, "grad")
-    nit = optax.tree.get(final_state, "count")
+    init_carry = (x0, optimizer.init(x0), 0, initial_descent_norm)
+    pos, final_state, final_nit, final_descent_norm = while_loop(
+        continue_condition, step, init_carry
+    )
+    if is_lbfgs:
+        value = optax.tree.get(final_state, "value")
+        grad = optax.tree.get(final_state, "grad")
+    else:
+        value, grad = fun_and_grad_jax(pos)
 
     return OptimizeResults(
         x=pos,
         success=True,
-        status=nit,
+        status=final_nit,
         fun=value,
         jac=grad,
-        nit=nit,
+        nit=final_nit,
     )
 
 
