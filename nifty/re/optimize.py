@@ -72,9 +72,11 @@ class OptimizeResults(NamedTuple):
     good_approximation: Union[None, bool, jnp.ndarray] = None
 
 
-def _prepare_vag_hessp(fun, jac, hessp, fun_and_grad) -> Tuple[Callable, Callable]:
-    """Returns a tuple of functions for computing the value-and-gradient and
-    the Hessian-Vector-Product.
+def _prepare_fun_vag_hessp(
+    fun, jac, hessp, fun_and_grad
+) -> Tuple[Callable, Callable, Callable]:
+    """Returns a tuple of functions for computing the function,
+    value-and-gradient, and the Hessian-Vector-Product.
     """
     from warnings import warn
 
@@ -101,7 +103,12 @@ def _prepare_vag_hessp(fun, jac, hessp, fun_and_grad) -> Tuple[Callable, Callabl
         def hessp(primals, tangents):
             return jvp(jac, (primals,), (tangents,))[1]
 
-    return fun_and_grad, hessp
+    if fun is None:
+
+        def fun(primals):
+            return fun_and_grad(primals)[0]
+
+    return fun, fun_and_grad, hessp
 
 
 def newton_cg(fun=None, x0=None, *args, **kwargs):
@@ -141,6 +148,126 @@ def _ncg_pretty_print_it(
     logger.info(msg)
 
 
+@safeguard_arguments_against_accidental_calls_into_jax
+def _optdax_pretty_print_it(name, i, *, energy, descent_norm):
+    msg = f"{name}: Iteration {i} E:{energy:+.6e} DescentNorm:{descent_norm:.6e}"
+    logger.info(msg)
+
+
+def optax_wrapper(
+    fun=None,
+    x0=None,
+    *,
+    optimizer=None,
+    maxiter=None,
+    miniter=None,
+    jac: Optional[Callable] = None,
+    fun_and_grad=None,
+    hessp=None,
+    name=None,
+    xtol=1e-5,
+):
+    """
+    Minimize an objective function using an Optax optimizer.
+
+    This function wraps an ``optax`` optimizer to be used in an ``optimize_kl``
+    optimization in NIFTy.
+
+    Parameters
+    ----------
+    fun : Callable
+        Objective function to minimize. Must accept parameters ``x`` and
+        return a scalar value.
+    x0 : array-like or pytree
+        Initial parameters. Must be a JAX-compatible pytree.
+    optimizer : optax optimizer
+        Optax optimizer instance (e.g. ``optax.sdg(...)``,
+        ``optax.lbfgs(...)``). Must provide ``init`` and ``update`` methods.
+    maxiter : int, optional
+        Maximum number of iterations. Defaults to 200.
+    miniter : int, optional
+        Minimum number of iterations before convergence is checked.
+        Defaults to 0.
+    jac : Callable, optional
+        Function returning the gradient of ``fun``.
+    fun_and_grad : Callable, optional
+        Function returning both value and gradient.
+    hessp : Callable, optional
+        Hessian-vector product function. Included for API compatibility,
+        but not used.
+    name : str, optional
+        Optional label used for formatted iteration logging.
+    xtol : float, optional
+        Convergence tolerance on the gradient norm. Internally scaled by
+        the size of ``x0``.
+
+    Returns
+    -------
+    OptimizeResults
+        An optimization result object containing:
+    """
+    import optax
+    from jax.debug import callback
+
+    from .lax import while_loop
+
+    miniter = 0 if miniter is None else miniter
+    maxiter = 200 if maxiter is None else maxiter
+    xtol = xtol * size(x0)
+
+    fun, fun_and_grad_jax, hessp = _prepare_fun_vag_hessp(fun, jac, hessp, fun_and_grad)
+
+    is_lbfgs = optimizer.__class__.__name__ == "LBFGS"
+    if is_lbfgs:
+        fun_and_grad = optax.value_and_grad_from_state(fun)
+    else:
+        fun_and_grad = lambda params, state: fun_and_grad_jax(params)
+    pp = partial(callback, _optdax_pretty_print_it, hide_strings(name))
+
+    initial_value, initial_grad = fun_and_grad_jax(x0)
+    initial_descent_norm = optax.tree.norm(initial_grad)
+
+    def step(carry):
+        params, state, nit, descent_norm = carry
+        value, grad = fun_and_grad(params, state=state)
+        updates, state = optimizer.update(
+            grad, state, params, value=value, grad=grad, value_fn=fun
+        )
+        params = optax.apply_updates(params, updates)
+        nit = nit + 1
+        descent_norm = optax.tree.norm(grad)
+        if name is not None:
+            pp(
+                i=nit,
+                energy=value,
+                descent_norm=descent_norm,
+            )
+        return params, state, nit, descent_norm
+
+    def continue_condition(carry):
+        _, _, nit, descent_norm = carry
+        return (nit < miniter) | ((nit < maxiter) & (descent_norm > xtol))
+
+    init_carry = (x0, optimizer.init(x0), 0, initial_descent_norm)
+    pos, final_state, final_nit, final_descent_norm = while_loop(
+        continue_condition, step, init_carry
+    )
+    if is_lbfgs:
+        value = optax.tree.get(final_state, "value")
+        grad = optax.tree.get(final_state, "grad")
+    else:
+        value, grad = fun_and_grad_jax(pos)
+
+    return OptimizeResults(
+        x=pos,
+        success=True,
+        status=final_nit,
+        fun=value,
+        jac=grad,
+        nit=final_nit,
+    )
+
+
 def _newton_cg(
     fun=None,
     x0=None,
@@ -168,7 +295,9 @@ def _newton_cg(
     xtol = xtol * size(x0)
 
     pos = x0
-    fun_and_grad, hessp = _prepare_vag_hessp(fun, jac, hessp, fun_and_grad=fun_and_grad)
+    fun, fun_and_grad, hessp = _prepare_fun_vag_hessp(
+        fun, jac, hessp, fun_and_grad=fun_and_grad
+    )
     cg_kwargs = {} if cg_kwargs is None else cg_kwargs
     cg_name = name + "CG" if name is not None else None
 
@@ -311,7 +440,9 @@ def _static_newton_cg(
     xtol = xtol * size(x0)
 
     pos = x0
-    fun_and_grad, hessp = _prepare_vag_hessp(fun, jac, hessp, fun_and_grad=fun_and_grad)
+    fun, fun_and_grad, hessp = _prepare_fun_vag_hessp(
+        fun, jac, hessp, fun_and_grad=fun_and_grad
+    )
     cg_kwargs = {} if cg_kwargs is None else cg_kwargs
     cg_name = name + "CG" if name is not None else None
 
@@ -577,7 +708,9 @@ def _trust_ncg(
     common_dtp = result_type(x0)
     eps = 6.0 * jnp.finfo(common_dtp).eps  # Inspired by SciPy's NewtonCG minimzer
 
-    fun_and_grad, hessp = _prepare_vag_hessp(fun, jac, hessp, fun_and_grad=fun_and_grad)
+    fun, fun_and_grad, hessp = _prepare_fun_vag_hessp(
+        fun, jac, hessp, fun_and_grad=fun_and_grad
+    )
     subproblem_kwargs = {} if subproblem_kwargs is None else subproblem_kwargs
     cg_name = name + "SP" if name is not None else None
 

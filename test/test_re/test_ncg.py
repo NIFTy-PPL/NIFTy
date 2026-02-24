@@ -5,6 +5,7 @@ from functools import partial
 
 import jax
 import jax.numpy as jnp
+import optax
 import pytest
 from jax import jit, random, value_and_grad
 from numpy.testing import assert_allclose
@@ -254,6 +255,36 @@ def test_minimize_ncg(fun_and_init, ncg, maxiter):
         func, x0, jac=grad(func), hess=hessian(func), method="trust-ncg"
     ).x
     assert_allclose(jax_res, scipy_res, rtol=2e-6, atol=2e-5)
+
+
+@pmp(
+    "fun_and_init",
+    (
+        (rosenbrock, jnp.zeros(2)),
+        (himmelblau, jnp.zeros(2)),
+        (matyas, jnp.ones(2) * 6.0),
+        (eggholder, jnp.ones(2) * 100.0),
+    ),
+)
+@pmp("optdax_optimizer", (optax.lbfgs(), optax.adam(learning_rate=0.1)))
+def test_minimize_optax_wrapper(fun_and_init, optdax_optimizer):
+    from jax import grad, hessian
+    from scipy.optimize import minimize as opt_minimize
+
+    func, x0 = fun_and_init
+    nifty_res = jft.optimize.optax_wrapper(
+        func,
+        x0,
+        optimizer=optdax_optimizer,
+        miniter=50,
+        maxiter=700,
+        xtol=1e-7,
+        name="M",
+    ).x
+    scipy_res = opt_minimize(
+        func, x0, jac=grad(func), hess=hessian(func), method="trust-ncg"
+    ).x
+    assert_allclose(nifty_res, scipy_res, rtol=2e-6, atol=2e-5)
 
 
 @pmp(
