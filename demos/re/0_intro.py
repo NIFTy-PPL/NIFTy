@@ -115,12 +115,19 @@ samples, state = jft.optimize_kl(
             maxiter=5,
         )
     ),
-    # Arguments for the minimizer of the KL-divergence cost potential
+    # Arguments for the minimizer of the KL-divergence cost potential.
+    # By default the NIFTy built in newton-cg method is used.
     kl_kwargs=dict(
         minimize_kwargs=dict(
             name="M", xtol=delta, cg_kwargs=dict(name=None), maxiter=35
         )
     ),
+    # Insead of the built in minimizers NIFTy also supports using minimizers
+    # from optax. For example you can use the optax lbfgs minimizer by:
+    # kl_kwargs=dict(
+    #     minimize=jft.optimize.optax_wrapper,
+    #     minimize_kwargs=dict(optimizer=optax.lbfgs(), name="M", xtol=delta, maxiter=40),
+    # ),
     sample_mode="nonlinear_resample",
     odir="results_intro",
     resume=False,
