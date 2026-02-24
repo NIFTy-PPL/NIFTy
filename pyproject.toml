@@ -39,6 +39,7 @@ re = [
 ]
 re_extra = [
     "optax",
+    "blackjax",
 ]
 cl_native = [
     "ducc0>=0.27.0",
