@@ -73,6 +73,7 @@ test = [
     "pytest-xdist",
     "ducc0",
     "nifty[re]",
+    "nifty[re_extra]",
     "nifty[cl_util]",
 ]
 all = ["nifty[re,re_extra,cl_native,cl_parallel,cl_util,cl_finufft,test,doc]"]
