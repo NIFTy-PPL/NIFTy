@@ -236,11 +236,12 @@ def optax_wrapper(
         params = optax.apply_updates(params, updates)
         nit = nit + 1
         descent_norm = optax.tree.norm(grad)
-        pp(
-            i=nit,
-            energy=value,
-            descent_norm=descent_norm,
-        )
+        if name is not None:
+            pp(
+                i=nit,
+                energy=value,
+                descent_norm=descent_norm,
+            )
         return params, state, nit, descent_norm
 
     def continue_condition(carry):
