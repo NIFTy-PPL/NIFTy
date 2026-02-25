@@ -128,6 +128,48 @@ def _kl_vg(
     s = vvg(primals_samples.at(primals).samples)
     return reduce(s)
 
+def _kl_v(
+    likelihood,
+    primals,
+    primals_samples,
+    *,
+    map=jax.vmap,
+    reduce=_reduce,
+    named_sharding=None,
+    kl_device_map="shard_map",
+):
+    assert isinstance(primals_samples, Samples)
+    map = get_map(map)
+    ham = _StandardHamiltonian(likelihood)
+
+    if len(primals_samples) == 0:
+        return ham(primals)
+
+    if named_sharding is None:
+        vv = map(ham)
+    else:
+        if kl_device_map == "shard_map":
+            vv = map(ham)
+            spec_tree = tree_map(lambda x: named_sharding.spec, primals)
+            out_spec = (named_sharding.spec, spec_tree)
+            in_spec = (spec_tree,)
+            vv = shard_map(
+                vv, mesh=named_sharding.mesh, in_specs=in_spec, out_specs=out_spec
+            )
+        elif kl_device_map == "jit":
+            vv = map(ham)
+            sharding_tree = tree_map(lambda x: named_sharding, primals)
+            out_sharding = (named_sharding, sharding_tree)
+            in_sharding = (sharding_tree,)
+            vv = jax.jit(vv, in_shardings=in_sharding, out_shardings=out_sharding)
+        elif kl_device_map == "pmap":
+            vv = jax.pmap(ham)
+        else:
+            ve = f"`kl_device_map` need to be `pmap`, `shard_map`, or `jit`, not {kl_device_map}"
+            raise ValueError(ve)
+
+    s = vv(primals_samples.at(primals).samples)
+    return reduce(s)
 
 def _kl_met(
     likelihood,
@@ -273,6 +315,7 @@ class OptimizeVI:
         devices: Optional[list] = None,
         kl_device_map="shard_map",
         residual_device_map="pmap",
+        _kl_value: Optional[Callable] = None,
         _kl_value_and_grad: Optional[Callable] = None,
         _kl_metric: Optional[Callable] = None,
         _draw_linear_residual: Optional[Callable] = None,
@@ -371,6 +414,19 @@ class OptimizeVI:
         if mirror_samples is False:
             raise NotImplementedError()
 
+        if _kl_value is None:
+            _kl_value = partial(
+                jit(
+                    _kl_v,
+                    static_argnames=("map", "reduce", "named_sharding", "kl_device_map"),
+                ),
+                likelihood,
+                map=kl_map,
+                reduce=kl_reduce,
+                named_sharding=self.named_sharding,
+                kl_device_map=kl_device_map,
+            )
+
         if _kl_value_and_grad is None:
             _kl_value_and_grad = partial(
                 jit(
@@ -432,6 +488,7 @@ class OptimizeVI:
             )
 
         self.n_total_iterations = n_total_iterations
+        self.kl_value = _kl_value
         self.kl_value_and_grad = _kl_value_and_grad
         self.kl_metric = _kl_metric
         self.draw_linear_residual = _draw_linear_residual
@@ -632,6 +689,7 @@ class OptimizeVI:
         constants=(),
         **kwargs,
     ) -> optimize.OptimizeResults:
+        fun = Partial(self.kl_value, primals_samples=samples, **kwargs)
         fun_and_grad = Partial(
             self.kl_value_and_grad, primals_samples=samples, **kwargs
         )
@@ -643,6 +701,13 @@ class OptimizeVI:
 
             insert_axes, pl, primals_frozen = _parse_point_estimates(constants, pl)
             unflatten = Vector if insert_axes else None
+            fun = partial_insert_and_remove(
+                fun,
+                insert_axes=(insert_axes,),
+                flat_fill=(primals_frozen,),
+                remove_axes=(False, insert_axes),
+                unflatten=lambda x: (x[0], unflatten(x[1:])),
+            )
             fun_and_grad = partial_insert_and_remove(
                 fun_and_grad,
                 insert_axes=(insert_axes,),
@@ -658,7 +723,7 @@ class OptimizeVI:
                 unflatten=unflatten,
             )
         kl_opt_state = minimize(
-            None,
+            fun,
             x0=pl,
             fun_and_grad=fun_and_grad,
             hessp=hessp,
