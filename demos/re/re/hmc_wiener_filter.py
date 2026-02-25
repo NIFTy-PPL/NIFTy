@@ -4,6 +4,12 @@
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 
 #%%
+# WARNING: This functionality of NIFTy.re is unmaintained and may be removed
+# in a future release. Please use `nifty.re.blackjax.blackjax_nuts` instead. You
+# can find an example of how to use `nifty.re.blackjax.blackjax_nuts` in
+# demos/re/a_blackjax_nuts.py.
+
+
 from jax import numpy as jnp
 from jax import lax, random
 import jax
