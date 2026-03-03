@@ -82,6 +82,7 @@ class _StandardHamiltonian(LazyModel):
         return self.likelihood(primals, **primals_kw) + 0.5 * vdot(primals, primals)
 
     def metric(self, primals, tangents, **primals_kw):
+        tangents = jax.lax.pcast(tangents, "x", to="varying")
         return self.likelihood.metric(primals, tangents, **primals_kw) + tangents
 
 
@@ -495,7 +496,6 @@ class OptimizeVI:
                     mesh=self.named_sharding.mesh,
                     in_specs=self.named_sharding.spec,
                     out_specs=out_spec,
-                    check_rep=False,  # FIXME Maybe enable in future JAX releases
                 )
                 smpls, smpls_states = sampler(keys)
             else:
@@ -849,7 +849,7 @@ def optimize_kl(
     odir: Optional[str] = None,
     devices: Optional[list] = None,
     kl_device_map="shard_map",
-    residual_device_map="pmap",
+    residual_device_map="shard_map",
     _optimize_vi=None,
     _optimize_vi_state=None,
 ) -> tuple[Samples, OptimizeVIState]:
