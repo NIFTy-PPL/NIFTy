@@ -10,7 +10,7 @@
 import os
 
 os.environ["XLA_FLAGS"] = (
-    "--xla_force_host_platform_device_count=8"  # Use 8 CPU devices
+    "--xla_force_host_platform_device_count=2"  # Use 8 CPU devices
 )
 
 
@@ -96,7 +96,20 @@ lh = jft.Gaussian(data, noise_cov_inv).amend(signal_response)
 # %%
 n_vi_iterations = 6
 delta = 1e-4
-n_samples = 4
+
+from jax.sharding import Mesh, NamedSharding
+from jax.sharding import PartitionSpec as Pspec
+
+# TODO: explicit sharding axis not working
+# mesh = jax.make_mesh((8,), ("x",)) # creates explicit sharding axis
+
+mesh = Mesh(jax.devices(), ("x",)) # creates auto sharding axis
+pspec = Pspec("x")
+named_sharding = NamedSharding(mesh, pspec)
+named_sharding_rep = NamedSharding(mesh, Pspec())
+# pspec_rep = Pspec()
+# named_sharding_rep = NamedSharding(mesh, pspec_rep)
+
 
 key, k_i, k_o = random.split(key, 3)
 # NOTE, changing the number of samples always triggers a resampling even if
@@ -105,7 +118,7 @@ samples, state = jft.optimize_kl(
     lh,
     jft.Vector(lh.init(k_i)),
     n_total_iterations=n_vi_iterations,
-    n_samples=8,
+    n_samples=2,
     # Source for the stochasticity for sampling
     key=k_o,
     # use the static conjugate gradient solver for the linear sampling step,
@@ -134,11 +147,15 @@ samples, state = jft.optimize_kl(
     sample_mode="nonlinear_resample",
     odir="results_intro_multi-gpu",
     resume=False,
-    # Pass avalable devices to enable multi-device execution.
-    devices=jax.devices(),
     # Map over samples on device with smap as shard_map needs to trace the
     # sampling step
     residual_map="smap",
+    # residual_device_map='shard_map',
+    residual_device_map='jit',
+    kl_device_map="jit",
+    # Pass sharding information to optimize_kl
+    named_sharding=named_sharding,
+    named_sharding_rep=named_sharding_rep,
 )
 
 # %%

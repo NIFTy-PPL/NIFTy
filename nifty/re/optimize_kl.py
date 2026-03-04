@@ -120,10 +120,8 @@ def _kl_vg(
             out_sharding = (named_sharding, sharding_tree)
             in_sharding = (sharding_tree,)
             vvg = jax.jit(vvg, in_shardings=in_sharding, out_shardings=out_sharding)
-        elif kl_device_map == "pmap":
-            vvg = jax.pmap(jax.value_and_grad(ham))
         else:
-            ve = f"`kl_device_map` need to be `pmap`, `shard_map`, or `jit`, not {kl_device_map}"
+            ve = f"`kl_device_map` needs to be `shard_map`, or `jit`, not {kl_device_map}"
             raise ValueError(ve)
 
     s = vvg(primals_samples.at(primals).samples)
@@ -139,6 +137,7 @@ def _kl_met(
     map=jax.vmap,
     reduce=_reduce,
     named_sharding=None,
+    named_sharding_rep=None,
     kl_device_map="shard_map",
 ):
     assert isinstance(primals_samples, Samples)
@@ -147,16 +146,14 @@ def _kl_met(
 
     if len(primals_samples) == 0:
         return ham.metric(primals, tangents)
-    met = Partial(ham.metric, tangents=tangents)
+    vmet = map(ham.metric, in_axes=(0, None))
 
-    if named_sharding is None:
-        vmet = map(met)
-    else:
+    if named_sharding is not None:
         if kl_device_map == "shard_map":
-            vmet = map(met)
             spec_tree = tree_map(lambda x: named_sharding.spec, primals)
+            spec_tree_rep = tree_map(lambda x: named_sharding_rep.spec, tangents)
             out_spec = spec_tree
-            in_spec = (spec_tree,)
+            in_spec = (spec_tree, spec_tree_rep)
             vmet = shard_map(
                 vmet,
                 mesh=named_sharding.mesh,
@@ -164,17 +161,15 @@ def _kl_met(
                 out_specs=out_spec,
             )
         elif kl_device_map == "jit":
-            vmet = map(met)
             sharding_tree = tree_map(lambda x: named_sharding, primals)
+            sharding_tree_rep = tree_map(lambda x: named_sharding_rep, tangents)
             out_sharding = sharding_tree
-            in_sharding = (sharding_tree,)
+            in_sharding = (sharding_tree, sharding_tree_rep)
             vmet = jax.jit(vmet, in_shardings=in_sharding, out_shardings=out_sharding)
-        elif kl_device_map == "pmap":
-            vmet = jax.pmap(met)
         else:
-            ve = f"`kl_device_map` need to be `pmap`, `shard_map`, or `jit`, not {kl_device_map}"
+            ve = f"`kl_device_map` needs to be `shard_map`, or `jit`, not {kl_device_map}"
             raise ValueError(ve)
-    s = vmet(primals_samples.at(primals).samples)
+    s = vmet(primals_samples.at(primals).samples, tangents)
     return reduce(s)
 
 
@@ -271,7 +266,8 @@ class OptimizeVI:
         residual_map="lmap",
         kl_reduce=_reduce,
         mirror_samples=True,
-        devices: Optional[list] = None,
+        named_sharding: Optional[NamedSharding] = None,
+        named_sharding_rep: Optional[NamedSharding] = None,
         kl_device_map="shard_map",
         residual_device_map="pmap",
         _kl_value_and_grad: Optional[Callable] = None,
@@ -362,11 +358,8 @@ class OptimizeVI:
         linear_minimizer_jit = _parse_jit(linear_minimizer_jit)
         nonlinear_minimizer_jit = _parse_jit(nonlinear_minimizer_jit)
         residual_map = get_map(residual_map)
-        self.named_sharding = None
-        if (not devices is None) and len(devices) > 1:
-            mesh = Mesh(devices, ("x",))
-            pspec = Pspec("x")
-            self.named_sharding = NamedSharding(mesh, pspec)
+        self.named_sharding = named_sharding
+        self.named_sharding_rep = named_sharding_rep
         self.residual_device_map = residual_device_map
 
         if mirror_samples is False:
@@ -397,6 +390,7 @@ class OptimizeVI:
                         "map",
                         "reduce",
                         "named_sharding",
+                        "named_sharding_rep",
                         "kl_device_map",
                     ),
                 ),
@@ -404,6 +398,7 @@ class OptimizeVI:
                 map=kl_map,
                 reduce=kl_reduce,
                 named_sharding=self.named_sharding,
+                named_sharding_rep=self.named_sharding_rep,
                 kl_device_map=kl_device_map,
             )
         if _draw_linear_residual is None:
@@ -444,9 +439,9 @@ class OptimizeVI:
         # NOTE, use `Partial` in favor of `partial` to allow the (potentially)
         # re-jitting `residual_map` to trace the kwargs
         kwargs = hide_strings(kwargs)
+        sampler = Partial(self.draw_linear_residual, **kwargs)
+        sampler = self.residual_map(sampler, in_axes=(None, 0))
         if self.named_sharding is None:
-            sampler = Partial(self.draw_linear_residual, **kwargs)
-            sampler = self.residual_map(sampler, in_axes=(None, 0))
             smpls, smpls_states = sampler(primals, keys)
             # zip samples such that the mirrored-counterpart always comes right
             # after the original sample
@@ -471,36 +466,39 @@ class OptimizeVI:
             def _special_mirror_samples(samples):
                 return samples.at[1::2].set(-samples[1::2])
 
-            if self.residual_device_map == "pmap":
-                sampler = Partial(self.draw_linear_residual, **kwargs)
-                sampler = jax.pmap(sampler, in_axes=(None, 0))
-                keys = jax.device_put(keys, self.named_sharding)
-                smpls, smpls_states = sampler(primals, keys)
-            elif self.residual_device_map == "jit":
-                sampler = Partial(self.draw_linear_residual, primals, **kwargs)
-                sampler = self.residual_map(sampler)
+            if self.residual_device_map == "jit":
+                in_shardings = (
+                    tree_map(lambda x: self.named_sharding_rep, primals),
+                    self.named_sharding,
+                )
+                out_shardings = (
+                    tree_map(lambda x: self.named_sharding, primals),
+                    self.named_sharding,
+                )
                 sampler = jax.jit(
                     sampler,
-                    in_shardings=self.named_sharding,
-                    out_shardings=self.named_sharding,
+                    in_shardings=in_shardings,
+                    out_shardings=out_shardings,
                 )
-                smpls, smpls_states = sampler(keys)
             elif self.residual_device_map == "shard_map":
-                sampler = Partial(self.draw_linear_residual, primals, **kwargs)
                 out_spec = (
                     tree_map(lambda x: self.named_sharding.spec, primals),
                     self.named_sharding.spec,
                 )
+                in_spec = (
+                    tree_map(lambda x: self.named_sharding_rep.spec, primals),
+                    self.named_sharding.spec,
+                )
                 sampler = shard_map(
-                    self.residual_map(sampler),
+                    sampler,
                     mesh=self.named_sharding.mesh,
-                    in_specs=self.named_sharding.spec,
+                    in_specs=in_spec,
                     out_specs=out_spec,
                 )
-                smpls, smpls_states = sampler(keys)
             else:
-                ve = f"`residual_device_map` need to be `pmap`, `shard_map`, or `jit`, not {self.residual_device_map}"
+                ve = f"`residual_device_map` needs to be `shard_map`, or `jit`, not {self.residual_device_map}"
                 raise ValueError(ve)
+            smpls, smpls_states = sampler(primals, keys)
             if n_samples == self.named_sharding.mesh.size / 2:
                 smpls = tree_map(_special_mirror_samples, smpls)
                 keys = keys[::2]  # undo jnp.repeat
@@ -518,24 +516,24 @@ class OptimizeVI:
         metric_sample_key = concatenate_zip(*((samples.keys,) * 2))
         sgn = jnp.ones(len(samples.keys))
         sgn = concatenate_zip(sgn, -sgn)
-        if self.named_sharding is None:
-            curver = Partial(self.nonlinearly_update_residual, **kwargs)
-            curver = self.residual_map(curver, in_axes=(None, 0, 0, 0))
-            smpls, smpls_states = curver(
-                samples.pos, samples._samples, metric_sample_key, sgn
-            )
-        else:
-            curver = Partial(self.nonlinearly_update_residual, samples.pos, **kwargs)
+        curver = Partial(self.nonlinearly_update_residual, **kwargs)
+        curver = self.residual_map(curver, in_axes=(None, 0, 0, 0))
+        if self.named_sharding is not None:
+            metric_sample_key = jax.device_put(metric_sample_key, self.named_sharding)
             if self.residual_device_map == "shard_map":
                 spec_tree = tree_map(lambda x: self.named_sharding.spec, samples.pos)
+                spec_tree_rep = tree_map(
+                    lambda x: self.named_sharding_rep.spec, samples.pos
+                )
                 out_spec = (spec_tree, self.named_sharding.spec)
                 in_spec = (
+                    spec_tree_rep,
                     spec_tree,
                     self.named_sharding.spec,
                     self.named_sharding.spec,
                 )
                 curver = shard_map(
-                    self.residual_map(curver, in_axes=(0, 0, 0)),
+                    curver,
                     mesh=self.named_sharding.mesh,
                     in_specs=in_spec,
                     out_specs=out_spec,
@@ -543,22 +541,25 @@ class OptimizeVI:
                 )
             elif self.residual_device_map == "jit":
                 sharding_tree = tree_map(lambda x: self.named_sharding, samples.pos)
+                sharding_tree_rep = tree_map(
+                    lambda x: self.named_sharding_rep, samples.pos
+                )
                 out_sharding = (sharding_tree, self.named_sharding)
-                in_sharding = (sharding_tree, self.named_sharding, self.named_sharding)
-                curver = self.residual_map(curver)
+                in_sharding = (
+                    sharding_tree_rep,
+                    sharding_tree,
+                    self.named_sharding,
+                    self.named_sharding,
+                )
                 curver = jax.jit(
                     curver, in_shardings=in_sharding, out_shardings=out_sharding
                 )
-                metric_sample_key = jax.device_put(
-                    metric_sample_key, self.named_sharding
-                )
-            elif self.residual_device_map == "pmap":
-                curver = jax.pmap(curver, in_axes=(0, 0, 0))
             else:
-                ve = f"`residual_device_map` need to be `pmap`, `shard_map`, or `jit`, not {self.residual_device_map}"
+                ve = f"`residual_device_map` needs to be `shard_map`, or `jit`, not {self.residual_device_map}"
                 raise ValueError(ve)
-            smpls, smpls_states = curver(samples._samples, metric_sample_key, sgn)
-
+        smpls, smpls_states = curver(
+            samples.pos, samples._samples, metric_sample_key, sgn
+        )
         smpls = Samples(pos=samples.pos, samples=smpls, keys=samples.keys)
         return smpls, smpls_states
 
@@ -847,7 +848,9 @@ def optimize_kl(
     resume: Union[str, bool] = False,
     callback: Optional[Callable[[Samples, OptimizeVIState], None]] = None,
     odir: Optional[str] = None,
-    devices: Optional[list] = None,
+    # devices: Optional[list] = None,
+    named_sharding: Optional[NamedSharding] = None,
+    named_sharding_rep: Optional[NamedSharding] = None,
     kl_device_map="shard_map",
     residual_device_map="shard_map",
     _optimize_vi=None,
@@ -888,7 +891,8 @@ def optimize_kl(
             residual_map=residual_map,
             kl_reduce=kl_reduce,
             mirror_samples=mirror_samples,
-            devices=devices,
+            named_sharding=named_sharding,
+            named_sharding_rep=named_sharding_rep,
             kl_device_map=kl_device_map,
             residual_device_map=residual_device_map,
         )
