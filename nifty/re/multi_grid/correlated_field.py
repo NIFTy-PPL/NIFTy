@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
+# Author: Gordian Edenhofer, Laurin Soeding
 
 from dataclasses import field
 from typing import Callable, Union
@@ -28,10 +29,10 @@ class ICRField(Model):
     def __init__(
         self,
         grid: Grid,
-        *,
         kernel: Union[
-            dict, Model, Callable[[npt.NDArray, npt.NDArray], npt.NDArray]
-        ] = dict(kind="experimental_matern"),
+            Model, Callable[[npt.NDArray, npt.NDArray], npt.NDArray]
+        ],
+        *,
         offset=0.0,
         window_size=None,
         compress: Union[bool, dict] = dict(
@@ -45,21 +46,10 @@ class ICRField(Model):
         ----------
         grid: Grid
             Storage object with instructions on how pixels are spaced.
-        kernel: dict or Model or callable
-            Parameters for the kernel. Currently supports `kind='experimental_matern'`
-            with the following additional arguments
-
-            - scale: tuple or Model or float -- Prior scale of the kernel.
-            - cutoff: tuple or Model or float -- Prior cutoff of the covariance kernel.
-            - loglogslope: tuple or Model or float -- Prior power-law slope of the covariance kernel correlating modes.
-            - n_integrate = 2_000 -- Number of integration points for the harmonic transformation.
-            - n_interpolate = 512 -- Number of interpolation points for interpolating the kernel.
-            - interpolation_dists_min_max -- Interpolation range. Automatically chosen based on cutoff if left unspecified.
-            - integration_dists_min_max -- Integration range for the harmonic transform. Automatically chosen based on cutoff if left unspecified.
-
-            alternatively, `kernel` can be a NIFTy `Model` which yields a callable
+        kernel: Model or callable
+            NIFTy `Model` which yields a callable
             covariance function (`kernel(xi: dict) -> callable[[x, y], z]`), or a
-            `callable[[x, y], z]` covarinace function.
+            `callable[[x, y], z]` covariance function.
         offset: tuple or callable or float
             Prior shift from zero in addition to the field intrinsic random shift.
         window_size:
@@ -71,7 +61,6 @@ class ICRField(Model):
         prexi: str
             Prefix for the latent parameter names.
         """
-        from .matern import MaternHarmonicCovariance
 
         self.grid = grid
         shapes = [
@@ -82,20 +71,8 @@ class ICRField(Model):
         domain = {self._name_exc: shapes}
 
         # Parse kernel
-        DEFAULT_KERNEL_KIND = "experimental_matern"
         fixed_kernel, covariance = False, None
-        if isinstance(kernel, dict):
-            kernel = kernel.copy()
-            kernel_kind = kernel.pop("kind", DEFAULT_KERNEL_KIND).lower()
-            if kernel_kind == "experimental_matern":
-                coord_swd = eval_shape(
-                    grid.at(0).index2coord, ShapeWithDtype((grid.at(0).ndim,), jnp.int_)
-                )
-                kernel.setdefault("ndim", coord_swd.shape[0])
-                covariance = MaternHarmonicCovariance(**kernel, prefix=prefix)
-            else:
-                raise ValueError(f"kernel {kernel_kind!r} not supported")
-        elif isinstance(kernel, Model):
+        if isinstance(kernel, Model):
             covariance = kernel
         elif callable(kernel):
             fixed_kernel = True
