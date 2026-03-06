@@ -263,11 +263,11 @@ class MaternHarmonicCovariance(Model):
 
         if integration_dists_min_max is None:
             integration_dists_min_max = tuple(
-                self._ref_distance * np.array([1e-3, 1e4])
+                np.array([1e-3, 1e4]) / self._ref_distance
             )
         if interpolation_dists_min_max is None:
             interpolation_dists_min_max = tuple(
-                self._ref_distance * np.array([1e-3, 1e2])
+                np.array([1e-3, 1e2]) / self._ref_distance
             )
         self._interp_dists = jnp.geomspace(*interpolation_dists_min_max, n_interpolate)
         min_dist, max_dist = integration_dists_min_max
