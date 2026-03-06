@@ -218,7 +218,7 @@ class MaternHarmonicCovariance(Model):
         loglogslope: Union[tuple, Callable, float],
         *,
         ndim: int,
-        n_integrate=2_000,
+        n_integrate=2_048,
         n_interpolate=512,
         integration_dists_min_max=None,
         interpolation_dists_min_max=None,
@@ -267,7 +267,7 @@ class MaternHarmonicCovariance(Model):
             )
         if interpolation_dists_min_max is None:
             interpolation_dists_min_max = tuple(
-                np.array([1e-3, 1e2]) / self._ref_distance
+                np.array([1e-4, 1e1]) / self._ref_distance
             )
         self._interp_dists = jnp.geomspace(*interpolation_dists_min_max, n_interpolate)
         min_dist, max_dist = integration_dists_min_max
