@@ -7,7 +7,6 @@ from dataclasses import field
 from typing import Callable, Union
 
 import jax.numpy as jnp
-from jax import eval_shape
 from jax.tree_util import Partial
 from numpy import typing as npt
 
