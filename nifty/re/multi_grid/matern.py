@@ -90,7 +90,7 @@ class IsotropicPowerSpectrumTransform:
     """
 
     def __init__(
-        self, Ndim: int, Nint: Union[int, str] = 512, h: Union[float, str] = "auto"
+        self, Ndim: int, Nint: Union[int, str] = 1024, h: Union[float, str] = "auto"
     ):
         # Input validation
         if not isinstance(Ndim, int) or Ndim < 1:
@@ -234,7 +234,7 @@ class _MaternCovarianceKernel(IsotropicPowerSpectrumTransform):
         r_max: float,
         Ninterp: int = 128,
         jitter: float = 1.0e-5,
-        Nint: int = 512,
+        Nint: int = 1024,
         h: float = "auto",
         enforce_nonnegativity: bool = True,
         enforce_monotonicity: bool = True,
@@ -498,7 +498,7 @@ class MaternCovarianceKernel(_MaternCovarianceKernel, Model):
         kcutoff: Union[float, tuple, Model, str] = "auto",
         Ninterp: int = 128,
         jitter: float = 1.0e-5,
-        Nint: Union[int, str] = 512,
+        Nint: Union[int, str] = 1024,
         h: Union[float, str] = "auto",
         prefix: str = "MaternCovarianceKernel_",
         mode: str = "ICR",
