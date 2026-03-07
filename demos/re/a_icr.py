@@ -21,16 +21,16 @@ key = random.PRNGKey(seed)
 # %%
 shape = (32, 32)
 
-grid = jft.SimpleOpenGrid(min_shape=shape)
-cf = jft.ICRField(
-    grid,
-    kernel=dict(
-        kind="experimental_matern",
-        scale=(1.0, 0.2),
-        cutoff=(1e-1, 1e-2),
-        loglogslope=(-3.0, 0.5),
-    ),
+grid = jft.SimpleOpenGrid(min_shape=shape, distances=1.0)
+kernel = jft.MaternCovarianceKernel(
+    Ndim=len(shape),
+    r_min=0.1,
+    r_max=100.0,
+    variance=(1.0, 0.2),
+    lengthscale=(5.0, 0.5),
+    negloglogslope=(3.0, 0.5),
 )
+cf = jft.ICRField(grid, kernel)
 
 
 # %% [markdown]
