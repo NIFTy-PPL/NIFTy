@@ -38,8 +38,8 @@ cf = jft.ICRField(grid, kernel)
 
 # %%
 signal_response = signal = cf
-noise_cov = lambda x: 0.1**2 * x
-noise_cov_inv = lambda x: 0.1**-2 * x
+noise_cov = lambda x: 0.5**2 * x
+noise_cov_inv = lambda x: 0.5**-2 * x
 
 # Create synthetic data
 key, subkey = random.split(key)
