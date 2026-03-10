@@ -38,6 +38,8 @@ test_re:
   stage: test
   script:
     - pytest -n auto -q --cov=nifty.re test/test_re
+    - export XLA_FLAGS="--xla_force_host_platform_device_count=4"
+    - pytest -n auto --cov=nifty.re --cov-append test/test_re/test_optimize_kl.py
     - mv .coverage .coverage.re
   artifacts:
     paths:
