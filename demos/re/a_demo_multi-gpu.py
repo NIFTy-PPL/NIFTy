@@ -97,19 +97,6 @@ lh = jft.Gaussian(data, noise_cov_inv).amend(signal_response)
 n_vi_iterations = 6
 delta = 1e-4
 
-from jax.sharding import Mesh, NamedSharding
-from jax.sharding import PartitionSpec as Pspec
-
-# TODO: explicit sharding axis not working
-# mesh = jax.make_mesh((8,), ("x",)) # creates explicit sharding axis
-
-mesh = Mesh(jax.devices(), ("x",))  # creates auto sharding axis
-pspec = Pspec("x")
-named_sharding = NamedSharding(mesh, pspec)
-named_sharding_rep = NamedSharding(mesh, Pspec())
-# pspec_rep = Pspec()
-# named_sharding_rep = NamedSharding(mesh, pspec_rep)
-
 
 key, k_i, k_o = random.split(key, 3)
 # NOTE, changing the number of samples always triggers a resampling even if
@@ -150,8 +137,7 @@ samples, state = jft.optimize_kl(
     # To map the sampling over devices JAX needs to trace the sampling step.
     # There you need to use `smap` or `vmap` as a residual map function.
     residual_map="smap",
-    named_sharding=named_sharding,
-    named_sharding_rep=named_sharding_rep,
+    devices=jax.devices(),
 )
 
 # %%
