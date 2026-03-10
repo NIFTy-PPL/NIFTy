@@ -15,9 +15,7 @@ import jax
 import numpy as np
 from jax import numpy as jnp
 from jax import random
-from jax.experimental.shard_map import shard_map
-from jax.sharding import Mesh, NamedSharding
-from jax.sharding import PartitionSpec as Pspec
+from jax.sharding import NamedSharding
 from jax.tree_util import Partial, tree_map
 
 from . import optimize
@@ -111,7 +109,7 @@ def _kl_vg(
             spec_tree = tree_map(lambda x: named_sharding.spec, primals)
             out_spec = (named_sharding.spec, spec_tree)
             in_spec = (spec_tree,)
-            vvg = shard_map(
+            vvg = jax.shard_map(
                 vvg, mesh=named_sharding.mesh, in_specs=in_spec, out_specs=out_spec
             )
         elif kl_device_map == "jit":
@@ -154,7 +152,7 @@ def _kl_met(
             spec_tree_rep = tree_map(lambda x: named_sharding_rep.spec, tangents)
             out_spec = spec_tree
             in_spec = (spec_tree, spec_tree_rep)
-            vmet = shard_map(
+            vmet = jax.shard_map(
                 vmet,
                 mesh=named_sharding.mesh,
                 in_specs=in_spec,
@@ -489,7 +487,7 @@ class OptimizeVI:
                     tree_map(lambda x: self.named_sharding_rep.spec, primals),
                     self.named_sharding.spec,
                 )
-                sampler = shard_map(
+                sampler = jax.shard_map(
                     sampler,
                     mesh=self.named_sharding.mesh,
                     in_specs=in_spec,
@@ -532,7 +530,7 @@ class OptimizeVI:
                     self.named_sharding.spec,
                     self.named_sharding.spec,
                 )
-                curver = shard_map(
+                curver = jax.shard_map(
                     curver,
                     mesh=self.named_sharding.mesh,
                     in_specs=in_spec,
