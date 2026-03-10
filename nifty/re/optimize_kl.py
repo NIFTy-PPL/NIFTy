@@ -15,8 +15,9 @@ import jax
 import numpy as np
 from jax import numpy as jnp
 from jax import random
-from jax.sharding import NamedSharding
+from jax.sharding import Mesh, NamedSharding, PartitionSpec
 from jax.tree_util import Partial, tree_map
+
 
 from . import optimize
 from .evi import (
@@ -238,8 +239,7 @@ class OptimizeVI:
         residual_map="lmap",
         kl_reduce=_reduce,
         mirror_samples=True,
-        named_sharding: Optional[NamedSharding] = None,
-        named_sharding_rep: Optional[NamedSharding] = None,
+        devices=None,
         _kl_value_and_grad: Optional[Callable] = None,
         _kl_metric: Optional[Callable] = None,
         _draw_linear_residual: Optional[Callable] = None,
@@ -314,8 +314,12 @@ class OptimizeVI:
         linear_minimizer_jit = _parse_jit(linear_minimizer_jit)
         nonlinear_minimizer_jit = _parse_jit(nonlinear_minimizer_jit)
         residual_map = get_map(residual_map)
-        self.named_sharding = named_sharding
-        self.named_sharding_rep = named_sharding_rep
+        self.named_sharding = None
+        self.named_sharding_rep = None
+        if (not devices is None) and len(devices) > 1:
+            mesh = Mesh(devices, ("x",))  # creates auto sharding axis
+            self.named_sharding = NamedSharding(mesh, PartitionSpec("x"))
+            self.named_sharding_rep = NamedSharding(mesh, PartitionSpec())
 
         if mirror_samples is False:
             raise NotImplementedError()
@@ -757,9 +761,7 @@ def optimize_kl(
     resume: Union[str, bool] = False,
     callback: Optional[Callable[[Samples, OptimizeVIState], None]] = None,
     odir: Optional[str] = None,
-    # devices: Optional[list] = None,
-    named_sharding: Optional[NamedSharding] = None,
-    named_sharding_rep: Optional[NamedSharding] = None,
+    devices: Optional[list] = None,
     _optimize_vi=None,
     _optimize_vi_state=None,
 ) -> tuple[Samples, OptimizeVIState]:
@@ -798,8 +800,7 @@ def optimize_kl(
             residual_map=residual_map,
             kl_reduce=kl_reduce,
             mirror_samples=mirror_samples,
-            named_sharding=named_sharding,
-            named_sharding_rep=named_sharding_rep,
+            devices=devices,
         )
 
     last_fn = os.path.join(odir, LAST_FILENAME) if odir is not None else None
