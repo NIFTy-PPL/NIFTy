@@ -103,10 +103,8 @@ def _kl_vg(
     if len(primals_samples) == 0:
         return jax.value_and_grad(ham)(primals)
 
-    if named_sharding is None:
-        vvg = map(jax.value_and_grad(ham))
-    else:
-        vvg = map(jax.value_and_grad(ham))
+    vvg = map(jax.value_and_grad(ham))
+    if named_sharding is not None:
         sharding_tree = tree_map(lambda x: named_sharding, primals)
         out_sharding = (named_sharding, sharding_tree)
         in_sharding = (sharding_tree,)
@@ -133,8 +131,8 @@ def _kl_met(
 
     if len(primals_samples) == 0:
         return ham.metric(primals, tangents)
-    vmet = map(ham.metric, in_axes=(0, None))
 
+    vmet = map(ham.metric, in_axes=(0, None))
     if named_sharding is not None:
         sharding_tree = tree_map(lambda x: named_sharding, primals)
         sharding_tree_rep = tree_map(lambda x: named_sharding_rep, tangents)
