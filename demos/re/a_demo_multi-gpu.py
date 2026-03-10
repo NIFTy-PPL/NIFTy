@@ -103,7 +103,7 @@ from jax.sharding import PartitionSpec as Pspec
 # TODO: explicit sharding axis not working
 # mesh = jax.make_mesh((8,), ("x",)) # creates explicit sharding axis
 
-mesh = Mesh(jax.devices(), ("x",)) # creates auto sharding axis
+mesh = Mesh(jax.devices(), ("x",))  # creates auto sharding axis
 pspec = Pspec("x")
 named_sharding = NamedSharding(mesh, pspec)
 named_sharding_rep = NamedSharding(mesh, Pspec())
@@ -147,13 +147,9 @@ samples, state = jft.optimize_kl(
     sample_mode="nonlinear_resample",
     odir="results_intro_multi-gpu",
     resume=False,
-    # Map over samples on device with smap as shard_map needs to trace the
-    # sampling step
+    # To map the sampling over devices JAX needs to trace the sampling step.
+    # There you need to use `smap` or `vmap` as a residual map function.
     residual_map="smap",
-    # residual_device_map='shard_map',
-    residual_device_map='jit',
-    kl_device_map="jit",
-    # Pass sharding information to optimize_kl
     named_sharding=named_sharding,
     named_sharding_rep=named_sharding_rep,
 )

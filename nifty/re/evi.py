@@ -99,7 +99,10 @@ def draw_linear_residual(
     _raise_nonposdef: bool = False,
 ) -> tuple[P, int]:
     assert_arithmetics(pos)
-    pos = jax.lax.pcast(pos, "x", to="varying")
+
+    # NOTE: In case of manually mappring this function over devices with
+    # `shard_map`, the `pos` argument needs to be set to varying over devices.
+    # pos = jax.lax.pcast(pos, "x", to="varying")
 
     if not isinstance(likelihood, Likelihood):
         te = f"`likelihood` of invalid type; got '{type(likelihood)}'"
