@@ -201,6 +201,59 @@ def test_elbo_compute_all_saves_all_eigenvalues(tmp_path):
     assert eigvals.size == 3
 
 
+def test_elbo_analytic_prior_term_requires_all_relevant_eigenvalues():
+    hamiltonian, samples = _make_simple_hamiltonian_and_samples(seed=5, dim=4)
+    with pytest.raises(ValueError, match="analytic_prior_term requires all relevant"):
+        ift.estimate_evidence_lower_bound(
+            hamiltonian,
+            samples,
+            2,
+            analytic_prior_term=True,
+            compute_all=False,
+            verbose=False,
+        )
+
+
+def test_elbo_analytic_prior_term_matches_manual_formula():
+    hamiltonian, samples = _make_simple_hamiltonian_and_samples(seed=6, dim=3, n_samples=3)
+
+    elbo, stats = ift.estimate_evidence_lower_bound(
+        hamiltonian,
+        samples,
+        3,
+        compute_all=True,
+        analytic_prior_term=True,
+        verbose=False,
+    )
+
+    metric = hamiltonian(ift.Linearization.make_var(samples.mean, want_metric=True)).metric
+    eigvals = np.linalg.eigvalsh(_explicify(metric))
+    n_relevant_dofs = min(
+        hamiltonian.likelihood_energy.data_domain.size, hamiltonian.domain.size
+    )
+    trace_inv_exact = np.sum(1.0 / eigvals[-n_relevant_dofs:])
+    trace_inv_const = max(0.0, metric.domain.size - n_relevant_dofs)
+    prior_mean_sq = float(np.real(np.real_if_close(samples.mean.s_vdot(samples.mean))))
+    prior_term = 0.5 * (trace_inv_exact + trace_inv_const + prior_mean_sq)
+    posterior_contribution = (
+        -0.5 * np.sum(np.log(eigvals[-n_relevant_dofs:])) + 0.5 * metric.domain.size
+    )
+
+    expected_elbo = np.array(
+        [
+            posterior_contribution - hamiltonian.likelihood_energy(s).asnumpy() - prior_term
+            for s in samples.iterator()
+        ]
+    )
+    got_elbo = np.array([s.asnumpy() for s in elbo.iterator()])
+    assert np.allclose(got_elbo, expected_elbo)
+    assert np.isclose(stats["trace_inv_exact"].asnumpy(), trace_inv_exact)
+    assert np.isclose(stats["trace_inv_const"].asnumpy(), trace_inv_const)
+    assert np.isclose(stats["trace_inv_total"].asnumpy(), trace_inv_exact + trace_inv_const)
+    assert np.isclose(stats["prior_mean_sq"].asnumpy(), prior_mean_sq)
+    assert np.isclose(stats["prior_term"].asnumpy(), prior_term)
+
+
 def test_elbo_early_stop_saves_partial_eigenvalues(tmp_path):
     hamiltonian, samples = _make_simple_hamiltonian_and_samples(seed=2, dim=5)
     output_directory = tmp_path / "early"

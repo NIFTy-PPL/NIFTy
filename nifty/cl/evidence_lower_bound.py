@@ -360,6 +360,7 @@ def estimate_evidence_lower_bound(
     orthonormalize_every_n_batches=8,
     orthonormalize_threshold=1e-6,
     orthonormalize_n_probes=2,
+    analytic_prior_term=False,
 ):
     """Provides an estimate for the Evidence Lower Bound (ELBO).
 
@@ -460,6 +461,13 @@ def estimate_evidence_lower_bound(
     orthonormalize_n_probes : int
         Number of randomized probe vectors used to estimate the orthonormality
         error. Default is 2.
+    analytic_prior_term : bool
+        If True, compute the quadratic prior term
+        :math:`\\frac{1}{2}\\langle \\xi^\\dagger \\xi \\rangle_q` analytically
+        as :math:`\\frac{1}{2}(\\mathrm{Tr}\\,\\Sigma + \\bar\\xi^\\dagger\\bar\\xi)`
+        with :math:`\\Sigma = \\Lambda^{-1}`. For the CL implementation this
+        requires all relevant metric eigenvalues to be available (e.g. via
+        `compute_all=True`). Default is False.
 
     Returns
     -------
@@ -479,6 +487,9 @@ def estimate_evidence_lower_bound(
           the number of relevant metric eigenvalues different from 1 neglected
           in the estimation of the trace-log times the log of the smallest
           calculated eigenvalue.
+        - `trace_inv_exact`, `trace_inv_const`, `trace_inv_total`,
+          `prior_mean_sq`, `prior_term`: returned when
+          `analytic_prior_term=True`.
 
     Warning
     -------
@@ -510,7 +521,7 @@ def estimate_evidence_lower_bound(
 
     n_data_points = (
         hamiltonian.likelihood_energy.data_domain.size
-        if not None
+        if hamiltonian.likelihood_energy.data_domain is not None
         else hamiltonian.domain.size
     )
     n_relevant_dofs = min(
@@ -556,23 +567,72 @@ def estimate_evidence_lower_bound(
         )
 
     # Return a list of ELBO samples and a summary of the ELBO statistics
-    log_eigenvalues = np.log(eigenvalues)
+    log_eigenvalues = np.log(eigenvalues) if eigenvalues.size > 0 else np.array([])
     tr_log_lat_cov = -0.5 * np.sum(log_eigenvalues)
-    tr_log_lat_cov_lower = (
-        0.5 * (n_relevant_dofs - log_eigenvalues.size) * np.min(log_eigenvalues)
-    )
+    if log_eigenvalues.size > 0:
+        tr_log_lat_cov_lower = (
+            0.5 * (n_relevant_dofs - log_eigenvalues.size) * np.min(log_eigenvalues)
+        )
+    else:
+        tr_log_lat_cov_lower = 0.0
     tr_log_lat_cov_lower = Field.scalar(tr_log_lat_cov_lower)
+
+    trace_inv_exact = 0.0
+    trace_inv_const = float(max(0, metric_size - n_relevant_dofs))
+    prior_mean_sq = 0.0
+    if analytic_prior_term:
+        if eigenvalues.size < n_relevant_dofs:
+            raise ValueError(
+                "analytic_prior_term requires all relevant eigenvalues to be "
+                "computed. Set compute_all=True."
+            )
+        if eigenvalues.size > 0:
+            trace_inv_exact = float(np.sum(1.0 / eigenvalues))
+        prior_mean_sq = float(np.real(np.real_if_close(samples.mean.s_vdot(samples.mean))))
+
     posterior_contribution = Field.scalar(tr_log_lat_cov + 0.5 * metric_size)
-    elbo_samples = SampleList(
-        list(samples.iterator(lambda x: posterior_contribution - hamiltonian(x)))
-    )
+    if analytic_prior_term:
+        trace_inv_total = trace_inv_exact + trace_inv_const
+        prior_term = Field.scalar(0.5 * (trace_inv_total + prior_mean_sq))
+        elbo_samples = SampleList(
+            list(
+                samples.iterator(
+                    lambda x: posterior_contribution
+                    - hamiltonian.likelihood_energy(x)
+                    - prior_term
+                )
+            )
+        )
+    else:
+        trace_inv_total = 0.0
+        prior_term = None
+        elbo_samples = SampleList(
+            list(samples.iterator(lambda x: posterior_contribution - hamiltonian(x)))
+        )
 
     stats = {"lower_error": tr_log_lat_cov_lower}
+    if analytic_prior_term:
+        stats.update(
+            {
+                "trace_inv_exact": Field.scalar(trace_inv_exact),
+                "trace_inv_const": Field.scalar(trace_inv_const),
+                "trace_inv_total": Field.scalar(trace_inv_total),
+                "prior_mean_sq": Field.scalar(prior_mean_sq),
+                "prior_term": prior_term,
+            }
+        )
     elbo_mean, elbo_var = elbo_samples.sample_stat()
     elbo_up = elbo_mean + elbo_var.sqrt()
     elbo_lw = elbo_mean - elbo_var.sqrt() - stats["lower_error"]
     stats["elbo_mean"], stats["elbo_up"], stats["elbo_lw"] = elbo_mean, elbo_up, elbo_lw
     if verbose:
+        if analytic_prior_term:
+            logger.info(
+                f"\nAnalytic prior term (in log units)"
+                f"\nTrace(inv) : {trace_inv_total:.4e} "
+                f"(exact {trace_inv_exact:.4e}, const {trace_inv_const:.4e})"
+                f"\nMean^2     : {prior_mean_sq:.4e}"
+            )
         s = (
             f"\nELBO decomposition (in log units)"
             f"\nELBO mean : {elbo_mean.asnumpy():.4e} "
