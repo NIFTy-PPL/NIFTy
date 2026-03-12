@@ -89,6 +89,7 @@ noise_truth = (
 data = signal_response_truth + noise_truth
 
 lh = jft.Gaussian(data, noise_cov_inv).amend(signal_response)
+lh._domain = jft.Vector(lh._domain)
 
 # %% [markdown]
 # ## The inference
@@ -131,7 +132,7 @@ samples, state = jft.optimize_kl(
             name="M", xtol=delta, cg_kwargs=dict(name=None), maxiter=35
         )
     ),
-    sample_mode="nonlinear_resample",
+    sample_mode="linear_resample",
     odir="results_intro_multi-gpu",
     resume=False,
     # To map the sampling over devices JAX needs to trace the sampling step.

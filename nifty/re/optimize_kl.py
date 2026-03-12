@@ -89,57 +89,37 @@ class _StandardHamiltonian(LazyModel):
 
 def _kl_vg(
     likelihood,
-    primals,
     primals_samples,
-    *,
-    map=jax.vmap,
-    reduce=_reduce,
-    named_sharding=None,
+    primals,
 ):
+    map = jax.vmap
+    reduce = _reduce
     assert isinstance(primals_samples, Samples)
-    map = get_map(map)
     ham = _StandardHamiltonian(likelihood)
 
     if len(primals_samples) == 0:
         return jax.value_and_grad(ham)(primals)
 
     vvg = map(jax.value_and_grad(ham))
-    if named_sharding is not None:
-        sharding_tree = tree_map(lambda x: named_sharding, primals)
-        out_sharding = (named_sharding, sharding_tree)
-        in_sharding = (sharding_tree,)
-        vvg = jax.jit(vvg, in_shardings=in_sharding, out_shardings=out_sharding)
-
     s = vvg(primals_samples.at(primals).samples)
     return reduce(s)
 
 
 def _kl_met(
     likelihood,
+    primals_samples,
     primals,
     tangents,
-    primals_samples,
-    *,
-    map=jax.vmap,
-    reduce=_reduce,
-    named_sharding=None,
-    named_sharding_rep=None,
 ):
+    map = jax.vmap
+    reduce = _reduce
     assert isinstance(primals_samples, Samples)
-    map = get_map(map)
     ham = _StandardHamiltonian(likelihood)
 
     if len(primals_samples) == 0:
         return ham.metric(primals, tangents)
 
     vmet = map(ham.metric, in_axes=(0, None))
-    if named_sharding is not None:
-        sharding_tree = tree_map(lambda x: named_sharding, primals)
-        sharding_tree_rep = tree_map(lambda x: named_sharding_rep, tangents)
-        out_sharding = sharding_tree
-        in_sharding = (sharding_tree, sharding_tree_rep)
-        vmet = jax.jit(vmet, in_shardings=in_sharding, out_shardings=out_sharding)
-
     s = vmet(primals_samples.at(primals).samples, tangents)
     return reduce(s)
 
@@ -315,45 +295,66 @@ class OptimizeVI:
         self.named_sharding = None
         self.named_sharding_rep = None
         if (not devices is None) and len(devices) > 1:
-            mesh = Mesh(devices, ("x",))  # creates auto sharding axis
+            mesh = Mesh(devices, ("x",))
             self.named_sharding = NamedSharding(mesh, PartitionSpec("x"))
             self.named_sharding_rep = NamedSharding(mesh, PartitionSpec())
+            jax.set_mesh(mesh)
 
         if mirror_samples is False:
             raise NotImplementedError()
 
+        if self.named_sharding is not None:
+            likelihood = tree_map(
+                lambda x: jax.device_put(x, self.named_sharding_rep), likelihood
+            )
+            sharding_rep_lh = tree_map(lambda x: self.named_sharding_rep, likelihood)
+            sharding_prim = tree_map(lambda x: self.named_sharding, likelihood.domain)
+            sharding_rep_prim = tree_map(
+                lambda x: self.named_sharding_rep, likelihood.domain
+            )
+            sharding_samples = Samples(
+                pos=sharding_rep_prim, samples=sharding_prim, keys=self.named_sharding
+            )
+
         if _kl_value_and_grad is None:
+            in_sharding_kl_vg = None
+            out_sharding_kl_vg = None
+            if self.named_sharding is not None:
+                in_sharding_kl_vg = (
+                    sharding_rep_lh,
+                    sharding_samples,
+                    sharding_rep_prim,
+                )
+                out_sharding_kl_vg = (PartitionSpec(), sharding_rep_prim)
             _kl_value_and_grad = partial(
                 jit(
                     _kl_vg,
-                    static_argnames=(
-                        "map",
-                        "reduce",
-                        "named_sharding",
-                    ),
+                    in_shardings=in_sharding_kl_vg,
+                    out_shardings=out_sharding_kl_vg,
                 ),
                 likelihood,
-                map=kl_map,
-                reduce=kl_reduce,
-                named_sharding=self.named_sharding,
             )
+
         if _kl_metric is None:
+            in_sharding_kl_met = None
+            out_sharding_kl_met = None
+            if self.named_sharding is not None:
+                in_sharding_kl_met = (
+                    sharding_rep_lh,
+                    sharding_samples,
+                    sharding_rep_prim,
+                    sharding_rep_prim,
+                )
+                out_sharding_kl_met = sharding_rep_prim
             _kl_metric = partial(
                 jit(
                     _kl_met,
-                    static_argnames=(
-                        "map",
-                        "reduce",
-                        "named_sharding",
-                        "named_sharding_rep",
-                    ),
+                    in_shardings=in_sharding_kl_met,
+                    out_shardings=out_sharding_kl_met,
                 ),
                 likelihood,
-                map=kl_map,
-                reduce=kl_reduce,
-                named_sharding=self.named_sharding,
-                named_sharding_rep=self.named_sharding_rep,
             )
+
         if _draw_linear_residual is None:
             _draw_linear_residual = partial(
                 linear_minimizer_jit(
@@ -455,6 +456,7 @@ class OptimizeVI:
         curver = self.residual_map(curver, in_axes=(None, 0, 0, 0))
         if self.named_sharding is not None:
             metric_sample_key = jax.device_put(metric_sample_key, self.named_sharding)
+            sgn = jax.device_put(sgn, self.named_sharding)
             sharding_tree = tree_map(lambda x: self.named_sharding, samples.pos)
             sharding_tree_rep = tree_map(lambda x: self.named_sharding_rep, samples.pos)
             out_sharding = (sharding_tree, self.named_sharding)
@@ -544,10 +546,8 @@ class OptimizeVI:
         constants=(),
         **kwargs,
     ) -> optimize.OptimizeResults:
-        fun_and_grad = Partial(
-            self.kl_value_and_grad, primals_samples=samples, **kwargs
-        )
-        hessp = Partial(self.kl_metric, primals_samples=samples, **kwargs)
+        fun_and_grad = Partial(self.kl_value_and_grad, samples, **kwargs)
+        hessp = Partial(self.kl_metric, samples, **kwargs)
         pl = samples.pos
         if constants:
             from .likelihood import _parse_point_estimates, partial_insert_and_remove
