@@ -40,6 +40,7 @@ re = [
 re_extra = [
     "optax",
     "blackjax",
+    "ipython", # currently missing dependenc of blackjax.
 ]
 cl_native = [
     "ducc0>=0.27.0",
