@@ -61,17 +61,28 @@ def _logg_hlo_consts(name, consts, size, bytes):
     logger.info(msg)
 
 
+def _log_model_leaves(model):
+    leaves = jax.tree.leaves(model)
+    msg = f"\n leavs of model:\n"
+    for l in leaves:
+        msg += f"  * shape: {l.shape} dtype: {l.dtype}\n"
+    logger.info(msg)
+
+
 def check_model(model, pos):
     """
     Benchmarks and analyzes a NIFTy model's forward pass, JVP, and VJP.
 
-    Runs three types of analysis for each of the three evaluation modes
+    Runs four types of analysis for each of the three evaluation modes
     (forward, JVP, VJP):
 
     - **Timing:** Measures execution time with and without JIT compilation.
     - **Memory analysis:** Reports memory usage of the JIT-compiled computations.
     - **HLO parsing:** Inspects the compiled HLO representation to analyze
       inlined constants.
+    - **Model leavs:** Inspects the leavs of the model which are not inlined but
+      treaded as variables.
+
 
 
     Parameters
@@ -137,3 +148,5 @@ def check_model(model, pos):
     _logg_hlo_consts("forward", const_forward, size_forward, bytes_forward)
     _logg_hlo_consts("jvp", const_jvp, size_jvp, bytes_jvp)
     _logg_hlo_consts("vjp", const_vjp, size_vjp, bytes_vjp)
+
+    _log_model_leaves(model)
