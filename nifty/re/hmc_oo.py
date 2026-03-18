@@ -2,6 +2,7 @@
 
 from functools import partial
 from typing import Any, Callable, NamedTuple, Optional, Tuple, Union
+from warnings import warn
 
 import numpy as np
 from jax import grad
@@ -145,6 +146,12 @@ class NUTSChain(_Sampler):
         bias_transition: bool = True,
         max_energy_difference: float = jnp.inf,
     ):
+        msg = (
+            "The `NUTSChain` class is unmaintained and may be removed in a future release."
+            "Please use `nifty.re.blackjax.blackjax_nuts` instead."
+        )
+        warn(msg, category=DeprecationWarning, stacklevel=2)
+
         super().__init__(
             potential_energy=potential_energy,
             inverse_mass_matrix=inverse_mass_matrix,
@@ -251,6 +258,11 @@ class HMCChain(_Sampler):
         step_size: float = 1.0,
         max_energy_difference: float = jnp.inf,
     ):
+        msg = (
+            "The `HMCChain` class is unmaintained and may be removed in a future release."
+            "Please use `nifty.re.blackjax.blackjax_nuts` instead."
+        )
+        warn(msg, category=DeprecationWarning, stacklevel=2)
         super().__init__(
             potential_energy=potential_energy,
             inverse_mass_matrix=inverse_mass_matrix,

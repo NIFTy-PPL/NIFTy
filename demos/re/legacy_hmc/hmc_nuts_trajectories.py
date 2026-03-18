@@ -5,6 +5,12 @@
 
 # %%
 #
+# WARNING: This functionality of NIFTy.re is unmaintained and may be removed
+# in a future release. Please use `nifty.re.blackjax.blackjax_nuts` instead. You
+# can find an example of how to use `nifty.re.blackjax.blackjax_nuts` in
+# demos/re/a_nuts.py.
+#
+#
 # WARNING: This code does not behave deterministically. It works fine when
 # executing cell by cell using vscodes notebook functionality but when running
 # from the command line with either python3 or ipython3 the following happens:
