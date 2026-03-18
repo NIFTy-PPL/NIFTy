@@ -1,21 +1,24 @@
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
-# Author: Jakob Roth
+# Author: Jakob Roth, Laurin Söding
 
 import re
 import math
 import jax
-import time
+from timeit import Timer
 
 from jax.tree_util import Partial
 
 from .model import LazyModel
 from .logger import logger
+from .tree_math import ones_like
 
 
 def _benchmark(func, *args, **kwargs):
-    start = time.perf_counter()
-    _ = func(*args, **kwargs)
-    delta_t = time.perf_counter() - start
+    f = lambda: jax.block_until_ready(func(*args, **kwargs))
+    _ = f() # warmup
+    t = Timer(f)
+    n, delta_t = t.autorange()
+    delta_t /= n
     return delta_t
 
 
@@ -25,7 +28,8 @@ def _dtype_to_bits(dtype):
 
 
 def _parse_hlo(hlo):
-    pattern = r"^\s*%constant\.\d+\s*=\s*([a-zA-Z0-9]+)\[([0-9,\s]*)\]"
+    # matches lines like "%constant.123 = f32[10, 20]""
+    pattern = r"^\s*%constant[\.\d]*\s*=\s*([a-zA-Z0-9]+)\[([0-9,\s]*)\]"
     matches = re.findall(pattern, hlo, re.MULTILINE)
     constants_shapes = {}
     for dtype, shape_str in matches:
@@ -49,23 +53,26 @@ def _parse_hlo(hlo):
     return constants_shapes, total_size, memory_size
 
 
-def _logg_hlo_consts(name, consts, size, bytes):
-    msg = f"\n hlo parsing {name}:\n"
+def _log_hlo_consts(name, consts, size, mem_bytes):
+    msg = f"\nHLO parsing {name}:\n"
     for dtype in consts.keys():
         msg += (
             f"  * constants of type {dtype}:\n"
             f"      - shapes of 5 largest constants: {consts[dtype][:5]}\n"
             f"      - total size of constants: {size[dtype]}\n"
-            f"      - total memory of constants: {bytes[dtype]:.1e} bytes\n"
+            f"      - total memory of constants: {mem_bytes[dtype]:.1e} bytes\n"
         )
     logger.info(msg)
 
 
 def _log_model_leaves(model):
     leaves = jax.tree.leaves(model)
-    msg = f"\n leavs of model:\n"
+    msg = "\n leaves of model:\n"
     for l in leaves:
-        msg += f"  * shape: {l.shape} dtype: {l.dtype}\n"
+        if isinstance(l, jax.Array):
+            msg += f"  * shape: {l.shape} dtype: {l.dtype}\n"
+        else:
+            msg += f"  * leaf of non-Array type {type(l)}\n"
     logger.info(msg)
 
 
@@ -80,10 +87,8 @@ def check_model(model, pos):
     - **Memory analysis:** Reports memory usage of the JIT-compiled computations.
     - **HLO parsing:** Inspects the compiled HLO representation to analyze
       inlined constants.
-    - **Model leavs:** Inspects the leavs of the model which are not inlined but
-      treaded as variables.
-
-
+    - **Model leaves:** Inspects the leaves of the model which are not inlined but
+      treated as variables.
 
     Parameters
     ----------
@@ -93,60 +98,29 @@ def check_model(model, pos):
         Input to the model. Must be a JAX-compatible pytree of arrays.
     """
     model = model if isinstance(model, LazyModel) else Partial(model)
-    m_forward = lambda m, x: m(x)
-    m_jvp = lambda m, p, t: jax.jvp(m, [p], [t])
-    m_vjp = lambda m, p, t: jax.vjp(m, p)[1](t)
+    cotangent = ones_like(jax.eval_shape(model, pos))
+    
+    modes = {
+        "forward": (lambda m, x: m(x),                    (model, pos)),
+        "jvp":     (lambda m, p, t: jax.jvp(m, [p], [t]), (model, pos, pos)),
+        "vjp":     (lambda m, p, t: jax.vjp(m, p)[1](t),  (model, pos, cotangent)),
+    }
 
-    m_forward_jit = jax.jit(m_forward)
-    m_jvp_jit = jax.jit(m_jvp)
-    m_vjp_jit = jax.jit(m_vjp)
+    for name, (fn, args) in modes.items():
+        compiled  = jax.jit(fn).lower(*args).compile()
 
-    res_forward = m_forward_jit(model, pos)
-    res_jvp = m_jvp_jit(model, pos, pos)
-    res_vjp = m_vjp_jit(model, pos, res_forward)
+        time_raw  = _benchmark(fn, *args)
+        time_jit  = _benchmark(compiled, *args)
+        mem       = compiled.memory_analysis()
+        hlo       = compiled.as_text()
+        consts, sizes, mem_bytes = _parse_hlo(hlo)
 
-    time_forward = _benchmark(m_forward, model, pos)
-    time_jvp = _benchmark(m_jvp, model, pos, pos)
-    time_vjp = _benchmark(m_vjp, model, pos, res_forward)
-    msg = "execution time without jit:\n"
-    msg += (
-        f"  * time forward: {time_forward:.1e} seconds\n"
-        f"  * time jvp: {time_jvp:.1e} seconds\n"
-        f"  * time vjp: {time_vjp:.1e} seconds\n"
-    )
-    logger.info(msg)
-
-    time_forward_jit = _benchmark(m_forward_jit, model, pos)
-    time_jvp_jit = _benchmark(m_jvp_jit, model, pos, pos)
-    time_vjp_jit = _benchmark(m_vjp_jit, model, pos, res_forward)
-    msg = "execution time with jit:\n"
-    msg += (
-        f"  * time forward jit: {time_forward_jit:.1e} seconds\n"
-        f"  * time jvp jit: {time_jvp_jit:.1e} seconds\n"
-        f"  * time vjp jit: {time_vjp_jit:.1e} seconds\n"
-    )
-    logger.info(msg)
-
-    mem_forward = m_forward_jit.lower(model, pos).compile().memory_analysis()
-    mem_jvp = m_jvp_jit.lower(model, pos, pos).compile().memory_analysis()
-    mem_vjp = m_vjp_jit.lower(model, pos, res_forward).compile().memory_analysis()
-
-    msg = "JAX memory_analysis:\n"
-    msg += " * memory analysis forward:\n" + str(mem_forward) + "\n"
-    msg += " * memory analysis jvp:\n" + str(mem_jvp) + "\n"
-    msg += " * memory analysis vjp:\n" + str(mem_vjp) + "\n"
-    logger.info(msg)
-
-    hlo_forward = m_forward_jit.lower(model, pos).compile().as_text()
-    hlo_jvp = m_jvp_jit.lower(model, pos, pos).compile().as_text()
-    hlo_vjp = m_vjp_jit.lower(model, pos, res_forward).compile().as_text()
-
-    const_forward, size_forward, bytes_forward = _parse_hlo(hlo_forward)
-    const_jvp, size_jvp, bytes_jvp = _parse_hlo(hlo_jvp)
-    const_vjp, size_vjp, bytes_vjp = _parse_hlo(hlo_vjp)
-
-    _logg_hlo_consts("forward", const_forward, size_forward, bytes_forward)
-    _logg_hlo_consts("jvp", const_jvp, size_jvp, bytes_jvp)
-    _logg_hlo_consts("vjp", const_vjp, size_vjp, bytes_vjp)
+        logger.info(
+            f"=== {name} ===\n"
+            f"  * time (no jit): {time_raw:.1e}s\n"
+            f"  * time (jit):    {time_jit:.1e}s\n"
+            f"  * memory:\n{str(mem)}\n"
+        )
+        _log_hlo_consts(name, consts, sizes, mem_bytes)
 
     _log_model_leaves(model)
