@@ -1,7 +1,8 @@
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 
+from .blackjax import blackjax_nuts
+from .check_model import check_model
 from .. import config
-from . import structured_kernel_interpolation
 from .conjugate_gradient import cg, static_cg
 from .correlated_field import CorrelatedFieldMaker
 from .custom_map import lmap, smap
@@ -57,5 +58,5 @@ from .prior import (
     NormalPrior,
     UniformPrior,
 )
+from . import structured_kernel_interpolation
 from .tree_math import *
-from .blackjax import blackjax_nuts
