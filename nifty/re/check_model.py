@@ -15,7 +15,7 @@ from .tree_math import ones_like
 
 def _benchmark(func, *args, **kwargs):
     f = lambda: jax.block_until_ready(func(*args, **kwargs))
-    _ = f() # warmup
+    _ = f()  # warmup
     t = Timer(f)
     n, delta_t = t.autorange()
     delta_t /= n
@@ -99,20 +99,20 @@ def check_model(model, pos):
     """
     model = model if isinstance(model, LazyModel) else Partial(model)
     cotangent = ones_like(jax.eval_shape(model, pos))
-    
+
     modes = {
-        "forward": (lambda m, x: m(x),                    (model, pos)),
-        "jvp":     (lambda m, p, t: jax.jvp(m, [p], [t]), (model, pos, pos)),
-        "vjp":     (lambda m, p, t: jax.vjp(m, p)[1](t),  (model, pos, cotangent)),
+        "forward": (lambda m, x: m(x), (model, pos)),
+        "jvp": (lambda m, p, t: jax.jvp(m, [p], [t]), (model, pos, pos)),
+        "vjp": (lambda m, p, t: jax.vjp(m, p)[1](t), (model, pos, cotangent)),
     }
 
     for name, (fn, args) in modes.items():
-        compiled  = jax.jit(fn).lower(*args).compile()
+        compiled = jax.jit(fn).lower(*args).compile()
 
-        time_raw  = _benchmark(fn, *args)
-        time_jit  = _benchmark(compiled, *args)
-        mem       = compiled.memory_analysis()
-        hlo       = compiled.as_text()
+        time_raw = _benchmark(fn, *args)
+        time_jit = _benchmark(compiled, *args)
+        mem = compiled.memory_analysis()
+        hlo = compiled.as_text()
         consts, sizes, mem_bytes = _parse_hlo(hlo)
 
         logger.info(
