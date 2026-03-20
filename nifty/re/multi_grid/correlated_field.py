@@ -92,7 +92,7 @@ class ICRField(Model):
         elif callable(kernel):
             fixed_kernel = True
             covariance = Partial(kernel)
-        elif isinstance(kernel, dict) and kernel.get("kind") == "experimental_matern":
+        elif isinstance(kernel, dict) and kernel.pop("kind") == "experimental_matern":
             from .matern import MaternHarmonicCovariance
 
             coord_swd = eval_shape(
