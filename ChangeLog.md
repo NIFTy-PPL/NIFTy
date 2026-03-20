@@ -12,13 +12,48 @@ Change categories:
 - Deprecations
 -->
 
+NIFTy 9.2.0 (March 27, 2026)
+============================
 
+# NIFTy.re
+- New features
+  - Add option in `optimize_kl` to distribute samples over multiple GPUs.
+  - Introduce `blackjax_nuts` wrapper to easily sample a NIFTy likelihood with
+    the BlackJAX No-U-Turn Sampler.
+  - Introduce helper function `check_model` for benchmarking models and
+    detecting potential memory overhead due to inlined constants.
+  - Introduce a wrapper `optimize.optax_wrapper` for using optimizer algorithms
+    implemented in the Optax package in NIFTy.
+  - Add option to resume `estimate_evidence_lower_bound` for computing ELBOs of
+    large problems.
+  - Add option for data-space evaluations to `wiener_filter_posterior`.
+  - Introduce option to clip latent space parameters with the `ClipModel` for
+    numerical stability.
+  - Add option to renormalize the amplitude of the correlated field Matern
+    kernel to decouple the variance from the scaling parameter.
+  - Make NIFTy.re Windows-compatible.
+- Bug fixes:
+  - Fix bug when computing the Wiener filter posterior of a model linearized
+    around a non-zero position.
+  - Fix a bug in the `MaternHarmonicCovariance` of the `ICRField` model
+    affecting small cutoff values.
+- Changes
+  - Change the JIT compilation strategy of `optimize_kl`. By default, the
+    optimizers themselves are no longer compiled—only the cost functions being
+    optimized.
+- Deprecations
+  - Deprecate the built-in HMC (`NUTSChain`, `HMCChain`) functions. Please use
+    the BlackJAX wrapper (`blackjax_nuts`) instead.
+
+
+# NIFTy.cl
 - New features
   - Introduce `VariablePositionNufft`, a type-2 NUFFT operator for evaluating
     signals on a regular grid at arbitrary spatial positions.
   - Introduce `ShiftedPositionFFT`, an operator to perform FFT-like transforms
     at frequency-shifted positions via NUFFT.
   - Add `FFTShiftOperator` to enable frequency-domain shifting for RGSpaces.
+  - Add `CategoricalEnergy` for categorical data.
 - Breaking changes
   - Change name of the logger from `NIFTy8` to `NIFTy`.
 - Changes
