@@ -7,6 +7,7 @@ from dataclasses import field
 from typing import Callable, Union
 
 import jax.numpy as jnp
+from jax import eval_shape
 from jax.tree_util import Partial
 from numpy import typing as npt
 
@@ -29,8 +30,8 @@ class ICRField(Model):
         self,
         grid: Grid,
         kernel: Union[
-            Model, Callable[[npt.NDArray, npt.NDArray], npt.NDArray]
-        ],
+            dict, Model, Callable[[npt.NDArray, npt.NDArray], npt.NDArray]
+        ], # TODO: remove dict option once experimental Matern is removed
         *,
         offset=0.0,
         window_size=None,
@@ -45,10 +46,25 @@ class ICRField(Model):
         ----------
         grid: Grid
             Storage object with instructions on how pixels are spaced.
-        kernel: Model or callable
-            NIFTy `Model` which yields a callable
-            covariance function (`kernel(xi: dict) -> callable[[x, y], z]`), or a
-            `callable[[x, y], z]` covariance function.
+        kernel: Model or callable or dict
+            One of the following:
+            - NIFTy `Model` which yields a callable
+            covariance function (`kernel(xi: dict) -> callable[[x, y], z]`)
+            - `callable[[x, y], z]` covariance function
+            - dict with the parameters of the experimental Matern kernel (deprecated)
+            
+            Parameters for the dict option:
+            - kind: str -- Type of the kernel. Only "experimental_matern" is supported.
+            - scale: tuple or Model or float -- Prior scale of the kernel.
+            - cutoff: tuple or Model or float -- Prior cutoff of the covariance kernel.
+            - loglogslope: tuple or Model or float -- Prior power-law slope of the covariance kernel correlating modes.
+            - n_integrate = 2_000 -- Number of integration points for the harmonic transformation.
+            - n_interpolate = 512 -- Number of interpolation points for interpolating the kernel.
+            - interpolation_dists_min_max -- Interpolation range. Automatically chosen based on cutoff if left unspecified.
+            - integration_dists_min_max -- Integration range for the harmonic transform. Automatically chosen based on cutoff if left unspecified.
+            
+            The experimental matern kernel is deprecated and will be removed in a future version. 
+            We recommend using the new >MaternCovarianceKernel< instead.
         offset: tuple or callable or float
             Prior shift from zero in addition to the field intrinsic random shift.
         window_size:
@@ -76,6 +92,14 @@ class ICRField(Model):
         elif callable(kernel):
             fixed_kernel = True
             covariance = Partial(kernel)
+        elif isinstance(kernel, dict) and kernel.get("kind") == "experimental_matern":
+            from .matern import MaternHarmonicCovariance
+
+            coord_swd = eval_shape(
+                grid.at(0).index2coord, ShapeWithDtype((grid.at(0).ndim,), jnp.int_)
+            )
+            kernel.setdefault("ndim", coord_swd.shape[0])
+            covariance = MaternHarmonicCovariance(**kernel, prefix=prefix)
         else:
             raise TypeError(f"invalid kernel type; got {kernel!r}")
         self.fixed_kernel = fixed_kernel
