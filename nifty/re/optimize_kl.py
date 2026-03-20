@@ -31,7 +31,7 @@ from .evi import (
 )
 from .likelihood import Likelihood
 from .logger import logger
-from .minisanity import minisanity
+from .minisanity import minisanity, reduced_residual_stats
 from .model import LazyModel
 from .tree_math import get_map, hide_strings, vdot
 
@@ -846,6 +846,7 @@ def optimize_kl(
     sample_mode: SMPL_MODE_GENERIC_TYP = "nonlinear_resample",
     resume: Union[str, bool] = False,
     callback: Optional[Callable[[Samples, OptimizeVIState], None]] = None,
+    convergence_checker: Optional[ConvergenceChecker] = None,
     odir: Optional[str] = None,
     devices: Optional[list] = None,
     kl_device_map="shard_map",
@@ -866,6 +867,11 @@ def optimize_kl(
     callback : callable or None
         Function called after every global iteration taking the samples and the
         optimization state.
+    convergence_checker: callable or None
+        An object responsible for determining early stopping of the global iteration loop.
+        The convergence_checker must implement:
+            -`collect(samples, opt_vi_st)`: updates the internal state based on the latest iteration data
+            -`__call__()`: returns a boolean indicating whether the iteration should stop
     odir : str or None
         Path at which all output files are saved.
 
@@ -947,4 +953,98 @@ def optimize_kl(
         if callback is not None:
             callback(samples, opt_vi_st)
 
+        if convergence_checker is not None:
+            convergence_checker.collect(samples, opt_vi_st)
+            if convergence_checker():
+                break
+
     return samples, opt_vi_st
+
+
+class ConvergenceChecker:
+    """
+    Convergence checker based on the reduced chi-squared value of the likelihood residuals.
+
+    This class monitors the optimization progress and determines convergence based on
+    the goodness-of-fit of the likelihood model. It stores a history of reduced chi-squared
+    values and supports optional memory-based smoothing of the stopping decision.
+    """
+
+    def __init__(self, likelihood, min_lh_red_chi2=1.1, memory=1):
+        """
+        Parameters
+        ----------
+        likelihood : object
+            Likelihood model used to compute normalized residuals.
+        min_lh_red_chi2 : float, default=1.1
+            Threshold for the reduced chi-squared value below which convergence is assumed.
+        memory : int, default=1
+            Number of past iterations to consider when deciding convergence.
+        """
+        self.history = []
+        self.likelihood = likelihood
+        self.min_lh_red_chi2 = min_lh_red_chi2
+        self.memory = memory
+
+    def collect(self, samples, opt_vi_st):
+        """
+        Collects optimization state and updates convergence history.
+
+        Parameters
+        ----------
+        samples : object
+            Current optimization samples.
+        opt_vi_st : object
+            Optimization state (unused in current implementation).
+
+        Returns
+        -------
+        bool
+            Result of the convergence check.
+        """
+        return self.check_lh_fit(samples)
+
+    def check_lh_fit(self, samples_opt) -> bool:
+        """
+        Checks convergence based on the reduced chi-squared of the likelihood residuals.
+
+        Parameters
+        ----------
+        samples_opt : object
+            Optimized samples containing model state.
+
+        Returns
+        -------
+        bool
+            True if convergence criterion is met, False otherwise.
+        """
+        # compute reduced chi-squared
+        red_chi2_lh = reduced_residual_stats(
+            samples_opt, func=self.likelihood.normalized_residual
+        ).reduced_chisq
+
+        self.history.append(red_chi2_lh[0])
+
+        if red_chi2_lh[0] < self.min_lh_red_chi2:
+            print(
+                f"Convergence achieved: reduced chi-squared (likelihood) = {red_chi2_lh[0]}"
+            )
+            return True
+
+        return False
+
+    def __call__(self) -> bool:
+        """
+        Evaluates whether convergence is stable based on the stored history.
+
+        Returns
+        -------
+        bool
+            True if convergence is confirmed over the configured memory window,
+            False otherwise.
+        """
+        if len(self.history) < self.memory:
+            return False
+
+        window = self.history[-self.memory :]
+        return all(v < self.min_lh_red_chi2 for v in window)
