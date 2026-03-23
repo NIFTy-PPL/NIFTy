@@ -2,11 +2,18 @@
 
 ## NIFTy9
 
+- Ananya Shankar
+- Andreas Popp
+- Gordian Edenhofer
+- Iason Saganas
 - Jakob Roth
+- Laurin Söding
 - Lukas Scheel-Platz
 - Martin Reinecke
 - Matteo Guardiani
 - [Philipp Arras](https://philipp-arras.de)
+- [Philipp Frank](http://www.ph-frank.de)
+- Vincent Eberle
 
 
 ## NIFTy8
