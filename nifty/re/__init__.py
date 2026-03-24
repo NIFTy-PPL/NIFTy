@@ -58,5 +58,6 @@ from .prior import (
     NormalPrior,
     UniformPrior,
 )
+from .empirical_power_spectrum import compute_empirical_power_spectrum
 from . import structured_kernel_interpolation
 from .tree_math import *
