@@ -290,9 +290,9 @@ class OptimizeVI:
         devices : list of devices or None
             Devices over which the samples are mapped. If `None` only the
             default device is used. To use all detected devices pass
-            jax.devices(). Generally the samples needs to be evenly
-            distributable over the devices. For details see the descriptions of
-            the `kl_device_map` and `residual_device_map` arguments.
+            jax.devices(). The samples need to be evenly distributable over the
+            devices. For a demo on how to use this feature see
+            `a_demo_multi-gpu.py` in the demos folder.
 
         Notes
         -----
@@ -315,7 +315,7 @@ class OptimizeVI:
         self.named_sharding = None
         self.named_sharding_rep = None
         if (not devices is None) and len(devices) > 1:
-            mesh = Mesh(devices, ("x",))  # creates auto sharding axis
+            mesh = Mesh(devices, ("x",))
             self.named_sharding = NamedSharding(mesh, PartitionSpec("x"))
             self.named_sharding_rep = NamedSharding(mesh, PartitionSpec())
 
@@ -455,6 +455,7 @@ class OptimizeVI:
         curver = self.residual_map(curver, in_axes=(None, 0, 0, 0))
         if self.named_sharding is not None:
             metric_sample_key = jax.device_put(metric_sample_key, self.named_sharding)
+            sgn = jax.device_put(sgn, self.named_sharding)
             sharding_tree = tree_map(lambda x: self.named_sharding, samples.pos)
             sharding_tree_rep = tree_map(lambda x: self.named_sharding_rep, samples.pos)
             out_sharding = (sharding_tree, self.named_sharding)

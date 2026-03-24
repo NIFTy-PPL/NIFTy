@@ -2,24 +2,26 @@
 # Copyright(C) 2013-2021 Max-Planck-Society
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 
-# TODO: Only for development, remove when running on actual multi-GPU hardware.
-# This environment variable forces JAX to create 8 CPU devices, which allows
-# testing the multi-device execution of NIFTy.re on a single machine without
-# actual multi-GPU hardware. Remove this line when running on actual multi-GPU
-# hardware.
+# This demo illustrates how to use multiple GPUs with NIFTy. In particular,
+# it demonstrates how to distribute the samples of `optimize_kl` across
+# multiple devices. The comments in this script focus on the steps required
+# for running a multi-GPU reconstruction. For a general introduction and
+# conceptual explanations, refer to the `0_intro.py` demo, which provides a
+# single-device version.
+
+
+# NOTE: Development only — remove when running on actual multi-GPU hardware.
+# This environment variable forces JAX to create 8 virtual CPU devices,
+# enabling testing of NIFTy.re's multi-device execution on a single machine
+# without requiring physical GPUs. Make sure to remove this setting when running
+# on real multi-GPU systems.
 import os
 
 os.environ["XLA_FLAGS"] = (
-    "--xla_force_host_platform_device_count=2"  # Use 8 CPU devices
+    "--xla_force_host_platform_device_count=4"  # Use 4 CPU devices
 )
 
 
-# %% [markdown]
-# # Demonstration of the non-parametric correlated field model in NIFTy.re
-
-# ## The Model
-
-# %%
 import jax
 import matplotlib.pyplot as plt
 import nifty.re as jft
@@ -54,31 +56,19 @@ class Signal(jft.Model):
     def __init__(self, correlated_field, scaling):
         self.cf = correlated_field
         self.scaling = scaling
-        # Init methods of the Correlated Field model and any prior model in
-        # NIFTy.re are aware that their input is standard normal a priori.
-        # The `domain` of a model does not know this. Thus, tracking the `init`
-        # methods should be preferred over tracking the `domain`.
         super().__init__(init=self.cf.init | self.scaling.init)
 
     def __call__(self, x):
-        # NOTE, think of `Model` as being just a plain function that takes some
-        # input and performs all the necessary computation for your model.
-        # Note, `scaling` here is completely degenarate with `offset_std` in the
-        # likelihood but the priors for them are very different.
         return self.scaling(x) * jnp.exp(self.cf(x))
 
 
 signal = Signal(correlated_field, scaling)
 
-# %% [markdown]
-# ## The likelihood
 
-# %%
 signal_response = signal
 noise_cov = lambda x: 0.1**2 * x
 noise_cov_inv = lambda x: 0.1**-2 * x
 
-# Create synthetic data
 key, subkey = random.split(key)
 pos_truth = jft.random_like(subkey, signal_response.domain)
 signal_response_truth = signal_response(pos_truth)
@@ -90,33 +80,26 @@ data = signal_response_truth + noise_truth
 
 lh = jft.Gaussian(data, noise_cov_inv).amend(signal_response)
 
-# %% [markdown]
-# ## The inference
-
-# %%
 n_vi_iterations = 6
 delta = 1e-4
 
 
 key, k_i, k_o = random.split(key, 3)
-# NOTE, changing the number of samples always triggers a resampling even if
-# `resamples=False`, as more samples have to be drawn that did not exist before.
 samples, state = jft.optimize_kl(
     lh,
     jft.Vector(lh.init(k_i)),
     n_total_iterations=n_vi_iterations,
-    n_samples=2,
-    # Source for the stochasticity for sampling
+    n_samples=4,
     key=k_o,
-    # use the static conjugate gradient solver for the linear sampling step,
-    # as shard_map needs to trace the sampling.
+    # Use the static conjugate gradient solver for the linear sampling step, as
+    # it must be JIT-compilable for multi-GPU execution.
     draw_linear_kwargs=dict(
         cg=jft.conjugate_gradient.static_cg,
         cg_name="SL",
         cg_kwargs=dict(absdelta=delta * jft.size(lh.domain) / 10.0, maxiter=100),
     ),
     # Use static newton conjugate gradient for the nonlinear update step, as it
-    # needs to be traced for shard_map.
+    # must to be jit compilable for multi-gpu execution.
     nonlinearly_update_kwargs=dict(
         minimize=jft.optimize._static_newton_cg,
         minimize_kwargs=dict(
@@ -135,12 +118,11 @@ samples, state = jft.optimize_kl(
     odir="results_intro_multi-gpu",
     resume=False,
     # To map the sampling over devices JAX needs to trace the sampling step.
-    # There you need to use `smap` or `vmap` as a residual map function.
-    residual_map="smap",
+    # Therefore you need to use `smap` or `vmap` as a residual map function.
+    residual_map="vmap",
     devices=jax.devices(),
 )
 
-# %%
 namps = cfm.get_normalized_amplitudes()
 post_sr_mean = jft.mean(tuple(signal(s) for s in samples))
 post_a_mean = jft.mean(tuple(cfm.amplitude(s)[1:] for s in samples))
