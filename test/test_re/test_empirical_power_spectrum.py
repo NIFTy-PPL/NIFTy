@@ -4,7 +4,6 @@
 import jax
 import jax.numpy as jnp
 import nifty.re as jft
-import numpy as np
 import pytest
 from numpy.testing import assert_allclose
 
