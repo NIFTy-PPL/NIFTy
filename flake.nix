@@ -15,7 +15,7 @@
           config.cudaSupport = true;
         };
 
-        version = "9.1.0";
+        version = "9.2.0";
 
         getDeps = pkgs: cudaSupport:
           let
