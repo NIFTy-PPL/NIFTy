@@ -95,8 +95,7 @@ def compute_empirical_power_spectrum(
 
     # Assign Fourier components to k bins
     ks = [
-        jnp.fft.fftfreq(field.shape[ax], d=dist_tuple[i])
-        for i, ax in enumerate(axes)
+        jnp.fft.fftfreq(field.shape[ax], d=dist_tuple[i]) for i, ax in enumerate(axes)
     ]
     k_grids = jnp.meshgrid(*ks, indexing="ij")
     k_mag = jnp.sqrt(sum(k**2 for k in k_grids)).flatten()
