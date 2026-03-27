@@ -78,7 +78,10 @@ def testBinary(type1, type2, space, seed):
         pos = ift.from_random(dom1, "normal")
         ift.extra.check_operator(model, pos, ntries=ntries)
         f = ift.from_random(space, "normal")
-        model = select_s1.softclip(f-0.1, f+1.)
+        model = select_s1.clip(f-0.1, f+1.)
+        pos = ift.from_random(dom1, "normal")
+        ift.extra.check_operator(model, pos, ntries=ntries)
+        model = select_s1.softclip(-0.1, +1.)
         pos = ift.from_random(dom1, "normal")
         ift.extra.check_operator(model, pos, ntries=ntries)
         if isinstance(space, ift.RGSpace):

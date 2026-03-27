@@ -43,7 +43,7 @@ def test_special_gradients():
     s = f.asnumpy()
 
     jt(var.clip(0, 10), np.ones_like(s))
-    jt(var.clip(-1, 0), np.full(s.shape, np.nan))
+    jt(var.clip(-1, 0), np.zeros_like(s))
 
     assert_allclose(
         _lin2grad(ift.Linearization.make_var(0*f).ptw("sinc")), np.zeros(s.shape))

@@ -60,13 +60,13 @@ def _reciprocal_helper(v):
 def _abs_helper(v):
     if np.issubdtype(v.dtype, np.complexfloating):
         raise TypeError("Argument must not be complex because abs(z) is not holomorphic")
-    return (np.abs(v), np.where(v == 0, np.nan, np.sign(v)))
+    return (np.abs(v), np.sign(v))
 
 
 def _sign_helper(v):
     if np.issubdtype(v.dtype, np.complexfloating):
         raise TypeError("Argument must not be complex")
-    return (np.sign(v), np.where(v == 0, np.nan, 0))
+    return (np.sign(v), np.zeros_like(v))
 
 
 def _power_helper(v, expo):
@@ -82,11 +82,9 @@ def _clip_helper(v, a_min, a_max):
     tmp = np.clip(v, a_min, a_max)
     tmp2 = np.ones_like(v)
     if a_min is not None:
-        tmp2 = np.where(tmp == a_min, np.nan, tmp2)
-        tmp2 = np.where(tmp < a_min, 0, tmp2)
+        tmp2 = np.where(tmp <= a_min, 0, tmp2)
     if a_max is not None:
-        tmp2 = np.where(tmp == a_max, np.nan, tmp2)
-        tmp2 = np.where(tmp > a_max, 0, tmp2)
+        tmp2 = np.where(tmp >= a_max, 0, tmp2)
     return (tmp, tmp2)
 
 
