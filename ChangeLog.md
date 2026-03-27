@@ -32,6 +32,8 @@ NIFTy 9.2.0 (March 27, 2026)
   - Add option to renormalize the amplitude of the correlated field Matern
     kernel to decouple the variance from the scaling parameter.
   - Make NIFTy.re Windows-compatible.
+  - Introduce a function to compute empirical power spectra of fields
+    on regular grids `compute_empirical_power_spectrum`.
 - Bug fixes:
   - Fix bug when computing the Wiener filter posterior of a model linearized
     around a non-zero position.
