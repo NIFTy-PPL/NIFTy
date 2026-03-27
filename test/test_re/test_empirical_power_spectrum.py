@@ -38,7 +38,7 @@ def test_empirical_ps_computation_with_power_law_spectrum_cf(loglogavgslope):
     cf_samples = cfv(xi)
 
     ps_cf = jnp.float_power(amp(xi), 2)
-    k_bin_centers_cf = 2.0 * jnp.pi * amp.grid.harmonic_grid.mode_lengths
+    k_bin_centers_cf = amp.grid.harmonic_grid.mode_lengths
 
     ps_emp, k_bin_centers_emp = jft.compute_empirical_power_spectrum(
         field=cf_samples,
@@ -57,6 +57,7 @@ def test_empirical_ps_computation_with_power_law_spectrum_cf(loglogavgslope):
         return coeff
 
     coeff_gt = regress_ps(k_bin_centers_cf[1:], ps_cf[1:])
-    coeff_emp = regress_ps(k_bin_centers_emp, median_ps_emp)
+    # exclude outermost bins of empirical spectrum bc. they can be jumpy
+    coeff_emp = regress_ps(k_bin_centers_emp[1:-1], median_ps_emp[1:-1])
 
     assert_allclose(coeff_emp, coeff_gt, rtol=0.1)
