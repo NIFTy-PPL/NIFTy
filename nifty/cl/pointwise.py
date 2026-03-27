@@ -82,9 +82,9 @@ def _clip_helper(v, a_min, a_max):
     tmp = np.clip(v, a_min, a_max)
     tmp2 = np.ones_like(v)
     if a_min is not None:
-        tmp2 = np.where(tmp <= a_min, 0, tmp2)
+        tmp2 = np.where(tmp <= a_min, 0., tmp2)
     if a_max is not None:
-        tmp2 = np.where(tmp >= a_max, 0, tmp2)
+        tmp2 = np.where(tmp >= a_max, 0., tmp2)
     return (tmp, tmp2)
 
 
