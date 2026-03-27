@@ -87,15 +87,15 @@ def compute_empirical_power_spectrum(
         [field.shape[ax] * dist_tuple[i] for i, ax in enumerate(axes)]
     )
 
-    k_min = 2 * jnp.pi / jnp.max(axis_lengths)
-    k_max = 2 * jnp.pi / jnp.min(jnp.array(dist_tuple))
+    k_min = 1.0 / jnp.max(axis_lengths)
+    k_max = 1.0 / jnp.min(jnp.array(dist_tuple))
 
     k_bins = jnp.geomspace(k_min, k_max, n_bins + 1)
     k_bin_centers = jnp.sqrt(k_bins[1:] * k_bins[:-1])
 
     # Assign Fourier components to k bins
     ks = [
-        jnp.fft.fftfreq(field.shape[ax], d=dist_tuple[i]) * 2 * jnp.pi
+        jnp.fft.fftfreq(field.shape[ax], d=dist_tuple[i])
         for i, ax in enumerate(axes)
     ]
     k_grids = jnp.meshgrid(*ks, indexing="ij")
