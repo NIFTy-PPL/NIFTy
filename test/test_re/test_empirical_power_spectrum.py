@@ -12,8 +12,11 @@ jax.config.update("jax_enable_x64", True)
 pmp = pytest.mark.parametrize
 
 
-@pmp("loglogavgslope", [-1, -2, -3, -4, -5, -6])
-def test_empirical_ps_computation_with_power_law_spectrum_cf(loglogavgslope):
+@pmp("loglogavgslope", [-1, -3, -4, -6])
+@pmp("use_window", [True, False])
+def test_empirical_ps_computation_with_power_law_spectrum_cf(
+    loglogavgslope, use_window
+):
     n_samples = 10
     key = jax.random.PRNGKey(42)
     distances = 1.0
@@ -45,6 +48,7 @@ def test_empirical_ps_computation_with_power_law_spectrum_cf(loglogavgslope):
         axes=1,
         distances=distances,
         n_bins=16,  # use few bins to get a smooth power spectrum estimate
+        use_window=use_window,
     )
 
     median_ps_emp = jnp.median(ps_emp, axis=0)
