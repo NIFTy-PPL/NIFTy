@@ -26,7 +26,7 @@ def compute_empirical_power_spectrum(
     n_bins: Optional[int] = 128,
 ):
     """Computes the average empirical power spectrum of a field across the given
-       axes
+       axes, assuming regular grids.
 
     Parameters
     ----------
