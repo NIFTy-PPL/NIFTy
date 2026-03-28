@@ -31,7 +31,6 @@ test_cl_nix:
   script:
     - export NIX_CONFIG="extra-experimental-features = nix-command flakes"
     - nix build --print-build-logs
-    - nix build --print-build-logs .#docs
   allow_failure: true
 
 test_re:
