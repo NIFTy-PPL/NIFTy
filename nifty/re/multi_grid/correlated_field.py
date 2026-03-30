@@ -31,7 +31,7 @@ class ICRField(Model):
         grid: Grid,
         kernel: Union[
             dict, Model, Callable[[npt.NDArray, npt.NDArray], npt.NDArray]
-        ], # TODO: remove dict option once experimental Matern is removed
+        ],  # TODO: remove dict option once experimental Matern is removed
         *,
         offset=0.0,
         window_size=None,
@@ -52,7 +52,7 @@ class ICRField(Model):
             covariance function (`kernel(xi: dict) -> callable[[x, y], z]`)
             - `callable[[x, y], z]` covariance function
             - dict with the parameters of the experimental Matern kernel (deprecated)
-            
+
             Parameters for the dict option:
             - kind: str -- Type of the kernel. Only "experimental_matern" is supported.
             - scale: tuple or Model or float -- Prior scale of the kernel.
@@ -62,8 +62,8 @@ class ICRField(Model):
             - n_interpolate = 512 -- Number of interpolation points for interpolating the kernel.
             - interpolation_dists_min_max -- Interpolation range. Automatically chosen based on cutoff if left unspecified.
             - integration_dists_min_max -- Integration range for the harmonic transform. Automatically chosen based on cutoff if left unspecified.
-            
-            The experimental matern kernel is deprecated and will be removed in a future version. 
+
+            The experimental matern kernel is deprecated and will be removed in a future version.
             We recommend using the new >MaternCovarianceKernel< instead.
         offset: tuple or callable or float
             Prior shift from zero in addition to the field intrinsic random shift.

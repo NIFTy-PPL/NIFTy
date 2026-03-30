@@ -9,15 +9,18 @@ jax.config.update("jax_enable_x64", True)
 
 pmp = pytest.mark.parametrize
 
+
 @pmp("Ndim", [1, 10])
-@pmp("r_min", [1.e-5, 0.1])
-@pmp("r_max", [1.0, 1.e3])
+@pmp("r_min", [1.0e-5, 0.1])
+@pmp("r_max", [1.0, 1.0e3])
 @pmp("variance", [1.0, (1.0, 0.5)])
 @pmp("lengthscale", [1.0, (1.0, 0.5)])
 @pmp("negloglogslope", [3.0, (1.0, 0.1)])
 @pmp("kcutoff", ["auto", 10.0])
 @pmp("mode", ["ICR", "graphgp"])
-def test_initialisation(Ndim, r_min, r_max, variance, lengthscale, negloglogslope, kcutoff, mode):
+def test_initialisation(
+    Ndim, r_min, r_max, variance, lengthscale, negloglogslope, kcutoff, mode
+):
     kernel = jft.MaternCovarianceKernel(
         Ndim=Ndim,
         r_min=r_min,
@@ -26,7 +29,7 @@ def test_initialisation(Ndim, r_min, r_max, variance, lengthscale, negloglogslop
         lengthscale=lengthscale,
         negloglogslope=negloglogslope,
         kcutoff=kcutoff,
-        mode=mode
+        mode=mode,
     )
     assert isinstance(kernel, jft.Model)
     input = jft.random_like(jax.random.key(1), kernel.domain)
