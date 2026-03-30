@@ -119,6 +119,7 @@ samples, state = jft.optimize_kl(
     resume=False,
     # To map the sampling over devices JAX needs to trace the sampling step.
     # Therefore you need to use `smap` or `vmap` as a residual map function.
+    # To draw the samples in parallel across devices, we use `vmap`.
     residual_map="vmap",
     devices=jax.devices(),
 )
