@@ -360,7 +360,7 @@ class MaternHarmonicCovariance(Model):
 
 def get_bessel_zeros(nu, N_zeros, n_iter=3):
     """
-    Compute the first N_zeros zeros of J_nu(x) (Bessel function of the first kind).
+    Compute the first :math:`N_\\mathrm{zeros}` zeros of :math:`\\mathcal{J}_\\nu(x)` (Bessel function of the first kind).
 
     Args:
         nu : float
@@ -371,7 +371,7 @@ def get_bessel_zeros(nu, N_zeros, n_iter=3):
             Number of Newton-Raphson refinement iterations
     Returns:
         zeros : array
-            First N_zeros zeros of J_nu(x)
+            First :math:`N_\\mathrm{zeros}` zeros of :math:`\\mathcal{J}_\\nu(x)`
     """
     # Use SciPy for integer order
     if np.isclose(nu % 1, 0, atol=1e-6, rtol=0.0):
@@ -402,13 +402,16 @@ def default_Nint(h, nu, t_max=2.0):
 class IsotropicPowerSpectrumTransform:
     """
     Transform between isotropic power spectrum P(k) and covariance
-    kernel cov(r) in Ndim dimensions.
+    kernel :math:`\\mathrm{Cov}(r)` in :math:`N_\\mathrm{dim}` dimensions.
 
     The general formula is:
 
-    cov(r) = 1/(2*pi)^{Ndim/2} * int_0^infty P(k) k^{Ndim-1} J_nu(kr)/(kr)^nu dk
-           = 1/(2*pi)^{Ndim/2} * int_0^infty P(x/r)*r^{-Ndim} x^{Ndim/2} J_nu(x) dx
-    with x=kr and nu = (Ndim-2)/2.
+    .. math ::
+        \\mathrm{Cov}(r) = \\frac{1}{(2 \\pi)^{N_\\mathrm{dim}/2}} \\int_0^\\infty P(k) \\, k^{(N_\\mathrm{dim}-1)} \\frac{J_\\nu(k r)}{(k r)^\\nu} dk
+    .. math ::
+                         = \\frac{1}{(2 \\pi)^{N_\\mathrm{dim}/2}} \\int_0^\\infty P\\left(\\frac{x}{r}\\right) r^{-N_\\mathrm{dim}} x^{N_\\mathrm{dim}/2} J_\\nu(x) dx
+
+    with :math:`x=kr` and :math:`\\nu = (N_\\mathrm{dim}-2)/2`.
 
     We use a modified version of Ogata quadrature
     (eqn. 5.2 in https://ems.press/journals/prims/articles/2319)
@@ -632,10 +635,11 @@ class MaternCovarianceKernel(IsotropicPowerSpectrumTransform):
         Compute the normalisation factor, that is the unnormalised covariance at r=0.
         In this case, the equation simplifies to:
 
-        cov(0) = 1/(2*pi)^{N/2} * 1/gamma(N/2) * 1/2^{N/2-1} * int_0^infty P(k) k^{N-1} dk
-        = 1/(2*pi)^{N/2} * 1/gamma(N/2) * 1/2^{N/2-1} * int_{-infty}^infty P(exp(u)) exp(N*u) du
+        .. math ::
+            \\mathrm{Cov}(0) = \\frac{1}{(2 \\pi)^{N/2}} \\cdot \frac{1}{\\Gamma(N/2)} \\cdot \\frac{1}{2^{N/2-1}} \\cdot \\int_0^\\infty P(k) \\, k^{N-1} dk
+            = \\frac{1}{(2 \\pi)^{N/2}} \\cdot \frac{1}{\\Gamma(N/2)} \\cdot \\frac{1}{2^{N/2-1}} \\cdot \\int_{-\\infty}^\\infty P\\left(e^u\\right) e^{N u} du
 
-        with u = log(k), du = dk/k.
+        with :math:`u = \\log(k)`, :math:`du = dk/k`.
 
         Args:
             lengthscale : float
@@ -762,10 +766,12 @@ class MaternCovarianceModel(MaternCovarianceKernel, Model):
     Computes the covariance kernel for a Matern-like power spectrum
     with a high-k cutoff. The power spectrum is given by:
 
-    P(k) = 1 / (1 + (k * lengthscale)^2)^(negloglogslope / 2) * exp(- (k / kcutoff)^2)
+    .. math ::
+        P(k) = \\frac{1}{\\left(1 + \\left(\\alpha k\\right)^2\\right)^{\\beta / 2}} \\cdot e^{-(k / k_\\mathrm{cutoff})^2}
 
-    where negloglogslope controls the logarithmic slope at high k, lengthscale controls
-    the correlation length scale, and kcutoff sets the high-k cutoff.
+    where :math:`\\beta` (negloglogslope) controls the logarithmic slope at high k,
+    :math:`\\alpha` (lengthscale) controls the correlation length scale,
+    and :math:`k_\\mathrm{cutoff}` sets the high-k cutoff.
 
     Args:
         Ndim: int
@@ -777,7 +783,7 @@ class MaternCovarianceModel(MaternCovarianceKernel, Model):
             Maximum r value for covariance kernel interpolation. This should
             correspond to the largest length scale you want to resolve.
         variance: float or tuple or `Model`
-            This sets the variance of the Gaussian process, i.e. cov(0) = variance * (1 + jitter).
+            This sets the variance of the Gaussian process, i.e. :math:`\\mathrm{Cov}(0) = variance * (1 + jitter)`.
             If a float is provided, it is treated as a constant. If a tuple (mean, stddev) is provided,
             it is treated as a log-normal prior. If a `Model` is provided, it is used directly and must
             have a scalar target.
