@@ -244,7 +244,7 @@ class MaternHarmonicCovariance(Model):
 
         logger.warning(
             "The experimental Matern kernel is deprecated and will be removed in a future version.\n"
-            "We recommend using the new >MaternCovarianceKernel< instead."
+            "We recommend using the new >MaternCovarianceModel< instead."
         )
 
         ref_distance = 1.0
@@ -529,7 +529,7 @@ class IsotropicPowerSpectrumTransform:
         return (self.nodes[0] / r, self.nodes[-1] / r)
 
 
-class _MaternCovarianceKernel(IsotropicPowerSpectrumTransform):
+class MaternCovarianceKernel(IsotropicPowerSpectrumTransform):
     """
     Computes the covariance kernel for a Matern-like power spectrum
     with a high-k cutoff. The power spectrum is given by:
@@ -756,7 +756,7 @@ class _MaternCovarianceKernel(IsotropicPowerSpectrumTransform):
         )
 
 
-class MaternCovarianceKernel(_MaternCovarianceKernel, Model):
+class MaternCovarianceModel(MaternCovarianceKernel, Model):
     """
     NIFTy-wrapper for the Matern covariance kernel.
     Computes the covariance kernel for a Matern-like power spectrum
@@ -804,8 +804,8 @@ class MaternCovarianceKernel(_MaternCovarianceKernel, Model):
             Step-size. Controls accuracy. Chosen automatically if set to "auto" and Nint is provided.
         prefix: str
             Prefix for the names of the priors if tuple inputs are provided. This is useful to distinguish
-            multiple instances of MaternCovarianceKernel. The final prior names will be prefix + attribute name,
-            e.g. "MaternCovarianceKernel_lengthscale".
+            multiple instances of MaternCovarianceModel. The final prior names will be prefix + attribute name,
+            e.g. "MaternCovarianceModel_lengthscale".
         mode: str
             Mode of operation. If "ICR", the model is intended to be used with ICR and the __call__ method will return
             a callable covariance kernel function. If "graphgp", the model is intended to be used with GraphGP and
@@ -842,7 +842,7 @@ class MaternCovarianceKernel(_MaternCovarianceKernel, Model):
         jitter: float = 1.0e-5,
         Nint: Union[int, str] = 1024,
         h: Union[float, str] = "auto",
-        prefix: str = "MaternCovarianceKernel_",
+        prefix: str = "MaternCovarianceModel_",
         mode: str = "ICR",
         enforce_nonnegativity: bool = True,
         enforce_monotonicity: bool = True,
@@ -854,7 +854,7 @@ class MaternCovarianceKernel(_MaternCovarianceKernel, Model):
             raise ValueError("mode must be either 'ICR' or 'graphgp'.")
         self.mode = mode
 
-        _MaternCovarianceKernel.__init__(
+        MaternCovarianceKernel.__init__(
             self,
             Ndim=Ndim,
             r_min=r_min,

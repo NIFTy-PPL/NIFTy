@@ -22,7 +22,7 @@ key = random.PRNGKey(seed)
 shape = (32, 32)
 
 grid = jft.SimpleOpenGrid(min_shape=shape, distances=1.0)
-kernel = jft.MaternCovarianceKernel(
+kernel = jft.MaternCovarianceModel(
     Ndim=len(shape),
     r_min=0.1,
     r_max=100.0,

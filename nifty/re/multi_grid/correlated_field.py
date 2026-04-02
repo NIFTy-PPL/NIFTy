@@ -64,7 +64,7 @@ class ICRField(Model):
             - integration_dists_min_max -- Integration range for the harmonic transform. Automatically chosen based on cutoff if left unspecified.
 
             The experimental matern kernel is deprecated and will be removed in a future version.
-            We recommend using the new >MaternCovarianceKernel< instead.
+            We recommend using the new >MaternCovarianceModel< instead.
         offset: tuple or callable or float
             Prior shift from zero in addition to the field intrinsic random shift.
         window_size:

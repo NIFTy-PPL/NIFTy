@@ -10,4 +10,4 @@ from .grid_impl import (
     BrokenLogGrid,
     HPBrokenLogRGrid,
 )
-from .matern import MaternCovarianceKernel
+from .matern import MaternCovarianceModel
