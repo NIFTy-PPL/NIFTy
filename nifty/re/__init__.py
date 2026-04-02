@@ -47,7 +47,7 @@ from .multi_grid import (
     BrokenLogGrid,
     MGrid,
     SimpleOpenGrid,
-    MaternCovarianceKernel,
+    MaternCovarianceModel,
 )
 from .num import *
 from .optimize import minimize, newton_cg, static_newton_cg, trust_ncg

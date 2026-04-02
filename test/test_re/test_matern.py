@@ -21,7 +21,7 @@ pmp = pytest.mark.parametrize
 def test_initialisation(
     Ndim, r_min, r_max, variance, lengthscale, negloglogslope, kcutoff, mode
 ):
-    kernel = jft.MaternCovarianceKernel(
+    kernel = jft.MaternCovarianceModel(
         Ndim=Ndim,
         r_min=r_min,
         r_max=r_max,
