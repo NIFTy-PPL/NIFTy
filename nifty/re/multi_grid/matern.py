@@ -417,7 +417,7 @@ class IsotropicPowerSpectrumTransform:
     (eqn. 5.2 in https://ems.press/journals/prims/articles/2319)
     to compute the integral.
 
-    The initialisation precomputes the Ogata quadrature nodes and weights for given Ndim.
+    The initialisation precomputes the Ogata quadrature nodes and weights for given :math:`N_\\mathrm{dim}`.
     This needs to be done once at initialisation and depends on scipy.
     The application uses pure JAX for differentiability.
 
@@ -537,9 +537,11 @@ class MaternCovarianceKernel(IsotropicPowerSpectrumTransform):
     Computes the covariance kernel for a Matern-like power spectrum
     with a high-k cutoff. The power spectrum is given by:
 
-    P(k) = 1 / (1 + (k * lengthscale)^2)^(negloglogslope / 2) * exp(- (k / kcutoff)^2)
+    .. math ::
+        P(k) = \\frac{1}{\\left(1 + \\left(\\alpha k\\right)^2\\right)^{\\beta / 2}} \\cdot e^{-(k / k_\\mathrm{cutoff})^2}
 
-    where negloglogslope controls the logarithmic slope at high k, lengthscale controls
+    where :math:`\\beta` (negloglogslope) controls the logarithmic slope at high k,
+    :math:`\\alpha` (lengthscale) controls
     the correlation length scale, and kcutoff sets the high-k cutoff.
 
     Args:
@@ -607,9 +609,10 @@ class MaternCovarianceKernel(IsotropicPowerSpectrumTransform):
     @staticmethod
     def Pk(k, *, lengthscale, negloglogslope, kcutoff):
         """
-        Matern-like power spectrum with high-k cutoff. Equation:
+        Matern-like power spectrum with high-k cutoff:
 
-        P(k) = 1 / (1 + (k * lengthscale)^2)^(negloglogslope/2) * exp(- (k / kcutoff)^2)
+        .. math ::
+            P(k) = \\frac{1}{\\left(1 + \\left(\\alpha k\\right)^2\\right)^{\\beta / 2}} \\cdot e^{-(k / k_\\mathrm{cutoff})^2}
 
         Args:
             k : array
@@ -636,8 +639,8 @@ class MaternCovarianceKernel(IsotropicPowerSpectrumTransform):
         In this case, the equation simplifies to:
 
         .. math ::
-            \\mathrm{Cov}(0) = \\frac{1}{(2 \\pi)^{N/2}} \\cdot \frac{1}{\\Gamma(N/2)} \\cdot \\frac{1}{2^{N/2-1}} \\cdot \\int_0^\\infty P(k) \\, k^{N-1} dk
-            = \\frac{1}{(2 \\pi)^{N/2}} \\cdot \frac{1}{\\Gamma(N/2)} \\cdot \\frac{1}{2^{N/2-1}} \\cdot \\int_{-\\infty}^\\infty P\\left(e^u\\right) e^{N u} du
+            \\mathrm{Cov}(0) = \\frac{1}{(2 \\pi)^{N/2}} \\cdot \\frac{1}{\\Gamma(N/2)} \\cdot \\frac{1}{2^{N/2-1}} \\cdot \\int_0^\\infty P(k) \\, k^{N-1} dk
+            = \\frac{1}{(2 \\pi)^{N/2}} \\cdot \\frac{1}{\\Gamma(N/2)} \\cdot \\frac{1}{2^{N/2-1}} \\cdot \\int_{-\\infty}^\\infty P\\left(e^u\\right) e^{N u} du
 
         with :math:`u = \\log(k)`, :math:`du = dk/k`.
 
@@ -681,7 +684,7 @@ class MaternCovarianceKernel(IsotropicPowerSpectrumTransform):
         Returns (cov_rs, cov_vals) where cov_rs are the r values (including r=0) and
         cov_vals are the corresponding covariance values.
 
-        Note: The covariance is normalised by cov(0) = variance at r = 0.
+        Note: The covariance is normalised by cov(0) = variance.
         Afterwards, jitter is added at r = 0 for numerical stability.
 
         Args:
@@ -782,23 +785,23 @@ class MaternCovarianceModel(MaternCovarianceKernel, Model):
         r_max: float
             Maximum r value for covariance kernel interpolation. This should
             correspond to the largest length scale you want to resolve.
-        variance: float or tuple or `Model`
+        variance: float or tuple or :class:`Model`
             This sets the variance of the Gaussian process, i.e. :math:`\\mathrm{Cov}(0) = variance * (1 + jitter)`.
             If a float is provided, it is treated as a constant. If a tuple (mean, stddev) is provided,
-            it is treated as a log-normal prior. If a `Model` is provided, it is used directly and must
+            it is treated as a log-normal prior. If a :class:`Model` is provided, it is used directly and must
             have a scalar target.
-        lengthscale: float or tuple or `Model`
+        lengthscale: float or tuple or :class:`Model`
             This sets roughly the largest coherent structure size in the Gaussian process. If a float
             is provided, it is treated as a constant. If a tuple (mean, stddev) is provided, it is treated
-            as a log-normal prior. If a `Model` is provided, it is used directly and must have a scalar target.
-        negloglogslope: float or tuple or `Model`
+            as a log-normal prior. If a :class:`Model` is provided, it is used directly and must have a scalar target.
+        negloglogslope: float or tuple or :class:`Model`
             This controls the logarithmic slope of the power spectrum at intemediate to high k. If a float
             is provided, it is treated as a constant. If a tuple (mean, stddev) is provided, it is treated
-            as a log-normal prior. If a `Model` is provided, it is used directly and must have a scalar target.
-        kcutoff: float or tuple or `Model` or "auto"
+            as a log-normal prior. If a :class:`Model` is provided, it is used directly and must have a scalar target.
+        kcutoff: float or tuple or :class:`Model` or "auto"
             This sets the high-k cutoff of the power spectrum. If a float is provided, it is treated as a constant.
-            If a tuple (mean, stddev) is provided, it is treated as a log-normal prior. If a `Model` is provided,
-            it is used directly and must have a scalar target. If "auto", it is set to pi/r_min.
+            If a tuple (mean, stddev) is provided, it is treated as a log-normal prior. If a :class:`Model` is provided,
+            it is used directly and must have a scalar target. If "auto", it is set to :math:`\\pi/r_\\mathrm{min}`.
         Ninterp: int
             Number of interpolation/evaluation points for the covariance kernel.
         jitter: float
