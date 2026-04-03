@@ -360,18 +360,22 @@ class MaternHarmonicCovariance(Model):
 
 def get_bessel_zeros(nu, N_zeros, n_iter=3):
     """
-    Compute the first :math:`N_\\mathrm{zeros}` zeros of :math:`\\mathcal{J}_\\nu(x)` (Bessel function of the first kind).
+    Compute the first :math:`N_\\mathrm{zeros}` zeros of
+    :math:`\\mathcal{J}_\\nu(x)` (Bessel function of the first kind).
 
-    Args:
-        nu : float
-            Order of the Bessel function
-        N_zeros : int
-            Number of zeros to compute
-        n_iter : int
-            Number of Newton-Raphson refinement iterations
-    Returns:
-        zeros : array
-            First :math:`N_\\mathrm{zeros}` zeros of :math:`\\mathcal{J}_\\nu(x)`
+    Parameters
+    ----------
+    nu : float
+        Order of the Bessel function
+    N_zeros : int
+        Number of zeros to compute
+    n_iter : int
+        Number of Newton-Raphson refinement iterations
+
+    Returns
+    -------
+    zeros : array
+        First :math:`N_\\mathrm{zeros}` zeros of :math:`\\mathcal{J}_\\nu(x)`
     """
     # Use SciPy for integer order
     if np.isclose(nu % 1, 0, atol=1e-6, rtol=0.0):
@@ -425,13 +429,16 @@ class IsotropicPowerSpectrumTransform:
     happen that the covariance function diverges. We therefore recommend to use power spectra
     that either decay sufficiently fast at high k, or have compact support.
 
-    Args:
-        Ndim : int
-            Number of spatial dimensions
-        Nint : int
-            Number of integration nodes for Ogata quadrature. Chosen automatically if set to "auto" and h is provided.
-        h : float
-            Step-size. Controls accuracy. Chosen automatically if set to "auto" and Nint is provided.
+    Parameters
+    ----------
+    Ndim : int
+        Number of spatial dimensions
+    Nint : int
+        Number of integration nodes for Ogata quadrature. Chosen automatically
+        if set to ``"auto"`` and `h` is provided.
+    h : float
+        Step-size. Controls accuracy. Chosen automatically if set to ``"auto"``
+        and `Nint` is provided.
     """
 
     def __init__(
@@ -544,34 +551,35 @@ class MaternCovarianceKernel(IsotropicPowerSpectrumTransform):
     :math:`\\alpha` (lengthscale) controls
     the correlation length scale, and kcutoff sets the high-k cutoff.
 
-    Args:
-        Ndim : int
-            Number of spatial dimensions
-        r_min : float
-            Minimum r value for covariance kernel interpolation. This should
-            correspond to the smallest length scale you want to resolve.
-        r_max : float
-            Maximum r value for covariance kernel interpolation. This should
-            correspond to the largest length scale you want to resolve.
-        Ninterp : int
-            Number of interpolation/evaluation points for the covariance kernel.
-        jitter : float
-            Small value added to the kernel at r=0 for numerical stability. Increase
-            this if you encounter numerical issues with Cholesky decompositions.
-        Nint : int
-            Number of integration nodes for Ogata quadrature. Chosen automatically if
-            set to "auto" and h is provided.
-        h : float
-            Step-size. Controls accuracy. Chosen automatically if set to "auto" and Nint
-            is provided.
-        enforce_nonnegativity : bool
-            If True, the covariance values are clipped to be non-negative. This is not
-            mathematically necessary but can help with numerical stability, especially
-            when used together with enforce_monotonicity.
-        enforce_monotonicity : bool
-            If True, the covariance values are post-processed to ensure they are
-            non-increasing with r. This is not mathematically necessary but can help
-            with numerical stability, especially when using ICR or graphgp.
+    Parameters
+    ----------
+    Ndim : int
+        Number of spatial dimensions
+    r_min : float
+        Minimum r value for covariance kernel interpolation. This should
+        correspond to the smallest length scale you want to resolve.
+    r_max : float
+        Maximum r value for covariance kernel interpolation. This should
+        correspond to the largest length scale you want to resolve.
+    Ninterp : int
+        Number of interpolation/evaluation points for the covariance kernel.
+    jitter : float
+        Small value added to the kernel at r=0 for numerical stability. Increase
+        this if you encounter numerical issues with Cholesky decompositions.
+    Nint : int
+        Number of integration nodes for Ogata quadrature. Chosen automatically if
+        set to ``"auto"`` and `h` is provided.
+    h : float
+        Step-size. Controls accuracy. Chosen automatically if set to ``"auto"`` and
+        `Nint` is provided.
+    enforce_nonnegativity : bool
+        If True, the covariance values are clipped to be non-negative. This is not
+        mathematically necessary but can help with numerical stability, especially
+        when used together with `enforce_monotonicity`.
+    enforce_monotonicity : bool
+        If True, the covariance values are post-processed to ensure they are
+        non-increasing with r. This is not mathematically necessary but can help
+        with numerical stability, especially when using ICR or graphgp.
     """
 
     def __init__(
@@ -614,18 +622,21 @@ class MaternCovarianceKernel(IsotropicPowerSpectrumTransform):
         .. math ::
             P(k) = \\frac{1}{\\left(1 + \\left(\\alpha k\\right)^2\\right)^{\\beta / 2}} \\cdot e^{-(k / k_\\mathrm{cutoff})^2}
 
-        Args:
-            k : array
-                Wavenumber values
-            lengthscale : float
-                Length scale parameter of the Matern-like power spectrum
-            negloglogslope : float
-                Log-log slope parameter of the Matern-like power spectrum
-            kcutoff : float
-                High-k cutoff parameter of the Matern-like power spectrum
-        Returns:
-            P(k) : array
-                Power spectrum values
+        Parameters
+        ----------
+        k : array
+            Wavenumber values
+        lengthscale : float
+            Length scale parameter of the Matern-like power spectrum
+        negloglogslope : float
+            Log-log slope parameter of the Matern-like power spectrum
+        kcutoff : float
+            High-k cutoff parameter of the Matern-like power spectrum
+
+        Returns
+        -------
+        P(k) : array
+            Power spectrum values
         """
         return (
             1.0
@@ -644,16 +655,19 @@ class MaternCovarianceKernel(IsotropicPowerSpectrumTransform):
 
         with :math:`u = \\log(k)`, :math:`du = dk/k`.
 
-        Args:
-            lengthscale : float
-                Length scale parameter of the Matern-like power spectrum
-            negloglogslope : float
-                Log-log slope parameter of the Matern-like power spectrum
-            kcutoff : float
-                High-k cutoff parameter of the Matern-like power spectrum
-        Returns:
-            norm_factor : float
-                Normalisation factor for the covariance kernel at r=0
+        Parameters
+        ----------
+        lengthscale : float
+            Length scale parameter of the Matern-like power spectrum
+        negloglogslope : float
+            Log-log slope parameter of the Matern-like power spectrum
+        kcutoff : float
+            High-k cutoff parameter of the Matern-like power spectrum
+
+        Returns
+        -------
+        norm_factor : float
+            Normalisation factor for the covariance kernel at r=0
         """
         prefactor = 1.0 / (
             (2.0 * jnp.pi) ** (self.Ndim / 2.0)
@@ -687,20 +701,23 @@ class MaternCovarianceKernel(IsotropicPowerSpectrumTransform):
         Note: The covariance is normalised by cov(0) = variance.
         Afterwards, jitter is added at r = 0 for numerical stability.
 
-        Args:
-            variance: float
-                Scaling factor defining cov(0) = variance * (1 + jitter)
-            lengthscale : float
-                Length scale parameter of the Matern-like power spectrum
-            negloglogslope : float
-                Log-log slope parameter of the Matern-like power spectrum
-            kcutoff : float
-                High-k cutoff parameter of the Matern-like power spectrum
-        Returns:
-            cov_rs : array
-                r values including r=0
-            cov_vals : array
-                Corresponding covariance values
+        Parameters
+        ----------
+        variance : float
+            Scaling factor defining cov(0) = variance * (1 + jitter)
+        lengthscale : float
+            Length scale parameter of the Matern-like power spectrum
+        negloglogslope : float
+            Log-log slope parameter of the Matern-like power spectrum
+        kcutoff : float
+            High-k cutoff parameter of the Matern-like power spectrum
+
+        Returns
+        -------
+        cov_rs : array
+            r values including r=0
+        cov_vals : array
+            Corresponding covariance values
         """
         cov_fn = jax.tree_util.Partial(
             self.Pk,
@@ -730,18 +747,22 @@ class MaternCovarianceKernel(IsotropicPowerSpectrumTransform):
         Note: The covariance is normalised by cov(0) = variance at r = 0.
         Afterwards, jitter is added at r = 0 for numerical stability.
 
-        Args:
-            variance: float
-                Scaling factor defining cov(0) = variance * (1 + jitter)
-            lengthscale : float
-                Length scale parameter of the Matern-like power spectrum
-            negloglogslope : float
-                Log-log slope parameter of the Matern-like power spectrum
-            kcutoff : float
-                High-k cutoff parameter of the Matern-like power spectrum
-        Returns:
-            cov_fn : callable
-                Function that takes r values and returns linearly interpolated covariance values
+        Parameters
+        ----------
+        variance : float
+            Scaling factor defining cov(0) = variance * (1 + jitter)
+        lengthscale : float
+            Length scale parameter of the Matern-like power spectrum
+        negloglogslope : float
+            Log-log slope parameter of the Matern-like power spectrum
+        kcutoff : float
+            High-k cutoff parameter of the Matern-like power spectrum
+
+        Returns
+        -------
+        cov_fn : callable
+            Function that takes r values and returns linearly interpolated
+            covariance values
         """
         cov_rs, cov_vals = self.get_covariance_kernel_pair(
             variance, lengthscale, negloglogslope, kcutoff
@@ -776,58 +797,73 @@ class MaternCovarianceModel(MaternCovarianceKernel, Model):
     :math:`\\alpha` (lengthscale) controls the correlation length scale,
     and :math:`k_\\mathrm{cutoff}` sets the high-k cutoff.
 
-    Args:
-        Ndim: int
-            Number of spatial dimensions
-        r_min: float
-            Minimum r value for covariance kernel interpolation. This should
-            correspond to the smallest length scale you want to resolve.
-        r_max: float
-            Maximum r value for covariance kernel interpolation. This should
-            correspond to the largest length scale you want to resolve.
-        variance: float or tuple or :class:`Model`
-            This sets the variance of the Gaussian process, i.e. :math:`\\mathrm{Cov}(0) = variance * (1 + jitter)`.
-            If a float is provided, it is treated as a constant. If a tuple (mean, stddev) is provided,
-            it is treated as a log-normal prior. If a :class:`Model` is provided, it is used directly and must
-            have a scalar target.
-        lengthscale: float or tuple or :class:`Model`
-            This sets roughly the largest coherent structure size in the Gaussian process. If a float
-            is provided, it is treated as a constant. If a tuple (mean, stddev) is provided, it is treated
-            as a log-normal prior. If a :class:`Model` is provided, it is used directly and must have a scalar target.
-        negloglogslope: float or tuple or :class:`Model`
-            This controls the logarithmic slope of the power spectrum at intemediate to high k. If a float
-            is provided, it is treated as a constant. If a tuple (mean, stddev) is provided, it is treated
-            as a log-normal prior. If a :class:`Model` is provided, it is used directly and must have a scalar target.
-        kcutoff: float or tuple or :class:`Model` or "auto"
-            This sets the high-k cutoff of the power spectrum. If a float is provided, it is treated as a constant.
-            If a tuple (mean, stddev) is provided, it is treated as a log-normal prior. If a :class:`Model` is provided,
-            it is used directly and must have a scalar target. If "auto", it is set to :math:`\\pi/r_\\mathrm{min}`.
-        Ninterp: int
-            Number of interpolation/evaluation points for the covariance kernel.
-        jitter: float
-            Small value added to the kernel at r=0 for numerical stability. Increase
-            this if you encounter numerical issues with Cholesky decompositions.
-        Nint: int or "auto"
-            Number of integration nodes for Ogata quadrature. Chosen automatically if set to "auto" and h is provided.
-        h: float or "auto"
-            Step-size. Controls accuracy. Chosen automatically if set to "auto" and Nint is provided.
-        prefix: str
-            Prefix for the names of the priors if tuple inputs are provided. This is useful to distinguish
-            multiple instances of MaternCovarianceModel. The final prior names will be prefix + attribute name,
-            e.g. "MaternCovarianceModel_lengthscale".
-        mode: str
-            Mode of operation. If "ICR", the model is intended to be used with ICR and the __call__ method will return
-            a callable covariance kernel function. If "graphgp", the model is intended to be used with GraphGP and
-            the __call__ method will return a tuple (cov_rs, cov_vals) with the r values and corresponding covariance
-            values for interpolation.
-        enforce_nonnegativity : bool
-            If True, the covariance values are clipped to be non-negative. This is not
-            mathematically necessary but can help with numerical stability, especially
-            when used together with enforce_monotonicity.
-        enforce_monotonicity : bool
-            If True, the covariance values are post-processed to ensure they are
-            non-increasing with r. This is not mathematically necessary but can help
-            with numerical stability, especially when using ICR or graphgp.
+    Parameters
+    ----------
+    Ndim : int
+        Number of spatial dimensions
+    r_min : float
+        Minimum r value for covariance kernel interpolation. This should
+        correspond to the smallest length scale you want to resolve.
+    r_max : float
+        Maximum r value for covariance kernel interpolation. This should
+        correspond to the largest length scale you want to resolve.
+    variance : float or tuple or :class:`Model`
+        This sets the variance of the Gaussian process, i.e.
+        :math:`\\mathrm{Cov}(0) = variance * (1 + jitter)`.
+        If a float is provided, it is treated as a constant. If a tuple
+        (mean, stddev) is provided, it is treated as a log-normal prior.
+        If a :class:`Model` is provided, it is used directly and must have
+        a scalar target.
+    lengthscale : float or tuple or :class:`Model`
+        This sets roughly the largest coherent structure size in the Gaussian
+        process. If a float is provided, it is treated as a constant. If a
+        tuple (mean, stddev) is provided, it is treated as a log-normal prior.
+        If a :class:`Model` is provided, it is used directly and must have a
+        scalar target.
+    negloglogslope : float or tuple or :class:`Model`
+        This controls the logarithmic slope of the power spectrum at
+        intermediate to high k. If a float is provided, it is treated as a
+        constant. If a tuple (mean, stddev) is provided, it is treated as a
+        log-normal prior. If a :class:`Model` is provided, it is used directly
+        and must have a scalar target.
+    kcutoff : float or tuple or :class:`Model` or ``"auto"``
+        This sets the high-k cutoff of the power spectrum. If a float is
+        provided, it is treated as a constant. If a tuple (mean, stddev) is
+        provided, it is treated as a log-normal prior. If a :class:`Model` is
+        provided, it is used directly and must have a scalar target. If
+        ``"auto"``, it is set to :math:`\\pi/r_\\mathrm{min}`.
+    Ninterp : int
+        Number of interpolation/evaluation points for the covariance kernel.
+    jitter : float
+        Small value added to the kernel at r=0 for numerical stability.
+        Increase this if you encounter numerical issues with Cholesky
+        decompositions.
+    Nint : int or ``"auto"``
+        Number of integration nodes for Ogata quadrature. Chosen automatically
+        if set to ``"auto"`` and `h` is provided.
+    h : float or ``"auto"``
+        Step-size. Controls accuracy. Chosen automatically if set to ``"auto"``
+        and `Nint` is provided.
+    prefix : str
+        Prefix for the names of the priors if tuple inputs are provided. This
+        is useful to distinguish multiple instances of
+        :class:`MaternCovarianceModel`. The final prior names will be
+        ``prefix + attribute name``, e.g. ``"MaternCovarianceModel_lengthscale"``.
+    mode : str
+        Mode of operation. If ``"ICR"``, the model is intended to be used with
+        ICR and the ``__call__`` method will return a callable covariance kernel
+        function. If ``"graphgp"``, the model is intended to be used with
+        GraphGP and the ``__call__`` method will return a tuple
+        ``(cov_rs, cov_vals)`` with the r values and corresponding covariance
+        values for interpolation.
+    enforce_nonnegativity : bool
+        If True, the covariance values are clipped to be non-negative. This is
+        not mathematically necessary but can help with numerical stability,
+        especially when used together with `enforce_monotonicity`.
+    enforce_monotonicity : bool
+        If True, the covariance values are post-processed to ensure they are
+        non-increasing with r. This is not mathematically necessary but can
+        help with numerical stability, especially when using ICR or graphgp.
     """
 
     variance: Callable = field(metadata=dict(static=False))
