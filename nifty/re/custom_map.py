@@ -138,8 +138,10 @@ def _lscan(f, init, xs, length=None, unroll=1):
     ys = None
     lvs = jax.tree_util.tree_leaves(xs)
     # Only use the same device if a single device is used
-    lvs_d = [e.devices() for e in lvs if hasattr(e, "devices")]
-    like_device = list(set().union(*lvs_d))
+    # Skip device detection when inside JIT (arrays are abstract tracers)
+    lvs_concrete = [e for e in lvs if hasattr(e, "devices") and not isinstance(e, jax.core.Tracer)]
+    lvs_d = [e.devices() for e in lvs_concrete]
+    like_device = list(set().union(*lvs_d)) if lvs_d else []
     like_device = like_device[0] if len(like_device) == 1 else None
     length = lvs[0].shape[0] if length is None else length
     for i in range(length):
