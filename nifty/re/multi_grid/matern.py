@@ -403,6 +403,10 @@ def default_Nint(h, nu, t_max=2.0):
     return int(np.ceil(t_max / h - nu / 2 + 0.25))
 
 
+def default_Ninterp(r_min, r_max, num_per_decade=100):
+    return int(np.ceil(num_per_decade * np.log10(r_max / r_min)))
+
+
 class IsotropicPowerSpectrumTransform:
     """
     Transform between isotropic power spectrum P(k) and covariance
@@ -561,15 +565,17 @@ class MaternCovarianceKernel(IsotropicPowerSpectrumTransform):
     r_max : float
         Maximum r value for covariance kernel interpolation. This should
         correspond to the largest length scale you want to resolve.
-    Ninterp : int
+    Ninterp : int or ``"auto"``
         Number of interpolation/evaluation points for the covariance kernel.
+        If ``"auto"``, it is chosen as 100 points per decade between `r_min`
+        and `r_max`.
     jitter : float
         Small value added to the kernel at r=0 for numerical stability. Increase
-        this if you encounter numerical issues with Cholesky decompositions.
+        this if you encounter numerical issues in Gaussian process inference.
     Nint : int
         Number of integration nodes for Ogata quadrature. Chosen automatically if
         set to ``"auto"`` and `h` is provided.
-    h : float
+    h : float or ``"auto"``
         Step-size. Controls accuracy. Chosen automatically if set to ``"auto"`` and
         `Nint` is provided.
     enforce_nonnegativity : bool
@@ -587,10 +593,10 @@ class MaternCovarianceKernel(IsotropicPowerSpectrumTransform):
         Ndim: int,
         r_min: float,
         r_max: float,
-        Ninterp: int = 256,
+        Ninterp: Union[int, str] = "auto",
         jitter: float = 1.0e-5,
         Nint: int = 1024,
-        h: float = "auto",
+        h: Union[float, str] = "auto",
         enforce_nonnegativity: bool = True,
         enforce_monotonicity: bool = True,
     ):
@@ -599,8 +605,8 @@ class MaternCovarianceKernel(IsotropicPowerSpectrumTransform):
             raise ValueError("r_min must be a positive scalar.")
         if not isinstance(r_max, (float, int)) or r_max <= r_min:
             raise ValueError("r_max must be a positive scalar greater than r_min.")
-        if not isinstance(Ninterp, int) or Ninterp <= 0:
-            raise ValueError("Ninterp must be a positive integer.")
+        if not (isinstance(Ninterp, int) or Ninterp <= 0) and Ninterp != "auto":
+            raise ValueError("Ninterp must be a positive integer or 'auto'.")
         if not (isinstance(jitter, (float, int)) and jitter >= 0):
             raise ValueError("jitter must be a non-negative scalar.")
         if not isinstance(enforce_nonnegativity, bool):
@@ -612,6 +618,8 @@ class MaternCovarianceKernel(IsotropicPowerSpectrumTransform):
         self.jitter = jitter
         self.enforce_nonnegativity = enforce_nonnegativity
         self.enforce_monotonicity = enforce_monotonicity
+        if Ninterp == "auto":
+            Ninterp = default_Ninterp(r_min, r_max)
         self.cov_rs_no_zero = jnp.geomspace(r_min, r_max, Ninterp)
 
     @staticmethod
@@ -832,12 +840,13 @@ class MaternCovarianceModel(MaternCovarianceKernel, Model):
         provided, it is treated as a log-normal prior. If a :class:`Model` is
         provided, it is used directly and must have a scalar target. If
         ``"auto"``, it is set to :math:`\\pi/r_\\mathrm{min}`.
-    Ninterp : int
+    Ninterp : int or ``"auto"``
         Number of interpolation/evaluation points for the covariance kernel.
+        If ``"auto"``, it is chosen as 100 points per decade between `r_min`
+        and `r_max`.
     jitter : float
-        Small value added to the kernel at r=0 for numerical stability.
-        Increase this if you encounter numerical issues with Cholesky
-        decompositions.
+        Small value added to the kernel at r=0 for numerical stability. Increase
+        this if you encounter numerical issues in Gaussian process inference.
     Nint : int or ``"auto"``
         Number of integration nodes for Ogata quadrature. Chosen automatically
         if set to ``"auto"`` and `h` is provided.
@@ -883,7 +892,7 @@ class MaternCovarianceModel(MaternCovarianceKernel, Model):
         lengthscale: Union[float, tuple, Model],
         negloglogslope: Union[float, tuple, Model],
         kcutoff: Union[float, tuple, Model, str] = "auto",
-        Ninterp: int = 256,
+        Ninterp: Union[int, str] = "auto",
         jitter: float = 1.0e-5,
         Nint: Union[int, str] = 1024,
         h: Union[float, str] = "auto",
