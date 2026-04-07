@@ -34,8 +34,9 @@ NIFTy 9.2.0 (March 27, 2026)
   - Make NIFTy.re Windows-compatible.
   - Introduce a function to compute empirical power spectra of fields
     on regular grids `compute_empirical_power_spectrum`.
-  - New and improved implementation of the Matern kernel `MaternCovarianceModel`,
-    converting a Matern power spectrum to its real-space covariance function.
+  - Add `MaternCovarianceModel`, replacing the now-deprecated 
+    `MaternHarmonicCovariance`; supports learnable lengthscale, spectral slope,
+    and high-k cutoff in arbitrary dimensions.
 - Bug fixes:
   - Fix bug when computing the Wiener filter posterior of a model linearized
     around a non-zero position.
