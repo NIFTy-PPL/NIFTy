@@ -605,7 +605,7 @@ class MaternCovarianceKernel(IsotropicPowerSpectrumTransform):
             raise ValueError("r_min must be a positive scalar.")
         if not isinstance(r_max, (float, int)) or r_max <= r_min:
             raise ValueError("r_max must be a positive scalar greater than r_min.")
-        if not (isinstance(Ninterp, int) or Ninterp <= 0) and Ninterp != "auto":
+        if not (isinstance(Ninterp, int) and Ninterp <= 0) and Ninterp != "auto":
             raise ValueError("Ninterp must be a positive integer or 'auto'.")
         if not (isinstance(jitter, (float, int)) and jitter >= 0):
             raise ValueError("jitter must be a non-negative scalar.")
