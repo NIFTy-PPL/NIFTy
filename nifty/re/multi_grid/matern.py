@@ -403,7 +403,7 @@ def default_Nint(h, nu, t_max=2.0):
     return int(np.ceil(t_max / h - nu / 2 + 0.25))
 
 
-def default_Ninterp(r_min, r_max, num_per_decade=100):
+def default_Ninterp(r_min, r_max, num_per_decade=200):
     return int(np.ceil(num_per_decade * np.log10(r_max / r_min)))
 
 
