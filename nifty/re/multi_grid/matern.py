@@ -543,6 +543,14 @@ class IsotropicPowerSpectrumTransform:
         return (self.nodes[0] / r, self.nodes[-1] / r)
 
 
+def _interpolate_cov(r, _variance, _cov_rs, _cov_vals, _jitter):
+    return jnp.where(
+        r == 0.0,
+        _variance * (1.0 + _jitter) * jnp.ones_like(r),
+        jnp.interp(r, _cov_rs, _cov_vals),
+    )
+
+
 class MaternCovarianceKernel(IsotropicPowerSpectrumTransform):
     """
     Computes the covariance kernel for a Matern-like power spectrum
@@ -776,20 +784,18 @@ class MaternCovarianceKernel(IsotropicPowerSpectrumTransform):
             variance, lengthscale, negloglogslope, kcutoff
         )
 
-        def cov_fn(r, _variance, _cov_rs, _cov_vals, _jitter):
-            return jnp.where(
-                r == 0.0,
-                _variance * (1.0 + _jitter) * jnp.ones_like(r),
-                jnp.interp(r, _cov_rs, _cov_vals),
-            )
-
         return jax.tree_util.Partial(
-            cov_fn,
+            _interpolate_cov,
             _variance=variance,
             _cov_rs=cov_rs[1:],
             _cov_vals=cov_vals[1:],
             _jitter=self.jitter,
         )
+
+
+def _icr_cov_wrapper(x, y, fun):
+    r = norm(x - y)
+    return fun(r)
 
 
 class MaternCovarianceModel(MaternCovarianceKernel, Model):
@@ -983,11 +989,7 @@ class MaternCovarianceModel(MaternCovarianceKernel, Model):
             self.kcutoff(x),
         )
 
-        def wrapper(x, y, fun):
-            r = norm(x - y)
-            return fun(r)
-
-        return jax.tree_util.Partial(wrapper, fun=_fun)
+        return jax.tree_util.Partial(_icr_cov_wrapper, fun=_fun)
 
     def _call_graphgp(self, x):
         return self.get_covariance_kernel_pair(
