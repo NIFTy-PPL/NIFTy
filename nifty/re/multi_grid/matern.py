@@ -605,7 +605,7 @@ class MaternCovarianceKernel(IsotropicPowerSpectrumTransform):
             raise ValueError("r_min must be a positive scalar.")
         if not isinstance(r_max, (float, int)) or r_max <= r_min:
             raise ValueError("r_max must be a positive scalar greater than r_min.")
-        if not (isinstance(Ninterp, int) and Ninterp <= 0) and Ninterp != "auto":
+        if not (isinstance(Ninterp, int) and Ninterp > 0) and Ninterp != "auto":
             raise ValueError("Ninterp must be a positive integer or 'auto'.")
         if not (isinstance(jitter, (float, int)) and jitter >= 0):
             raise ValueError("jitter must be a non-negative scalar.")
@@ -615,7 +615,7 @@ class MaternCovarianceKernel(IsotropicPowerSpectrumTransform):
             raise ValueError("enforce_monotonicity must be a boolean.")
 
         super().__init__(Ndim=Ndim, Nint=Nint, h=h)
-        self.jitter = jitter
+        self.jitter = float(jitter)
         self.enforce_nonnegativity = enforce_nonnegativity
         self.enforce_monotonicity = enforce_monotonicity
         if Ninterp == "auto":
@@ -946,9 +946,10 @@ class MaternCovarianceModel(MaternCovarianceKernel, Model):
                 prior = {"N": NormalPrior, "LN": LogNormalPrior}[prior_type]
                 value = prior(*value, name=prefix + attr)
             elif isinstance(value, Model):
-                assert (
-                    value.target.shape == ()
-                ), f"Model for {attr} must have scalar target (shape ())."
+                if value.target.shape != ():
+                    raise ValueError(
+                        f"Model for {attr} must have scalar target (shape ()), but got shape {value.target.shape}."
+                    )
             else:
                 if attr == "kcutoff":
                     raise ValueError(

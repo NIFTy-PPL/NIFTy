@@ -17,9 +17,10 @@ pmp = pytest.mark.parametrize
 @pmp("lengthscale", [1.0, (1.0, 0.5)])
 @pmp("negloglogslope", [3.0, (1.0, 0.1)])
 @pmp("kcutoff", ["auto", 10.0])
+@pmp("Ninterp", [128, "auto"])
 @pmp("mode", ["ICR", "graphgp"])
 def test_initialisation(
-    Ndim, r_min, r_max, variance, lengthscale, negloglogslope, kcutoff, mode
+    Ndim, r_min, r_max, variance, lengthscale, negloglogslope, kcutoff, Ninterp, mode
 ):
     kernel = jft.MaternCovarianceModel(
         Ndim=Ndim,
@@ -29,6 +30,7 @@ def test_initialisation(
         lengthscale=lengthscale,
         negloglogslope=negloglogslope,
         kcutoff=kcutoff,
+        Ninterp=Ninterp,
         mode=mode,
     )
     assert isinstance(kernel, jft.Model)
