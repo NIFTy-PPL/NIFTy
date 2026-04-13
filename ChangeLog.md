@@ -12,7 +12,7 @@ Change categories:
 - Deprecations
 -->
 
-NIFTy 9.2.0 (March 27, 2026)
+NIFTy 9.2.0 (April 17, 2026)
 ============================
 
 # NIFTy.re
@@ -34,7 +34,7 @@ NIFTy 9.2.0 (March 27, 2026)
   - Make NIFTy.re Windows-compatible.
   - Introduce a function to compute empirical power spectra of fields
     on regular grids `compute_empirical_power_spectrum`.
-  - Add `MaternCovarianceModel`, replacing the now-deprecated 
+  - Add `MaternCovarianceModel`, replacing the now-deprecated
     `MaternHarmonicCovariance`; supports learnable lengthscale, spectral slope,
     and high-k cutoff in arbitrary dimensions.
 - Bug fixes:
@@ -42,6 +42,8 @@ NIFTy 9.2.0 (March 27, 2026)
     around a non-zero position.
   - Fix a bug in the `MaternHarmonicCovariance` of the `ICRField` model
     affecting small cutoff values.
+  - Fix bug in the `SimpleOpenGrid` when initializing without an explicitly
+    specified depth.
 - Changes
   - Change the JIT compilation strategy of `optimize_kl`. By default, the
     optimizers themselves are no longer compiled—only the cost functions being
@@ -49,7 +51,7 @@ NIFTy 9.2.0 (March 27, 2026)
 - Deprecations
   - Deprecate the built-in HMC (`NUTSChain`, `HMCChain`) functions. Please use
     the BlackJAX wrapper (`blackjax_nuts`) instead.
-  - Deprecate the experimental `MaternHarmonicCovariance` model. Please use 
+  - Deprecate the experimental `MaternHarmonicCovariance` model. Please use
     the new `MaternCovarianceModel` instead.
 
 
