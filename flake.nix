@@ -15,7 +15,7 @@
           config.cudaSupport = true;
         };
 
-        version = "9.1.0";
+        version = "9.2.0";
 
         getDeps = pkgs: cudaSupport:
           let
@@ -37,29 +37,6 @@
               matplotlib
               h5py
             ]);
-            docs = [
-              pkgs.jupyter # python3Packages.jupyter is broken, see https://github.com/NixOS/nixpkgs/issues/299385
-              pyPkgs.jupytext
-              pyPkgs.jupyter-book
-
-              (pkgs.texlive.combine {
-                inherit (pkgs.texlive)
-                  scheme-medium
-                  collection-latexextra
-                  collection-fontsextra
-                  collection-fontsrecommended
-                  xetex
-                  latexmk
-                  gnu-freefont;
-              })
-
-              pyPkgs.pydata-sphinx-theme
-              pyPkgs.sphinx
-              pyPkgs.sphinxcontrib-bibtex
-              pyPkgs.myst-parser
-              pyPkgs.jax
-              pyPkgs.matplotlib
-            ];
           };
 
         mkNifty = { cudaSupport ? false, doCheck ? true }:
@@ -87,24 +64,6 @@
               cudaSupport = cudaSupport;
               doCheck = doCheck;
             };
-
-        mkNiftyDocs = { cudaSupport ? false }:
-          let
-            pkgs = if cudaSupport then pkgsCuda else pkgsBase;
-            deps = getDeps pkgs cudaSupport;
-          in pkgs.lib.makeOverridable (args:
-            pkgs.stdenv.mkDerivation {
-              name = "nifty-docs";
-              inherit version;
-              src = ./.;
-              buildInputs = deps.docs
-                ++ (if cudaSupport then [ nifty-cuda ] else [ nifty ]);
-              buildPhase = "sh docs/generate.sh";
-              installPhase = ''
-                mkdir $out
-                mv docs/build/* $out
-              '';
-            }) { cudaSupport = cudaSupport; };
 
         mkDevShell = { cudaSupport ? false }:
           let
@@ -144,9 +103,6 @@
         # Standard nifty package
         packages.default = nifty;
         packages."cuda" = nifty-cuda;
-
-        # Build nifty docs (`nix build .#docs`)
-        packages."docs" = mkNiftyDocs { cudaSupport = false; };
 
         # Run `nix develop .` to enter the development shell including, e.g.,
         # python-lsp-server. Then compile nifty with, e.g., `pip3 install .`
