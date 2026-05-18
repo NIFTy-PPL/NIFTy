@@ -803,7 +803,12 @@ def optimize_kl(
         )
 
     last_fn = os.path.join(odir, LAST_FILENAME) if odir is not None else None
-    resume_fn = resume if os.path.isfile(resume) else last_fn
+    # `resume` may be True/False (bool) or a path. os.path.isfile(True) under
+    # SLURM accidentally returns True because stdout fd=1 is a regular log
+    # file; guard the path branch with an isinstance check.
+    resume_fn = (
+        resume if isinstance(resume, str) and os.path.isfile(resume) else last_fn
+    )
     sanity_fn = os.path.join(odir, MINISANITY_FILENAME) if odir is not None else None
 
     samples = None
