@@ -78,9 +78,8 @@ class GridAtLevel(metaclass=ModelMeta):
         if self.splits is None:
             raise IndexError("this level has no children")
         index = self._parse_index(index)
-        dtp = np.result_type(index)
         f = self.splits[(slice(None),) + (np.newaxis,) * (index.ndim - 1)]
-        c = np.mgrid[tuple(slice(sz) for sz in self.splits)].astype(dtp)
+        c = np.mgrid[tuple(slice(sz) for sz in self.splits)].astype(index.dtype)
         c_bc = (
             (slice(None),)
             + (np.newaxis,) * (index.ndim - 1)
@@ -91,7 +90,6 @@ class GridAtLevel(metaclass=ModelMeta):
 
     def neighborhood(self, index, window_size: Iterable[int]):
         index = self._parse_index(index)
-        dtp = np.result_type(index)
         window_size = np.asarray(window_size)
         assert window_size.size == self.ndim
         c = np.mgrid[tuple(slice(sz) for sz in window_size)]
@@ -104,7 +102,7 @@ class GridAtLevel(metaclass=ModelMeta):
         m_bc = (slice(None),) + (np.newaxis,) * (index.ndim - 1 + self.ndim)
         id_bc = (slice(None),) * index.ndim + (np.newaxis,) * self.ndim
         res = (index[id_bc] + c[c_bc]) % self.shape[m_bc]
-        return res.astype(dtp)
+        return res.astype(index.dtype)
 
     def parent(self, index):
         if self.parent_splits is None:
