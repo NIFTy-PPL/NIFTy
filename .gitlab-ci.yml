@@ -20,6 +20,7 @@ test_cl:
     - pytest -n auto -q --cov=nifty.cl test/test_cl
     - mv .coverage .coverage.cl
   artifacts:
+    expire_in: 1 week
     paths:
       - .coverage.cl
 
@@ -41,6 +42,7 @@ test_re:
     - pytest -n auto --cov=nifty.re --cov-append test/test_re/test_optimize_kl.py
     - mv .coverage .coverage.re
   artifacts:
+    expire_in: 1 week
     paths:
       - .coverage.re
 
@@ -51,6 +53,7 @@ test_cl_mpi:
   script:
     - mpirun --allow-run-as-root -np 2 --bind-to none pytest -q test/test_cl/test_mpi
   artifacts:
+    expire_in: 1 week
     paths:
       - .coverage.cl_mpi
 
@@ -85,6 +88,7 @@ pages:
     - sh docs/generate.sh
     - mv docs/build/ public/
   artifacts:
+    expire_in: 1 week
     paths:
     - public
   only:
@@ -112,6 +116,7 @@ run_getting_started_1:
   script:
     - python3 demos/cl/getting_started_1.py
   artifacts:
+    expire_in: 1 week
     paths:
       - '*.png'
 
@@ -121,6 +126,7 @@ run_getting_started_2:
   script:
     - python3 demos/cl/getting_started_2.py
   artifacts:
+    expire_in: 1 week
     paths:
       - 'getting_started_2_results'
       - '*.png'
@@ -131,6 +137,7 @@ run_getting_started_3:
   script:
     - python3 demos/cl/getting_started_3.py
   artifacts:
+    expire_in: 1 week
     paths:
       - 'getting_started_3_results'
       - '*.png'
@@ -141,6 +148,7 @@ run_getting_started_3_mpi:
   script:
     - mpirun --allow-run-as-root -np 2 --bind-to none python3 demos/cl/getting_started_3.py
   artifacts:
+    expire_in: 1 week
     paths:
       - 'getting_started_3_results'
       - '*.png'
@@ -151,6 +159,7 @@ run_getting_started_mf:
   script:
     - mpirun --allow-run-as-root -np 2 --bind-to none python3 demos/cl/getting_started_5_mf.py
   artifacts:
+    expire_in: 1 week
     paths:
       - 'getting_started_mf_results'
       - '*.png'
@@ -162,6 +171,7 @@ run_getting_started_niftyre_intro:
     - python3 demos/re/0_intro.py
   allow_failure: true
   artifacts:
+    expire_in: 1 week
     paths:
       - '*.png'
 
@@ -172,6 +182,7 @@ run_getting_started_niftyre_tomography:
     - python3 demos/re/1_tomography.py
   allow_failure: true
   artifacts:
+    expire_in: 1 week
     paths:
       - '*.png'
 
@@ -182,6 +193,7 @@ run_getting_started_niftyre_nonlinear_regression:
     - python3 demos/re/a_nonlinear_regression.py
   allow_failure: true
   artifacts:
+    expire_in: 1 week
     paths:
       - '*.png'
 
@@ -192,6 +204,7 @@ run_getting_started_niftyre_wiener_filter:
     - python3 demos/re/a_wiener_filter.py
   allow_failure: true
   artifacts:
+    expire_in: 1 week
     paths:
       - '*.png'
 
@@ -202,6 +215,7 @@ run_getting_started_niftyre_icr:
     - python3 demos/re/a_icr.py
   allow_failure: true
   artifacts:
+    expire_in: 1 week
     paths:
       - '*.png'
 
@@ -211,6 +225,7 @@ run_getting_started_7:
   script:
     - python3 demos/cl/getting_started_7_config_file.py demos/cl/getting_started_7_config_file.cfg
   artifacts:
+    expire_in: 1 week
     paths:
       - '*.png'
 
@@ -220,6 +235,7 @@ run_getting_density:
   script:
     - python3 demos/cl/density_estimation.py
   artifacts:
+    expire_in: 1 week
     paths:
       - '*.png'
 
@@ -229,6 +245,7 @@ run_model_comparison:
   script:
     - python3 demos/cl/model_comparison.py
   artifacts:
+    expire_in: 1 week
     paths:
       - '*.png'
 
@@ -238,6 +255,7 @@ run_bernoulli:
   script:
     - python3 demos/cl/bernoulli_map.py
   artifacts:
+    expire_in: 1 week
     paths:
       - '*.png'
 
@@ -247,6 +265,7 @@ run_curve_fitting:
   script:
     - python3 demos/cl/polynomial_fit.py
   artifacts:
+    expire_in: 1 week
     paths:
       - '*.png'
 
