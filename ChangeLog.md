@@ -12,6 +12,27 @@ Change categories:
 - Deprecations
 -->
 
+# NIFTy.re
+- New features
+  - Extend `estimate_evidence_lower_bound` with stochastic Lanczos quadrature
+    for the trace-log, signal- and data-space evaluation, optional Radau
+    diagnostics, and an analytic Gaussian-prior contribution.
+- Breaking changes
+  - Change saved ELBO eigensystem filenames from
+    `{prefix}_eigenvalues.npy` and `{prefix}_eigenvectors.npy` to
+    `{prefix}_signal_eigenvalues.npy` and `{prefix}_signal_eigenvectors.npy`,
+    or the corresponding `_data` names for data-space calculations.
+
+# NIFTy.cl
+- New features
+  - Add an analytic Gaussian-prior contribution to
+    `estimate_evidence_lower_bound` when all relevant eigenvalues are
+    available.
+- Breaking changes
+  - Change saved ELBO eigensystem filenames from
+    `{prefix}_eigenvalues.npy` and `{prefix}_eigenvectors.npy` to
+    `{prefix}_signal_eigenvalues.npy` and `{prefix}_signal_eigenvectors.npy`.
+
 NIFTy 9.2.0 (April 17, 2026)
 ============================
 
