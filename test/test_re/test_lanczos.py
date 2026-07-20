@@ -15,6 +15,7 @@ from numpy.testing import assert_allclose
 from scipy.spatial import distance_matrix
 
 import nifty.re as jft
+from nifty.re.num.lanczos import _slq_gauss_radau
 
 jax.config.update("jax_enable_x64", True)
 
@@ -80,3 +81,123 @@ def test_stochastic_lq_logdet(seed, shape0, lq_order=15, n_lq_samples=10):
     logdet_est = jft.stochastic_lq_logdet(m, lq_order, n_lq_samples, rng_key)
     assert_allclose(logdet_est, logdet, rtol=0.8, atol=10.0)
     print(f"{logdet=} :: {logdet_est=}", file=sys.stderr)
+
+
+@pmp("as_callable", [False, True])
+def test_slq_exact_diagonal_with_extra_function_and_remainder_batch(as_callable):
+    diagonal = jnp.array([1.25, 2.0, 3.5, 6.0])
+    matrix = jnp.diag(diagonal)
+    operator = (lambda x: matrix @ x) if as_callable else matrix
+    kwargs = {"n": diagonal.size} if as_callable else {}
+
+    result = _slq_gauss_radau(
+        operator,
+        jnp.log,
+        order=diagonal.size,
+        num_samples=5,
+        key=random.PRNGKey(0),
+        probe_batch_size=2,
+        extra_fns={"inv": lambda x: 1.0 / x - 1.0},
+        **kwargs,
+    )
+
+    assert_allclose(result["estimate"], jnp.sum(jnp.log(diagonal)), atol=1e-12)
+    assert_allclose(
+        result["extra_inv_estimate"],
+        jnp.sum(1.0 / diagonal - 1.0),
+        atol=1e-12,
+    )
+    assert_allclose(result["stochastic_se"], 0.0, atol=1e-12)
+    assert "radau_estimate" not in result
+    assert "radau_lo" not in result
+
+
+def test_slq_handles_early_breakdown():
+    diagonal = jnp.full((4,), 2.5)
+    result = _slq_gauss_radau(
+        jnp.diag(diagonal),
+        jnp.log,
+        order=4,
+        num_samples=3,
+        key=random.PRNGKey(1),
+    )
+    assert_allclose(result["estimate"], 4 * jnp.log(2.5), atol=1e-12)
+
+
+def test_slq_deflates_exact_eigenvector():
+    diagonal = jnp.array([1.5, 2.5, 4.0, 7.0])
+    deflate = jnp.eye(4)[:, -1:]
+    result = _slq_gauss_radau(
+        jnp.diag(diagonal),
+        jnp.log,
+        order=3,
+        num_samples=4,
+        key=random.PRNGKey(2),
+        deflate_eigvecs=deflate,
+    )
+    assert_allclose(result["estimate"], jnp.sum(jnp.log(diagonal[:-1])), atol=1e-12)
+
+
+def test_slq_jit_matches_eager():
+    matrix = jnp.diag(jnp.array([1.25, 2.0, 3.5]))
+
+    def run(key):
+        return _slq_gauss_radau(
+            matrix,
+            jnp.log,
+            order=3,
+            num_samples=5,
+            key=key,
+            probe_batch_size=2,
+        )
+
+    key = random.PRNGKey(3)
+    eager = run(key)
+    compiled = jax.jit(run)(key)
+    for name in eager:
+        assert_allclose(compiled[name], eager[name], atol=1e-12)
+
+
+def test_slq_uses_float32_when_x64_is_disabled():
+    with jax.experimental.enable_x64(False):
+        diagonal = jnp.array([1.5, 2.0, 4.0], dtype=jnp.float32)
+        result = _slq_gauss_radau(
+            jnp.diag(diagonal),
+            jnp.log,
+            order=3,
+            num_samples=2,
+            key=random.PRNGKey(4),
+        )
+        assert result["estimate"].dtype == jnp.float32
+        assert_allclose(result["estimate"], jnp.sum(jnp.log(diagonal)), rtol=2e-6)
+
+
+def test_slq_radau_is_opt_in_and_auto_endpoint_adds_one_lanczos_pass():
+    matrix = jnp.diag(jnp.array([1.25, 2.0, 3.5]))
+
+    def run(*, compute_radau):
+        calls = []
+
+        def count_matvec(x):
+            jax.debug.callback(lambda _: calls.append(None), x)
+            return matrix @ x
+
+        result = _slq_gauss_radau(
+            count_matvec,
+            jnp.log,
+            order=3,
+            num_samples=3,
+            key=random.PRNGKey(5),
+            n=3,
+            probe_batch_size=2,
+            compute_radau=compute_radau,
+        )
+        result["estimate"].block_until_ready()
+        return result, len(calls)
+
+    gauss, gauss_calls = run(compute_radau=False)
+    radau, radau_calls = run(compute_radau=True)
+
+    assert "radau_estimate" not in gauss
+    assert "radau_estimate" in radau
+    assert radau_calls == 2 * gauss_calls
