@@ -159,7 +159,9 @@ def test_slq_jit_matches_eager():
 
 
 def test_slq_uses_float32_when_x64_is_disabled():
-    with jax.experimental.enable_x64(False):
+    x64_enabled = jax.config.x64_enabled
+    jax.config.update("jax_enable_x64", False)
+    try:
         diagonal = jnp.array([1.5, 2.0, 4.0], dtype=jnp.float32)
         result = _slq_gauss_radau(
             jnp.diag(diagonal),
@@ -170,6 +172,8 @@ def test_slq_uses_float32_when_x64_is_disabled():
         )
         assert result["estimate"].dtype == jnp.float32
         assert_allclose(result["estimate"], jnp.sum(jnp.log(diagonal)), rtol=2e-6)
+    finally:
+        jax.config.update("jax_enable_x64", x64_enabled)
 
 
 def test_slq_radau_is_opt_in_and_auto_endpoint_adds_one_lanczos_pass():
