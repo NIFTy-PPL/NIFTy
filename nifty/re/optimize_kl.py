@@ -623,9 +623,7 @@ class OptimizeVI:
             anew whenever this number changes between iterations. Samples are
             always mirrored (antithetic sampling), so the KL estimate
             effectively uses ``2 * n_samples`` samples. If a callable, it is
-            called with the current iteration index and may e.g. return zero
-            for the first iterations to begin with a MAP warm-up before
-            switching on sampling.
+            called with the current iteration index.
         draw_linear_kwargs : dict or callable
             Configuration for drawing linear samples, see
             :func:`draw_linear_residual`.
