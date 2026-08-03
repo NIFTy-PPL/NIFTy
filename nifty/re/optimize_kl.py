@@ -617,7 +617,15 @@ class OptimizeVI:
         nit : int
             Current iteration number.
         n_samples : int or callable
-            Number of samples to draw.
+            Number of samples to draw in each iteration. If zero, no samples
+            are drawn and the KL minimization reduces to a maximum a
+            posteriori (MAP) optimization of the position. Samples are drawn
+            anew whenever this number changes between iterations. Samples are
+            always mirrored (antithetic sampling), so the KL estimate
+            effectively uses ``2 * n_samples`` samples. If a callable, it is
+            called with the current iteration index and may e.g. return zero
+            for the first iterations to begin with a MAP warm-up before
+            switching on sampling.
         draw_linear_kwargs : dict or callable
             Configuration for drawing linear samples, see
             :func:`draw_linear_residual`.
@@ -772,17 +780,26 @@ def optimize_kl(
         Initial position for minimization.
     resume : str or bool
         Resume partially run optimization. If `True`, the optimization is
-        resumed from the previos state in `odir` otherwise it is resumed from
-        the location toward which `resume` points.
+        resumed from the previous state in `odir`, otherwise it is resumed
+        from the location toward which `resume` points. When resuming,
+        `position_or_samples` is ignored in favor of the saved state.
     callback : callable or None
         Function called after every global iteration taking the samples and the
         optimization state.
     odir : str or None
         Path at which all output files are saved.
 
+    Returns
+    -------
+    samples : Samples
+        Final approximate posterior samples; their position is the latest
+        mean (respectively the MAP estimate if `n_samples` was zero).
+    opt_vi_state : OptimizeVIState
+        Final state of the optimization.
 
     See :class:`OptimizeVI` and :func:`OptimizeVI.init_state` for the remaining
-    parameters and further details on the optimization.
+    parameters (e.g. `n_samples`, where 0 corresponds to a MAP run) and further
+    details on the optimization.
     """
     LAST_FILENAME = "last.pkl"
     MINISANITY_FILENAME = "minisanity.txt"
