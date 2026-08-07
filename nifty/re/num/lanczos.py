@@ -210,7 +210,11 @@ def _apply_f_safely(
 ) -> Array:
     """Apply scalar function elementwise with optional clipping/sanitization."""
     if clip_eigs:
-        x = jnp.clip(x, min=jnp.asarray(eig_clip, dtype=x.dtype))
+        eig_floor = jnp.maximum(
+            jnp.asarray(eig_clip, dtype=x.dtype),
+            jnp.asarray(jnp.finfo(x.dtype).tiny, dtype=x.dtype),
+        )
+        x = jnp.clip(x, min=eig_floor)
         if clip_eigs_max is not None:
             x = jnp.clip(x, max=jnp.asarray(clip_eigs_max, dtype=x.dtype))
     y = f(x)
@@ -309,7 +313,7 @@ def _radau_unit(
     if m == 1:
         fe = _apply_f_safely(
             f,
-            alpha,
+            jnp.reshape(jnp.asarray(mu, dtype=alpha.dtype), (1,)),
             clip_eigs=clip_eigs,
             eig_clip=eig_clip,
             clip_eigs_max=clip_eigs_max,
@@ -423,12 +427,14 @@ def _lanczos_tridiag_one(
             # optional reorth
             if reorth_mode != 0:
                 if reorth_mode == 2:
-                    k = jnp.minimum(count__, i + 1)
-                    w = orthogonalize(Vbuf__[:k, :], w)
+                    valid = jnp.arange(order, dtype=jnp.int32) < count__
+                    vecs = jnp.where(valid[:, None], Vbuf__, 0.0)
                 else:
-                    k = jnp.minimum(jnp.minimum(count__, i + 1), kmax_partial)
-                    idx = (ptr__ - 1 - jnp.arange(k, dtype=jnp.int32)) % kmax_partial
-                    w = orthogonalize(Vbuf__[idx, :], w)
+                    slots = jnp.arange(kmax_partial, dtype=jnp.int32)
+                    idx = (ptr__ - 1 - slots) % kmax_partial
+                    valid = slots < count__
+                    vecs = jnp.where(valid[:, None], Vbuf__[idx, :], 0.0)
+                w = orthogonalize(vecs, w)
 
             b = jnp.linalg.norm(w)
             good = b > eps

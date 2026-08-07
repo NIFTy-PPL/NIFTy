@@ -62,6 +62,19 @@ class _ProjectedMetric(ssl.LinearOperator):
         return self._matvec(x)
 
 
+class _ShiftedMetric(ssl.LinearOperator):
+    def __init__(self, metric, shift):
+        super().__init__(dtype=metric.dtype, shape=metric.shape)
+        self.metric = metric
+        self.shift = shift
+
+    def _matvec(self, x):
+        return self.metric.matvec(x) + self.shift * x
+
+    def _rmatvec(self, x):
+        return self._matvec(x)
+
+
 def _explicify(M):
     identity = np.identity(M.shape[0], dtype=np.float64)
     return np.column_stack([M.matvec(v) for v in identity])
@@ -167,6 +180,7 @@ def _eigsh(
     tot_dofs,
     min_lh_eval=1e-4,
     eigenvalue_shift=1.0,
+    solver_shift=0.0,
     n_batches=10,
     tol=0.0,
     early_stop=True,
@@ -309,7 +323,10 @@ def _eigsh(
                 batch -= skip
                 skip = 0
             batches.append(batch)
-        projected_metric = metric
+        solver_metric = (
+            metric if solver_shift == 0.0 else _ShiftedMetric(metric, solver_shift)
+        )
+        projected_metric = solver_metric
         if eigenvectors is not None:
             if orthonormalize_eigenvectors:
                 error = (
@@ -326,7 +343,7 @@ def _eigsh(
                         )
                     eigenvectors = _orthonormalize_columns(eigenvectors)
             projector = _Projector(eigenvectors)
-            projected_metric = _ProjectedMetric(metric, projector)
+            projected_metric = _ProjectedMetric(solver_metric, projector)
 
         for batch in batches:
             if verbose:
@@ -339,6 +356,7 @@ def _eigsh(
                 return_eigenvectors=True,
                 which="LM",
             )
+            eigvals = np.real_if_close(eigvals - solver_shift)
             i = np.argsort(-eigvals)
             eigvals, eigvecs = eigvals[i], eigvecs[:, i]
             eigenvalues = (
@@ -383,7 +401,7 @@ def _eigsh(
                 break
             # Project out subspace of already computed eigenvalues
             projector = _Projector(eigenvectors)
-            projected_metric = _ProjectedMetric(metric, projector)
+            projected_metric = _ProjectedMetric(solver_metric, projector)
     return eigenvalues, eigenvectors
 
 
@@ -670,12 +688,14 @@ def estimate_evidence_lower_bound(
             metric_jit=metric_jit,
         )
         eigenvalue_shift = 0.0
+        solver_shift = 1.0
         log_np = np.log1p
         log_f = jnp.log1p
     else:
         op_label = "metric"
         op_linop, op_matvec, op_size = metric_linop, metric_matvec, metric_size
         eigenvalue_shift = 1.0
+        solver_shift = 0.0
         log_np = np.log
         log_f = jnp.log
     if compute_all:
@@ -693,6 +713,7 @@ def estimate_evidence_lower_bound(
         tot_dofs=n_relevant_dofs,
         min_lh_eval=min_lh_eval,
         eigenvalue_shift=eigenvalue_shift,
+        solver_shift=solver_shift,
         n_batches=n_batches,
         tol=tol,
         early_stop=not compute_all,

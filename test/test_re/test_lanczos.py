@@ -162,18 +162,60 @@ def test_slq_uses_float32_when_x64_is_disabled():
     x64_enabled = jax.config.x64_enabled
     jax.config.update("jax_enable_x64", False)
     try:
-        diagonal = jnp.array([1.5, 2.0, 4.0], dtype=jnp.float32)
+        diagonal = jnp.ones(4, dtype=jnp.float32)
         result = _slq_gauss_radau(
             jnp.diag(diagonal),
             jnp.log,
-            order=3,
+            order=4,
             num_samples=2,
             key=random.PRNGKey(4),
         )
         assert result["estimate"].dtype == jnp.float32
+        assert jnp.isfinite(result["estimate"])
         assert_allclose(result["estimate"], jnp.sum(jnp.log(diagonal)), rtol=2e-6)
     finally:
         jax.config.update("jax_enable_x64", x64_enabled)
+
+
+@pmp("reorthogonalize", ["partial", "full"])
+def test_slq_reorthogonalization_modes_are_traceable(reorthogonalize):
+    diagonal = jnp.array([1.25, 2.0, 3.5, 6.0])
+
+    def run(key):
+        return _slq_gauss_radau(
+            jnp.diag(diagonal),
+            jnp.log,
+            order=diagonal.size,
+            num_samples=3,
+            key=key,
+            reorthogonalize=reorthogonalize,
+            reorth_k=2,
+        )
+
+    key = random.PRNGKey(5)
+    eager = run(key)
+    compiled = jax.jit(run)(key)
+    expected = jnp.sum(jnp.log(diagonal))
+
+    assert_allclose(eager["estimate"], expected, atol=1e-12)
+    assert_allclose(compiled["estimate"], expected, atol=1e-12)
+
+
+def test_slq_order_one_radau_uses_forced_endpoints():
+    result = _slq_gauss_radau(
+        jnp.diag(jnp.array([1.0, 4.0])),
+        jnp.log,
+        order=1,
+        num_samples=3,
+        key=random.PRNGKey(6),
+        lam_min=1.0,
+        lam_max=4.0,
+        compute_radau=True,
+    )
+
+    assert_allclose(result["radau_lo"], 0.0, atol=1e-12)
+    assert_allclose(result["radau_hi"], 2.0 * jnp.log(4.0), atol=1e-12)
+    assert result["quadrature_width"] > 0.0
 
 
 def test_slq_radau_is_opt_in_and_auto_endpoint_adds_one_lanczos_pass():

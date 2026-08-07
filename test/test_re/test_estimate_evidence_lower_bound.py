@@ -515,6 +515,28 @@ def test_elbo_centered_inverse_trace_in_signal_and_data_space(response):
     )
 
 
+def test_elbo_partial_data_space_handles_zero_response():
+    likelihood, samples = _make_linear_likelihood_and_samples(np.zeros((3, 3)))
+
+    elbo, stats = jft.estimate_evidence_lower_bound(
+        likelihood,
+        samples,
+        1,
+        trace_log_method="slq",
+        trace_log_space="data",
+        slq_order=3,
+        slq_num_samples=3,
+        slq_key=0,
+        metric_jit=False,
+        output_directory=None,
+        verbose=False,
+    )
+
+    assert np.all(np.isfinite(elbo))
+    assert_allclose(stats["trace_log_exact"], 0.0, atol=1e-12)
+    assert_allclose(stats["trace_log_slq"], 0.0, atol=1e-12)
+
+
 def test_elbo_analytic_prior_compute_all_matches_explicit_matrix():
     response = np.diag([2.0, np.sqrt(2.0), 0.0])
     likelihood, samples = _make_linear_likelihood_and_samples(response, n_samples=3)
