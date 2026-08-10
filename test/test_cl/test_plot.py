@@ -73,7 +73,7 @@ def test_mf_plot():
     d1 = ift.DomainTuple.make([x_space, f_space])
     d2 = ift.DomainTuple.make([f_space, x_space])
 
-    f1 = ift.from_random(d1, 'normal')
+    f1 = ift.from_random(d1, 'normal').exp()
     f2 = ift.makeField(d2, np.moveaxis(f1.asnumpy(), -1, 0))
 
     plot = ift.Plot()
