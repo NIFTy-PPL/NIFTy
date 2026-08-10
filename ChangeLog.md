@@ -17,6 +17,13 @@ Change categories:
   - Extend `estimate_evidence_lower_bound` with stochastic Lanczos quadrature
     for the trace-log, signal- and data-space evaluation, optional Radau
     diagnostics, and an analytic Gaussian-prior contribution.
+- Changes
+  - Consolidate the public Lanczos and stochastic log-determinant routines with
+    the SLQ implementation used by the ELBO estimator so all entry points share
+    one recurrence and Gaussian quadrature kernel.
+  - Require at least two Hutchinson probes when an SLQ remainder is estimated,
+    validate resumed eigenpairs against the selected operator space, and reject
+    SLQ-only options in eigsh mode.
 - Breaking changes
   - Change saved ELBO eigensystem filenames from
     `{prefix}_eigenvalues.npy` and `{prefix}_eigenvectors.npy` to
@@ -28,6 +35,9 @@ Change categories:
   - Add an analytic Gaussian-prior contribution to
     `estimate_evidence_lower_bound` when all relevant eigenvalues are
     available.
+- Changes
+  - Reject zero requested eigenvalues when relevant metric degrees of freedom
+    are present instead of failing later while processing an empty eigensystem.
 - Breaking changes
   - Change saved ELBO eigensystem filenames from
     `{prefix}_eigenvalues.npy` and `{prefix}_eigenvectors.npy` to

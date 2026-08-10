@@ -238,6 +238,17 @@ def test_elbo_compute_all_saves_all_eigenvalues(tmp_path):
     assert eigvals.size == 3
 
 
+def test_elbo_requires_at_least_one_eigenvalue():
+    hamiltonian, samples = _make_simple_hamiltonian_and_samples(seed=2, dim=3)
+    with pytest.raises(ValueError, match="at least one eigenvalue"):
+        ift.estimate_evidence_lower_bound(
+            hamiltonian,
+            samples,
+            0,
+            verbose=False,
+        )
+
+
 def test_elbo_analytic_prior_term_requires_all_relevant_eigenvalues():
     hamiltonian, samples = _make_simple_hamiltonian_and_samples(seed=5, dim=4)
     with pytest.raises(ValueError, match="analytic_prior_term requires all relevant"):

@@ -1,21 +1,15 @@
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 from __future__ import annotations
 
-from operator import matmul
-from typing import Callable, Dict, Optional, Tuple, TypeVar, Union
+from typing import Callable, Dict, Optional, Tuple, Union
 
 import jax
 import jax.numpy as jnp
 from jax import lax
 from jax import random
-from jax.tree_util import Partial
-
-from ..lax import fori_loop
-from ..tree_math import ShapeWithDtype
 
 Array = jnp.ndarray
 Matvec = Callable[[Array], Array]
-V = TypeVar("V")
 
 
 def lanczos_tridiag(
@@ -26,117 +20,38 @@ def lanczos_tridiag(
     tol: float = 1e-12,
     # n_reortho_steps: int = 10,
 ):
-    """Compute the Lanczos decomposition into a tri-diagonal matrix and its
-    corresponding orthonormal projection matrix.
+    """Compute a Lanczos tridiagonal and its orthonormal projection matrix.
 
     The tridiagonal matrix is of shape (order x order) and the stack of vectors
-    of shape (order, n).
-    * mat(v) must return a vector with same shape as v.
-    * This version avoids NaNs by guarding beta==0 (Lanczos breakdown).
-    * It keeps fixed shapes (pads with zeros) rather than terminating early.
+    has shape ``(order,) + v.shape``. The output is padded with zeros after an
+    early Lanczos breakdown.
     """
-    # The implementation is inspired by
-    # * https://en.wikipedia.org/wiki/Lanczos_algorithm with re-orthogonalization https://en.wikipedia.org/wiki/Lanczos_algorithm#Numerical_stability
-    # * https://github.com/cornellius-gp/linear_operator/blob/main/linear_operator/utils/lanczos.py
-
-    swd = ShapeWithDtype.from_leave(v)
-    shape, dtype = swd.shape, swd.dtype
     if order < 1:
         raise ValueError("order must be >= 1")
-    # TODO
-    # * use `tree_math.dot` and `tree_math.norm` in favor of plain `jnp.dot`
-    # * remove all reshapes as they are unnecessary
-    tridiag = jnp.zeros((order, order), dtype=dtype)
-    vecs = jnp.zeros((order,) + shape, dtype=dtype)
+    v = jnp.asarray(v)
+    shape = v.shape
+    n = v.size
 
-    v = v / jnp.linalg.norm(v)
-    vecs = vecs.at[0].set(v)
-    # Special-case order == 1
-    if order == 1:
-        w = mat(v)
-        if w.shape != shape:
-            raise ValueError(f"shape of mat(v) {w.shape!r} incompatible with {swd}")
-        alpha = jnp.dot(w, v)
-        tridiag = tridiag.at[(0, 0)].set(alpha)
-        return tridiag, vecs
+    def flat_matvec(v_flat):
+        result = jnp.asarray(mat(v_flat.reshape(shape)))
+        if result.shape != shape:
+            raise ValueError(
+                f"shape of `mat(v)` {result.shape!r} incompatible with {shape!r}"
+            )
+        return result.reshape((n,))
 
-    # Zeroth iteration
-    w = mat(v)
-    if w.shape != shape:
-        raise ValueError(f"shape of `mat(v)` {w.shape!r} incompatible with {swd}")
-    alpha = jnp.dot(w, v)
-    tridiag = tridiag.at[(0, 0)].set(alpha)
-    w -= alpha * v
-    beta = jnp.linalg.norm(w)
-
-    # Guard small beta: if beta <= tol, set next vector to zeros (avoid div-by-zero)
-    next_vec = jnp.where(beta > tol, w / beta, jnp.zeros_like(w))
-
-    tridiag = tridiag.at[(0, 1)].set(beta).at[(1, 0)].set(beta)
-    vecs = vecs.at[1].set(next_vec)
-
-    def reortho_step(j, state):
-        vecs, w = state
-        tau = vecs[j].reshape(shape)
-        w -= jnp.dot(w, tau) * tau  # assume `tau` to be fully normalized
-        return vecs, w
-
-    # def reortho_full(_, state):
-    #     vecs, orig_vec = state
-    #     vecs, new_vec = fori_loop(0, order, reortho_step, (vecs, orig_vec))
-    #     new_vec /= jnp.linalg.norm(new_vec)
-
-    #     # NOTE, could terminate early if converged but would require special
-    #     # casing for AD
-    #     diff = jnp.linalg.norm(new_vec - orig_vec)
-    #     new_vec = jnp.where(diff > 1e-1 * tol, new_vec, orig_vec)
-    #     return vecs, new_vec
-
-    def lanczos_step(i, state):
-        tridiag, vecs, beta = state
-
-        v = vecs[i].reshape(shape)
-        v_old = vecs[i - 1].reshape(shape)
-
-        w = mat(v) - beta * v_old
-        alpha = jnp.dot(w, v)
-        tridiag = tridiag.at[(i, i)].set(alpha)
-        w -= alpha * v
-
-        # Full reorthogonalization
-        # NOTE, in theory the loop could terminate at `i` but this would make
-        # JAX's default backwards pass not work
-        vecs, w = fori_loop(0, order, reortho_step, (vecs, w))
-        beta = jnp.linalg.norm(w)
-        # avoid dividing by zero: if beta_local small -> set next vec to zeros
-        tridiag = tridiag.at[(i, i + 1)].set(beta).at[(i + 1, i)].set(beta)
-        new_vec = jnp.where(beta > tol, w / beta, jnp.zeros_like(w))
-        # # More re-orthogonalization for numerical stability
-        # vecs, new_vec = fori_loop(0, n_reortho_steps, reortho_full, (vecs, new_vec))
-        vecs = vecs.at[i + 1].set(new_vec)
-
-        return tridiag, vecs, beta
-
-    if order > 2:
-        # loop i = 1 .. order-2 inclusive
-        tridiag, vecs, beta = fori_loop(
-            1, order - 1, lanczos_step, (tridiag, vecs, beta)
-        )
-    else:
-        # when order == 2, we skip the internal loop and use beta from zeroth iteration
-        pass
-
-    # Final diagonal entry (index order-1)
-    v = vecs[order - 1].reshape(shape)
-    v_old = vecs[order - 2].reshape(shape)
-    w = mat(v) - beta * v_old
-    alpha = jnp.dot(w, v)
-    tridiag = tridiag.at[(order - 1, order - 1)].set(alpha)
-    w -= alpha * v
-    vecs, w = fori_loop(0, order - 1, reortho_step, (vecs, w))
-
-    # no final division if beta tiny (already avoided during loop)
-    return tridiag, vecs
+    norm = jnp.linalg.norm(v)
+    v1 = (v / norm).reshape((n,))
+    alpha, off, _, basis = _lanczos_tridiag(
+        v1,
+        flat_matvec,
+        order=order,
+        eps=tol,
+        reorth_mode=2,
+        reorth_k=order,
+        return_basis=True,
+    )
+    return _dense_tridiag(alpha, off), basis.reshape((order,) + shape)
 
 
 def stochastic_logdet_from_lanczos(
@@ -146,21 +61,26 @@ def stochastic_logdet_from_lanczos(
     *,
     tol=1e-14,
 ):
-    """Computes a stochastic estimate of the log-determinant of a matrix using
-    its Lanczos decomposition.
+    """Estimate a matrix trace from a stack of Lanczos tridiagonals."""
+    tridiag_stack = jnp.asarray(tridiag_stack)
+    if tridiag_stack.ndim != 3 or tridiag_stack.shape[-2] != tridiag_stack.shape[-1]:
+        raise ValueError("tridiag_stack must have shape (num_samples, order, order)")
 
-    Implemented via the stoachstic Lanczos quadrature.
-    """
-    eig_vals, eig_vecs = jnp.linalg.eigh(tridiag_stack)
-    eig_vals = jnp.where(eig_vals < tol, jnp.nan, eig_vals)
-
-    num_random_probes = tridiag_stack.shape[0]
-
-    eig_vecs_first_component = eig_vecs[..., 0, :]
-    func_of_eig_vals = func(eig_vals)
-
-    dot_products = jnp.nansum(eig_vecs_first_component**2 * func_of_eig_vals)
-    return matrix_shape0 / float(num_random_probes) * dot_products
+    alpha = jnp.diagonal(tridiag_stack, axis1=-2, axis2=-1)
+    off = jnp.diagonal(tridiag_stack, offset=1, axis1=-2, axis2=-1)
+    estimates = jax.vmap(
+        lambda a, o: _gauss_unit(
+            a,
+            o,
+            func,
+            clip_eigs=False,
+            eig_clip=tol,
+            clip_eigs_max=None,
+            nan_to_num=False,
+            discard_eigs_below=tol,
+        )
+    )(alpha, off)
+    return jnp.asarray(matrix_shape0, estimates.dtype) * jnp.mean(estimates)
 
 
 def stochastic_lq_logdet(
@@ -173,30 +93,34 @@ def stochastic_lq_logdet(
     dtype=None,
     cmap=jax.vmap,
 ):
-    """Computes a stochastic estimate of the log-determinant of a matrix using
-    the stochastic Lanczos quadrature algorithm.
-    """
+    """Estimate a log-determinant with stochastic Lanczos quadrature."""
     if not isinstance(key, jnp.ndarray):
         key = random.PRNGKey(key)
 
-    if callable(mat):
-        mat_fn = mat
-    else:
-        mat_fn = Partial(matmul, mat)
-        shape0 = mat.shape[0] if shape0 is None else None
-    if shape0 is None:
+    if callable(mat) and shape0 is None:
         msg = "shape0 must be provided if `mat` is callable or has no shape attribute"
         raise ValueError(msg)
+    if not callable(mat):
+        mat = jnp.asarray(mat)
+        if mat.ndim != 2 or mat.shape[0] != mat.shape[1]:
+            raise ValueError("mat must be a square matrix")
+        if shape0 is not None and shape0 != mat.shape[0]:
+            raise ValueError("shape0 does not match the matrix dimension")
+        shape0 = mat.shape[0]
 
-    def random_lanczos(k):
-        v = random.rademacher(k, (shape0,), dtype=dtype)
-        tri, _ = lanczos_tridiag(mat_fn, v, order=order)
-        return tri
-
-    key_smpls = random.split(key, n_samples)
-    tridiags = cmap(random_lanczos)(key_smpls)  # shape (n_samples, order, order)
-    # return scalar estimate (matrix_shape0 used in quadrature)
-    return stochastic_logdet_from_lanczos(tridiags, shape0)
+    result = _slq_gauss_radau(
+        mat,
+        jnp.log,
+        order,
+        n_samples,
+        key=key,
+        n=shape0,
+        dtype=dtype,
+        cmap=cmap,
+        probe_batch_size=n_samples,
+        reorthogonalize="full",
+    )
+    return result["estimate"]
 
 
 def _apply_f_safely(
@@ -228,39 +152,33 @@ def _dense_tridiag(alpha: Array, off: Array) -> Array:
     return jnp.diag(alpha) + jnp.diag(off, 1) + jnp.diag(off, -1)
 
 
-def _solve_tridiag_thomas(
-    dl: Array, d: Array, du: Array, b: Array, *, diag_shift: Array
+def _quadrature_from_eigh(
+    evals: Array,
+    first_evec_components: Array,
+    f: Callable[[Array], Array],
+    *,
+    clip_eigs: bool,
+    eig_clip: float,
+    clip_eigs_max: Optional[float],
+    nan_to_num: bool,
+    discard_eigs_below: Optional[float] = None,
 ) -> Array:
-    """
-    Solve (T + diag_shift*I) x = b for tridiagonal T using Thomas algorithm (no pivoting).
-    Shapes:
-      dl: (m-1,), d: (m,), du: (m-1,), b: (m,)
-    """
-    m = d.shape[0]
-    d = d + diag_shift
-    piv_eps = jnp.asarray(1e-30, d.dtype)
-
-    def fwd(i, state):
-        dl_, d_, du_, b_ = state
-        # Guard against tiny pivots (rare for SPD-ish shifted systems, but helps nan-robustness)
-        piv = jnp.where(jnp.abs(d_[i - 1]) > piv_eps, d_[i - 1], piv_eps)
-        w = dl_[i - 1] / piv
-        d_ = d_.at[i].set(d_[i] - w * du_[i - 1])
-        b_ = b_.at[i].set(b_[i] - w * b_[i - 1])
-        return dl_, d_, du_, b_
-
-    dl2, d2, du2, b2 = lax.fori_loop(1, m, fwd, (dl, d, du, b))
-
-    x = jnp.zeros_like(b2)
-    piv_last = jnp.where(jnp.abs(d2[m - 1]) > piv_eps, d2[m - 1], piv_eps)
-    x = x.at[m - 1].set(b2[m - 1] / piv_last)
-
-    def back(i, x_):
-        j = m - 2 - i
-        piv = jnp.where(jnp.abs(d2[j]) > piv_eps, d2[j], piv_eps)
-        return x_.at[j].set((b2[j] - du2[j] * x_[j + 1]) / piv)
-
-    return lax.fori_loop(0, m - 1, back, x)
+    """Evaluate an ``e1.T @ f(T) @ e1`` quadrature from an eigendecomposition."""
+    if discard_eigs_below is not None:
+        threshold = jnp.asarray(discard_eigs_below, dtype=evals.dtype)
+        evals = jnp.where(evals < threshold, jnp.nan, evals)
+    fe = _apply_f_safely(
+        f,
+        evals,
+        clip_eigs=clip_eigs,
+        eig_clip=eig_clip,
+        clip_eigs_max=clip_eigs_max,
+        nan_to_num=nan_to_num,
+    )
+    terms = first_evec_components**2 * fe
+    if discard_eigs_below is not None:
+        return jnp.nansum(terms)
+    return jnp.sum(terms)
 
 
 # -----------------------------------------------------------------------------
@@ -275,20 +193,19 @@ def _gauss_unit(
     eig_clip: float,
     clip_eigs_max: Optional[float],
     nan_to_num: bool,
+    discard_eigs_below: Optional[float] = None,
 ) -> Array:
     """Compute e1^T f(T) e1 for symmetric tridiagonal T with diag=alpha, offdiag=off."""
-    T = _dense_tridiag(alpha, off)
-    evals, evecs = jnp.linalg.eigh(T)
-    w0 = evecs[0, :] ** 2
-    fe = _apply_f_safely(
-        f,
-        evals,
+    return _gauss_unit_multi(
+        alpha,
+        off,
+        (f,),
         clip_eigs=clip_eigs,
         eig_clip=eig_clip,
         clip_eigs_max=clip_eigs_max,
         nan_to_num=nan_to_num,
-    )
-    return jnp.dot(w0, fe)
+        discard_eigs_below=discard_eigs_below,
+    )[0]
 
 
 def _radau_unit(
@@ -307,7 +224,8 @@ def _radau_unit(
     Compute e1^T f(T_hat) e1 where T_hat is the Gauss–Radau modified tridiagonal
     that forces mu to be a quadrature node.
 
-    Uses a tridiagonal solve to compute the last diagonal modification.
+    Uses the spectral representation of the leading tridiagonal block to
+    compute the last diagonal modification.
     """
     m = alpha.shape[0]
     if m == 1:
@@ -321,61 +239,74 @@ def _radau_unit(
         )
         return fe[0]
 
-    # g = [(T_{m-1} - mu I)^{-1}]_{m-1,m-1}
-    diag = alpha[:-1] - mu
-    dl = off[:-1]
-    du = off[:-1]
-    e_last = jnp.zeros((m - 1,), dtype=alpha.dtype).at[m - 2].set(1.0)
-
-    diag_shift = (
-        (eps * (1.0 + jnp.abs(mu)))
-        if (eps and eps > 0.0)
-        else jnp.asarray(0.0, alpha.dtype)
-    )
-    x = _solve_tridiag_thomas(dl, diag, du, e_last, diag_shift=diag_shift)
-    g = x[-1]
-
     beta_last = off[-1]
-    beta_last = jnp.where(beta_last > eps, beta_last, 0.0)
 
-    alpha_last_hat = mu + (beta_last**2) * g
-    alpha_hat = alpha.at[m - 1].set(alpha_last_hat)
+    def gauss_after_breakdown(_):
+        return _gauss_unit(
+            alpha,
+            off,
+            f,
+            clip_eigs=clip_eigs,
+            eig_clip=eig_clip,
+            clip_eigs_max=clip_eigs_max,
+            nan_to_num=nan_to_num,
+        )
 
-    T_hat = _dense_tridiag(alpha_hat, off)
-    evals, evecs = jnp.linalg.eigh(T_hat)
-    w0 = evecs[0, :] ** 2
-    fe = _apply_f_safely(
-        f,
-        evals,
-        clip_eigs=clip_eigs,
-        eig_clip=eig_clip,
-        clip_eigs_max=clip_eigs_max,
-        nan_to_num=nan_to_num,
-    )
-    return jnp.dot(w0, fe)
+    def radau_with_extension(_):
+        leading = _dense_tridiag(alpha[:-1], off[:-1])
+        leading_evals, leading_evecs = jnp.linalg.eigh(leading)
+        denominator = leading_evals - mu
+        separation = jnp.asarray(eps, alpha.dtype) * (1.0 + jnp.abs(mu))
+        separated = jnp.all(jnp.abs(denominator) > separation)
+        safe_denominator = jnp.where(separated, denominator, 1.0)
+        last_weights = leading_evecs[-1, :] ** 2
+        g = jnp.sum(last_weights / safe_denominator)
+
+        alpha_last_hat = mu + (beta_last**2) * g
+        alpha_hat = alpha.at[m - 1].set(alpha_last_hat)
+        T_hat = _dense_tridiag(alpha_hat, off)
+        evals, evecs = jnp.linalg.eigh(T_hat)
+        value = _quadrature_from_eigh(
+            evals,
+            evecs[0, :],
+            f,
+            clip_eigs=clip_eigs,
+            eig_clip=eig_clip,
+            clip_eigs_max=clip_eigs_max,
+            nan_to_num=nan_to_num,
+        )
+        return jnp.where(separated, value, jnp.asarray(jnp.nan, alpha.dtype))
+
+    return lax.cond(beta_last > eps, radau_with_extension, gauss_after_breakdown, None)
 
 
 # -----------------------------------------------------------------------------
 # Lanczos (single probe)
 # -----------------------------------------------------------------------------
-def _lanczos_tridiag_one(
+def _lanczos_tridiag(
     v1: Array,
     matvec: Matvec,
     *,
     order: int,
-    n: int,
     eps: float,
-    dtype: jnp.dtype,
     reorth_mode: int,  # 0 none, 1 partial, 2 full
     reorth_k: int,
-) -> Tuple[Array, Array, Array]:
+    return_basis: bool = False,
+):
     """
-    Lanczos recurrence for one normalized starting vector v1.
+    Canonical Lanczos recurrence for one normalized, flat starting vector.
+
     Returns:
       alpha: (order,) diagonal of T
       off:   (order-1,) off-diagonal of T
       beta_full: (order,) residual norms after each step (diagnostics)
+      basis: (order, n) only when return_basis=True
     """
+    if return_basis and reorth_mode != 2:
+        raise ValueError("return_basis requires full reorthogonalization")
+
+    n = v1.shape[0]
+    dtype = v1.dtype
     alpha = jnp.zeros((order,), dtype=dtype)
     beta_full = jnp.zeros((order,), dtype=dtype)
 
@@ -441,6 +372,7 @@ def _lanczos_tridiag_one(
             b = jnp.where(good, b, 0.0)
             denom = jnp.where(good, b, 1.0)
             v_next = jnp.where(good, w / denom, v_curr__)
+            v_store = jnp.where(good, v_next, jnp.zeros_like(v_next))
 
             alpha__ = alpha__.at[i].set(a)
             beta_full__ = beta_full__.at[i].set(b)
@@ -453,14 +385,14 @@ def _lanczos_tridiag_one(
                 if reorth_mode == 0:
                     return Vb, p, c
                 if reorth_mode == 1:
-                    Vb2 = Vb.at[p].set(v_curr2)
+                    Vb2 = Vb.at[p].set(v_store)
                     p2 = (p + 1) % kmax_partial
                     c2 = jnp.minimum(c + 1, kmax_partial)
                     return Vb2, p2, c2
                 # full
                 Vb2 = lax.cond(
                     i + 1 < order,
-                    lambda vb: vb.at[i + 1].set(v_curr2),
+                    lambda vb: vb.at[i + 1].set(v_store),
                     lambda vb: vb,
                     Vb,
                 )
@@ -473,9 +405,11 @@ def _lanczos_tridiag_one(
         return lax.cond(alive_, do_step, lambda st: st, state)
 
     state0 = (alpha, beta_full, v_prev, v_curr, Vbuf, ptr, count, alive)
-    alpha, beta_full, *_ = lax.fori_loop(0, order, step, state0)
+    alpha, beta_full, _, _, Vbuf, _, _, _ = lax.fori_loop(0, order, step, state0)
 
     off = beta_full[:-1]
+    if return_basis:
+        return alpha, off, beta_full, Vbuf
     return alpha, off, beta_full
 
 
@@ -505,22 +439,23 @@ def _gauss_unit_multi(
     eig_clip: float,
     clip_eigs_max: Optional[float],
     nan_to_num: bool,
+    discard_eigs_below: Optional[float] = None,
 ) -> Array:
     """Compute e1^T f(T) e1 for multiple scalar functions."""
     T = _dense_tridiag(alpha, off)
     evals, evecs = jnp.linalg.eigh(T)
-    w0 = evecs[0, :] ** 2
 
     def apply_fn(fn):
-        fe = _apply_f_safely(
-            fn,
+        return _quadrature_from_eigh(
             evals,
+            evecs[0, :],
+            fn,
             clip_eigs=clip_eigs,
             eig_clip=eig_clip,
             clip_eigs_max=clip_eigs_max,
             nan_to_num=nan_to_num,
+            discard_eigs_below=discard_eigs_below,
         )
-        return jnp.dot(w0, fe)
 
     return jnp.stack([apply_fn(fn) for fn in fns])
 
@@ -553,8 +488,9 @@ def _slq_gauss_radau(
     *,
     key: Array,
     n: Optional[int] = None,
+    dtype=None,
+    cmap=jax.vmap,
     deflate_eigvecs: Optional[Array] = None,
-    fixed_endpoint: Optional[float] = None,
     lam_min: Optional[float] = None,
     lam_max: Optional[float] = None,
     extra_fns: Optional[Dict[str, Callable[[Array], Array]]] = None,
@@ -569,13 +505,8 @@ def _slq_gauss_radau(
     # orthogonality
     reorthogonalize: str = "none",  # "none" | "partial" | "full"
     reorth_k: int = 6,
-    # endpoint padding (auto endpoint)
-    endpoint_pad_rel: float = 1e-6,
-    endpoint_pad_abs: float = 0.0,
     # micro-batching of probes
     probe_batch_size: Optional[int] = None,
-    # auto-endpoint strategy
-    auto_endpoint_two_pass: bool = True,
 ) -> Dict[str, Array]:
     """
     Estimate tr(f(A)) for symmetric (S)PD A using Stochastic Lanczos Quadrature (SLQ),
@@ -593,18 +524,23 @@ def _slq_gauss_radau(
         Lanczos steps / quadrature order (small, e.g. 20–200).
         If the Krylov space saturates early, the tridiagonal is padded with zeros.
     num_samples:
-        Number of Hutchinson probe vectors (Rademacher).
+        Number of Hutchinson probe vectors (Rademacher). With one probe, the
+        point estimate is returned but its stochastic standard error is NaN.
     key:
         PRNGKey.
+    dtype:
+        Probe and computation dtype. Defaults to JAX's current floating dtype.
+    cmap:
+        JAX mapping transform used for each micro-batch of probes.
     extra_fns:
         Optional dict of additional scalar functions evaluated with the same
         Lanczos tridiagonals. These are reported via
         `extra_{name}_estimate` and `extra_{name}_se` in the output and use
         Gauss quadrature only (no Radau diagnostics).
     compute_radau:
-        Whether to compute Gauss-Radau diagnostics. If False, only the Gauss
-        estimate and optional `extra_fns` are evaluated and no second Lanczos
-        pass is performed.
+        Whether to compute two-endpoint Gauss-Radau diagnostics. This requires
+        both `lam_min` and `lam_max`. If False, only the Gauss estimate and
+        optional `extra_fns` are evaluated.
 
     Deflation
     ---------
@@ -617,19 +553,8 @@ def _slq_gauss_radau(
     - "estimate" / "gauss_estimate": Gauss SLQ point estimate (mean of z^T f(A) z)
     - "stochastic_se" / "gauss_se": standard error of the Hutchinson estimator
     - For each entry in extra_fns: "extra_{name}_estimate", "extra_{name}_se"
-    - If fixed_endpoint is provided:
-        "radau_estimate", "radau_se", "radau_endpoint"
-    - If lam_min and lam_max are both provided:
+    - If Radau diagnostics are requested:
         "radau_lo", "radau_hi", "quadrature_width"
-    - Else (auto endpoint):
-        "radau_estimate", "radau_se", "radau_endpoint"
-        The endpoint is chosen from the maximum Ritz value across probes,
-        padded by endpoint_pad_rel/endpoint_pad_abs.
-        * auto_endpoint_two_pass=True: recompute Lanczos to evaluate Radau at
-          that fixed endpoint (accurate, ~2x Lanczos cost).
-        * auto_endpoint_two_pass=False: compute Radau during pass 1 using a
-          running endpoint (single pass; faster but approximate).
-          For a fixed endpoint, pass fixed_endpoint or lam_max.
 
     Robustness knobs
     ----------------
@@ -650,10 +575,10 @@ def _slq_gauss_radau(
     -------
     dict of JAX arrays with estimates and diagnostics.
     """
-    if fixed_endpoint is not None and (lam_min is not None or lam_max is not None):
-        raise ValueError("Use either fixed_endpoint OR (lam_min, lam_max), not both.")
     if (lam_min is None) ^ (lam_max is None):
         raise ValueError("Provide both lam_min and lam_max, or neither.")
+    if compute_radau and lam_min is None:
+        raise ValueError("compute_radau=True requires lam_min and lam_max.")
     if reorthogonalize not in ("none", "partial", "full"):
         raise ValueError("reorthogonalize must be 'none', 'partial', or 'full'.")
     if order < 1:
@@ -662,17 +587,13 @@ def _slq_gauss_radau(
         raise ValueError("num_samples must be >= 1.")
 
     reorth_mode = {"none": 0, "partial": 1, "full": 2}[reorthogonalize]
-    dtype = jnp.asarray(0.0).dtype
+    dtype = jnp.asarray(0.0, dtype=dtype).dtype
 
-    extra_names: Tuple[str, ...] = ()
-    extra_fns_tuple: Tuple[Callable[[Array], Array], ...] = ()
-    if extra_fns is not None:
-        if not isinstance(extra_fns, dict):
-            raise ValueError("extra_fns must be a dict of name -> callable.")
-        if extra_fns:
-            extra_items = tuple(extra_fns.items())
-            extra_names = tuple(k for k, _ in extra_items)
-            extra_fns_tuple = tuple(v for _, v in extra_items)
+    if extra_fns is not None and not isinstance(extra_fns, dict):
+        raise ValueError("extra_fns must be a dict of name -> callable.")
+    extra_items = tuple(extra_fns.items()) if extra_fns else ()
+    extra_names = tuple(name for name, _ in extra_items)
+    fns_all = (f,) + tuple(fn for _, fn in extra_items)
 
     # --- matvec & dimension ---
     if callable(A):
@@ -685,9 +606,7 @@ def _slq_gauss_radau(
             n = int(n)
 
         def matvec(v: Array) -> Array:
-            # v shape (n,) or (B,n)
-            y = jax.vmap(matvec_base)(v) if v.ndim == 2 else matvec_base(v)
-            y = y.astype(dtype)
+            y = matvec_base(v).astype(dtype)
             if jitter != 0.0:
                 y = y + jnp.asarray(jitter, dtype=dtype) * v
             return y
@@ -698,7 +617,6 @@ def _slq_gauss_radau(
         n = int(A.shape[0])
 
         def matvec(v: Array) -> Array:
-            # For symmetric A, (B,n)@A equals A@(B,n)^T transposed, but this is batch-friendly.
             y = jnp.matmul(v, A)
             if jitter != 0.0:
                 y = y + jnp.asarray(jitter, dtype=dtype) * v
@@ -715,56 +633,32 @@ def _slq_gauss_radau(
         B = min(int(probe_batch_size), num_samples)
 
     # --- deflation matrix (kept in memory if provided) ---
-    Q = None
-    if deflate_eigvecs is not None:
-        Q = jnp.asarray(deflate_eigvecs, dtype=dtype)
+    Q = None if deflate_eigvecs is None else jnp.asarray(deflate_eigvecs, dtype=dtype)
 
-    # --- decide which diagnostics are needed ---
-    need_one_endpoint = compute_radau and (
-        (fixed_endpoint is not None) or (lam_min is None and lam_max is None)
-    )
-    need_two_endpoint = compute_radau and (lam_min is not None and lam_max is not None)
+    mu_lo = jnp.asarray(lam_min, dtype=dtype) if compute_radau else None
+    mu_hi = jnp.asarray(lam_max, dtype=dtype) if compute_radau else None
 
     # --- per-probe lanczos function ---
     def one_probe(v1):
-        return _lanczos_tridiag_one(
+        return _lanczos_tridiag(
             v1,
             matvec,
             order=order,
-            n=n,
             eps=eps,
-            dtype=dtype,
             reorth_mode=reorth_mode,
             reorth_k=reorth_k,
         )
 
-    # --- per-probe quadrature functions (unit) ---
-    if extra_fns_tuple:
-        fns_all = (f,) + extra_fns_tuple
-
-        def gauss_one(alpha, off):
-            return _gauss_unit_multi(
-                alpha,
-                off,
-                fns_all,
-                clip_eigs=clip_eigs,
-                eig_clip=eig_clip,
-                clip_eigs_max=clip_eigs_max,
-                nan_to_num=nan_to_num,
-            )
-
-    else:
-
-        def gauss_one(alpha, off):
-            return _gauss_unit(
-                alpha,
-                off,
-                f,
-                clip_eigs=clip_eigs,
-                eig_clip=eig_clip,
-                clip_eigs_max=clip_eigs_max,
-                nan_to_num=nan_to_num,
-            )
+    def gauss_one(alpha, off):
+        return _gauss_unit_multi(
+            alpha,
+            off,
+            fns_all,
+            clip_eigs=clip_eigs,
+            eig_clip=eig_clip,
+            clip_eigs_max=clip_eigs_max,
+            nan_to_num=nan_to_num,
+        )
 
     def radau_one(alpha, off, mu):
         return _radau_unit(
@@ -779,19 +673,10 @@ def _slq_gauss_radau(
             nan_to_num=nan_to_num,
         )
 
-    # --- helpers: generate a micro-batch of Rademacher probes, deflate, normalize ---
     def make_batch_probes(batch_key: Array, bsz: int) -> Tuple[Array, Array]:
-        """
-        Returns:
-          v0: (bsz,n) normalized starting vectors
-          norm2: (bsz,) original ||z||^2, for scaling z^T f(A) z = ||z||^2 * e1^T f(T) e1
-        """
-        z = (
-            2.0 * jax.random.bernoulli(batch_key, 0.5, shape=(bsz, n)).astype(dtype)
-            - 1.0
-        )
+        """Generate, deflate, and normalize one batch of probes."""
+        z = jax.random.rademacher(batch_key, shape=(bsz, n), dtype=dtype)
         if Q is not None:
-            # z <- z - Q(Q^T z)
             z = z - (Q @ (Q.T @ z.T)).T
 
         norm2 = jnp.sum(z * z, axis=1)
@@ -799,241 +684,71 @@ def _slq_gauss_radau(
         v0 = z / jnp.sqrt(denom)[:, None]
         return v0, norm2
 
-    # --- Welford accumulators for Gauss and Radau variants ---
-    if extra_fns_tuple:
-        ga_mean, ga_m2, ga_n = _welford_init(dtype, shape=(1 + len(extra_fns_tuple),))
-    else:
-        ga_mean, ga_m2, ga_n = _welford_init(dtype)
-    ra_mean, ra_m2, ra_n = _welford_init(dtype)
-    lo_mean, lo_m2, lo_n = _welford_init(dtype)
-    hi_mean, hi_m2, hi_n = _welford_init(dtype)
+    def lanczos_batch(batch_key, bsz):
+        probes, norm2 = make_batch_probes(batch_key, bsz)
+        alpha, off, _ = cmap(one_probe)(probes)
+        return alpha, off, norm2
 
-    # --- for auto endpoint: track ritz max (optionally streaming) ---
-    have_auto_endpoint = (
-        need_one_endpoint and (fixed_endpoint is None) and (not need_two_endpoint)
-    )
-    ritz_max_stream = jnp.asarray(-jnp.inf, dtype=dtype)
+    def update_radau(state, alpha, off, norm2, endpoint):
+        values = cmap(lambda a, o: radau_one(a, o, endpoint))(alpha, off) * norm2
+        return _welford_merge(state, _welford_from_samples(values))
 
-    # -------------------------------------------------------------------------
-    # PASS 1: compute Gauss stats (and ritz max if auto endpoint), plus
-    #         Radau stats if endpoints are known (fixed or lam_min/max) or
-    #         if using the single-pass running-endpoint mode.
-    # -------------------------------------------------------------------------
-    num_full = (num_samples // B) * B
-    num_batches = num_full // B
+    def process_first_pass(carry, batch_key, bsz):
+        ga_state, lo_state, hi_state = carry
+        alpha, off, norm2 = lanczos_batch(batch_key, bsz)
 
-    # pre-split keys for batches and remainder
-    keys = jax.random.split(key, num_batches + 1)  # last key for remainder split
+        gauss_values = cmap(gauss_one)(alpha, off) * norm2[:, None]
+        ga_state = _welford_merge(ga_state, _welford_from_samples(gauss_values))
+
+        if compute_radau:
+            lo_state = update_radau(lo_state, alpha, off, norm2, mu_lo)
+            hi_state = update_radau(hi_state, alpha, off, norm2, mu_hi)
+
+        return ga_state, lo_state, hi_state
+
+    num_batches, rem = divmod(num_samples, B)
+    keys = jax.random.split(key, num_batches + 1)
     batch_keys = keys[:num_batches]
     rem_key = keys[num_batches]
 
     def batch_body(carry, batch_key):
-        (ga_state, ra_state, lo_state, hi_state, ritz_max_so_far) = carry
+        return process_first_pass(carry, batch_key, B), None
 
-        v0_b, norm2_b = make_batch_probes(batch_key, B)
-        alphas_b, offs_b, _ = jax.vmap(one_probe)(v0_b)
-
-        # Gauss values for this batch (scaled back to z^T f(A) z)
-        g_unit = jax.vmap(gauss_one)(alphas_b, offs_b)
-        if extra_fns_tuple:
-            g = g_unit * norm2_b[:, None]
-        else:
-            g = g_unit * norm2_b
-
-        # update Welford for gauss
-        ga_state2 = _welford_merge(ga_state, _welford_from_samples(g))
-
-        # ritz max (for auto endpoint)
-        ritz_max_next = ritz_max_so_far
-        if have_auto_endpoint:
-            # max eigenvalue of each T (order is small, this is cheap)
-            def ritz_one(a, o):
-                return jnp.max(jnp.linalg.eigvalsh(_dense_tridiag(a, o)))
-
-            ritz_b = jnp.max(jax.vmap(ritz_one)(alphas_b, offs_b))
-            ritz_max_next = jnp.maximum(ritz_max_so_far, ritz_b)
-
-        # Radau computations in pass1:
-        #  - fixed_endpoint provided -> one-endpoint radau
-        #  - lam_min/max provided -> two-endpoint radau
-        #  - auto endpoint + one-pass -> running endpoint radau
-        ra_state2 = ra_state
-        lo_state2 = lo_state
-        hi_state2 = hi_state
-
-        if fixed_endpoint is not None:
-            mu = jnp.asarray(fixed_endpoint, dtype=dtype)
-            r_unit = jax.vmap(lambda a, o: radau_one(a, o, mu))(alphas_b, offs_b)
-            r = r_unit * norm2_b
-            ra_state2 = _welford_merge(ra_state, _welford_from_samples(r))
-
-        if have_auto_endpoint and (not auto_endpoint_two_pass):
-            mu = ritz_max_next * (1.0 + endpoint_pad_rel) + endpoint_pad_abs
-            r_unit = jax.vmap(lambda a, o: radau_one(a, o, mu))(alphas_b, offs_b)
-            r = r_unit * norm2_b
-            ra_state2 = _welford_merge(ra_state2, _welford_from_samples(r))
-
-        if need_two_endpoint:
-            mu_lo = jnp.asarray(lam_min, dtype=dtype)
-            mu_hi = jnp.asarray(lam_max, dtype=dtype)
-            lo_unit = jax.vmap(lambda a, o: radau_one(a, o, mu_lo))(alphas_b, offs_b)
-            hi_unit = jax.vmap(lambda a, o: radau_one(a, o, mu_hi))(alphas_b, offs_b)
-            lo = lo_unit * norm2_b
-            hi = hi_unit * norm2_b
-            lo_state2 = _welford_merge(lo_state, _welford_from_samples(lo))
-            hi_state2 = _welford_merge(hi_state, _welford_from_samples(hi))
-
-        return (ga_state2, ra_state2, lo_state2, hi_state2, ritz_max_next), None
-
+    empty_scalar_state = _welford_init(dtype)
     carry0 = (
-        (ga_mean, ga_m2, ga_n),
-        (ra_mean, ra_m2, ra_n),
-        (lo_mean, lo_m2, lo_n),
-        (hi_mean, hi_m2, hi_n),
-        ritz_max_stream,
+        _welford_init(dtype, shape=(len(fns_all),)),
+        empty_scalar_state,
+        empty_scalar_state,
     )
-    (ga_state, ra_state, lo_state, hi_state, ritz_max_stream), _ = lax.scan(
-        batch_body, carry0, batch_keys
-    )
-
-    # remainder probes (if any) — do a small vmapped block
-    rem = num_samples - num_full
+    carry, _ = lax.scan(batch_body, carry0, batch_keys)
     if rem > 0:
-        # split remainder into its own key
-        v0_r, norm2_r = make_batch_probes(rem_key, rem)
-        alphas_r, offs_r, _ = jax.vmap(one_probe)(v0_r)
+        carry = process_first_pass(carry, rem_key, rem)
+    ga_state, lo_state, hi_state = carry
 
-        g_unit_r = jax.vmap(gauss_one)(alphas_r, offs_r)
-        if extra_fns_tuple:
-            g_r = g_unit_r * norm2_r[:, None]
-        else:
-            g_r = g_unit_r * norm2_r
-        ga_state = _welford_merge(ga_state, _welford_from_samples(g_r))
+    def mean_and_se(state):
+        mean, variance, _ = _welford_finalize(*state)
+        if num_samples == 1:
+            return mean, jnp.full_like(variance, jnp.nan)
+        return mean, jnp.sqrt(variance / num_samples)
 
-        if have_auto_endpoint:
+    ga_mean, ga_se = mean_and_se(ga_state)
+    out: Dict[str, Array] = {
+        "estimate": ga_mean[0],
+        "stochastic_se": ga_se[0],
+        "gauss_estimate": ga_mean[0],
+        "gauss_se": ga_se[0],
+    }
+    for idx, name in enumerate(extra_names, start=1):
+        out[f"extra_{name}_estimate"] = ga_mean[idx]
+        out[f"extra_{name}_se"] = ga_se[idx]
 
-            def ritz_one(a, o):
-                return jnp.max(jnp.linalg.eigvalsh(_dense_tridiag(a, o)))
-
-            ritz_r = jnp.max(jax.vmap(ritz_one)(alphas_r, offs_r))
-            ritz_max_stream = jnp.maximum(ritz_max_stream, ritz_r)
-
-        if fixed_endpoint is not None:
-            mu = jnp.asarray(fixed_endpoint, dtype=dtype)
-            r_r = jax.vmap(lambda a, o: radau_one(a, o, mu))(alphas_r, offs_r) * norm2_r
-            ra_state = _welford_merge(ra_state, _welford_from_samples(r_r))
-
-        if have_auto_endpoint and (not auto_endpoint_two_pass):
-            mu = ritz_max_stream * (1.0 + endpoint_pad_rel) + endpoint_pad_abs
-            r_r = jax.vmap(lambda a, o: radau_one(a, o, mu))(alphas_r, offs_r) * norm2_r
-            ra_state = _welford_merge(ra_state, _welford_from_samples(r_r))
-
-        if need_two_endpoint:
-            mu_lo = jnp.asarray(lam_min, dtype=dtype)
-            mu_hi = jnp.asarray(lam_max, dtype=dtype)
-            lo_r = (
-                jax.vmap(lambda a, o: radau_one(a, o, mu_lo))(alphas_r, offs_r)
-                * norm2_r
-            )
-            hi_r = (
-                jax.vmap(lambda a, o: radau_one(a, o, mu_hi))(alphas_r, offs_r)
-                * norm2_r
-            )
-            lo_state = _welford_merge(lo_state, _welford_from_samples(lo_r))
-            hi_state = _welford_merge(hi_state, _welford_from_samples(hi_r))
-
-    # -------------------------------------------------------------------------
-    # PASS 2 (optional): auto-endpoint Radau (single fixed endpoint)
-    # -------------------------------------------------------------------------
-    mu_auto = None
-    if have_auto_endpoint:
-        # Choose endpoint from max Ritz value, padded.
-        mu_auto = ritz_max_stream * (1.0 + endpoint_pad_rel) + endpoint_pad_abs
-
-        if auto_endpoint_two_pass:
-            # second pass: recompute Lanczos for probes, but only radau updates
-            # (still streaming probes; no probe storage)
-            ra_mean2, ra_m2_2, ra_n2 = _welford_init(dtype)
-
-            batch_keys2 = batch_keys
-            rem_key2 = rem_key
-
-            def batch_body2(carry, batch_key):
-                (rm, rm2, rn) = carry
-                v0_b, norm2_b = make_batch_probes(batch_key, B)
-                alphas_b, offs_b, _ = jax.vmap(one_probe)(v0_b)
-                r_b = (
-                    jax.vmap(lambda a, o: radau_one(a, o, mu_auto))(alphas_b, offs_b)
-                    * norm2_b
-                )
-                return _welford_merge((rm, rm2, rn), _welford_from_samples(r_b)), None
-
-            (ra_mean2, ra_m2_2, ra_n2), _ = lax.scan(
-                batch_body2, (ra_mean2, ra_m2_2, ra_n2), batch_keys2
-            )
-
-            if rem > 0:
-                v0_r2, norm2_r2 = make_batch_probes(rem_key2, rem)
-                alphas_r2, offs_r2, _ = jax.vmap(one_probe)(v0_r2)
-                r_r2 = (
-                    jax.vmap(lambda a, o: radau_one(a, o, mu_auto))(alphas_r2, offs_r2)
-                    * norm2_r2
-                )
-                ra_mean2, ra_m2_2, ra_n2 = _welford_merge(
-                    (ra_mean2, ra_m2_2, ra_n2), _welford_from_samples(r_r2)
-                )
-
-            ra_state = (ra_mean2, ra_m2_2, ra_n2)
-
-    # -------------------------------------------------------------------------
-    # Finalize stats + outputs
-    # -------------------------------------------------------------------------
-    ga_mean, ga_var, ga_n = _welford_finalize(*ga_state)
-    ga_se = (
-        jnp.sqrt(ga_var) / jnp.sqrt(jnp.asarray(num_samples, dtype=dtype))
-        if num_samples > 1
-        else jnp.asarray(0.0, dtype=dtype)
-    )
-
-    if extra_fns_tuple:
-        out: Dict[str, Array] = {
-            "estimate": ga_mean[0],
-            "stochastic_se": ga_se[0],
-            "gauss_estimate": ga_mean[0],
-            "gauss_se": ga_se[0],
-        }
-        for idx, name in enumerate(extra_names, start=1):
-            out[f"extra_{name}_estimate"] = ga_mean[idx]
-            out[f"extra_{name}_se"] = ga_se[idx]
-    else:
-        out = {
-            "estimate": ga_mean,
-            "stochastic_se": ga_se,
-            "gauss_estimate": ga_mean,
-            "gauss_se": ga_se,
-        }
-
-    if need_one_endpoint:
-        rm, rvar, rn = _welford_finalize(*ra_state)
-        rse = (
-            jnp.sqrt(rvar) / jnp.sqrt(jnp.asarray(num_samples, dtype=dtype))
-            if num_samples > 1
-            else jnp.asarray(0.0, dtype=dtype)
-        )
-        out["radau_estimate"] = rm
-        out["radau_se"] = rse
-        if fixed_endpoint is not None:
-            out["radau_endpoint"] = jnp.asarray(fixed_endpoint, dtype=dtype)
-        else:
-            out["radau_endpoint"] = jnp.asarray(mu_auto, dtype=dtype)
-
-    if need_two_endpoint:
-        lm, lvar, ln = _welford_finalize(*lo_state)
-        hm, hvar, hn = _welford_finalize(*hi_state)
+    if compute_radau:
+        lm, _, _ = _welford_finalize(*lo_state)
+        hm, _, _ = _welford_finalize(*hi_state)
         out["radau_lo"] = lm
         out["radau_hi"] = hm
         out["quadrature_width"] = jnp.abs(hm - lm)
-        out["lam_min"] = jnp.asarray(lam_min, dtype=dtype)
-        out["lam_max"] = jnp.asarray(lam_max, dtype=dtype)
+        out["lam_min"] = mu_lo
+        out["lam_max"] = mu_hi
 
     return out

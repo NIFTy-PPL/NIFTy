@@ -21,6 +21,9 @@ from .num.lanczos import _slq_gauss_radau
 from .optimize_kl import _StandardHamiltonian as StandardHamiltonian
 from .tree_math.vector_math import size, vdot
 
+_DEFAULT_SLQ_ORDER = 64
+_DEFAULT_SLQ_NUM_SAMPLES = 8
+
 
 class _Projector(ssl.LinearOperator):
     """Computes the projector of a Matrix or LinearOperator as a LinearOperator
@@ -130,15 +133,16 @@ def _make_linop(matvec, shape, dtype):
     return ssl.LinearOperator(shape=shape, dtype=dtype, matvec=mv)
 
 
-def _ravel_metric(metric, position, dtype, metric_jit):
-    def ravel(x):
-        return jax.flatten_util.ravel_pytree(x)[0]
+def _ravel(x):
+    return jax.flatten_util.ravel_pytree(x)[0]
 
+
+def _ravel_metric(metric, position, dtype, metric_jit):
     shp, unravel = jax.flatten_util.ravel_pytree(position)
     shape = 2 * (shp.size,)
 
     def met(x, *, position):
-        return ravel(metric(position, unravel(x)))
+        return _ravel(metric(position, unravel(x)))
 
     metric_jit = _parse_jit(metric_jit)
     met = partial(metric_jit(met), position=position)
@@ -151,20 +155,16 @@ def _make_data_operator(likelihood, position, dtype, metric_jit):
     if likelihood.lsm_tangents_shape is None:
         raise ValueError("lsm_tangents_shape is required for data-space projection.")
 
-    def zeros_like_shape(s):
-        return jnp.zeros(s.shape, dtype=s.dtype)
-
-    data_zeros = tree_map(zeros_like_shape, likelihood.lsm_tangents_shape)
+    data_zeros = tree_map(
+        lambda s: jnp.zeros(s.shape, dtype=s.dtype), likelihood.lsm_tangents_shape
+    )
     data_flat, data_unravel = jax.flatten_util.ravel_pytree(data_zeros)
-
-    def ravel_data(x):
-        return jax.flatten_util.ravel_pytree(x)[0]
 
     def data_op(x, *, position):
         u = data_unravel(x)
         v = likelihood.left_sqrt_metric(position, u)
         w = likelihood.right_sqrt_metric(position, v)
-        return ravel_data(w)
+        return _ravel(w)
 
     metric_jit = _parse_jit(metric_jit)
     data_op = partial(metric_jit(data_op), position=position)
@@ -236,6 +236,12 @@ def _eigsh(
         if eigenvalues.size != eigenvectors.shape[1]:
             raise ValueError(
                 "resume_eigenvalues and resume_eigenvectors have mismatched sizes."
+            )
+        estimated_eigenvalues = _estimate_eigenvalues(metric, eigenvectors)
+        if not np.allclose(eigenvalues, estimated_eigenvalues, rtol=1e-5, atol=1e-8):
+            raise ValueError(
+                "The resumed eigensystem does not match the selected operator. "
+                "Check trace_log_space and the eigensystem source."
             )
         order = np.argsort(-eigenvalues)
         eigenvalues = eigenvalues[order]
@@ -426,8 +432,8 @@ def estimate_evidence_lower_bound(
     orthonormalize_n_probes=2,
     trace_log_method="eigsh",
     trace_log_space="signal",
-    slq_order=64,
-    slq_num_samples=8,
+    slq_order=_DEFAULT_SLQ_ORDER,
+    slq_num_samples=_DEFAULT_SLQ_NUM_SAMPLES,
     slq_key=None,
     slq_kwargs=None,
     use_radau_as_bound=False,
@@ -480,7 +486,9 @@ def estimate_evidence_lower_bound(
         Maximum number of eigenvalues to compute exactly. If
         `trace_log_method="slq"`, the remaining trace-log term is estimated
         via stochastic Lanczos quadrature. If `trace_log_method="eigsh"`, the
-        remainder is approximated using the smallest computed eigenvalue.
+        remainder is approximated using the smallest computed eigenvalue and
+        at least one exact eigenvalue is therefore required. Zero exact
+        eigenvalues are supported in SLQ mode.
         Note that if `n_eigenvalues` equals the total number
         of relevant degrees of freedom of the problem, all relevant eigenvalues
         are always computed irrespective of other stopping criteria.
@@ -522,6 +530,8 @@ def estimate_evidence_lower_bound(
         Eigenvalues corresponding to `resume_eigenvectors`. If not provided,
         they are estimated via the metric. Required when
         `orthonormalize_eigenvectors` is True and `resume_eigenvectors` is set.
+        Supplied eigenvalues are validated against the selected signal- or
+        data-space operator.
     orthonormalize_eigenvectors : bool
         If True, re-orthonormalize the cumulative eigenvector basis before
         projecting out the corresponding subspace. Default is True.
@@ -551,13 +561,14 @@ def estimate_evidence_lower_bound(
         Lanczos order for SLQ (only used when trace_log_method="slq").
     slq_num_samples : int
         Number of Hutchinson probes for SLQ (only used when
-        trace_log_method="slq").
+        trace_log_method="slq"). At least two probes are required whenever
+        an SLQ remainder is estimated so its stochastic uncertainty is defined.
     slq_key : int or jax.Array
         PRNG seed or key for SLQ. If None, a deterministic default is used.
     slq_kwargs : Optional[dict]
         Additional kwargs forwarded to the internal SLQ implementation
         (excluding A, f, order, num_samples, key, n, deflate_eigvecs, lam_min,
-        lam_max, fixed_endpoint, extra_fns, and compute_radau).
+        lam_max, extra_fns, and compute_radau).
     use_radau_as_bound : bool
         If True, compute two-endpoint Radau diagnostics and use the upper Radau
         estimate on the *remaining* trace-log to build a more conservative
@@ -568,10 +579,10 @@ def estimate_evidence_lower_bound(
         case the one-sigma SLQ standard error is used.
     slq_jit : bool
         If True, JIT-compile the SLQ computation. This closes over `A`, `f`,
-        `order`, and `num_samples` so they are treated as static and avoids
-        JAX tracer errors with callables. Useful when running multiple SLQ
-        evaluations with the same shapes; for one-off runs the compile cost
-        may outweigh the speedup. Default is False.
+        `order`, and `num_samples` so they are treated as static. Compilation
+        is local to this estimator invocation and is not cached across calls;
+        for one-off runs the compile cost may outweigh the speedup. Default is
+        False.
     analytic_prior_term : bool
         If True, compute the quadratic prior term
         :math:`\\frac{1}{2}\\langle \\xi^\\dagger \\xi \\rangle_q` analytically
@@ -638,9 +649,34 @@ def estimate_evidence_lower_bound(
     if not isinstance(likelihood, Likelihood):
         raise TypeError("likelhood is not an instance of `Likelihood`.")
 
+    trace_log_method = trace_log_method.lower()
+    if trace_log_method not in ("eigsh", "slq"):
+        raise ValueError("trace_log_method must be 'eigsh' or 'slq'.")
+    trace_log_space = trace_log_space.lower()
+    if trace_log_space not in ("auto", "signal", "data"):
+        raise ValueError("trace_log_space must be 'auto', 'signal', or 'data'.")
+
+    if trace_log_method == "eigsh":
+        slq_only_options = [
+            name
+            for name, is_set in (
+                ("slq_order", slq_order != _DEFAULT_SLQ_ORDER),
+                ("slq_num_samples", slq_num_samples != _DEFAULT_SLQ_NUM_SAMPLES),
+                ("slq_key", slq_key is not None),
+                ("slq_kwargs", bool(slq_kwargs)),
+                ("use_radau_as_bound", use_radau_as_bound),
+                ("slq_jit", slq_jit),
+            )
+            if is_set
+        ]
+        if slq_only_options:
+            raise ValueError(
+                f"SLQ-only options {slq_only_options} require "
+                "trace_log_method='slq'."
+            )
+
     hamiltonian = StandardHamiltonian(likelihood)
     metric = hamiltonian.metric
-    metric_size = jax.flatten_util.ravel_pytree(samples.pos)[0].size
     metric_linop, metric_matvec, metric_size = _ravel_metric(
         metric, samples.pos, dtype=likelihood.target.dtype, metric_jit=metric_jit
     )
@@ -650,13 +686,6 @@ def estimate_evidence_lower_bound(
         else metric_size
     )
     n_relevant_dofs = min(n_data_points, metric_size)
-
-    trace_log_method = trace_log_method.lower()
-    if trace_log_method not in ("eigsh", "slq"):
-        raise ValueError("trace_log_method must be 'eigsh' or 'slq'.")
-    trace_log_space = trace_log_space.lower()
-    if trace_log_space not in ("auto", "signal", "data"):
-        raise ValueError("trace_log_space must be 'auto', 'signal', or 'data'.")
 
     if trace_log_space == "data" and likelihood.lsm_tangents_shape is None:
         raise ValueError("trace_log_space='data' requires lsm_tangents_shape.")
@@ -705,6 +734,24 @@ def estimate_evidence_lower_bound(
                 f"eigenvalues."
             )
         n_eigenvalues = n_relevant_dofs
+    if not isinstance(n_eigenvalues, (int, np.integer)):
+        raise TypeError("n_eigenvalues must be an integer.")
+    if n_eigenvalues < 0:
+        raise ValueError("n_eigenvalues must be non-negative.")
+    if trace_log_method == "eigsh" and n_relevant_dofs > 0 and n_eigenvalues == 0:
+        raise ValueError(
+            "trace_log_method='eigsh' requires at least one eigenvalue. "
+            "Use trace_log_method='slq' to estimate the full trace stochastically."
+        )
+    if (
+        trace_log_method == "slq"
+        and n_eigenvalues < n_relevant_dofs
+        and slq_num_samples < 2
+    ):
+        raise ValueError(
+            "Estimating an SLQ remainder requires at least two probes "
+            "to quantify stochastic uncertainty."
+        )
 
     eigenvalues, eigenvectors = _eigsh(
         op_linop,
@@ -744,12 +791,11 @@ def estimate_evidence_lower_bound(
             logger.info(f"\n{eigenvalues}.")
 
     # Return a list of ELBO samples and a summary of the ELBO statistics
-    log_eigenvalues = log_np(eigenvalues) if eigenvalues.size > 0 else np.array([])
+    log_eigenvalues = log_np(eigenvalues)
     tr_log_lat_cov_lower = 0.0
-    exact_log = np.sum(log_eigenvalues) if log_eigenvalues.size > 0 else 0.0
+    exact_log = np.sum(log_eigenvalues)
     slq_remainder = 0.0
     slq_remainder_se = 0.0
-    slq_out = None
 
     tail_lo = None
     tail_hi = None
@@ -757,7 +803,7 @@ def estimate_evidence_lower_bound(
     trace_inv_exact = 0.0
     trace_inv_remainder = 0.0
     trace_inv_remainder_se = 0.0
-    trace_inv_const = float(max(0, metric_size - n_relevant_dofs))
+    trace_inv_const = float(metric_size - n_relevant_dofs)
     prior_mean_sq = 0.0
 
     if analytic_prior_term:
@@ -774,32 +820,22 @@ def estimate_evidence_lower_bound(
             mean = None
         if mean is not None:
             prior_mean_sq = float(np.asarray(vdot(mean, mean)))
-        if eigenvalues.size > 0:
-            if use_data_space:
-                inv_eigs = 1.0 / (1.0 + eigenvalues)
-            else:
-                inv_eigs = 1.0 / eigenvalues
-            trace_inv_exact = float(np.sum(inv_eigs))
-
-    if (
-        trace_log_method == "slq"
-        and use_radau_as_bound
-        and n_relevant_dofs > log_eigenvalues.size
-        and eigenvalues.size == 0
-    ):
-        raise ValueError(
-            "use_radau_as_bound=True requires at least one exact eigenvalue "
-            "to provide an upper spectral endpoint."
-        )
+        inv_eigs = 1.0 / (eigenvalues + float(use_data_space))
+        trace_inv_exact = float(np.sum(inv_eigs))
 
     if trace_log_method == "eigsh":
-        tr_log_lat_cov = -0.5 * np.sum(log_eigenvalues)
+        tr_log_lat_cov = -0.5 * exact_log
         if log_eigenvalues.size > 0:
             tr_log_lat_cov_lower = (
                 0.5 * (n_relevant_dofs - log_eigenvalues.size) * np.min(log_eigenvalues)
             )
     else:
         if n_relevant_dofs > log_eigenvalues.size:
+            if slq_num_samples < 2:
+                raise ValueError(
+                    "Estimating an SLQ remainder requires at least two probes "
+                    "to quantify stochastic uncertainty."
+                )
             if verbose:
                 remaining = n_relevant_dofs - log_eigenvalues.size
                 logger.info(
@@ -830,7 +866,6 @@ def estimate_evidence_lower_bound(
                 "deflate_eigvecs",
                 "lam_min",
                 "lam_max",
-                "fixed_endpoint",
                 "extra_fns",
                 "compute_radau",
             }
@@ -840,91 +875,51 @@ def estimate_evidence_lower_bound(
                     f"slq_kwargs must not contain {sorted(overlap)}; "
                     "use the dedicated parameters instead."
                 )
-            lam_min = None
-            lam_max = None
-            if eigenvalues.size > 0:
+            radau_kwargs = {}
+            if use_radau_as_bound:
                 lam_min = float(eigenvalue_shift)
-                lam_max = float(np.min(eigenvalues))
-                if not np.isfinite(lam_max) or lam_max < lam_min:
-                    lam_min = None
-                    lam_max = None
-            if use_radau_as_bound and lam_min is None:
-                raise ValueError(
-                    "use_radau_as_bound=True requires a valid upper spectral "
-                    "endpoint from at least one exact eigenvalue."
-                )
+                lam_max = float(np.min(eigenvalues)) if eigenvalues.size else np.nan
+                if not np.isfinite(lam_max):
+                    raise ValueError(
+                        "use_radau_as_bound=True requires a valid upper spectral "
+                        "endpoint from at least one exact eigenvalue."
+                    )
+                radau_kwargs = {"lam_min": lam_min, "lam_max": max(lam_min, lam_max)}
             deflate = None if eigenvectors is None else jnp.asarray(eigenvectors)
             extra_fns = None
             if analytic_prior_term:
-                if use_data_space:
+                inv_shift = float(use_data_space)
+                extra_fns = {"inv": lambda x: 1.0 / (inv_shift + x) - 1.0}
 
-                    def inv_f(x):
-                        return 1.0 / (1.0 + x) - 1.0
+            slq_call_kwargs = dict(
+                n=op_size,
+                extra_fns=extra_fns,
+                compute_radau=use_radau_as_bound,
+                **slq_kwargs,
+                **radau_kwargs,
+            )
 
-                else:
-
-                    def inv_f(x):
-                        return 1.0 / x - 1.0
-
-                extra_fns = {"inv": inv_f}
+            def _call_slq(key, deflate_eigvecs):
+                return _slq_gauss_radau(
+                    op_matvec,
+                    log_f,
+                    slq_order,
+                    num_samples=slq_num_samples,
+                    key=key,
+                    deflate_eigvecs=deflate_eigvecs,
+                    **slq_call_kwargs,
+                )
 
             if slq_jit:
                 if deflate is None:
                     # JIT requires a concrete array; an empty basis means "no deflation".
                     deflate = jnp.zeros((op_size, 0), dtype=jnp.asarray(0.0).dtype)
-                if lam_min is None:
-
-                    def _call_slq(key, deflate_eigvecs):
-                        return _slq_gauss_radau(
-                            op_matvec,
-                            log_f,
-                            slq_order,
-                            num_samples=slq_num_samples,
-                            key=key,
-                            n=op_size,
-                            deflate_eigvecs=deflate_eigvecs,
-                            extra_fns=extra_fns,
-                            compute_radau=use_radau_as_bound,
-                            **slq_kwargs,
-                        )
-
-                else:
-
-                    def _call_slq(key, deflate_eigvecs):
-                        return _slq_gauss_radau(
-                            op_matvec,
-                            log_f,
-                            slq_order,
-                            num_samples=slq_num_samples,
-                            key=key,
-                            n=op_size,
-                            deflate_eigvecs=deflate_eigvecs,
-                            lam_min=lam_min,
-                            lam_max=lam_max,
-                            extra_fns=extra_fns,
-                            compute_radau=use_radau_as_bound,
-                            **slq_kwargs,
-                        )
-
                 slq_out = jax.jit(_call_slq)(slq_key, deflate)
             else:
-                slq_out = _slq_gauss_radau(
-                    op_matvec,
-                    log_f,
-                    slq_order,
-                    num_samples=slq_num_samples,
-                    key=slq_key,
-                    n=op_size,
-                    deflate_eigvecs=deflate,
-                    lam_min=lam_min,
-                    lam_max=lam_max,
-                    extra_fns=extra_fns,
-                    compute_radau=use_radau_as_bound,
-                    **slq_kwargs,
-                )
+                slq_out = _call_slq(slq_key, deflate)
             slq_remainder = float(np.asarray(slq_out["estimate"]))
             slq_remainder_se = float(np.asarray(slq_out["stochastic_se"]))
-            if analytic_prior_term and "extra_inv_estimate" in slq_out:
+            if analytic_prior_term:
                 centered_inv_remainder = float(
                     np.asarray(slq_out["extra_inv_estimate"])
                 )
@@ -932,22 +927,27 @@ def estimate_evidence_lower_bound(
                     n_relevant_dofs - log_eigenvalues.size + centered_inv_remainder
                 )
                 trace_inv_remainder_se = float(np.asarray(slq_out["extra_inv_se"]))
-            if "radau_lo" in slq_out and "radau_hi" in slq_out:
+            if use_radau_as_bound:
                 lo = float(np.asarray(slq_out["radau_lo"]))
                 hi = float(np.asarray(slq_out["radau_hi"]))
+                if not np.isfinite(lo) or not np.isfinite(hi):
+                    raise ValueError(
+                        "Gauss-Radau quadrature failed because an endpoint is "
+                        "too close to the Lanczos spectrum."
+                    )
                 tail_lo = min(lo, hi)
                 tail_hi = max(lo, hi)
+            if verbose:
+                logger.info(
+                    f"\nTrace-log exact contribution: {exact_log:.4e}; "
+                    f"SLQ remainder: {slq_remainder:.4e} "
+                    f"(SE {slq_remainder_se:.2e})."
+                )
         tr_log_lat_cov = -0.5 * (exact_log + slq_remainder)
         if use_radau_as_bound and tail_hi is not None:
             tr_log_lat_cov_lower = 0.5 * max(0.0, tail_hi - slq_remainder)
         else:
             tr_log_lat_cov_lower = 0.5 * slq_remainder_se
-        if verbose and slq_out is not None:
-            logger.info(
-                f"\nTrace-log exact contribution: {exact_log:.4e}; "
-                f"SLQ remainder: {slq_remainder:.4e} "
-                f"(SE {slq_remainder_se:.2e})."
-            )
     trace_inv_total = 0.0
     prior_term = 0.0
     if analytic_prior_term:
@@ -956,14 +956,10 @@ def estimate_evidence_lower_bound(
         if trace_inv_remainder_se > 0.0:
             tr_log_lat_cov_lower += 0.5 * trace_inv_remainder_se
     posterior_contribution = tr_log_lat_cov + 0.5 * metric_size
-    if analytic_prior_term:
-        elbo_samples = np.array(
-            list(posterior_contribution - likelihood(s) - prior_term for s in samples)
-        )
-    else:
-        elbo_samples = np.array(
-            list(posterior_contribution - hamiltonian(s) for s in samples)
-        )
+    sample_energy = likelihood if analytic_prior_term else hamiltonian
+    elbo_samples = np.array(
+        list(posterior_contribution - sample_energy(s) - prior_term for s in samples)
+    )
 
     stats = {"lower_error": tr_log_lat_cov_lower}
     if analytic_prior_term:
@@ -986,15 +982,6 @@ def estimate_evidence_lower_bound(
                 "trace_log_se": float(slq_remainder_se),
             }
         )
-        if slq_out is not None:
-            if "radau_estimate" in slq_out:
-                stats["trace_log_radau"] = float(np.asarray(slq_out["radau_estimate"]))
-            if "radau_se" in slq_out:
-                stats["trace_log_radau_se"] = float(np.asarray(slq_out["radau_se"]))
-            if "quadrature_width" in slq_out:
-                stats["trace_log_quadrature_width"] = float(
-                    np.asarray(slq_out["quadrature_width"])
-                )
         if tail_lo is not None and tail_hi is not None:
             stats["trace_log_tail_lo"] = float(tail_lo)
             stats["trace_log_tail_hi"] = float(tail_hi)
@@ -1015,20 +1002,18 @@ def estimate_evidence_lower_bound(
     stats["elbo_std"] = elbo_std
     stats["elbo_se"] = elbo_se
     if verbose:
+        trace_msg = (
+            f"\nTrace-log decomposition (in log units)"
+            f"\nExact eigensum : {exact_log:.4e}"
+        )
         if trace_log_method == "eigsh":
             remainder = n_relevant_dofs - log_eigenvalues.size
             tail = (
                 remainder * np.min(log_eigenvalues) if log_eigenvalues.size > 0 else 0.0
             )
-            trace_msg = (
-                f"\nTrace-log decomposition (in log units)"
-                f"\nExact eigensum : {exact_log:.4e}"
-                f"\nTail approx    : {tail:.4e} (n={remainder})"
-            )
+            trace_msg += f"\nTail approx    : {tail:.4e} (n={remainder})"
         else:
-            trace_msg = (
-                f"\nTrace-log decomposition (in log units)"
-                f"\nExact eigensum : {exact_log:.4e}"
+            trace_msg += (
                 f"\nSLQ remainder  : {slq_remainder:.4e} (SE {slq_remainder_se:.2e})"
             )
             if tail_lo is not None and tail_hi is not None:

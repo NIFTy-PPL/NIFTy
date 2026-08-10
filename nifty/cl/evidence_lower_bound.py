@@ -407,10 +407,10 @@ def estimate_evidence_lower_bound(
         Collection of samples from the posterior distribution.
     n_eigenvalues : int
         Maximum number of eigenvalues to be considered for the estimation of
-        the log-determinant of the metric. Note that if `n_eigenvalues` equals
-        the total number of relevant degrees of freedom of the problem, all
-        relevant eigenvalues are always computed irrespective of other stopping
-        criteria.
+        the log-determinant of the metric. Must be at least one unless there are
+        no relevant degrees of freedom. Note that if `n_eigenvalues` equals the
+        total number of relevant degrees of freedom of the problem, all relevant
+        eigenvalues are always computed irrespective of other stopping criteria.
     compute_all : bool
         If True, compute all eigenvalues and eigenvectors of the relevant
         metric subspace. Overrides `n_eigenvalues`.
@@ -538,6 +538,15 @@ def estimate_evidence_lower_bound(
                 f"eigenvalues."
             )
         n_eigenvalues = n_relevant_dofs
+    if not isinstance(n_eigenvalues, (int, np.integer)):
+        raise TypeError("n_eigenvalues must be an integer.")
+    if n_eigenvalues < 0:
+        raise ValueError("n_eigenvalues must be non-negative.")
+    if n_relevant_dofs > 0 and n_eigenvalues == 0:
+        raise ValueError(
+            "ELBO estimation requires at least one eigenvalue when relevant "
+            "degrees of freedom are present."
+        )
 
     eigenvalues, _ = _eigsh(
         metric,
@@ -558,6 +567,8 @@ def estimate_evidence_lower_bound(
         orthonormalize_threshold=orthonormalize_threshold,
         orthonormalize_n_probes=orthonormalize_n_probes,
     )
+    if eigenvalues is None:
+        eigenvalues = np.asarray([], dtype=dtype)
     if verbose:
         # FIXME
         logger.info(
@@ -567,7 +578,7 @@ def estimate_evidence_lower_bound(
         )
 
     # Return a list of ELBO samples and a summary of the ELBO statistics
-    log_eigenvalues = np.log(eigenvalues) if eigenvalues.size > 0 else np.array([])
+    log_eigenvalues = np.log(eigenvalues)
     tr_log_lat_cov = -0.5 * np.sum(log_eigenvalues)
     if log_eigenvalues.size > 0:
         tr_log_lat_cov_lower = (
@@ -578,7 +589,7 @@ def estimate_evidence_lower_bound(
     tr_log_lat_cov_lower = Field.scalar(tr_log_lat_cov_lower)
 
     trace_inv_exact = 0.0
-    trace_inv_const = float(max(0, metric_size - n_relevant_dofs))
+    trace_inv_const = float(metric_size - n_relevant_dofs)
     prior_mean_sq = 0.0
     if analytic_prior_term:
         if eigenvalues.size < n_relevant_dofs:
@@ -586,31 +597,24 @@ def estimate_evidence_lower_bound(
                 "analytic_prior_term requires all relevant eigenvalues to be "
                 "computed. Set compute_all=True."
             )
-        if eigenvalues.size > 0:
-            trace_inv_exact = float(np.sum(1.0 / eigenvalues))
-        prior_mean_sq = float(
-            np.real(np.real_if_close(samples.mean.s_vdot(samples.mean)))
-        )
+        trace_inv_exact = float(np.sum(1.0 / eigenvalues))
+        prior_mean_sq = float(np.real(samples.mean.s_vdot(samples.mean)))
 
     posterior_contribution = Field.scalar(tr_log_lat_cov + 0.5 * metric_size)
+    trace_inv_total = 0.0
+    prior_term = Field.scalar(0.0)
+    sample_energy = hamiltonian
     if analytic_prior_term:
         trace_inv_total = trace_inv_exact + trace_inv_const
         prior_term = Field.scalar(0.5 * (trace_inv_total + prior_mean_sq))
-        elbo_samples = SampleList(
-            list(
-                samples.iterator(
-                    lambda x: posterior_contribution
-                    - hamiltonian.likelihood_energy(x)
-                    - prior_term
-                )
+        sample_energy = hamiltonian.likelihood_energy
+    elbo_samples = SampleList(
+        list(
+            samples.iterator(
+                lambda x: posterior_contribution - sample_energy(x) - prior_term
             )
         )
-    else:
-        trace_inv_total = 0.0
-        prior_term = None
-        elbo_samples = SampleList(
-            list(samples.iterator(lambda x: posterior_contribution - hamiltonian(x)))
-        )
+    )
 
     stats = {"lower_error": tr_log_lat_cov_lower}
     if analytic_prior_term:

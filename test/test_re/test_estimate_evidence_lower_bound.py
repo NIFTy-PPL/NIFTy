@@ -3,6 +3,8 @@
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 # Author: Matteo Guardiani
 
+import importlib
+
 import jax
 import jax.numpy as jnp
 import jax.random as random
@@ -387,6 +389,164 @@ def test_elbo_orthonormalize_runs():
         orthonormalize_threshold=None,
     )
     assert elbo.shape == (len(samples),)
+
+
+def test_elbo_eigsh_requires_at_least_one_eigenvalue():
+    likelihood, samples = _make_simple_likelihood_and_samples(seed=5, dim=3)
+    with pytest.raises(ValueError, match="at least one eigenvalue"):
+        jft.estimate_evidence_lower_bound(
+            likelihood,
+            samples,
+            0,
+            metric_jit=False,
+            output_directory=None,
+            verbose=False,
+        )
+
+
+def test_elbo_slq_remainder_requires_at_least_two_probes():
+    likelihood, samples = _make_simple_likelihood_and_samples(seed=6, dim=3)
+    with pytest.raises(ValueError, match="at least two probes"):
+        jft.estimate_evidence_lower_bound(
+            likelihood,
+            samples,
+            0,
+            trace_log_method="slq",
+            slq_num_samples=1,
+            metric_jit=False,
+            output_directory=None,
+            verbose=False,
+        )
+
+
+@pmp(
+    "slq_option",
+    [
+        {"slq_order": 32},
+        {"slq_num_samples": 4},
+        {"slq_key": 0},
+        {"slq_kwargs": {"probe_batch_size": 1}},
+        {"use_radau_as_bound": True},
+        {"slq_jit": True},
+    ],
+)
+def test_elbo_rejects_slq_options_in_eigsh_mode(slq_option):
+    likelihood, samples = _make_simple_likelihood_and_samples(seed=7, dim=3)
+    with pytest.raises(ValueError, match="require trace_log_method='slq'"):
+        jft.estimate_evidence_lower_bound(
+            likelihood,
+            samples,
+            1,
+            metric_jit=False,
+            output_directory=None,
+            verbose=False,
+            **slq_option,
+        )
+
+
+def test_elbo_resume_eigensystem_must_match_selected_space():
+    likelihood, samples = _make_linear_likelihood_and_samples(np.diag([2.0, 1.0]))
+    signal_eigenvectors = np.eye(2)[:, :1]
+    signal_eigenvalues = np.array([5.0])
+
+    with pytest.raises(ValueError, match="selected operator"):
+        jft.estimate_evidence_lower_bound(
+            likelihood,
+            samples,
+            1,
+            trace_log_method="slq",
+            trace_log_space="data",
+            slq_num_samples=2,
+            metric_jit=False,
+            output_directory=None,
+            verbose=False,
+            resume_eigenvectors=signal_eigenvectors,
+            resume_eigenvalues=signal_eigenvalues,
+        )
+
+
+def test_elbo_radau_clamps_rounded_exact_endpoint(monkeypatch):
+    likelihood, samples = _make_linear_likelihood_and_samples(np.zeros((2, 2)))
+    elbo_module = importlib.import_module("nifty.re.evidence_lower_bound")
+
+    def rounded_eigsh(*args, **kwargs):
+        return np.array([1.0 - 1e-12]), np.eye(2)[:, :1]
+
+    monkeypatch.setattr(elbo_module, "_eigsh", rounded_eigsh)
+    _, stats = jft.estimate_evidence_lower_bound(
+        likelihood,
+        samples,
+        1,
+        trace_log_method="slq",
+        trace_log_space="signal",
+        slq_order=2,
+        slq_num_samples=2,
+        slq_key=0,
+        use_radau_as_bound=True,
+        metric_jit=False,
+        output_directory=None,
+        verbose=False,
+    )
+
+    assert np.isfinite(stats["lower_error"])
+    assert_allclose(stats["trace_log_exact"], 0.0, atol=2e-12)
+
+
+def test_elbo_slq_jit_matches_eager():
+    likelihood, samples = _make_linear_likelihood_and_samples(np.diag([2.0, 1.0]))
+    kwargs = dict(
+        n_eigenvalues=0,
+        trace_log_method="slq",
+        trace_log_space="signal",
+        slq_order=2,
+        slq_num_samples=3,
+        slq_key=0,
+        metric_jit=False,
+        output_directory=None,
+        verbose=False,
+    )
+
+    eager, eager_stats = jft.estimate_evidence_lower_bound(
+        likelihood, samples, slq_jit=False, **kwargs
+    )
+    compiled, compiled_stats = jft.estimate_evidence_lower_bound(
+        likelihood, samples, slq_jit=True, **kwargs
+    )
+
+    assert_allclose(compiled, eager, atol=1e-12)
+    assert_allclose(
+        compiled_stats["trace_log_slq"], eager_stats["trace_log_slq"], atol=1e-12
+    )
+
+
+def test_elbo_rejects_nonfinite_radau_result(monkeypatch):
+    likelihood, samples = _make_linear_likelihood_and_samples(np.diag([2.0, 1.0]))
+    elbo_module = importlib.import_module("nifty.re.evidence_lower_bound")
+
+    def nonfinite_radau(*args, **kwargs):
+        return {
+            "estimate": jnp.asarray(0.0),
+            "stochastic_se": jnp.asarray(1.0),
+            "radau_lo": jnp.asarray(jnp.nan),
+            "radau_hi": jnp.asarray(jnp.nan),
+        }
+
+    monkeypatch.setattr(elbo_module, "_slq_gauss_radau", nonfinite_radau)
+    with pytest.raises(ValueError, match="endpoint is too close"):
+        jft.estimate_evidence_lower_bound(
+            likelihood,
+            samples,
+            1,
+            trace_log_method="slq",
+            trace_log_space="signal",
+            slq_order=2,
+            slq_num_samples=2,
+            slq_key=0,
+            use_radau_as_bound=True,
+            metric_jit=False,
+            output_directory=None,
+            verbose=False,
+        )
 
 
 def test_elbo_trace_log_slq_vs_exact_lognormal():
