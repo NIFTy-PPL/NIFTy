@@ -67,8 +67,10 @@ class LinearResponse(ift.LinearOperator):
         # FIXME: Add input checks
         self.intercept_key = intercept.domain.keys()[0]
         self.slope_key = slope.domain.keys()[0]
-        domain = {self.intercept_key: intercept.domain[self.intercept_key],
-                  self.slope_key: slope.domain[self.slope_key]}
+        domain = {
+            self.intercept_key: intercept.domain[self.intercept_key],
+            self.slope_key: slope.domain[self.slope_key],
+        }
         self.sampling_points = sampling_points
 
         self._domain = ift.MultiDomain.make(domain)
@@ -82,10 +84,14 @@ class LinearResponse(ift.LinearOperator):
         if mode == self.TIMES:
             intercept = x.asnumpy()[self.intercept_key]
             slope = x.asnumpy()[self.slope_key]
-            return ift.makeField(self._tgt(mode), intercept + slope * self.sampling_points)
+            return ift.makeField(
+                self._tgt(mode), intercept + slope * self.sampling_points
+            )
 
-        res = np.vstack((np.ones(self.sampling_points.shape[0]), self.sampling_points)).dot(x.asnumpy())
-        return ift.makeField(self._tgt(mode), {'intercept': res[0], 'slope': res[1]})
+        res = np.vstack(
+            (np.ones(self.sampling_points.shape[0]), self.sampling_points)
+        ).dot(x.asnumpy())
+        return ift.makeField(self._tgt(mode), {"intercept": res[0], "slope": res[1]})
 
 
 def test_estimate_evidence_lower_bound():
@@ -93,25 +99,29 @@ def test_estimate_evidence_lower_bound():
     n_datapoints = 8
     data_space = ift.RGSpace((n_datapoints,))
 
-    q = -1.
+    q = -1.0
     m_slope = 1.5
 
     sigma_q = 1.5
     sigma_m = 1.8
-    intercept = ift.NormalTransform(0., sigma_q, "intercept").ducktape_left("intercept")
-    slope = ift.NormalTransform(0., sigma_m, "slope").ducktape_left("slope")
+    intercept = ift.NormalTransform(0.0, sigma_q, "intercept").ducktape_left(
+        "intercept"
+    )
+    slope = ift.NormalTransform(0.0, sigma_m, "slope").ducktape_left("slope")
 
     x = ift.random.current_rng().random(n_datapoints) * 10
     y = q + m_slope * x
     linear_response = LinearResponse(intercept, slope, x)
     # ift.extra.check_linear_operator(linear_response)
 
-    linear_response_on_signal = linear_response @ (intercept + slope)  # In general not a linear operator
+    linear_response_on_signal = linear_response @ (
+        intercept + slope
+    )  # In general not a linear operator
 
     R = _explicify(linear_response_on_signal)
     d = ift.makeField(data_space, y)
     noise_level = 0.8
-    N = ift.makeOp(ift.makeField(data_space, noise_level ** 2), sampling_dtype=float)
+    N = ift.makeOp(ift.makeField(data_space, noise_level**2), sampling_dtype=float)
     noise = N.draw_sample()
     data = d + noise
 
@@ -130,16 +140,29 @@ def test_estimate_evidence_lower_bound():
     det_2pi_D = np.linalg.det(2 * np.pi * D)
     det_2pi_S = np.linalg.det(2 * np.pi * S)
 
-    H_0 = 0.5 * (data.s_vdot(N.inverse(data)) + n_datapoints * np.log(2 * np.pi * noise_level ** 2) + np.log(
-        det_2pi_S) - m_dag_j)
+    H_0 = 0.5 * (
+        data.s_vdot(N.inverse(data))
+        + n_datapoints * np.log(2 * np.pi * noise_level**2)
+        + np.log(det_2pi_S)
+        - m_dag_j
+    )
 
     evidence = -H_0 + 0.5 * np.log(det_2pi_D)
-    nifty_adjusted_evidence = evidence + 0.5 * n_datapoints * np.log(2 * np.pi * noise_level ** 2)
-    likelihood_energy = ift.GaussianEnergy(data=data, inverse_covariance=N.inverse) @ linear_response_on_signal
+    nifty_adjusted_evidence = evidence + 0.5 * n_datapoints * np.log(
+        2 * np.pi * noise_level**2
+    )
+    likelihood_energy = (
+        ift.GaussianEnergy(data=data, inverse_covariance=N.inverse)
+        @ linear_response_on_signal
+    )
 
     # Minimization parameters
-    ic_sampling = ift.AbsDeltaEnergyController(name="Sampling (linear)", deltaE=1e-8, iteration_limit=2)
-    ic_newton = ift.AbsDeltaEnergyController(name='Newton', deltaE=1e-5, convergence_level=2, iteration_limit=100)
+    ic_sampling = ift.AbsDeltaEnergyController(
+        name="Sampling (linear)", deltaE=1e-8, iteration_limit=2
+    )
+    ic_newton = ift.AbsDeltaEnergyController(
+        name="Newton", deltaE=1e-5, convergence_level=2, iteration_limit=100
+    )
 
     minimizer = ift.NewtonCG(ic_newton)
     minimizer_sampling = None
@@ -147,12 +170,24 @@ def test_estimate_evidence_lower_bound():
     n_iterations = 2
     n_samples = 3
 
-    samples = ift.optimize_kl(likelihood_energy, n_iterations, n_samples, minimizer, ic_sampling,
-                              nonlinear_sampling_minimizer=minimizer_sampling)
+    samples = ift.optimize_kl(
+        likelihood_energy,
+        n_iterations,
+        n_samples,
+        minimizer,
+        ic_sampling,
+        nonlinear_sampling_minimizer=minimizer_sampling,
+    )
 
     # Estimate the ELBO
-    elbo, stats = ift.estimate_evidence_lower_bound(ift.StandardHamiltonian(lh=likelihood_energy), samples, 2)
-    assert (stats['elbo_lw'].asnumpy() <= nifty_adjusted_evidence <= stats['elbo_up'].asnumpy())
+    elbo, stats = ift.estimate_evidence_lower_bound(
+        ift.StandardHamiltonian(lh=likelihood_energy), samples, 2
+    )
+    assert (
+        stats["elbo_lw"].asnumpy()
+        <= nifty_adjusted_evidence
+        <= stats["elbo_up"].asnumpy()
+    )
 
 
 def test_elbo_save_and_resume(tmp_path):
@@ -167,9 +202,11 @@ def test_elbo_save_and_resume(tmp_path):
         output_directory=str(output_directory),
     )
 
-    eigvals = np.load(output_directory / "metric_eigenvalues.npy")
-    eigvecs = np.load(output_directory / "metric_eigenvectors.npy")
+    eigvals = np.load(output_directory / "metric_signal_eigenvalues.npy")
+    eigvecs = np.load(output_directory / "metric_signal_eigenvectors.npy")
     assert eigvecs.shape == (3, eigvals.size)
+    assert not (output_directory / "metric_eigenvalues.npy").exists()
+    assert not (output_directory / "metric_eigenvectors.npy").exists()
 
     elbo_b, _ = ift.estimate_evidence_lower_bound(
         hamiltonian,
@@ -197,8 +234,80 @@ def test_elbo_compute_all_saves_all_eigenvalues(tmp_path):
         output_directory=str(output_directory),
     )
 
-    eigvals = np.load(output_directory / "metric_eigenvalues.npy")
+    eigvals = np.load(output_directory / "metric_signal_eigenvalues.npy")
     assert eigvals.size == 3
+
+
+def test_elbo_requires_at_least_one_eigenvalue():
+    hamiltonian, samples = _make_simple_hamiltonian_and_samples(seed=2, dim=3)
+    with pytest.raises(ValueError, match="at least one eigenvalue"):
+        ift.estimate_evidence_lower_bound(
+            hamiltonian,
+            samples,
+            0,
+            verbose=False,
+        )
+
+
+def test_elbo_analytic_prior_term_requires_all_relevant_eigenvalues():
+    hamiltonian, samples = _make_simple_hamiltonian_and_samples(seed=5, dim=4)
+    with pytest.raises(ValueError, match="analytic_prior_term requires all relevant"):
+        ift.estimate_evidence_lower_bound(
+            hamiltonian,
+            samples,
+            2,
+            analytic_prior_term=True,
+            compute_all=False,
+            verbose=False,
+        )
+
+
+def test_elbo_analytic_prior_term_matches_manual_formula():
+    hamiltonian, samples = _make_simple_hamiltonian_and_samples(
+        seed=6, dim=3, n_samples=3
+    )
+
+    elbo, stats = ift.estimate_evidence_lower_bound(
+        hamiltonian,
+        samples,
+        3,
+        compute_all=True,
+        analytic_prior_term=True,
+        verbose=False,
+    )
+
+    metric = hamiltonian(
+        ift.Linearization.make_var(samples.mean, want_metric=True)
+    ).metric
+    eigvals = np.linalg.eigvalsh(_explicify(metric))
+    n_relevant_dofs = min(
+        hamiltonian.likelihood_energy.data_domain.size, hamiltonian.domain.size
+    )
+    trace_inv_exact = np.sum(1.0 / eigvals[-n_relevant_dofs:])
+    trace_inv_const = max(0.0, metric.domain.size - n_relevant_dofs)
+    prior_mean_sq = float(np.real(np.real_if_close(samples.mean.s_vdot(samples.mean))))
+    prior_term = 0.5 * (trace_inv_exact + trace_inv_const + prior_mean_sq)
+    posterior_contribution = (
+        -0.5 * np.sum(np.log(eigvals[-n_relevant_dofs:])) + 0.5 * metric.domain.size
+    )
+
+    expected_elbo = np.array(
+        [
+            posterior_contribution
+            - hamiltonian.likelihood_energy(s).asnumpy()
+            - prior_term
+            for s in samples.iterator()
+        ]
+    )
+    got_elbo = np.array([s.asnumpy() for s in elbo.iterator()])
+    assert np.allclose(got_elbo, expected_elbo)
+    assert np.isclose(stats["trace_inv_exact"].asnumpy(), trace_inv_exact)
+    assert np.isclose(stats["trace_inv_const"].asnumpy(), trace_inv_const)
+    assert np.isclose(
+        stats["trace_inv_total"].asnumpy(), trace_inv_exact + trace_inv_const
+    )
+    assert np.isclose(stats["prior_mean_sq"].asnumpy(), prior_mean_sq)
+    assert np.isclose(stats["prior_term"].asnumpy(), prior_term)
 
 
 def test_elbo_early_stop_saves_partial_eigenvalues(tmp_path):
@@ -214,5 +323,5 @@ def test_elbo_early_stop_saves_partial_eigenvalues(tmp_path):
         output_directory=str(output_directory),
     )
 
-    eigvals = np.load(output_directory / "metric_eigenvalues.npy")
+    eigvals = np.load(output_directory / "metric_signal_eigenvalues.npy")
     assert eigvals.size < 4
