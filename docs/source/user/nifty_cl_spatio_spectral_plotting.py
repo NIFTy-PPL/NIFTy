@@ -63,8 +63,9 @@ from nifty.cl.spectrum_to_rgb import ColorSpaceTools, SpectrumToRGBProjector
 # hundred times brighter than the other two, which is what makes the tone-mapping sections below
 # worth reading. The spectral axis is an *energy* axis with 24 equally wide bins.
 #
-# For realistic examples built from correlated fields, see
-# `demos/cl/a_spatio-spectral_plotting.py` and `demos/re/a_spatio-spectral_plotting.py`.
+# For a realistic counterpart — a correlated field sampled with `jft.CorrelatedFieldMaker`, whose
+# spectral shape genuinely varies from pixel to pixel — see
+# `demos/re/a_spatio-spectral_plotting.py`.
 
 # +
 nx, ny, n_spec = 96, 96, 24
