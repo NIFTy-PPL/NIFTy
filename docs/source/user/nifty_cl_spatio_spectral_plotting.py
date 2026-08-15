@@ -23,7 +23,10 @@
 # The projector consumes and returns plain `numpy` arrays: you hand it an array whose last axis
 # is the spectral one and get back an sRGB array of shape `(..., 3)`, which you can plot however
 # you like. It is therefore equally usable from `nifty.cl`, from `nifty.re`, or with no NIFTy
-# field involved at all.
+# field involved at all. The examples below import `nifty.cl`, but nothing on this page is
+# specific to it except the closing section on `ift.Plot` — `nifty.re` users can follow along
+# unchanged, and `demos/re/a_spatio-spectral_plotting.py` shows the projector applied to a field
+# sampled with `jft.CorrelatedFieldMaker`.
 #
 # Signatures and per-argument details live in the
 # {doc}`API reference <../mod/nifty.cl.spectrum_to_rgb>`; this page is about which of them you
