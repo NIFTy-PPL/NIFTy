@@ -16,7 +16,6 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-import logging
 import os
 from datetime import datetime as dt
 from itertools import product
@@ -24,8 +23,7 @@ from warnings import warn
 
 import numpy as np
 
-logger = logging.getLogger(__name__)
-
+from .logger import logger
 from .domain_tuple import DomainTuple
 from .domains.gl_space import GLSpace
 from .domains.hp_space import HPSpace
@@ -65,8 +63,17 @@ def _mollweide_helper(xsize):
     return res, mask, theta, phi
 
 
-def _make_rgb_data(val, f_space_domain, spectral_convention, dynamic_range,
-                   spectral_axis_type=None, visible_bin_width=None):
+_COLOR_MAPPING_SETUP_KEYS = ('spectral_axis_type', 'visible_bin_width', 'flux_convention')
+_COLOR_MAPPING_RANGE_KEYS = ('white', 'black', 'dynamic_range', 'quantiles', 'highlights')
+_COLOR_MAPPING_KEYS = _COLOR_MAPPING_SETUP_KEYS + _COLOR_MAPPING_RANGE_KEYS \
+    + ('log_compression',)
+
+_COLOR_MAPPING_DEFAULTS = {'spectral_axis_type': 'energy',
+                           'visible_bin_width': 'uniform',
+                           'flux_convention': 'bin_integrated_flux'}
+
+
+def _make_rgb_data(val, f_space_domain, color_mapping_kwargs):
     """Convert a spectral image array to sRGB using SpectrumToRGBProjector.
 
     Parameters
@@ -75,51 +82,78 @@ def _make_rgb_data(val, f_space_domain, spectral_convention, dynamic_range,
         Data array with the spectral axis last.
     f_space_domain : RGSpace
         The frequency/energy domain of the field, used to derive bin widths.
-    spectral_convention : {'total_flux', 'flux_density'}
-        Whether the data represents total bin flux or spectral flux density.
-    dynamic_range : float or None
-        Dynamic range for log tone-mapping; None uses linear saturation only.
-    spectral_axis_type : {'energy', 'wavelength'} or None
-        Passed to SpectrumToRGBProjector. Defaults to 'energy' with a warning.
-    visible_bin_width : {'uniform', 'proportional'} or None
-        Passed to SpectrumToRGBProjector. Defaults to 'uniform' with a warning.
+    color_mapping_kwargs : dict
+        Flat dictionary configuring the projection. Recognised keys, all optional:
+
+        - ``spectral_axis_type``, ``visible_bin_width``, ``flux_convention``:
+          passed to :class:`~.spectrum_to_rgb.SpectrumToRGBProjector`. Each falls
+          back to a default with a warning, so that ``Plot.add(field)`` stays a
+          one-liner.
+        - ``white``, ``black``, ``dynamic_range``, ``highlights``: passed to
+          :meth:`~.spectrum_to_rgb.SpectrumToRGBProjector.set_luminance_range`.
+        - ``quantiles``: pair of quantiles from which the luminance range is
+          derived via
+          :meth:`~.spectrum_to_rgb.SpectrumToRGBProjector.luminance_quantiles`,
+          using the data being plotted. Mutually exclusive with ``white``.
+        - ``log_compression``: bool, enables logarithmic luminance compression.
 
     Returns
     -------
     numpy.ndarray
         sRGB values in [0, 1]; last axis has length 3.
     """
-    if spectral_axis_type is None or visible_bin_width is None:
-        defaults = []
-        if spectral_axis_type is None:
-            spectral_axis_type = 'energy'
-            defaults.append("spectral_axis_type='energy'")
-        if visible_bin_width is None:
-            visible_bin_width = 'uniform'
-            defaults.append("visible_bin_width='uniform'")
+    unknown = set(color_mapping_kwargs) - set(_COLOR_MAPPING_KEYS)
+    if unknown:
+        raise ValueError(f"unknown color_mapping_kwargs entries: {sorted(unknown)}; "
+                         f"expected a subset of {list(_COLOR_MAPPING_KEYS)}")
+    cm = dict(color_mapping_kwargs)
+
+    defaulted = []
+    for key, default in _COLOR_MAPPING_DEFAULTS.items():
+        if cm.get(key) is None:
+            cm[key] = default
+            defaulted.append(f"{key}='{default}'")
+    if defaulted:
         logger.warning(
             "Spectro-chromatic plot is using default values for %s. "
             "Set these parameters explicitly to ensure correct mapping of your data.",
-            " and ".join(defaults))
+            " and ".join(defaulted))
 
     n_bins = f_space_domain.shape[0]
     bin_width = f_space_domain.distances[0]
     centers = bin_width * (0.5 + np.arange(n_bins))
     widths = np.full(n_bins, bin_width)
 
-    proj = SpectrumToRGBProjector(spectral_axis_type=spectral_axis_type,
-                                  visible_bin_width=visible_bin_width)
+    proj = SpectrumToRGBProjector(
+        spectral_axis_type=cm['spectral_axis_type'],
+        visible_bin_width=cm['visible_bin_width'],
+        flux_convention=cm['flux_convention'])
     proj.specify_input_spectrum_bins_via_center_and_width(centers, widths)
 
     shp = val.shape[:-1] + (3,)
     flat = val.reshape(-1, n_bins)
 
-    if spectral_convention == 'flux_density':
-        rgb = proj.project_spectral_flux_density(flat, dynamic_range=dynamic_range)
-    else:
-        rgb = proj.project_total_spectral_bin_flux(flat, dynamic_range=dynamic_range)
+    if cm.get('log_compression'):
+        proj.use_log_compression()
 
-    return rgb.reshape(shp)
+    quantiles, white = cm.get('quantiles'), cm.get('white')
+    if quantiles is not None and white is not None:
+        raise ValueError("give at most one of 'quantiles' and 'white' in "
+                         "color_mapping_kwargs")
+    if quantiles is not None:
+        black, white = proj.luminance_quantiles(flat, q=quantiles)
+        if cm.get('black') is not None or cm.get('dynamic_range') is not None:
+            black = None   # an explicit black point overrides the lower quantile
+    else:
+        black = None
+    if white is not None:
+        proj.set_luminance_range(
+            white=white,
+            black=cm['black'] if cm.get('black') is not None else black,
+            dynamic_range=cm.get('dynamic_range'),
+            highlights=cm.get('highlights', 'clamp'))
+
+    return proj.project(flat).reshape(shp)
 
 
 def _find_closest(A, target):
@@ -345,8 +379,7 @@ def plottable2D(fld, f_space=1):
     return True
 
 
-def _plotting_args_2D(fld, f_space=1, spectral_convention='total_flux', dynamic_range=None,
-                      spectral_axis_type=None, visible_bin_width=None):
+def _plotting_args_2D(fld, f_space=1, color_mapping_kwargs=None):
     from .sugar import makeField
 
     # check for multifrequency plotting
@@ -364,9 +397,7 @@ def _plotting_args_2D(fld, f_space=1, spectral_convention='total_flux', dynamic_
             val = fld.asnumpy()
             if f_space == 0:
                 val = np.moveaxis(val, 0, -1)
-            rgb = _make_rgb_data(val, dom[f_space], spectral_convention, dynamic_range,
-                                 spectral_axis_type=spectral_axis_type,
-                                 visible_bin_width=visible_bin_width)
+            rgb = _make_rgb_data(val, dom[f_space], color_mapping_kwargs or {})
             have_rgb = True
     else:  # "DomainTuple can only have one or two entries.
         raise ValueError('check plottable2D before using this function')
@@ -380,16 +411,9 @@ def _plot2D(f, ax, **kwargs):
     f = f[0]
     dom = f.domain
 
-    spectral_convention = kwargs.pop('spectral_convention', 'total_flux')
-    dynamic_range = kwargs.pop('dynamic_range', None)
-    spectral_axis_type = kwargs.pop('spectral_axis_type', None)
-    visible_bin_width = kwargs.pop('visible_bin_width', None)
     f, x_space, have_rgb, rgb = _plotting_args_2D(
         f, kwargs.pop("freq_space_idx", 1),
-        spectral_convention=spectral_convention,
-        dynamic_range=dynamic_range,
-        spectral_axis_type=spectral_axis_type,
-        visible_bin_width=visible_bin_width)
+        color_mapping_kwargs=kwargs.pop('color_mapping_kwargs', None))
 
     foo = kwargs.pop("norm", None)
     norm = {} if foo is None else {'norm': foo}
@@ -535,6 +559,22 @@ class Plot:
             Transparency value.
         freq_space_idx: int
             for multi-frequency plotting: index of frequency space in domain
+        color_mapping_kwargs: dict
+            for multi-frequency plotting: configures the false-colour projection.
+            Keys are named exactly as the arguments of
+            :class:`~.spectrum_to_rgb.SpectrumToRGBProjector` and its
+            :meth:`~.spectrum_to_rgb.SpectrumToRGBProjector.set_luminance_range`:
+
+            - ``spectral_axis_type``, ``visible_bin_width``, ``flux_convention``
+              — each defaults with a warning if omitted.
+            - ``white``, ``black``, ``dynamic_range``, ``highlights`` — the
+              displayed luminance range. Without ``white`` (or ``quantiles``) each
+              image is normalised to its own maximum and images are not comparable.
+            - ``quantiles`` — pair of quantiles the luminance range is derived from,
+              using the data being plotted. Mutually exclusive with ``white``.
+            - ``log_compression`` — bool, logarithmic luminance compression.
+
+            Unknown keys raise.
         """
         if f is None:
             self._plots.append(None)

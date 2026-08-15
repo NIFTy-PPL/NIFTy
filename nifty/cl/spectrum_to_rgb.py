@@ -18,6 +18,8 @@
 
 import numpy as np
 
+from .logger import logger
+
 
 class ColorSpaceTools:
     """Static helper methods for color space conversions and CIE standard data."""
@@ -358,18 +360,19 @@ class SpectrumToRGBProjector:
     to perceived colors following the CIE 1931 model of human color perception, and
     encoded into sRGB.
 
-    The class distinguishes between total spectral bin flux :math:`\\Phi_k` and spectral
-    flux density :math:`\\partial\\Phi/\\partial \\left[E \\mid \\lambda \\right]`,
-    providing separate projection methods for each:
-    :meth:`project_total_spectral_bin_flux` and :meth:`project_spectral_flux_density`.
-
     **Setup** (must be called before projecting):
 
     1. Specify input bin boundaries via
        :meth:`specify_input_spectrum_bins_via_bin_boundaries` or
        :meth:`specify_input_spectrum_bins_via_center_and_width`.
-    2. Optionally fix a white point via :meth:`set_saturation_flux` or
-       :meth:`set_saturation_flux_density`.
+    2. Optionally fix the displayed luminance range via :meth:`set_luminance_range`, and
+       optionally enable log compression via :meth:`use_log_compression`.
+
+    The display transform is fully described by two luminance values
+    :math:`(Y_\\mathrm{black}, Y_\\mathrm{white})`, a tone curve (linear or logarithmic)
+    and a highlight policy.  Physical quantities are turned into luminances by the
+    converter methods :meth:`luminance_of_spectrum` and :meth:`luminance_quantiles`,
+    whose results are handed to :meth:`set_luminance_range`.
 
     Parameters
     ----------
@@ -377,13 +380,13 @@ class SpectrumToRGBProjector:
         Physical meaning of the input spectral coordinate; controls mapping
         *direction* only.
 
-        - ``'energy'`` *(default)*: direction-inverting — lower input maps to
-          the red end and higher input maps to the blue end, consistent with
-          E = hc/λ.  Suited to energy- or frequency-domain data.
+        - ``'energy'``: direction-inverting — lower input maps to the red end and
+          higher input maps to the blue end, consistent with E = hc/λ.  Suited to
+          energy- or frequency-domain data.
         - ``'wavelength'``: direction-preserving — smaller input values map to
           the blue end and larger values to the red end.  Pass actual wavelength
           values as the ``centers`` / boundary arguments.
-    visible_bin_width : {'uniform', 'proportional'} or None
+    visible_bin_width : {'uniform', 'proportional'}
         How the visible wavelength width is distributed across input bins.
 
         - ``'uniform'``: every input bin receives the same visible width
@@ -393,6 +396,19 @@ class SpectrumToRGBProjector:
         - ``'proportional'``: each bin's visible width is proportional to its
           width in the input domain, preserving relative spectral coverage.
           Ideal for wavelength-domain data.
+    flux_convention : {'bin_integrated_flux', 'flux_density'}
+        Physical convention of *all* data passed to this projector — both the images
+        handed to :meth:`project` and the spectra handed to the luminance converters.
+
+        - ``'bin_integrated_flux'``: values are total fluxes :math:`\\Phi_k`, already
+          integrated over their spectral bin.
+        - ``'flux_density'``: values are densities
+          :math:`\\partial\\Phi/\\partial\\left[E \\mid \\lambda\\right]`, which get
+          multiplied by the bin widths internally.
+
+        The chosen convention is logged at construction time, because silently
+        reusing a projector on data of the other kind produces a plausible-looking
+        but wrong image.
     wavelength_min_mappable : float
         Short-wavelength limit (nm) of the visible range to map onto.
         The highest input bin maps to this wavelength. Default: 440 nm.
@@ -401,22 +417,10 @@ class SpectrumToRGBProjector:
         The lowest input bin maps to this wavelength. Default: 640 nm.
     """
 
-    _input_spectrum_bin_lower = None
-    _input_spectrum_bin_upper = None
-    _input_spectrum_bin_widths = None
-    _input_spectrum_relative_bin_widths = None
+    _FLUX_CONVENTIONS = ('bin_integrated_flux', 'flux_density')
+    _HIGHLIGHT_MODES = ('clamp', 'clip_channels')
 
-    _spectral_axis_type = None
-    _visible_bin_width = None
-    _input_saturation_flux = None
-
-    _visible_spectrum_bin_lower_wavelengths = None
-    _visible_spectrum_bin_upper_wavelengths = None
-    _visible_spectrum_bin_widths = None
-
-    _visible_spectrum_bin_flux_to_XYZ_mapping_tensor = None
-
-    def __init__(self, spectral_axis_type, visible_bin_width,
+    def __init__(self, spectral_axis_type, visible_bin_width, flux_convention,
                  wavelength_min_mappable=440., wavelength_max_mappable=640.):
         if spectral_axis_type not in ('energy', 'wavelength'):
             raise ValueError("spectral_axis_type must be 'energy' or 'wavelength'")
@@ -424,15 +428,50 @@ class SpectrumToRGBProjector:
         if visible_bin_width not in ('uniform', 'proportional'):
             raise ValueError("visible_bin_width must be 'uniform' or 'proportional'")
         self._visible_bin_width = visible_bin_width
+        if flux_convention not in self._FLUX_CONVENTIONS:
+            raise ValueError("flux_convention must be one of "
+                             f"{self._FLUX_CONVENTIONS}")
+        self._flux_convention = flux_convention
         self._WAVELENGTH_MIN_MAPPABLE = self._check_pos_scalar(
             wavelength_min_mappable, "wavelength_min_mappable")
         self._WAVELENGTH_MAX_MAPPABLE = self._check_pos_scalar(
             wavelength_max_mappable, "wavelength_max_mappable")
 
+        # --- input spectrum bins ---
+        self._input_spectrum_bin_lower = None
+        self._input_spectrum_bin_upper = None
+        self._input_spectrum_bin_widths = None
+        self._input_spectrum_relative_bin_widths = None
+
+        # --- visible spectrum bins ---
+        self._visible_spectrum_bin_lower_wavelengths = None
+        self._visible_spectrum_bin_upper_wavelengths = None
+        self._visible_spectrum_bin_widths = None
+        self._visible_spectrum_bin_flux_to_XYZ_mapping_tensor = None
+
+        # --- display transform ---
+        self._luminance_black = None
+        self._luminance_white = None
+        self._highlights = 'clamp'
+        self._log_compression = False
+
+        # --- state recorded by the last projection ---
+        self._last_transform = None   # (black, white, log, highlights)
+        self._last_flux_range = None  # (min, min_positive, max)
+        self._last_color_map_levels = None
+        self._auto_white_point_warned = False
+
+        logger.info("SpectrumToRGBProjector: interpreting input as %s",
+                    "bin-integrated flux" if flux_convention == 'bin_integrated_flux'
+                    else "spectral flux density")
+
     # --- Bin specification ---
 
     def specify_input_spectrum_bins_via_bin_boundaries(self, lower, upper):
         """Specify input spectral bins by their lower and upper boundaries.
+
+        Discards any luminance range, tone curve state and cached colour map, since
+        those are only meaningful relative to a fixed set of bins.
 
         Parameters
         ----------
@@ -465,6 +504,7 @@ class SpectrumToRGBProjector:
             if not np.allclose(widths, self._input_spectrum_bin_widths):
                 raise ValueError("inconsistent bin definition — did you call multiple "
                                  "bin specification methods?")
+        self._invalidate_derived_state()
 
     def specify_input_spectrum_bins_via_center_and_width(self, centers, widths):
         """Specify input bins by their center coordinates and widths.
@@ -485,205 +525,470 @@ class SpectrumToRGBProjector:
         self.specify_input_spectrum_bins_via_bin_boundaries(
             centers - widths / 2., centers + widths / 2.)
 
-    # --- White-point specification ---
+    def _invalidate_derived_state(self):
+        self._visible_spectrum_bin_flux_to_XYZ_mapping_tensor = None
+        self._luminance_black = None
+        self._luminance_white = None
+        self._last_transform = None
+        self._last_flux_range = None
+        self._last_color_map_levels = None
 
-    def set_saturation_flux(self, saturation_flux):
-        """Fix the white point as a total (spectrally integrated) flux value.
+    # --- Luminance converters (pure: no state is modified) ---
+
+    def luminance_of_spectrum(self, spectrum):
+        """Return the luminance Y that a given spectrum is rendered with.
+
+        The spectrum is interpreted according to this projector's
+        ``flux_convention``.  This is the intended way to turn a physical
+        specification into the luminance values understood by
+        :meth:`set_luminance_range`, e.g.::
+
+            # white point: a flat spectrum carrying a total flux of F
+            widths = ...   # the bin widths handed to specify_input_spectrum_bins_*
+            flat = F*widths/widths.sum()    # 'bin_integrated_flux' convention
+            flat = np.full(n_bins, F/widths.sum())      # 'flux_density' convention
+            proj.set_luminance_range(white=proj.luminance_of_spectrum(flat))
 
         Parameters
         ----------
-        saturation_flux : float
-            Total flux that defines the upper saturation (white) point.
+        spectrum : array-like
+            Spectrum with the spectral axis last; leading axes are allowed.
+
+        Returns
+        -------
+        float or numpy.ndarray
+            Luminance of each spectrum.
         """
-        self._input_saturation_flux = float(
-            self._check_pos_scalar(saturation_flux, "saturation_flux"))
+        spectrum = np.asarray(spectrum, dtype=float)
+        self._check_spectral_shape(spectrum)
+        self._ensure_mapping_tensor()
+        return self._transform_input_flux_to_XYZ(spectrum)[..., 1]
 
-    def set_saturation_flux_density(self, saturation_flux_density, spectral_denseness):
-        """Fix the white point via a flux density and an estimate of spectral filling.
+    def luminance_quantiles(self, data, q=(0.01, 0.99)):
+        """Return luminance quantiles of a sample spatio-spectral image.
 
-        Because brightness perception scales with total flux, not flux density, we need
-        to know over what spectral range to integrate. ``spectral_denseness`` encodes
-        this: use ~1.0 for flat spectra and ~1/(peak width) for strongly peaked ones.
+        Every pixel of ``data`` is converted to a luminance, and the requested
+        quantiles of the resulting distribution are returned.  This is the natural
+        way to pick a display range: it asks the data where its interesting
+        luminances lie rather than requiring the caller to guess absolute values.
 
-        Requires that bin widths have already been specified.
+        Non-positive luminances (zero or negative) are excluded before quantiling.
+        Masked or zero-padded fields are frequently majority-zero, which would
+        otherwise pin the lower quantile to exactly zero and make log compression
+        fail far away from its cause.
 
         Parameters
         ----------
-        saturation_flux_density : float
-            Flux density defining the upper saturation point.
-        spectral_denseness : float in (0, 1]
-            Fraction of the spectral domain that is effectively filled by the source.
+        data : array-like
+            Spatio-spectral data with the spectral axis last, interpreted according
+            to this projector's ``flux_convention``.
+        q : pair of float
+            Lower and upper quantile in [0, 1]. Default: (0.01, 0.99).
+
+            Note that log rendering usually wants a considerably higher lower
+            quantile (~0.3-0.5, near the background level of the image) than the
+            default, which is chosen to be unsurprising for linear rendering.
+
+        Returns
+        -------
+        (float, float)
+            Luminance at the lower and upper quantile.
         """
-        saturation_flux_density = float(
-            self._check_pos_scalar(saturation_flux_density, "saturation_flux_density"))
-        if not self._is_scalar(spectral_denseness):
-            raise ValueError("spectral_denseness must be a scalar")
-        if not (0. < spectral_denseness <= 1.):
-            raise ValueError("spectral_denseness must be in (0, 1]")
-        if self._input_spectrum_bin_widths is None:
-            raise RuntimeError("specify bin widths before calling set_saturation_flux_density")
-        self._input_saturation_flux = (saturation_flux_density
-                                       * spectral_denseness
-                                       * np.sum(self._input_spectrum_bin_widths))
+        q_low, q_high = (float(qq) for qq in q)
+        if not (0. <= q_low < q_high <= 1.):
+            raise ValueError("q must be a pair (q_low, q_high) with "
+                             "0 <= q_low < q_high <= 1")
+        Y = np.asarray(self.luminance_of_spectrum(data)).ravel()
+        positive = Y > 0.
+        n_dropped = Y.size - int(np.count_nonzero(positive))
+        if n_dropped == Y.size:
+            raise ValueError("no positive luminances in the given data")
+        if n_dropped > 0.1*Y.size:
+            logger.warning(
+                "luminance_quantiles: %d of %d pixels (%.0f%%) have non-positive "
+                "luminance and were excluded from the quantile computation",
+                n_dropped, Y.size, 100.*n_dropped/Y.size)
+        return tuple(float(v) for v in np.quantile(Y[positive], (q_low, q_high)))
+
+    # --- Display transform specification ---
+
+    def set_luminance_range(self, *, white, black=None, dynamic_range=None,
+                            highlights='clamp'):
+        """Fix the luminance range that is mapped onto the displayable range.
+
+        Luminance ``black`` is rendered black, luminance ``white`` is rendered at
+        full brightness, and the tone curve in between is linear unless
+        :meth:`use_log_compression` has been enabled.
+
+        The arguments are keyword-only on purpose: :meth:`luminance_quantiles`
+        returns ``(low, high)`` while this method reads ``white`` first, so a
+        positional API would make ``set_luminance_range(*proj.luminance_quantiles(x))``
+        silently swap the black and white points.
+
+        Parameters
+        ----------
+        white : float
+            Luminance rendered at full brightness. Typically obtained from
+            :meth:`luminance_of_spectrum` or :meth:`luminance_quantiles`.
+        black : float or None
+            Luminance rendered black. ``None`` (default) means no black point,
+            i.e. 0. Mutually exclusive with ``dynamic_range``.
+        dynamic_range : float or None
+            Alternative way to place the black point, as ``white/dynamic_range``.
+            Mutually exclusive with ``black``.
+        highlights : {'clamp', 'clip_channels'}
+            What happens above the white point.
+
+            - ``'clamp'`` *(default)*: luminance is clamped, which preserves
+              chromaticity — over-bright pixels keep their hue and lose detail.
+            - ``'clip_channels'``: luminance is left unclamped and the individual
+              sRGB channels clip independently, which shifts hue as a pixel blows
+              out, the way a camera sensor does.
+        """
+        white = float(self._check_pos_scalar(white, "white"))
+        if black is not None and dynamic_range is not None:
+            raise ValueError("give at most one of black and dynamic_range — they are "
+                             "two ways of specifying the same quantity")
+        if dynamic_range is not None:
+            dynamic_range = float(self._check_pos_scalar(dynamic_range, "dynamic_range"))
+            if dynamic_range <= 1.:
+                raise ValueError("dynamic_range must be > 1")
+            black = white/dynamic_range
+        elif black is None:
+            black = 0.
+        else:
+            if not self._is_scalar(black):
+                raise ValueError("black must be a scalar")
+            black = float(black)
+            if black < 0.:
+                raise ValueError("black must be non-negative")
+        if black >= white:
+            raise ValueError("black point luminance must be smaller than the white "
+                             f"point luminance (got black={black}, white={white})")
+        if highlights not in self._HIGHLIGHT_MODES:
+            raise ValueError(f"highlights must be one of {self._HIGHLIGHT_MODES}")
+
+        self._luminance_black = black
+        self._luminance_white = white
+        self._highlights = highlights
+
+    def use_log_compression(self, enabled=True):
+        """Switch logarithmic compression of the luminance range on or off.
+
+        With log compression the tone curve is
+        ``log(Y/Y_black)/log(Y_white/Y_black)`` instead of the linear
+        ``(Y - Y_black)/(Y_white - Y_black)``.  A black point is then mandatory;
+        projecting without one raises.
+        """
+        self._log_compression = bool(enabled)
+
+    @property
+    def luminance_range(self):
+        """(black, white) luminance pair, or None if it was never set."""
+        if self._luminance_white is None:
+            return None
+        return (self._luminance_black, self._luminance_white)
+
+    @property
+    def flux_convention(self):
+        """Physical convention of the data this projector expects."""
+        return self._flux_convention
 
     # --- Projection ---
 
-    def project_spectral_flux_density(self, spectral_flux_density, saturation_via='luminance',
-                                      dynamic_range=None, XYZ_inspect_callback=None):
-        """Project spectral flux density data to sRGB perceived colors.
+    def project(self, data, XYZ_inspect_callback=None):
+        """Project spatio-spectral data to sRGB perceived colors.
 
-        Multiplies each bin's density value by its width to obtain total bin flux,
-        then delegates to :meth:`project_total_spectral_bin_flux`.
+        The data is interpreted according to this projector's ``flux_convention``.
 
         Parameters
         ----------
-        spectral_flux_density : numpy.ndarray
-            Flux density values; spectral axis must be last.
-        saturation_via : {'luminance', 'retinal cone response'}
-            Saturation model. Default: 'luminance'.
-        dynamic_range : float or None
-            If set, applies log tone-mapping on luminance after saturation,
-            compressing the range [saturation/dynamic_range, saturation] to [0, 1].
-            None (default) uses linear saturation only.
+        data : array-like
+            Data with the spectral axis last.
         XYZ_inspect_callback : callable or None
-            Called as ``fn(XYZ_raw, XYZ_saturated)`` for inspection. Default: None.
+            Called as ``fn(XYZ_raw, XYZ_tone_mapped)`` for inspection. Default: None.
 
         Returns
         -------
         numpy.ndarray
             sRGB values in [0, 1]; last axis has length 3.
         """
-        self._pre_projection_checks(spectral_flux_density)
-        broadcast_sl = (None,) * (spectral_flux_density.ndim - 1) + (slice(None),)
-        total_spectral_bin_flux = (spectral_flux_density
-                                   * self._input_spectrum_bin_widths[broadcast_sl])
-        return self.project_total_spectral_bin_flux(
-            total_spectral_bin_flux,
-            saturation_via=saturation_via,
-            dynamic_range=dynamic_range,
-            XYZ_inspect_callback=XYZ_inspect_callback)
+        data = np.asarray(data, dtype=float)
+        self._pre_projection_checks(data)
 
-    def project_total_spectral_bin_flux(self, total_spectral_bin_flux, saturation_via='luminance',
-                                        dynamic_range=None, XYZ_inspect_callback=None):
-        """Project total spectral bin flux data to sRGB perceived colors.
+        XYZ_data = self._transform_input_flux_to_XYZ(data)
+        Y = XYZ_data[..., 1]
 
-        Parameters
-        ----------
-        total_spectral_bin_flux : numpy.ndarray
-            Total flux per bin; spectral axis must be last.
-        saturation_via : {'luminance', 'retinal cone response'}
-            Saturation model. Default: 'luminance'.
-        dynamic_range : float or None
-            If set, applies log tone-mapping on luminance after saturation,
-            compressing the range [saturation/dynamic_range, saturation] to [0, 1].
-            None (default) uses linear saturation only.
-        XYZ_inspect_callback : callable or None
-            Called as ``fn(XYZ_raw, XYZ_saturated)`` for inspection. Default: None.
-
-        Returns
-        -------
-        numpy.ndarray
-            sRGB values in [0, 1]; last axis has length 3.
-        """
-        self._pre_projection_checks(total_spectral_bin_flux)
-
-        XYZ_data = self._transform_visible_spectrum_bin_flux_to_XYZ(total_spectral_bin_flux)
-
-        saturation_reference = None if self._input_saturation_flux is None else \
-            self._input_saturation_flux * self._input_spectrum_relative_bin_widths
-
-        if saturation_via == 'luminance':
-            saturation_fn = self._apply_luminance_saturation
-        elif saturation_via == 'retinal cone response':
-            saturation_fn = self._apply_cone_response_saturation
+        if self._luminance_white is None:
+            white = float(np.max(Y))
+            black = 0.
+            white_point_origin = "auto, from data maximum"
+            if not self._auto_white_point_warned:
+                self._auto_white_point_warned = True
+                logger.warning(
+                    "No luminance range set: the white point is taken from the maximum "
+                    "luminance of each projected image, so renderings from separate "
+                    "calls are NOT comparable with each other. Call "
+                    "set_luminance_range(white=..., black=...) to fix the mapping.")
         else:
-            raise ValueError(f"Unknown saturation mode '{saturation_via}'; "
-                             "expected 'luminance' or 'retinal cone response'")
+            black, white = self._luminance_black, self._luminance_white
+            white_point_origin = "explicit"
 
-        XYZ_saturated = saturation_fn(XYZ_data, saturation_reference)
+        if self._log_compression and black <= 0.:
+            raise ValueError(
+                "log compression requires a black point, but none is set. Pass "
+                "black=... or dynamic_range=... to set_luminance_range().")
+        if white <= black:
+            if white == 0.:
+                # all-zero input under an auto white point: nothing to normalise
+                return np.zeros(data.shape[:-1] + (3,))
+            raise ValueError("white point luminance must exceed the black point")
 
-        if dynamic_range is not None:
-            XYZ_saturated = self._apply_log_tone_mapping(XYZ_saturated, dynamic_range)
+        logger.info("project(): black=%.4g white=%.4g (%s), curve=%s, highlights=%s",
+                    black, white, white_point_origin,
+                    "log" if self._log_compression else "linear", self._highlights)
+
+        self._last_transform = (black, white, self._log_compression, self._highlights)
+        self._last_flux_range = self._flux_range_of(data)
+
+        XYZ_mapped = self._apply_tone_curve(XYZ_data, black, white,
+                                            self._log_compression, self._highlights)
 
         if XYZ_inspect_callback is not None:
             if not callable(XYZ_inspect_callback):
                 raise TypeError("XYZ_inspect_callback must be callable")
-            XYZ_inspect_callback(XYZ_data, XYZ_saturated)
+            XYZ_inspect_callback(XYZ_data, XYZ_mapped)
 
-        return ColorSpaceTools.embed_XYZ_perceived_color_in_sRGB(XYZ_saturated)
-
-    # --- Saturation implementations ---
-
-    def _apply_luminance_saturation(self, XYZ_data, reference_bin_flux_spectrum=None):
-        """Normalise XYZ by a reference luminance so that Y ∈ [0, 1].
-
-        Parameters
-        ----------
-        XYZ_data : numpy.ndarray
-            Raw XYZ values to normalise.
-        reference_bin_flux_spectrum : numpy.ndarray or None
-            If given, derive the saturation luminance from the Y value this
-            spectrum produces. Otherwise use the maximum Y in XYZ_data.
-        """
-        if reference_bin_flux_spectrum is None:
-            saturation_luminance = np.max(XYZ_data[..., 1])
-        else:
-            XYZ_reference = self._transform_visible_spectrum_bin_flux_to_XYZ(
-                reference_bin_flux_spectrum)
-            saturation_luminance = XYZ_reference[1]
-        if saturation_luminance == 0.:
-            return XYZ_data  # all-zero input, nothing to normalise
-        return XYZ_data / saturation_luminance
-
-    def _apply_cone_response_saturation(self, XYZ_data, reference_bin_flux_spectrum=None):
-        """Normalise in LMS (retinal cone) space, then convert back to XYZ.
-
-        Parameters
-        ----------
-        XYZ_data : numpy.ndarray
-            Raw XYZ values to normalise.
-        reference_bin_flux_spectrum : numpy.ndarray or None
-            If given, derive the per-channel LMS saturation from this spectrum.
-            Otherwise use the maximum per-channel LMS value in LMS_data.
-        """
-        LMS_data = ColorSpaceTools.XYZ_to_LMS(XYZ_data)
-
-        if reference_bin_flux_spectrum is None:
-            saturation_LMS = np.array([np.max(LMS_data[..., i]) for i in range(3)])
-        else:
-            ref = reference_bin_flux_spectrum[np.newaxis, :]
-            reference_XYZ = self._transform_visible_spectrum_bin_flux_to_XYZ(ref)
-            saturation_LMS = ColorSpaceTools.XYZ_to_LMS(reference_XYZ)[0]
-
-        broadcast_sl = (None,) * (LMS_data.ndim - 1) + (slice(None),)
-        LMS_data = LMS_data / saturation_LMS[broadcast_sl]
-        return ColorSpaceTools.LMS_to_XYZ(LMS_data.clip(0., 1.))
+        return ColorSpaceTools.embed_XYZ_perceived_color_in_sRGB(XYZ_mapped)
 
     # --- Tone mapping ---
 
-    def _apply_log_tone_mapping(self, XYZ_data, dynamic_range):
-        """Apply log-scale tone mapping to the luminance channel.
+    def _apply_tone_curve(self, XYZ_data, black, white, log_compression, highlights):
+        """Map luminance onto [0, 1] while preserving chromaticity.
 
-        Scales all XYZ channels by log(Y)/Y, preserving chromaticity while
-        compressing the luminance from a linear to a log scale.
+        All three XYZ channels are scaled by ``L/Y``, so only brightness changes.
+        The black end always clamps at 0; the white end clamps at 1 only for
+        ``highlights='clamp'``.
+        """
+        Y = XYZ_data[..., 1]
+        if log_compression:
+            L = np.log(np.maximum(Y, black)/black)/np.log(white/black)
+        else:
+            L = (Y - black)/(white - black)
+        L = np.maximum(L, 0.)
+        if highlights == 'clamp':
+            L = np.minimum(L, 1.)
+        scale = np.where(Y > 0., L/np.where(Y > 0., Y, 1.), 0.)
+        return XYZ_data*scale[..., np.newaxis]
+
+    def _flux_range_of(self, data):
+        """Record (min, smallest positive, max) of the fluxes actually seen."""
+        positive = data[data > 0.]
+        min_positive = float(np.min(positive)) if positive.size else None
+        return (float(np.min(data)), min_positive, float(np.max(data)))
+
+    # --- Colour map ---
+
+    def get_color_map_image(self, levels=None, n_levels=128):
+        """Return an sRGB image showing the color assigned to each spectral bin.
+
+        Produces a 2-D image of shape ``(n_levels, n_bins, 3)``. Row ``i``, column
+        ``k`` shows how a monochromatic spectrum carrying flux ``levels[i]`` in bin
+        ``k`` alone is rendered — nothing more and nothing less.
+
+        Note that no per-column rescaling takes place: the luminance produced per
+        unit flux varies by roughly a factor of ten across the visible range, so a
+        mid-spectrum column genuinely is much brighter than a column at either end
+        at the same flux, and columns reach the white point at different heights.
+        That is what the projection does, so that is what this legend shows.
+
+        The tone curve is taken from the most recent :meth:`project` call (falling
+        back to an explicitly set luminance range), which is what keeps this legend
+        consistent with the image it accompanies.
 
         Parameters
         ----------
-        XYZ_data : numpy.ndarray
-            XYZ values with Y expected in [0, 1] after saturation normalisation.
-        dynamic_range : float
-            Ratio of the white-point luminance to the black-point luminance.
-            Pixels below Y = 1/dynamic_range are rendered black.
+        levels : array-like, 1-D, or None
+            Flux levels to sample, in this projector's ``flux_convention``.
+            ``None`` (default) spans the flux range of the most recently projected
+            data with ``n_levels`` samples, and warns — the resulting levels are
+            rarely the round, domain-appropriate numbers a reader wants.
+        n_levels : int
+            Number of rows generated when ``levels`` is None. Default: 128.
 
         Returns
         -------
         numpy.ndarray
-            Tone-mapped XYZ values.
+            Shape ``(n_levels, n_bins, 3)`` of sRGB values in [0, 1].
         """
-        Y = XYZ_data[..., 1:2]  # shape (..., 1) for broadcasting across X, Y, Z
-        Y_log = self._to_logscale(Y, 1. / dynamic_range, 1.)
-        scale = np.where(Y > 0, Y_log / np.where(Y > 0, Y, 1.), 0.)
-        return XYZ_data * scale
+        black, white, log_compression, highlights = self._effective_transform()
+        self._ensure_mapping_tensor()
+
+        if levels is None:
+            levels = self._default_color_map_levels(n_levels, log_compression)
+        levels = np.asarray(levels, dtype=float)
+        if levels.ndim != 1:
+            raise ValueError("levels must be a 1-D array")
+        if levels.size == 0:
+            raise ValueError("levels must not be empty")
+        if np.any(levels < 0.):
+            raise ValueError("levels must be non-negative")
+
+        n_bins = len(self._input_spectrum_bin_lower)
+        probe = np.eye(n_bins)[np.newaxis, :, :]*levels[:, np.newaxis, np.newaxis]
+        XYZ = self._transform_input_flux_to_XYZ(probe)
+        XYZ = self._apply_tone_curve(XYZ, black, white, log_compression, highlights)
+        self._last_color_map_levels = levels
+        return ColorSpaceTools.embed_XYZ_perceived_color_in_sRGB(XYZ)
+
+    def _effective_transform(self):
+        """The tone curve the colour map should use: last projected, else explicit."""
+        if self._last_transform is not None:
+            return self._last_transform
+        if self._luminance_white is None:
+            raise RuntimeError(
+                "no tone curve available — call project() or set_luminance_range() "
+                "before generating a colour map")
+        if self._log_compression and self._luminance_black <= 0.:
+            raise ValueError(
+                "log compression requires a black point, but none is set. Pass "
+                "black=... or dynamic_range=... to set_luminance_range().")
+        return (self._luminance_black, self._luminance_white,
+                self._log_compression, self._highlights)
+
+    def _default_color_map_levels(self, n_levels, log_compression):
+        if self._last_flux_range is None:
+            raise RuntimeError(
+                "colour map levels can only be derived from previously projected data "
+                "— call project() first, or pass levels= explicitly")
+        n_levels = int(n_levels)
+        if n_levels < 2:
+            raise ValueError("n_levels must be at least 2")
+        flux_min, flux_min_positive, flux_max = self._last_flux_range
+        logger.warning(
+            "get_color_map_image(): levels default to the flux range of the last "
+            "projected data; pass levels= to label the colour map with round, "
+            "domain-appropriate flux values.")
+        if log_compression:
+            if flux_min_positive is None:
+                raise ValueError("no positive fluxes in the last projected data")
+            return np.geomspace(flux_min_positive, flux_max, n_levels)
+        return np.linspace(flux_min, flux_max, n_levels)
+
+    def get_color_map_ticks(self, n_ticks=5, extent=None):
+        """Return tick positions and labels for the last generated colour map.
+
+        Picks round flux values inside the range of the levels most recently passed
+        to (or generated by) :meth:`get_color_map_image` and returns where they sit
+        along the level axis.  ``n_ticks`` is a *target*, not a guarantee: round
+        numbers do not generally land exactly ``n_ticks`` times in a given range.
+
+        Parameters
+        ----------
+        n_ticks : int
+            Desired number of ticks. Default: 5.
+        extent : pair of float or None
+            Data coordinates of the first and last level of the colour map image.
+            ``None`` (default) assumes ``[0, n_levels-1]``, i.e. pixel indices.
+
+        Returns
+        -------
+        (numpy.ndarray, list of str)
+            Tick positions in data coordinates, and their formatted labels.
+        """
+        levels = self._last_color_map_levels
+        if levels is None:
+            raise RuntimeError("call get_color_map_image() before requesting ticks")
+        n_ticks = int(n_ticks)
+        if n_ticks < 2:
+            raise ValueError("n_ticks must be at least 2")
+
+        lo, hi = float(levels[0]), float(levels[-1])
+        log_spaced = lo > 0. and self._last_color_map_is_log_spaced(levels)
+        values = self._round_tick_values(lo, hi, n_ticks, log_spaced)
+        if len(values) == 0:
+            values = np.array([lo, hi])
+
+        if extent is None:
+            extent = (0., float(len(levels) - 1))
+        start, stop = float(extent[0]), float(extent[1])
+        idx = np.interp(values, levels, np.arange(len(levels), dtype=float))
+        if len(levels) > 1:
+            positions = start + idx*(stop - start)/(len(levels) - 1)
+        else:
+            positions = np.full(len(values), start)
+        return positions, [self._format_tick(v) for v in values]
+
+    def apply_color_map_ticks(self, ax, axis='y', n_ticks=5):
+        """Set round-numbered flux ticks on a matplotlib axis showing a colour map.
+
+        Reads the image extent back off ``ax``, so whatever ``extent`` and
+        ``origin`` were used when displaying the colour map are respected.
+
+        Parameters
+        ----------
+        ax : matplotlib.axes.Axes
+            Axis that the colour map image was drawn into.
+        axis : {'y', 'x'}
+            Which axis the level (flux) dimension was drawn along. Default: 'y'.
+        n_ticks : int
+            Desired number of ticks. Default: 5.
+        """
+        if axis not in ('x', 'y'):
+            raise ValueError("axis must be 'x' or 'y'")
+        images = ax.get_images()
+        if not images:
+            raise RuntimeError("the given axis contains no image")
+        left, right, bottom, top = images[-1].get_extent()
+        extent = (bottom, top) if axis == 'y' else (left, right)
+        positions, labels = self.get_color_map_ticks(n_ticks=n_ticks, extent=extent)
+        if axis == 'y':
+            ax.set_yticks(positions)
+            ax.set_yticklabels(labels)
+        else:
+            ax.set_xticks(positions)
+            ax.set_xticklabels(labels)
+        return positions, labels
+
+    @staticmethod
+    def _last_color_map_is_log_spaced(levels):
+        if len(levels) < 3 or levels[0] <= 0.:
+            return False
+        ratios = levels[1:]/levels[:-1]
+        return bool(np.allclose(ratios, ratios[0]))
+
+    @staticmethod
+    def _round_tick_values(lo, hi, n_target, log_spaced):
+        """Round numbers inside [lo, hi], aiming for roughly n_target of them."""
+        if hi <= lo:
+            return np.array([lo])
+        if log_spaced:
+            exp_lo, exp_hi = np.log10(lo), np.log10(hi)
+            for mantissas in ([1.], [1., 3.], [1., 2., 5.], [1., 2., 3., 5., 7.]):
+                candidates = np.array(
+                    [m*10.**e for e in np.arange(np.floor(exp_lo), np.ceil(exp_hi) + 1)
+                     for m in mantissas])
+                candidates = np.sort(candidates[(candidates >= lo) & (candidates <= hi)])
+                if len(candidates) >= n_target:
+                    return candidates
+            return candidates
+        raw_step = (hi - lo)/(n_target - 1)
+        magnitude = 10.**np.floor(np.log10(raw_step))
+        for factor in (1., 2., 2.5, 5., 10.):
+            step = factor*magnitude
+            if step >= raw_step:
+                break
+        first = np.ceil(lo/step)*step
+        return np.arange(first, hi + 0.5*step, step)
+
+    @staticmethod
+    def _format_tick(value):
+        if value == 0.:
+            return "0"
+        exponent = np.log10(abs(value))
+        if -3. <= exponent < 4.:
+            return f"{value:g}"
+        return f"{value:.0e}".replace("e-0", "e-").replace("e+0", "e")
 
     # --- Visible-spectrum bin mapping ---
 
@@ -763,75 +1068,35 @@ class SpectrumToRGBProjector:
             within_bin_wavelengths)
         self._visible_spectrum_bin_flux_to_XYZ_mapping_tensor = np.mean(XYZ_samples, axis=1)
 
-    def _transform_visible_spectrum_bin_flux_to_XYZ(self, vis_bin_flux):
-        return np.tensordot(vis_bin_flux,
+    def _ensure_mapping_tensor(self):
+        if self._input_spectrum_bin_widths is None:
+            raise RuntimeError("specify spectral bins first")
+        if self._visible_spectrum_bin_flux_to_XYZ_mapping_tensor is None:
+            self._generate_visible_spectrum_bin_flux_to_XYZ_mapping_tensor()
+
+    def _transform_input_flux_to_XYZ(self, data):
+        """Convert input data (in this projector's flux convention) to XYZ."""
+        if self._flux_convention == 'flux_density':
+            broadcast_sl = (None,)*(data.ndim - 1) + (slice(None),)
+            data = data*self._input_spectrum_bin_widths[broadcast_sl]
+        return np.tensordot(data,
                             self._visible_spectrum_bin_flux_to_XYZ_mapping_tensor,
                             axes=(-1, 0))
 
     # --- Pre-flight checks ---
 
-    def _pre_projection_checks(self, input_data):
+    def _check_spectral_shape(self, data):
         if self._input_spectrum_bin_widths is None:
             raise RuntimeError("specify spectral bins before projecting")
+        if data.ndim == 0 or data.shape[-1] != self._input_spectrum_bin_lower.shape[0]:
+            raise ValueError("last dimension of input does not match number of "
+                             "spectral bins")
+
+    def _pre_projection_checks(self, input_data):
+        self._check_spectral_shape(input_data)
         if np.any(input_data < 0.):
             raise ValueError("fluxes and flux densities must be non-negative")
-        if input_data.shape[-1] != self._input_spectrum_bin_lower.shape[0]:
-            raise ValueError("last dimension of input does not match number of spectral bins")
-        if self._visible_spectrum_bin_flux_to_XYZ_mapping_tensor is None:
-            self._generate_visible_spectrum_bin_flux_to_XYZ_mapping_tensor()
-
-    # --- Utilities ---
-
-    def _to_logscale(self, arr, vmin, vmax):
-        res = arr.clip(vmin, vmax)
-        res = np.log(res / vmin)
-        res /= np.log(vmax / vmin)
-        return res
-
-    def get_color_map_image(self, total_flux_levels=None, flux_density_levels=None,
-                            saturation_via='luminance'):
-        """Return an sRGB image showing the color assigned to each spectral bin.
-
-        Produces a 2-D image of shape ``(n_levels, n_bins, 3)`` where each row
-        corresponds to one flux level and each column to one input bin with a
-        monochromatic (one-hot) spectrum at that level.  All other bins are zero.
-
-        Exactly one of ``total_flux_levels`` or ``flux_density_levels`` must be
-        provided.
-
-        Parameters
-        ----------
-        total_flux_levels : numpy.ndarray, 1-D or None
-            Total bin flux values at which to sample the color map.
-            Uses :meth:`project_total_spectral_bin_flux`.
-        flux_density_levels : numpy.ndarray, 1-D or None
-            Spectral flux density values at which to sample the color map.
-            Uses :meth:`project_spectral_flux_density`.
-        saturation_via : str
-            Saturation model passed to the projection method. Default: 'luminance'.
-
-        Returns
-        -------
-        numpy.ndarray
-            Shape ``(n_levels, n_bins, 3)`` of sRGB values in [0, 1].
-        """
-        if (total_flux_levels is None) == (flux_density_levels is None):
-            raise ValueError(
-                "provide exactly one of total_flux_levels or flux_density_levels")
-
-        if total_flux_levels is not None:
-            levels = np.asarray(total_flux_levels)
-            project = self.project_total_spectral_bin_flux
-        else:
-            levels = np.asarray(flux_density_levels)
-            project = self.project_spectral_flux_density
-
-        if levels.ndim != 1:
-            raise ValueError("flux levels must be a 1-D array")
-
-        n_bins = len(self._input_spectrum_bin_lower)
-        probe = np.eye(n_bins)[np.newaxis, :, :] * levels[:, np.newaxis, np.newaxis]
-        return project(probe, saturation_via=saturation_via)
+        self._ensure_mapping_tensor()
 
     # --- Scalar validation helpers ---
 

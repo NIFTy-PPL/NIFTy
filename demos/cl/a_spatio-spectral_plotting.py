@@ -44,8 +44,10 @@ directly::
 
     import nifty.cl as ift
     p = ift.Plot()
-    p.add(field, spectral_axis_type='energy', visible_bin_width='uniform',
-          dynamic_range=10)
+    p.add(field, color_mapping_kwargs=dict(
+        spectral_axis_type='energy', visible_bin_width='uniform',
+        flux_convention='bin_integrated_flux',
+        quantiles=(0.3, 0.999), log_compression=True))
     p.output(name='out.png')
 
 This demo instead builds a multi-panel figure manually to also show the
@@ -123,33 +125,49 @@ widths = np.full(n_spec, bin_width)
 proj = SpectrumToRGBProjector(
     spectral_axis_type='energy',
     visible_bin_width='uniform',
+    flux_convention='bin_integrated_flux',
 )
 proj.specify_input_spectrum_bins_via_center_and_width(centers, widths)
 
 # ---------------------------------------------------------------------------
+# Fix the displayed luminance range
+#
+# The range is asked of the data itself: the 30th percentile of the pixel
+# luminances becomes black, the 99.9th becomes white.  Fixing it as object
+# state (rather than letting each image normalise to its own maximum) is what
+# makes separate renderings comparable — and what makes the colour-map legend
+# below agree with the image.
+# ---------------------------------------------------------------------------
+black, white = proj.luminance_quantiles(signal.reshape(-1, n_spec),
+                                        q=(0.3, 0.999))
+proj.set_luminance_range(white=white, black=black)
+if use_log_compression:
+    proj.use_log_compression()
+
+# ---------------------------------------------------------------------------
 # Project spatio-spectral field to sRGB
 # ---------------------------------------------------------------------------
-rgb_flat = proj.project_total_spectral_bin_flux(
-    signal.reshape(-1, n_spec),
-    dynamic_range=10 if use_log_compression else None,
-)
-rgb_image = rgb_flat.reshape(nx, ny, 3)   # (nx, ny, 3)
+rgb_image = proj.project(signal.reshape(-1, n_spec)).reshape(nx, ny, 3)
 
 # ---------------------------------------------------------------------------
 # Colour map legend
 #
 # get_color_map_image returns (n_levels, n_spec, 3): each row is a flux level
-# (dim → bright) and each column is a spectral bin (red → blue).
+# (dim → bright) and each column is a spectral bin (red → blue).  Row i,
+# column k shows how a spectrum carrying flux levels[i] in bin k alone is
+# rendered — no per-column rescaling, so the fact that mid-spectrum bins are
+# intrinsically brighter than the red and blue ends stays visible.  The tone
+# curve is taken from the projection above.
+#
+# The levels deliberately reach far beyond the per-bin fluxes present in the
+# data: a pixel emitting in one bin only needs roughly 40 (green end) to 460
+# (blue end) flux units to reach the same luminance a 16-bin spectrum reaches
+# with ~2 per bin.  Picking levels is a domain decision, which is why the
+# projector asks for them rather than inventing a reference spectrum.
 # ---------------------------------------------------------------------------
-n_levels = 64
-cmap_max = 1.0
-if use_log_compression:
-    cmap_min = 1e-2
-    levels = np.geomspace(cmap_min, cmap_max, n_levels)
-else:
-    cmap_min = 0.0
-    levels = np.linspace(cmap_min, cmap_max, n_levels)
-colormap_image = proj.get_color_map_image(total_flux_levels=levels)
+levels = np.geomspace(1e0, 1e3, 64) if use_log_compression \
+    else np.linspace(0., 500., 64)
+colormap_image = proj.get_color_map_image(levels=levels)
 # shape: (n_levels, n_spec, 3)
 
 # ---------------------------------------------------------------------------
@@ -231,17 +249,9 @@ ax_cb.set_xlabel("spectral bin index", fontsize=9)
 ax_cb.set_ylabel("rel.\nflux", fontsize=7, rotation=0, labelpad=28)
 ax_cb.set_xticks(np.arange(1, n_spec + 1))
 ax_cb.tick_params(axis='x', labelsize=7)
-ax_cb.yaxis.set_ticks([0, 0.5, 1])
-if use_log_compression:
-    cmap_middle = np.exp((np.log(cmap_min) + np.log(cmap_max)) / 2)
-    fmt = lambda s: f'{s:1.1e}'
-else:
-    cmap_middle = (cmap_min + cmap_max) / 2
-    fmt = lambda s: f'{s:1.1f}'
-ax_cb.yaxis.set_ticklabels(
-    [fmt(s) for s in [cmap_min, cmap_middle, cmap_max]],
-    fontsize=7,
-)
+# Round-numbered flux ticks, positioned from the extent the image was drawn with
+proj.apply_color_map_ticks(ax_cb, axis='y', n_ticks=4)
+ax_cb.tick_params(axis='y', labelsize=7)
 
 fig.savefig("a_spatio-spectral_plotting.png", dpi=150, bbox_inches='tight')
 plt.show()
