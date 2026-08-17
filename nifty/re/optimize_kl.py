@@ -799,9 +799,9 @@ def optimize_kl(
     metadata : dict or None
         Optional entries stored alongside the optimization state in
         `last.pkl` (e.g. versions of downstream packages needed to
-        reproduce the run). The keys "format" and "nifty" are reserved;
-        they are always overwritten with the pickle-layout version and
-        the running nifty version.
+        reproduce the run). The entries are never interpreted by nifty. The
+        key "nifty" defaults to the running nifty version but is left
+        untouched if the caller sets it.
 
     Returns
     -------
@@ -852,18 +852,8 @@ def optimize_kl(
         if samples.pos is not None:
             logger.warning("overwriting `position_or_samples` with `resume`")
         with open(resume_fn, "rb") as f:
-            stored = pickle.load(f)
-        # Legacy states are `(samples, state)`; newer ones append a metadata
-        # dict `(samples, state, meta)`.
-        samples, opt_vi_st = stored[0], stored[1]
-        stored_meta = stored[2] if len(stored) > 2 else None
-        if stored_meta is not None:
-            stored_nifty = stored_meta.get("nifty")
-            if stored_nifty is not None and stored_nifty != _nifty_version():
-                logger.warning(
-                    f"resuming from a state written by nifty {stored_nifty}"
-                    f" with nifty {_nifty_version()}"
-                )
+            # Legacy states are `(samples, state)`
+            samples, opt_vi_st, *_ = pickle.load(f)
 
     opt_vi_st_init = opt_vi.init_state(
         key,
@@ -880,11 +870,8 @@ def optimize_kl(
     if len(opt_vi_st.config) == 0:  # resume or _optimize_vi_state has empty config
         opt_vi_st = opt_vi_st._replace(config=opt_vi_st_init.config)
 
-    # Stamp last: the stored versions must reflect the writing process even if
-    # the caller passed conflicting entries.
     meta = dict(metadata) if metadata is not None else {}
-    meta["format"] = 1
-    meta["nifty"] = _nifty_version()
+    meta.setdefault("nifty", _nifty_version())  # caller takes precedence
 
     if odir:
         makedirs(odir, exist_ok=True)
