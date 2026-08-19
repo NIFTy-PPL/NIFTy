@@ -44,7 +44,6 @@ covariance = jft.MaternCovarianceModel(
     Ninterp=32,
     mode="graphgp",
     prefix="dust_cov_",
-    enforce_monotonicity=False,
 )
 field = jft.GraphGPField(
     plan, covariance, mesh=mesh, prefix="dust_", offset=0.0

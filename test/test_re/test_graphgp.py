@@ -66,7 +66,6 @@ def test_modeled_covariance_jit_autodiff_and_metric():
         Ninterp=64,
         mode="graphgp",
         prefix="cov_",
-        enforce_monotonicity=False,
     )
     offset = jft.NormalPrior(0.0, 0.1, name="field_offset")
     field = jft.GraphGPField(

@@ -750,7 +750,7 @@ class MaternCovarianceKernel(IsotropicPowerSpectrumTransform):
         if self.enforce_nonnegativity:
             cov_vals = jnp.maximum(cov_vals, 0.0)
         if self.enforce_monotonicity:
-            cov_vals = jnp.minimum.accumulate(cov_vals)
+            cov_vals = jax.lax.associative_scan(jnp.minimum, cov_vals)
         return (cov_rs, cov_vals)
 
     def get_covariance_kernel_interpolator(
