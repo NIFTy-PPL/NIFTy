@@ -15,7 +15,6 @@ import jax
 import numpy as np
 from jax import numpy as jnp
 from jax import random
-from jax.sharding import Mesh, NamedSharding, PartitionSpec
 from jax.tree_util import Partial, tree_map
 
 
@@ -32,6 +31,7 @@ from .likelihood import Likelihood
 from .logger import logger
 from .minisanity import minisanity
 from .model import LazyModel
+from .sharding import ShardingLayout
 from .tree_math import get_map, hide_strings, vdot
 
 P = TypeVar("P")
@@ -94,7 +94,7 @@ def _kl_vg(
     *,
     map=jax.vmap,
     reduce=_reduce,
-    named_sharding=None,
+    sharding=None,
 ):
     assert isinstance(primals_samples, Samples)
     map = get_map(map)
@@ -104,9 +104,9 @@ def _kl_vg(
         return jax.value_and_grad(ham)(primals)
 
     vvg = map(jax.value_and_grad(ham))
-    if named_sharding is not None:
-        sharding_tree = tree_map(lambda x: named_sharding, primals)
-        out_sharding = (named_sharding, sharding_tree)
+    if sharding is not None:
+        sharding_tree = sharding.sample_shardings(primals)
+        out_sharding = (sharding.key_sharding, sharding_tree)
         in_sharding = (sharding_tree,)
         vvg = jax.jit(vvg, in_shardings=in_sharding, out_shardings=out_sharding)
 
@@ -122,8 +122,7 @@ def _kl_met(
     *,
     map=jax.vmap,
     reduce=_reduce,
-    named_sharding=None,
-    named_sharding_rep=None,
+    sharding=None,
 ):
     assert isinstance(primals_samples, Samples)
     map = get_map(map)
@@ -133,9 +132,9 @@ def _kl_met(
         return ham.metric(primals, tangents)
 
     vmet = map(ham.metric, in_axes=(0, None))
-    if named_sharding is not None:
-        sharding_tree = tree_map(lambda x: named_sharding, primals)
-        sharding_tree_rep = tree_map(lambda x: named_sharding_rep, tangents)
+    if sharding is not None:
+        sharding_tree = sharding.sample_shardings(primals)
+        sharding_tree_rep = sharding.position_shardings(tangents)
         out_sharding = sharding_tree
         in_sharding = (sharding_tree, sharding_tree_rep)
         vmet = jax.jit(vmet, in_shardings=in_sharding, out_shardings=out_sharding)
@@ -238,6 +237,7 @@ class OptimizeVI:
         kl_reduce=_reduce,
         mirror_samples=True,
         devices=None,
+        sharding: Optional[ShardingLayout] = None,
         _kl_value_and_grad: Optional[Callable] = None,
         _kl_metric: Optional[Callable] = None,
         _draw_linear_residual: Optional[Callable] = None,
@@ -293,6 +293,9 @@ class OptimizeVI:
             jax.devices(). The samples need to be evenly distributable over the
             devices. For a demo on how to use this feature see
             `a_demo_multi-gpu.py` in the demos folder.
+        sharding : ShardingLayout or None
+            Named mesh layout for combined sample and position sharding.
+            Mutually exclusive with ``devices``.
 
         Notes
         -----
@@ -312,12 +315,22 @@ class OptimizeVI:
         linear_minimizer_jit = _parse_jit(linear_minimizer_jit)
         nonlinear_minimizer_jit = _parse_jit(nonlinear_minimizer_jit)
         residual_map = get_map(residual_map)
-        self.named_sharding = None
-        self.named_sharding_rep = None
-        if (not devices is None) and len(devices) > 1:
-            mesh = Mesh(devices, ("x",))
-            self.named_sharding = NamedSharding(mesh, PartitionSpec("x"))
-            self.named_sharding_rep = NamedSharding(mesh, PartitionSpec())
+        if devices is not None and sharding is not None:
+            raise ValueError("devices and sharding are mutually exclusive")
+        if sharding is not None and not isinstance(sharding, ShardingLayout):
+            raise TypeError("sharding must be a ShardingLayout")
+        if devices is not None and len(devices) > 1:
+            from jax.sharding import Mesh
+
+            sharding = ShardingLayout(
+                Mesh(devices, ("x",)),
+                position_specs=None,
+                sample_axis="x",
+            )
+        self.sharding = sharding
+        # Kept as compatibility attributes for callers that inspected them.
+        self.named_sharding = None if sharding is None else sharding.key_sharding
+        self.named_sharding_rep = None if sharding is None else sharding.replicated
 
         if mirror_samples is False:
             raise NotImplementedError()
@@ -329,13 +342,13 @@ class OptimizeVI:
                     static_argnames=(
                         "map",
                         "reduce",
-                        "named_sharding",
+                        "sharding",
                     ),
                 ),
                 likelihood,
                 map=kl_map,
                 reduce=kl_reduce,
-                named_sharding=self.named_sharding,
+                sharding=self.sharding,
             )
         if _kl_metric is None:
             _kl_metric = partial(
@@ -344,15 +357,13 @@ class OptimizeVI:
                     static_argnames=(
                         "map",
                         "reduce",
-                        "named_sharding",
-                        "named_sharding_rep",
+                        "sharding",
                     ),
                 ),
                 likelihood,
                 map=kl_map,
                 reduce=kl_reduce,
-                named_sharding=self.named_sharding,
-                named_sharding_rep=self.named_sharding_rep,
+                sharding=self.sharding,
             )
         if _draw_linear_residual is None:
             _draw_linear_residual = partial(
@@ -394,38 +405,47 @@ class OptimizeVI:
         kwargs = hide_strings(kwargs)
         sampler = Partial(self.draw_linear_residual, **kwargs)
         sampler = self.residual_map(sampler, in_axes=(None, 0))
-        if self.named_sharding is None:
+        if self.sharding is None:
             smpls, smpls_states = sampler(primals, keys)
             # zip samples such that the mirrored-counterpart always comes right
             # after the original sample
             smpls = concatenate_zip(smpls, -smpls)
         else:
             n_samples = len(keys)
-            if n_samples == self.named_sharding.mesh.size / 2:
+            sample_axis_size = self.sharding.sample_axis_size
+            if (2 * n_samples) % sample_axis_size:
+                raise ValueError(
+                    "the mirrored sample count must be divisible by the "
+                    "sample-axis size"
+                )
+            if n_samples == sample_axis_size / 2:
                 keys = jnp.repeat(keys, 2, axis=0)
-            keys = jax.device_put(keys, self.named_sharding)
+            keys = jax.device_put(keys, self.sharding.key_sharding)
+
+            position_shardings = self.sharding.position_shardings(primals)
+            sample_shardings = self.sharding.sample_shardings(primals)
 
             # zip samples such that the mirrored-counterpart always comes right
             # after the original sample. out_shardings is need for telling JAX
             # not to move all samples to a single device.
-            @partial(jax.jit, out_shardings=self.named_sharding)
+            @partial(jax.jit, out_shardings=sample_shardings)
             def concatenate_zip_pmap(*arrays):
                 return tree_map(
                     lambda *x: jnp.stack(x, axis=1).reshape((-1,) + x[0].shape[1:]),
                     *arrays,
                 )
 
-            @partial(jax.jit, out_shardings=self.named_sharding)
+            @partial(jax.jit, out_shardings=sample_shardings)
             def _special_mirror_samples(samples):
-                return samples.at[1::2].set(-samples[1::2])
+                return tree_map(lambda x: x.at[1::2].set(-x[1::2]), samples)
 
             in_shardings = (
-                tree_map(lambda x: self.named_sharding_rep, primals),
-                self.named_sharding,
+                position_shardings,
+                self.sharding.key_sharding,
             )
             out_shardings = (
-                tree_map(lambda x: self.named_sharding, primals),
-                self.named_sharding,
+                sample_shardings,
+                self.sharding.key_sharding,
             )
             sampler = jax.jit(
                 sampler,
@@ -434,8 +454,8 @@ class OptimizeVI:
             )
 
             smpls, smpls_states = sampler(primals, keys)
-            if n_samples == self.named_sharding.mesh.size / 2:
-                smpls = tree_map(_special_mirror_samples, smpls)
+            if n_samples == sample_axis_size / 2:
+                smpls = _special_mirror_samples(smpls)
                 keys = keys[::2]  # undo jnp.repeat
             else:
                 smpls = concatenate_zip_pmap(smpls, -smpls)
@@ -453,17 +473,19 @@ class OptimizeVI:
         sgn = concatenate_zip(sgn, -sgn)
         curver = Partial(self.nonlinearly_update_residual, **kwargs)
         curver = self.residual_map(curver, in_axes=(None, 0, 0, 0))
-        if self.named_sharding is not None:
-            metric_sample_key = jax.device_put(metric_sample_key, self.named_sharding)
-            sgn = jax.device_put(sgn, self.named_sharding)
-            sharding_tree = tree_map(lambda x: self.named_sharding, samples.pos)
-            sharding_tree_rep = tree_map(lambda x: self.named_sharding_rep, samples.pos)
-            out_sharding = (sharding_tree, self.named_sharding)
+        if self.sharding is not None:
+            metric_sample_key = jax.device_put(
+                metric_sample_key, self.sharding.key_sharding
+            )
+            sgn = jax.device_put(sgn, self.sharding.key_sharding)
+            sharding_tree = self.sharding.sample_shardings(samples.pos)
+            sharding_tree_rep = self.sharding.position_shardings(samples.pos)
+            out_sharding = (sharding_tree, self.sharding.key_sharding)
             in_sharding = (
                 sharding_tree_rep,
                 sharding_tree,
-                self.named_sharding,
-                self.named_sharding,
+                self.sharding.key_sharding,
+                self.sharding.key_sharding,
             )
             curver = jax.jit(
                 curver, in_shardings=in_sharding, out_shardings=out_sharding
@@ -767,6 +789,7 @@ def optimize_kl(
     callback: Optional[Callable[[Samples, OptimizeVIState], None]] = None,
     odir: Optional[str] = None,
     devices: Optional[list] = None,
+    sharding: Optional[ShardingLayout] = None,
     _optimize_vi=None,
     _optimize_vi_state=None,
 ) -> tuple[Samples, OptimizeVIState]:
@@ -815,6 +838,7 @@ def optimize_kl(
             kl_reduce=kl_reduce,
             mirror_samples=mirror_samples,
             devices=devices,
+            sharding=sharding,
         )
 
     last_fn = os.path.join(odir, LAST_FILENAME) if odir is not None else None
