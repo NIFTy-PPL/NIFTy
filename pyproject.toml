@@ -36,6 +36,10 @@ re = [
     "jaxbind",
     "ducc0>=0.27.0",
 ]
+re_graphgp = [
+    "nifty[re]",
+    "graphgp>=0.1.0",
+]
 re_extra = [
     "optax",
     "blackjax",
