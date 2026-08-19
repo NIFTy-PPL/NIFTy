@@ -14,6 +14,8 @@ Change categories:
 
 # NIFTy.re
 - New features
+  - Add the optional `GraphGPField` adapter and `ShardingLayout` for combined
+    sample- and spatially-sharded NIFTy.re inference.
   - Extend `estimate_evidence_lower_bound` with stochastic Lanczos quadrature
     for the trace-log, signal- and data-space evaluation, optional Radau
     diagnostics, and an analytic Gaussian-prior contribution.

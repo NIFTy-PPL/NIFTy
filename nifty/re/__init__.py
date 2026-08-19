@@ -22,6 +22,7 @@ from .gauss_markov import (
     OrnsteinUhlenbeckProcess,
     WienerProcess,
 )
+from .graphgp import GraphGPField
 from .hmc import generate_hmc_acc_rej, generate_nuts_tree
 from .hmc_oo import HMCChain, NUTSChain
 from .likelihood import Likelihood, LikelihoodPartial
@@ -53,6 +54,7 @@ from .multi_grid import (
 from .num import *
 from .optimize import minimize, newton_cg, static_newton_cg, trust_ncg
 from .optimize_kl import OptimizeVI, OptimizeVIState, optimize_kl
+from .sharding import ShardingLayout
 from .prior import (
     InvGammaPrior,
     LaplacePrior,
