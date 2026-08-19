@@ -22,6 +22,7 @@ docs/source/user/*.ipynb
 *.pkl
 setup.cfg
 .idea
+.vscode/
 .DS_Store
 *.pyc
 *.html
