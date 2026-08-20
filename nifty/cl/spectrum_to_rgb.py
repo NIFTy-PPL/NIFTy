@@ -374,28 +374,17 @@ class SpectrumToRGBProjector:
     converter methods :meth:`luminance_of_spectrum` and :meth:`luminance_quantiles`,
     whose results are handed to :meth:`set_luminance_range`.
 
+    The input spectral range is mapped onto the configured window
+    ``[wavelength_min_mappable, wavelength_max_mappable]``, which is a *display*
+    choice and carries no physical wavelength meaning.  Within that window the
+    placement is affine — in the input coordinate for
+    ``visible_bin_width='proportional'``, in the bin index for ``'uniform'`` — so
+    the assigned wavelengths are **not** related to the input by any physical law.
+    ``spectral_axis_type`` fixes only which end of the window the low-input bins
+    land on.
+
     Parameters
     ----------
-    spectral_axis_type : {'energy', 'wavelength'}
-        Physical meaning of the input spectral coordinate; controls mapping
-        *direction* only.
-
-        - ``'energy'``: direction-inverting — lower input maps to the red end and
-          higher input maps to the blue end, consistent with E = hc/λ.  Suited to
-          energy- or frequency-domain data.
-        - ``'wavelength'``: direction-preserving — smaller input values map to
-          the blue end and larger values to the red end.  Pass actual wavelength
-          values as the ``centers`` / boundary arguments.
-    visible_bin_width : {'uniform', 'proportional'}
-        How the visible wavelength width is distributed across input bins.
-
-        - ``'uniform'``: every input bin receives the same visible width
-          Δλ = (λ_max − λ_min) / N, regardless of its width in the input
-          domain.  Ideal for energy-domain data (especially geomspace bins)
-          where equal visual treatment of each bin is desired.
-        - ``'proportional'``: each bin's visible width is proportional to its
-          width in the input domain, preserving relative spectral coverage.
-          Ideal for wavelength-domain data.
     flux_convention : {'bin_integrated_flux', 'flux_density'}
         Physical convention of *all* data passed to this projector — both the images
         handed to :meth:`project` and the spectra handed to the luminance converters.
@@ -409,6 +398,29 @@ class SpectrumToRGBProjector:
         The chosen convention is logged at construction time, because silently
         reusing a projector on data of the other kind produces a plausible-looking
         but wrong image.
+    spectral_axis_type : {'energy', 'wavelength'}
+        Physical meaning of the input spectral coordinate; controls the mapping
+        *direction* only, never its spacing.
+
+        - ``'energy'``: direction-inverting — the lowest input bin is placed at
+          ``wavelength_max_mappable`` (red end) and the highest at
+          ``wavelength_min_mappable`` (blue end).  Only the *ordering* agrees with
+          E = hc/λ; the spacing does not, since λ decreases affinely in E rather
+          than as 1/E.  Suited to energy- or frequency-domain data.
+        - ``'wavelength'``: direction-preserving — the lowest input bin is placed
+          at ``wavelength_min_mappable`` (blue end) and the highest at
+          ``wavelength_max_mappable`` (red end).  Note that the input wavelengths
+          are still rescaled onto the configured window, not used as they are.
+    visible_bin_width : {'uniform', 'proportional'}
+        How the visible wavelength width is distributed across input bins.
+
+        - ``'uniform'``: every input bin receives the same visible width
+          Δλ = (λ_max − λ_min) / N, regardless of its width in the input
+          domain.  Ideal for energy-domain data (especially geomspace bins)
+          where equal visual treatment of each bin is desired.
+        - ``'proportional'``: each bin's visible width is proportional to its
+          width in the input domain, preserving relative spectral coverage.
+          Ideal for wavelength-domain data.
     wavelength_min_mappable : float
         Short-wavelength limit (nm) of the visible range to map onto.
         The highest input bin maps to this wavelength. Default: 440 nm.
@@ -420,18 +432,18 @@ class SpectrumToRGBProjector:
     _FLUX_CONVENTIONS = ('bin_integrated_flux', 'flux_density')
     _HIGHLIGHT_MODES = ('clamp', 'clip_channels')
 
-    def __init__(self, spectral_axis_type, visible_bin_width, flux_convention,
+    def __init__(self, flux_convention, spectral_axis_type, visible_bin_width,
                  wavelength_min_mappable=440., wavelength_max_mappable=640.):
+        if flux_convention not in self._FLUX_CONVENTIONS:
+            raise ValueError("flux_convention must be one of "
+                             f"{self._FLUX_CONVENTIONS}")
+        self._flux_convention = flux_convention
         if spectral_axis_type not in ('energy', 'wavelength'):
             raise ValueError("spectral_axis_type must be 'energy' or 'wavelength'")
         self._spectral_axis_type = spectral_axis_type
         if visible_bin_width not in ('uniform', 'proportional'):
             raise ValueError("visible_bin_width must be 'uniform' or 'proportional'")
         self._visible_bin_width = visible_bin_width
-        if flux_convention not in self._FLUX_CONVENTIONS:
-            raise ValueError("flux_convention must be one of "
-                             f"{self._FLUX_CONVENTIONS}")
-        self._flux_convention = flux_convention
         self._WAVELENGTH_MIN_MAPPABLE = self._check_pos_scalar(
             wavelength_min_mappable, "wavelength_min_mappable")
         self._WAVELENGTH_MAX_MAPPABLE = self._check_pos_scalar(
@@ -1003,6 +1015,11 @@ class SpectrumToRGBProjector:
         - ``spectral_axis_type``: ``'energy'`` is direction-inverting (lower input →
           red end); ``'wavelength'`` is direction-preserving (lower input →
           blue end).
+
+        In both cases the normalised position ``t`` is affine in the input
+        coordinate (``'proportional'``) or in the bin index (``'uniform'``), and the
+        wavelength is affine in ``t``.  The result is therefore a rescaling onto the
+        configured window, not a physical energy-to-wavelength conversion.
 
         The return arrays always satisfy ``lam_lower[k] < lam_upper[k]``
         (shorter wavelength first).

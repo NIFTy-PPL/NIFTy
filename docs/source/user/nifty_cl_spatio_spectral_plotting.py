@@ -111,9 +111,9 @@ def show(rgb, title, ax=None):
 # and white, and project.
 
 # +
-proj = SpectrumToRGBProjector(spectral_axis_type='energy',
-                              visible_bin_width='uniform',
-                              flux_convention='bin_integrated_flux')
+proj = SpectrumToRGBProjector(flux_convention='bin_integrated_flux',
+                              spectral_axis_type='energy',
+                              visible_bin_width='uniform')
 proj.specify_input_spectrum_bins_via_center_and_width(bin_centers, bin_widths)
 
 black, white = proj.luminance_quantiles(cube, q=(0.5, 0.999))
@@ -124,9 +124,11 @@ show(rgb, "low energy = red, high energy = blue")
 # -
 
 # The low-energy source came out red and the high-energy one blue because `spectral_axis_type`
-# is `'energy'`; the projector inverts the axis, consistent with $E = hc/\lambda$. The middle
-# source is green because it sits near the peak of the eye's luminous efficiency — which is also
-# why it looks brighter than the blue source despite carrying the same flux.
+# is `'energy'`, which reverses the axis before rescaling it onto the visible window. Only the
+# *ordering* matches $E = hc/\lambda$ — the wavelength assigned to a bin falls off affinely in
+# energy, not as $1/E$, and it is a display coordinate rather than a physical wavelength. The
+# middle source is green because it sits near the peak of the eye's luminous efficiency — which
+# is also why it looks brighter than the blue source despite carrying the same flux.
 #
 # Every projection logs the range it used. That is deliberate — it is the quickest way to see
 # whether two figures were rendered comparably. To keep the rest of this page short we raise the
@@ -146,7 +148,9 @@ ift.logger.setLevel(logging.WARNING)
 # error. The projector announces its choice when constructed for exactly this reason.
 #
 # **`spectral_axis_type`** — `'energy'` maps low input to the red end (direction-inverting);
-# `'wavelength'` maps low input to the blue end. Only the direction is affected.
+# `'wavelength'` maps low input to the blue end. Only the direction is affected: whichever you
+# pick, the input range is rescaled onto `[wavelength_min_mappable, wavelength_max_mappable]`,
+# and the spacing within that window is set by `visible_bin_width` alone.
 #
 # **`visible_bin_width`** — `'uniform'` gives every bin the same visible $\Delta\lambda$
 # regardless of its width in your domain, which is what you usually want for energy bins,
@@ -157,7 +161,7 @@ ift.logger.setLevel(logging.WARNING)
 # geometrically spaced bins, and the only option when bins are not contiguous:
 
 geom_boundaries = np.geomspace(1., 100., n_spec + 1)
-geom_proj = SpectrumToRGBProjector('energy', 'uniform', 'flux_density')
+geom_proj = SpectrumToRGBProjector('flux_density', 'energy', 'uniform')
 geom_proj.specify_input_spectrum_bins_via_bin_boundaries(geom_boundaries[:-1],
                                                          geom_boundaries[1:])
 geom_proj.flux_convention
@@ -174,7 +178,7 @@ geom_proj.flux_convention
 # +
 fig, axes = plt.subplots(1, 2, figsize=(7.2, 3.6))
 for ax, (factor, label) in zip(axes, [(1., "cube"), (0.5, "cube/2")]):
-    auto_proj = SpectrumToRGBProjector('energy', 'uniform', 'bin_integrated_flux')
+    auto_proj = SpectrumToRGBProjector('bin_integrated_flux', 'energy', 'uniform')
     auto_proj.specify_input_spectrum_bins_via_center_and_width(bin_centers, bin_widths)
     show(auto_proj.project(factor*cube), f"auto white point: {label}", ax=ax)
 fig.tight_layout()

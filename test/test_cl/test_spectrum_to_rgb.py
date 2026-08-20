@@ -32,9 +32,9 @@ def _make_projector(n_bins=100, bin_width=1.0, flux_convention='bin_integrated_f
                     spectral_axis_type='energy', visible_bin_width='uniform'):
     centers = bin_width * (0.5 + np.arange(n_bins))
     widths = np.full(n_bins, bin_width)
-    proj = SpectrumToRGBProjector(spectral_axis_type=spectral_axis_type,
-                                  visible_bin_width=visible_bin_width,
-                                  flux_convention=flux_convention)
+    proj = SpectrumToRGBProjector(flux_convention=flux_convention,
+                                  spectral_axis_type=spectral_axis_type,
+                                  visible_bin_width=visible_bin_width)
     proj.specify_input_spectrum_bins_via_center_and_width(centers, widths)
     return proj, bin_width
 
@@ -122,7 +122,7 @@ def test_flux_convention_is_required_and_validated():
 def test_flux_convention_is_logged_at_construction():
     handler = _capture_nifty_logs()
     try:
-        SpectrumToRGBProjector('energy', 'uniform', 'flux_density')
+        SpectrumToRGBProjector('flux_density', 'energy', 'uniform')
     finally:
         logger.removeHandler(handler)
     assert any("flux density" in r.getMessage() for r in handler.records)
@@ -130,16 +130,16 @@ def test_flux_convention_is_logged_at_construction():
 
 def test_spectral_axis_invalid_raises():
     with pytest.raises(ValueError):
-        SpectrumToRGBProjector('invalid', 'uniform', 'bin_integrated_flux')
+        SpectrumToRGBProjector('bin_integrated_flux', 'invalid', 'uniform')
 
 
 def test_visible_bin_width_invalid_raises():
     with pytest.raises(ValueError):
-        SpectrumToRGBProjector('energy', 'invalid', 'bin_integrated_flux')
+        SpectrumToRGBProjector('bin_integrated_flux', 'energy', 'invalid')
 
 
 def test_bin_boundary_spec_rejects_overlap():
-    proj = SpectrumToRGBProjector('energy', 'uniform', 'bin_integrated_flux')
+    proj = SpectrumToRGBProjector('bin_integrated_flux', 'energy', 'uniform')
     lower = np.array([0., 1., 1.5])
     upper = np.array([1.2, 2., 2.5])  # bins 0 and 1 overlap
     with pytest.raises(ValueError):
@@ -147,7 +147,7 @@ def test_bin_boundary_spec_rejects_overlap():
 
 
 def test_bin_spec_rejects_mismatched_lengths():
-    proj = SpectrumToRGBProjector('energy', 'uniform', 'bin_integrated_flux')
+    proj = SpectrumToRGBProjector('bin_integrated_flux', 'energy', 'uniform')
     with pytest.raises(ValueError):
         proj.specify_input_spectrum_bins_via_bin_boundaries(
             np.array([0., 1.]), np.array([1., 2., 3.]))
@@ -614,7 +614,7 @@ def test_apply_color_map_ticks_sets_matplotlib_ticks():
 def test_energy_proportional_reflects_input_widths():
     # geomspace bins: each is wider than the previous by a constant ratio
     boundaries = np.geomspace(1., 1000., 11)
-    proj = SpectrumToRGBProjector('energy', 'proportional', 'bin_integrated_flux')
+    proj = SpectrumToRGBProjector('bin_integrated_flux', 'energy', 'proportional')
     proj.specify_input_spectrum_bins_via_bin_boundaries(boundaries[:-1], boundaries[1:])
     lam_lower, lam_upper = proj._map_input_spectrum_bins_to_visible_light_wavelength_bins()
     vis_widths = lam_upper - lam_lower
@@ -666,7 +666,7 @@ def test_wavelength_mode_direction_preserving():
 def test_energy_mode_uniform_for_geomspace_input():
     # the key use case: geomspace energy bins should get equal visible Δλ
     boundaries = np.geomspace(1., 1000., 11)
-    proj = SpectrumToRGBProjector('energy', 'uniform', 'bin_integrated_flux')
+    proj = SpectrumToRGBProjector('bin_integrated_flux', 'energy', 'uniform')
     proj.specify_input_spectrum_bins_via_bin_boundaries(boundaries[:-1], boundaries[1:])
     lam_lower, lam_upper = proj._map_input_spectrum_bins_to_visible_light_wavelength_bins()
     bin_widths = lam_upper - lam_lower
@@ -681,7 +681,7 @@ def test_d65_illuminant_projects_to_white():
     the Z tristimulus contributions below 440 nm are included and the projected
     XYZ matches the D65 white point (0.9505, 1.0, 1.089).
     """
-    proj = SpectrumToRGBProjector('energy', 'uniform', 'bin_integrated_flux',
+    proj = SpectrumToRGBProjector('bin_integrated_flux', 'energy', 'uniform',
                                   wavelength_min_mappable=380.,
                                   wavelength_max_mappable=780.)
     bin_width = 1.0

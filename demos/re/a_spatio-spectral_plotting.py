@@ -81,9 +81,9 @@ signal = np.array(jnp.exp(cf(jft.random_like(subkey, cf.domain))))[:, :, :n_spec
 
 # %%
 bin_width = 1.
-proj = SpectrumToRGBProjector(spectral_axis_type='energy',
-                              visible_bin_width='uniform',
-                              flux_convention='bin_integrated_flux')
+proj = SpectrumToRGBProjector(flux_convention='bin_integrated_flux',
+                              spectral_axis_type='energy',
+                              visible_bin_width='uniform')
 proj.specify_input_spectrum_bins_via_center_and_width(
     bin_width*(0.5 + np.arange(n_spec)), np.full(n_spec, bin_width))
 

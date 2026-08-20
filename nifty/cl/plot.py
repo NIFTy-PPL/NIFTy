@@ -63,14 +63,14 @@ def _mollweide_helper(xsize):
     return res, mask, theta, phi
 
 
-_COLOR_MAPPING_SETUP_KEYS = ('spectral_axis_type', 'visible_bin_width', 'flux_convention')
+_COLOR_MAPPING_SETUP_KEYS = ('flux_convention', 'spectral_axis_type', 'visible_bin_width')
 _COLOR_MAPPING_RANGE_KEYS = ('white', 'black', 'dynamic_range', 'quantiles', 'highlights')
 _COLOR_MAPPING_KEYS = _COLOR_MAPPING_SETUP_KEYS + _COLOR_MAPPING_RANGE_KEYS \
     + ('log_compression',)
 
-_COLOR_MAPPING_DEFAULTS = {'spectral_axis_type': 'energy',
-                           'visible_bin_width': 'uniform',
-                           'flux_convention': 'bin_integrated_flux'}
+_COLOR_MAPPING_DEFAULTS = {'flux_convention': 'bin_integrated_flux',
+                           'spectral_axis_type': 'energy',
+                           'visible_bin_width': 'uniform'}
 
 
 def _make_rgb_data(val, f_space_domain, color_mapping_kwargs):
@@ -85,7 +85,7 @@ def _make_rgb_data(val, f_space_domain, color_mapping_kwargs):
     color_mapping_kwargs : dict
         Flat dictionary configuring the projection. Recognised keys, all optional:
 
-        - ``spectral_axis_type``, ``visible_bin_width``, ``flux_convention``:
+        - ``flux_convention``, ``spectral_axis_type``, ``visible_bin_width``:
           passed to :class:`~.spectrum_to_rgb.SpectrumToRGBProjector`. Each falls
           back to a default with a warning, so that ``Plot.add(field)`` stays a
           one-liner.
@@ -125,9 +125,9 @@ def _make_rgb_data(val, f_space_domain, color_mapping_kwargs):
     widths = np.full(n_bins, bin_width)
 
     proj = SpectrumToRGBProjector(
+        flux_convention=cm['flux_convention'],
         spectral_axis_type=cm['spectral_axis_type'],
-        visible_bin_width=cm['visible_bin_width'],
-        flux_convention=cm['flux_convention'])
+        visible_bin_width=cm['visible_bin_width'])
     proj.specify_input_spectrum_bins_via_center_and_width(centers, widths)
 
     shp = val.shape[:-1] + (3,)
