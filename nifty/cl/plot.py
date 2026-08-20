@@ -91,11 +91,17 @@ def _make_rgb_data(val, f_space_domain, color_mapping_kwargs):
           one-liner.
         - ``white``, ``black``, ``dynamic_range``, ``highlights``: passed to
           :meth:`~.spectrum_to_rgb.SpectrumToRGBProjector.set_luminance_range`.
+          ``black``, ``dynamic_range`` and ``highlights`` only mean anything
+          relative to a white point, so giving one of them without ``white`` or
+          ``quantiles`` raises rather than being ignored.
         - ``quantiles``: pair of quantiles from which the luminance range is
           derived via
           :meth:`~.spectrum_to_rgb.SpectrumToRGBProjector.luminance_quantiles`,
           using the data being plotted. Mutually exclusive with ``white``.
         - ``log_compression``: bool, enables logarithmic luminance compression.
+
+        With no white point at all, each image is normalised to its own maximum
+        luminance and images from separate calls are not comparable.
 
     Returns
     -------
@@ -140,6 +146,22 @@ def _make_rgb_data(val, f_space_domain, color_mapping_kwargs):
     if quantiles is not None and white is not None:
         raise ValueError("give at most one of 'quantiles' and 'white' in "
                          "color_mapping_kwargs")
+    if quantiles is None and white is None:
+        # Without a white point there is no luminance range to place them in, and
+        # they would be silently discarded in favour of the auto white point.
+        orphaned = sorted(k for k in _COLOR_MAPPING_RANGE_KEYS
+                          if k not in ('white', 'quantiles') and cm.get(k) is not None)
+        if orphaned:
+            raise ValueError(
+                f"color_mapping_kwargs entries {orphaned} define a luminance range "
+                "but no white point is given; add 'white' or 'quantiles'")
+        if cm.get('log_compression'):
+            # This would fail later inside the projector, with a message phrased in
+            # terms of set_luminance_range rather than of color_mapping_kwargs.
+            raise ValueError(
+                "'log_compression' needs a black point, and a black point needs a "
+                "white point; add 'quantiles', or 'white' together with 'black' or "
+                "'dynamic_range'")
     if quantiles is not None:
         black, white = proj.luminance_quantiles(flat, q=quantiles)
         if cm.get('black') is not None or cm.get('dynamic_range') is not None:
@@ -569,7 +591,9 @@ class Plot:
               — each defaults with a warning if omitted.
             - ``white``, ``black``, ``dynamic_range``, ``highlights`` — the
               displayed luminance range. Without ``white`` (or ``quantiles``) each
-              image is normalised to its own maximum and images are not comparable.
+              image is normalised to its own maximum and images are not comparable;
+              giving ``black``, ``dynamic_range`` or ``highlights`` in that case
+              raises, since they would otherwise be silently discarded.
             - ``quantiles`` — pair of quantiles the luminance range is derived from,
               using the data being plotted. Mutually exclusive with ``white``.
             - ``log_compression`` — bool, logarithmic luminance compression.

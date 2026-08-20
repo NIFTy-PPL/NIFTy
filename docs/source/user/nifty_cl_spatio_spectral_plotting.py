@@ -327,9 +327,9 @@ domain = ift.DomainTuple.make([ift.RGSpace((nx, ny), distances=1./nx),
 field = ift.makeField(domain, cube)
 
 plot = ift.Plot()
-plot.add(field, color_mapping_kwargs=dict(spectral_axis_type='energy',
+plot.add(field, color_mapping_kwargs=dict(flux_convention='bin_integrated_flux',
+                                          spectral_axis_type='energy',
                                           visible_bin_width='uniform',
-                                          flux_convention='bin_integrated_flux',
                                           quantiles=(0.5, 0.999),
                                           log_compression=True))
 plot.output(name=os.path.join(tempfile.mkdtemp(), "spatio_spectral_plot.png"),
