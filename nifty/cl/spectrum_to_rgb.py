@@ -369,7 +369,7 @@ class SpectrumToRGBProjector:
        optionally enable log compression via :meth:`use_log_compression`.
 
     The display transform is fully described by two luminance values
-    :math:`(Y_\\mathrm{black}, Y_\\mathrm{white})`, a tone curve (linear or logarithmic)
+    :math:`(Y_\\mathrm{black}, Y_\\mathrm{saturation})`, a tone curve (linear or logarithmic)
     and a highlight policy.  Physical quantities are turned into luminances by the
     converter methods :meth:`luminance_of_spectrum` and :meth:`luminance_quantiles`,
     whose results are handed to :meth:`set_luminance_range`.
@@ -462,16 +462,16 @@ class SpectrumToRGBProjector:
         self._visible_spectrum_bin_flux_to_XYZ_mapping_tensor = None
 
         # --- display transform ---
-        self._luminance_black = None
-        self._luminance_white = None
+        self._Y_black = None
+        self._Y_saturation = None
         self._highlights = 'clamp'
         self._log_compression = False
 
         # --- state recorded by the last projection ---
-        self._last_transform = None   # (black, white, log, highlights)
+        self._last_transform = None   # (Y_black, Y_saturation, log, highlights)
         self._last_flux_range = None  # (min, min_positive, max)
         self._last_color_map_levels = None
-        self._auto_white_point_warned = False
+        self._auto_saturation_warned = False
 
         logger.info("SpectrumToRGBProjector: interpreting input as %s",
                     "bin-integrated flux" if flux_convention == 'bin_integrated_flux'
@@ -539,8 +539,8 @@ class SpectrumToRGBProjector:
 
     def _invalidate_derived_state(self):
         self._visible_spectrum_bin_flux_to_XYZ_mapping_tensor = None
-        self._luminance_black = None
-        self._luminance_white = None
+        self._Y_black = None
+        self._Y_saturation = None
         self._last_transform = None
         self._last_flux_range = None
         self._last_color_map_levels = None
@@ -555,11 +555,11 @@ class SpectrumToRGBProjector:
         specification into the luminance values understood by
         :meth:`set_luminance_range`, e.g.::
 
-            # white point: a flat spectrum carrying a total flux of F
+            # saturation luminance: a flat spectrum carrying a total flux of F
             widths = ...   # the bin widths handed to specify_input_spectrum_bins_*
             flat = F*widths/widths.sum()    # 'bin_integrated_flux' convention
             flat = np.full(n_bins, F/widths.sum())      # 'flux_density' convention
-            proj.set_luminance_range(white=proj.luminance_of_spectrum(flat))
+            proj.set_luminance_range(Y_saturation=proj.luminance_of_spectrum(flat))
 
         Parameters
         ----------
@@ -624,32 +624,38 @@ class SpectrumToRGBProjector:
 
     # --- Display transform specification ---
 
-    def set_luminance_range(self, *, white, black=None, dynamic_range=None,
+    def set_luminance_range(self, *, Y_saturation, Y_black=None, dynamic_range=None,
                             highlights='clamp'):
         """Fix the luminance range that is mapped onto the displayable range.
 
-        Luminance ``black`` is rendered black, luminance ``white`` is rendered at
-        full brightness, and the tone curve in between is linear unless
-        :meth:`use_log_compression` has been enabled.
+        Luminance ``Y_black`` is rendered black, luminance ``Y_saturation`` is
+        rendered at full display brightness, and the tone curve in between is linear
+        unless :meth:`use_log_compression` has been enabled.
+
+        Note that ``Y_saturation`` is deliberately *not* called a white point: a
+        pixel reaching it is rendered at maximum brightness **for its own
+        chromaticity**, which is white only if that chromaticity happens to be the
+        D65 white point.  ``Y_black`` is unconditional by contrast, since zero
+        luminance is black for every chromaticity.
 
         The arguments are keyword-only on purpose: :meth:`luminance_quantiles`
-        returns ``(low, high)`` while this method reads ``white`` first, so a
+        returns ``(low, high)`` while this method reads ``Y_saturation`` first, so a
         positional API would make ``set_luminance_range(*proj.luminance_quantiles(x))``
-        silently swap the black and white points.
+        silently swap the two ends of the range.
 
         Parameters
         ----------
-        white : float
-            Luminance rendered at full brightness. Typically obtained from
+        Y_saturation : float
+            Luminance rendered at full display brightness. Typically obtained from
             :meth:`luminance_of_spectrum` or :meth:`luminance_quantiles`.
-        black : float or None
+        Y_black : float or None
             Luminance rendered black. ``None`` (default) means no black point,
             i.e. 0. Mutually exclusive with ``dynamic_range``.
         dynamic_range : float or None
-            Alternative way to place the black point, as ``white/dynamic_range``.
-            Mutually exclusive with ``black``.
+            Alternative way to place the black point, as
+            ``Y_saturation/dynamic_range``. Mutually exclusive with ``Y_black``.
         highlights : {'clamp', 'clip_channels'}
-            What happens above the white point.
+            What happens above ``Y_saturation``.
 
             - ``'clamp'`` *(default)*: luminance is clamped, which preserves
               chromaticity — over-bright pixels keep their hue and lose detail.
@@ -657,49 +663,49 @@ class SpectrumToRGBProjector:
               sRGB channels clip independently, which shifts hue as a pixel blows
               out, the way a camera sensor does.
         """
-        white = float(self._check_pos_scalar(white, "white"))
-        if black is not None and dynamic_range is not None:
-            raise ValueError("give at most one of black and dynamic_range — they are "
+        Y_saturation = float(self._check_pos_scalar(Y_saturation, "Y_saturation"))
+        if Y_black is not None and dynamic_range is not None:
+            raise ValueError("give at most one of Y_black and dynamic_range — they are "
                              "two ways of specifying the same quantity")
         if dynamic_range is not None:
             dynamic_range = float(self._check_pos_scalar(dynamic_range, "dynamic_range"))
             if dynamic_range <= 1.:
                 raise ValueError("dynamic_range must be > 1")
-            black = white/dynamic_range
-        elif black is None:
-            black = 0.
+            Y_black = Y_saturation/dynamic_range
+        elif Y_black is None:
+            Y_black = 0.
         else:
-            if not self._is_scalar(black):
-                raise ValueError("black must be a scalar")
-            black = float(black)
-            if black < 0.:
-                raise ValueError("black must be non-negative")
-        if black >= white:
-            raise ValueError("black point luminance must be smaller than the white "
-                             f"point luminance (got black={black}, white={white})")
+            if not self._is_scalar(Y_black):
+                raise ValueError("Y_black must be a scalar")
+            Y_black = float(Y_black)
+            if Y_black < 0.:
+                raise ValueError("Y_black must be non-negative")
+        if Y_black >= Y_saturation:
+            raise ValueError("Y_black must be smaller than Y_saturation (got "
+                             f"Y_black={Y_black}, Y_saturation={Y_saturation})")
         if highlights not in self._HIGHLIGHT_MODES:
             raise ValueError(f"highlights must be one of {self._HIGHLIGHT_MODES}")
 
-        self._luminance_black = black
-        self._luminance_white = white
+        self._Y_black = Y_black
+        self._Y_saturation = Y_saturation
         self._highlights = highlights
 
     def use_log_compression(self, enabled=True):
         """Switch logarithmic compression of the luminance range on or off.
 
         With log compression the tone curve is
-        ``log(Y/Y_black)/log(Y_white/Y_black)`` instead of the linear
-        ``(Y - Y_black)/(Y_white - Y_black)``.  A black point is then mandatory;
+        ``log(Y/Y_black)/log(Y_saturation/Y_black)`` instead of the linear
+        ``(Y - Y_black)/(Y_saturation - Y_black)``.  A black point is then mandatory;
         projecting without one raises.
         """
         self._log_compression = bool(enabled)
 
     @property
     def luminance_range(self):
-        """(black, white) luminance pair, or None if it was never set."""
-        if self._luminance_white is None:
+        """(Y_black, Y_saturation) pair, or None if it was never set."""
+        if self._Y_saturation is None:
             return None
-        return (self._luminance_black, self._luminance_white)
+        return (self._Y_black, self._Y_saturation)
 
     @property
     def flux_convention(self):
@@ -731,39 +737,41 @@ class SpectrumToRGBProjector:
         XYZ_data = self._transform_input_flux_to_XYZ(data)
         Y = XYZ_data[..., 1]
 
-        if self._luminance_white is None:
-            white = float(np.max(Y))
-            black = 0.
-            white_point_origin = "auto, from data maximum"
-            if not self._auto_white_point_warned:
-                self._auto_white_point_warned = True
+        if self._Y_saturation is None:
+            Y_saturation = float(np.max(Y))
+            Y_black = 0.
+            saturation_origin = "auto, from data maximum"
+            if not self._auto_saturation_warned:
+                self._auto_saturation_warned = True
                 logger.warning(
-                    "No luminance range set: the white point is taken from the maximum "
+                    "No luminance range set: Y_saturation is taken from the maximum "
                     "luminance of each projected image, so renderings from separate "
                     "calls are NOT comparable with each other. Call "
-                    "set_luminance_range(white=..., black=...) to fix the mapping.")
+                    "set_luminance_range(Y_saturation=..., Y_black=...) to fix the "
+                    "mapping.")
         else:
-            black, white = self._luminance_black, self._luminance_white
-            white_point_origin = "explicit"
+            Y_black, Y_saturation = self._Y_black, self._Y_saturation
+            saturation_origin = "explicit"
 
-        if self._log_compression and black <= 0.:
+        if self._log_compression and Y_black <= 0.:
             raise ValueError(
                 "log compression requires a black point, but none is set. Pass "
-                "black=... or dynamic_range=... to set_luminance_range().")
-        if white <= black:
-            if white == 0.:
-                # all-zero input under an auto white point: nothing to normalise
+                "Y_black=... or dynamic_range=... to set_luminance_range().")
+        if Y_saturation <= Y_black:
+            if Y_saturation == 0.:
+                # all-zero input under an auto saturation luminance: nothing to do
                 return np.zeros(data.shape[:-1] + (3,))
-            raise ValueError("white point luminance must exceed the black point")
+            raise ValueError("Y_saturation must exceed Y_black")
 
-        logger.info("project(): black=%.4g white=%.4g (%s), curve=%s, highlights=%s",
-                    black, white, white_point_origin,
+        logger.info("project(): Y_black=%.4g Y_saturation=%.4g (%s), curve=%s, "
+                    "highlights=%s", Y_black, Y_saturation, saturation_origin,
                     "log" if self._log_compression else "linear", self._highlights)
 
-        self._last_transform = (black, white, self._log_compression, self._highlights)
+        self._last_transform = (Y_black, Y_saturation, self._log_compression,
+                                self._highlights)
         self._last_flux_range = self._flux_range_of(data)
 
-        XYZ_mapped = self._apply_tone_curve(XYZ_data, black, white,
+        XYZ_mapped = self._apply_tone_curve(XYZ_data, Y_black, Y_saturation,
                                             self._log_compression, self._highlights)
 
         if XYZ_inspect_callback is not None:
@@ -775,7 +783,8 @@ class SpectrumToRGBProjector:
 
     # --- Tone mapping ---
 
-    def _apply_tone_curve(self, XYZ_data, black, white, log_compression, highlights):
+    def _apply_tone_curve(self, XYZ_data, Y_black, Y_saturation, log_compression,
+                          highlights):
         """Map luminance onto [0, 1] while preserving chromaticity.
 
         All three XYZ channels are scaled by ``L/Y``, so only brightness changes.
@@ -784,9 +793,9 @@ class SpectrumToRGBProjector:
         """
         Y = XYZ_data[..., 1]
         if log_compression:
-            L = np.log(np.maximum(Y, black)/black)/np.log(white/black)
+            L = np.log(np.maximum(Y, Y_black)/Y_black)/np.log(Y_saturation/Y_black)
         else:
-            L = (Y - black)/(white - black)
+            L = (Y - Y_black)/(Y_saturation - Y_black)
         L = np.maximum(L, 0.)
         if highlights == 'clamp':
             L = np.minimum(L, 1.)
@@ -811,7 +820,7 @@ class SpectrumToRGBProjector:
         Note that no per-column rescaling takes place: the luminance produced per
         unit flux varies by roughly a factor of ten across the visible range, so a
         mid-spectrum column genuinely is much brighter than a column at either end
-        at the same flux, and columns reach the white point at different heights.
+        at the same flux, and columns reach full brightness at different heights.
         That is what the projection does, so that is what this legend shows.
 
         The tone curve is taken from the most recent :meth:`project` call (falling
@@ -833,7 +842,7 @@ class SpectrumToRGBProjector:
         numpy.ndarray
             Shape ``(n_levels, n_bins, 3)`` of sRGB values in [0, 1].
         """
-        black, white, log_compression, highlights = self._effective_transform()
+        Y_black, Y_saturation, log_compression, highlights = self._effective_transform()
         self._ensure_mapping_tensor()
 
         if levels is None:
@@ -849,7 +858,8 @@ class SpectrumToRGBProjector:
         n_bins = len(self._input_spectrum_bin_lower)
         probe = np.eye(n_bins)[np.newaxis, :, :]*levels[:, np.newaxis, np.newaxis]
         XYZ = self._transform_input_flux_to_XYZ(probe)
-        XYZ = self._apply_tone_curve(XYZ, black, white, log_compression, highlights)
+        XYZ = self._apply_tone_curve(XYZ, Y_black, Y_saturation, log_compression,
+                                     highlights)
         self._last_color_map_levels = levels
         return ColorSpaceTools.embed_XYZ_perceived_color_in_sRGB(XYZ)
 
@@ -857,15 +867,15 @@ class SpectrumToRGBProjector:
         """The tone curve the colour map should use: last projected, else explicit."""
         if self._last_transform is not None:
             return self._last_transform
-        if self._luminance_white is None:
+        if self._Y_saturation is None:
             raise RuntimeError(
                 "no tone curve available — call project() or set_luminance_range() "
                 "before generating a colour map")
-        if self._log_compression and self._luminance_black <= 0.:
+        if self._log_compression and self._Y_black <= 0.:
             raise ValueError(
                 "log compression requires a black point, but none is set. Pass "
-                "black=... or dynamic_range=... to set_luminance_range().")
-        return (self._luminance_black, self._luminance_white,
+                "Y_black=... or dynamic_range=... to set_luminance_range().")
+        return (self._Y_black, self._Y_saturation,
                 self._log_compression, self._highlights)
 
     def _default_color_map_levels(self, n_levels, log_compression):

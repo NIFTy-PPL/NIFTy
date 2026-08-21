@@ -87,8 +87,8 @@ proj = SpectrumToRGBProjector(flux_convention='bin_integrated_flux',
 proj.specify_input_spectrum_bins_via_center_and_width(
     bin_width*(0.5 + np.arange(n_spec)), np.full(n_spec, bin_width))
 
-black, white = proj.luminance_quantiles(signal, q=(0.3, 0.999))
-proj.set_luminance_range(white=white, black=black)
+Y_black, Y_saturation = proj.luminance_quantiles(signal, q=(0.3, 0.999))
+proj.set_luminance_range(Y_saturation=Y_saturation, Y_black=Y_black)
 
 # %% [markdown]
 # ## Rendering, with its legend
@@ -104,8 +104,8 @@ proj.set_luminance_range(white=white, black=black)
 
 # %%
 per_bin_luminance = proj.luminance_of_spectrum(np.eye(n_spec))
-levels = np.geomspace(black/per_bin_luminance.max(),
-                      white/per_bin_luminance.min(), 128)
+levels = np.geomspace(Y_black/per_bin_luminance.max(),
+                      Y_saturation/per_bin_luminance.min(), 128)
 
 renderings = []
 for log_compression in (False, True):

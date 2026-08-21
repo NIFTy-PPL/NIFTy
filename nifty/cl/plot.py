@@ -64,7 +64,8 @@ def _mollweide_helper(xsize):
 
 
 _COLOR_MAPPING_SETUP_KEYS = ('flux_convention', 'spectral_axis_type', 'visible_bin_width')
-_COLOR_MAPPING_RANGE_KEYS = ('white', 'black', 'dynamic_range', 'quantiles', 'highlights')
+_COLOR_MAPPING_RANGE_KEYS = ('Y_saturation', 'Y_black', 'dynamic_range', 'quantiles',
+                            'highlights')
 _COLOR_MAPPING_KEYS = _COLOR_MAPPING_SETUP_KEYS + _COLOR_MAPPING_RANGE_KEYS \
     + ('log_compression',)
 
@@ -89,19 +90,19 @@ def _make_rgb_data(val, f_space_domain, color_mapping_kwargs):
           passed to :class:`~.spectrum_to_rgb.SpectrumToRGBProjector`. Each falls
           back to a default with a warning, so that ``Plot.add(field)`` stays a
           one-liner.
-        - ``white``, ``black``, ``dynamic_range``, ``highlights``: passed to
-          :meth:`~.spectrum_to_rgb.SpectrumToRGBProjector.set_luminance_range`.
-          ``black``, ``dynamic_range`` and ``highlights`` only mean anything
-          relative to a white point, so giving one of them without ``white`` or
-          ``quantiles`` raises rather than being ignored.
+        - ``Y_saturation``, ``Y_black``, ``dynamic_range``, ``highlights``: passed
+          to :meth:`~.spectrum_to_rgb.SpectrumToRGBProjector.set_luminance_range`.
+          ``Y_black``, ``dynamic_range`` and ``highlights`` only mean anything
+          relative to a saturation luminance, so giving one of them without
+          ``Y_saturation`` or ``quantiles`` raises rather than being ignored.
         - ``quantiles``: pair of quantiles from which the luminance range is
           derived via
           :meth:`~.spectrum_to_rgb.SpectrumToRGBProjector.luminance_quantiles`,
-          using the data being plotted. Mutually exclusive with ``white``.
+          using the data being plotted. Mutually exclusive with ``Y_saturation``.
         - ``log_compression``: bool, enables logarithmic luminance compression.
 
-        With no white point at all, each image is normalised to its own maximum
-        luminance and images from separate calls are not comparable.
+        With no saturation luminance at all, each image is normalised to its own
+        maximum luminance and images from separate calls are not comparable.
 
     Returns
     -------
@@ -142,36 +143,38 @@ def _make_rgb_data(val, f_space_domain, color_mapping_kwargs):
     if cm.get('log_compression'):
         proj.use_log_compression()
 
-    quantiles, white = cm.get('quantiles'), cm.get('white')
-    if quantiles is not None and white is not None:
-        raise ValueError("give at most one of 'quantiles' and 'white' in "
+    quantiles, Y_saturation = cm.get('quantiles'), cm.get('Y_saturation')
+    if quantiles is not None and Y_saturation is not None:
+        raise ValueError("give at most one of 'quantiles' and 'Y_saturation' in "
                          "color_mapping_kwargs")
-    if quantiles is None and white is None:
-        # Without a white point there is no luminance range to place them in, and
-        # they would be silently discarded in favour of the auto white point.
+    if quantiles is None and Y_saturation is None:
+        # Without a saturation luminance there is no luminance range to place them
+        # in, and they would be silently discarded in favour of the automatic one.
         orphaned = sorted(k for k in _COLOR_MAPPING_RANGE_KEYS
-                          if k not in ('white', 'quantiles') and cm.get(k) is not None)
+                          if k not in ('Y_saturation', 'quantiles')
+                          and cm.get(k) is not None)
         if orphaned:
             raise ValueError(
                 f"color_mapping_kwargs entries {orphaned} define a luminance range "
-                "but no white point is given; add 'white' or 'quantiles'")
+                "but no saturation luminance is given; add 'Y_saturation' or "
+                "'quantiles'")
         if cm.get('log_compression'):
             # This would fail later inside the projector, with a message phrased in
             # terms of set_luminance_range rather than of color_mapping_kwargs.
             raise ValueError(
                 "'log_compression' needs a black point, and a black point needs a "
-                "white point; add 'quantiles', or 'white' together with 'black' or "
-                "'dynamic_range'")
+                "saturation luminance; add 'quantiles', or 'Y_saturation' together "
+                "with 'Y_black' or 'dynamic_range'")
     if quantiles is not None:
-        black, white = proj.luminance_quantiles(flat, q=quantiles)
-        if cm.get('black') is not None or cm.get('dynamic_range') is not None:
-            black = None   # an explicit black point overrides the lower quantile
+        Y_black, Y_saturation = proj.luminance_quantiles(flat, q=quantiles)
+        if cm.get('Y_black') is not None or cm.get('dynamic_range') is not None:
+            Y_black = None   # an explicit black point overrides the lower quantile
     else:
-        black = None
-    if white is not None:
+        Y_black = None
+    if Y_saturation is not None:
         proj.set_luminance_range(
-            white=white,
-            black=cm['black'] if cm.get('black') is not None else black,
+            Y_saturation=Y_saturation,
+            Y_black=cm['Y_black'] if cm.get('Y_black') is not None else Y_black,
             dynamic_range=cm.get('dynamic_range'),
             highlights=cm.get('highlights', 'clamp'))
 
@@ -589,13 +592,14 @@ class Plot:
 
             - ``spectral_axis_type``, ``visible_bin_width``, ``flux_convention``
               — each defaults with a warning if omitted.
-            - ``white``, ``black``, ``dynamic_range``, ``highlights`` — the
-              displayed luminance range. Without ``white`` (or ``quantiles``) each
-              image is normalised to its own maximum and images are not comparable;
-              giving ``black``, ``dynamic_range`` or ``highlights`` in that case
-              raises, since they would otherwise be silently discarded.
+            - ``Y_saturation``, ``Y_black``, ``dynamic_range``, ``highlights`` —
+              the displayed luminance range. Without ``Y_saturation`` (or
+              ``quantiles``) each image is normalised to its own maximum and images
+              are not comparable; giving ``Y_black``, ``dynamic_range`` or
+              ``highlights`` in that case raises, since they would otherwise be
+              silently discarded.
             - ``quantiles`` — pair of quantiles the luminance range is derived from,
-              using the data being plotted. Mutually exclusive with ``white``.
+              using the data being plotted. Mutually exclusive with ``Y_saturation``.
             - ``log_compression`` — bool, logarithmic luminance compression.
 
             Unknown keys raise.

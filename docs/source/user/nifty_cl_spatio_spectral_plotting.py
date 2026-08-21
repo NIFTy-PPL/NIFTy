@@ -37,10 +37,12 @@
 # * *I just want an image on screen* — **A minimal working example**, below.
 # * *My data are flux densities, not fluxes per bin* — **Setting up the projector**.
 # * *Two panels of the same source look equally bright although one is fainter* —
-#   **Deciding what black and white mean**.
-# * *My image is almost all black, or washed out* — **Deciding what black and white mean** and
+#   **Deciding what black and full brightness mean**.
+# * *My image is almost all black, or washed out* — **Deciding what black and full brightness
+#   mean** and
 #   **Linear or logarithmic**.
-# * *Bright regions look wrong / lose their colour* — **What happens above the white point**.
+# * *Bright regions look wrong / lose their colour* — **What happens above the saturation
+#   luminance**.
 # * *I need a legend telling readers which colour means what* — **The colour-map legend**.
 # * *Why these colours?* — **Appendix: how it works**.
 
@@ -108,7 +110,7 @@ def show(rgb, title, ax=None):
 # ## A minimal working example
 #
 # Four steps: say what your data are, say where the bins are, say which luminances map to black
-# and white, and project.
+# and to full brightness, and project.
 
 # +
 proj = SpectrumToRGBProjector(flux_convention='bin_integrated_flux',
@@ -116,8 +118,8 @@ proj = SpectrumToRGBProjector(flux_convention='bin_integrated_flux',
                               visible_bin_width='uniform')
 proj.specify_input_spectrum_bins_via_center_and_width(bin_centers, bin_widths)
 
-black, white = proj.luminance_quantiles(cube, q=(0.5, 0.999))
-proj.set_luminance_range(white=white, black=black)
+Y_black, Y_saturation = proj.luminance_quantiles(cube, q=(0.5, 0.999))
+proj.set_luminance_range(Y_saturation=Y_saturation, Y_black=Y_black)
 
 rgb = proj.project(cube)
 show(rgb, "low energy = red, high energy = blue")
@@ -166,11 +168,18 @@ geom_proj.specify_input_spectrum_bins_via_bin_boundaries(geom_boundaries[:-1],
                                                          geom_boundaries[1:])
 geom_proj.flux_convention
 
-# ## Deciding what black and white mean
+# ## Deciding what black and full brightness mean
 #
 # This is the part worth spending time on. The projector maps a luminance range onto the
-# displayable range: everything at or below `black` renders black, everything at or above
-# `white` renders at full brightness. Those two numbers are the entire brightness contract.
+# displayable range: everything at or below `Y_black` renders black, everything at or above
+# `Y_saturation` renders at full display brightness. Those two numbers are the entire brightness
+# contract.
+#
+# Note the deliberate asymmetry in the naming. `Y_black` is unconditional: zero luminance is
+# black whatever the chromaticity. `Y_saturation` is *not* a white point — a pixel reaching it is
+# rendered as bright as the display allows **in its own hue**, and comes out white only if that
+# hue happens to be D65. In colour science a "white point" is a chromaticity, which is why this
+# one is named for what it does instead.
 #
 # If you never set them, each image is normalised to its own maximum — so a source that halves
 # in brightness looks *identical*, because the scale silently halved with it:
@@ -180,7 +189,7 @@ fig, axes = plt.subplots(1, 2, figsize=(7.2, 3.6))
 for ax, (factor, label) in zip(axes, [(1., "cube"), (0.5, "cube/2")]):
     auto_proj = SpectrumToRGBProjector('bin_integrated_flux', 'energy', 'uniform')
     auto_proj.specify_input_spectrum_bins_via_center_and_width(bin_centers, bin_widths)
-    show(auto_proj.project(factor*cube), f"auto white point: {label}", ax=ax)
+    show(auto_proj.project(factor*cube), f"automatic saturation: {label}", ax=ax)
 fig.tight_layout()
 # -
 
@@ -195,23 +204,23 @@ fig.tight_layout()
 
 proj.luminance_quantiles(cube, q=(0.5, 0.999))
 
-# **From a reference spectrum** — when you can say physically what should be white. Build the
+# **From a reference spectrum** — when you can say physically what should saturate. Build the
 # spectrum you mean and ask what luminance it produces:
 
 # +
 flat_spectrum = 5.*bin_widths/bin_widths.sum()   # a flat spectrum carrying a total flux of 5
-white_from_spectrum = proj.luminance_of_spectrum(flat_spectrum)
+Y_saturation_from_spectrum = proj.luminance_of_spectrum(flat_spectrum)
 
-proj.set_luminance_range(white=white_from_spectrum, black=0.)
-show(proj.project(cube), "white point = flat spectrum, total flux 5")
+proj.set_luminance_range(Y_saturation=Y_saturation_from_spectrum, Y_black=0.)
+show(proj.project(cube), "saturates at a flat spectrum of total flux 5")
 # -
 
-# **From a dynamic range** — places the black point below the white point,
-# `black = white/dynamic_range`, whichever way the white point was obtained.
+# **From a dynamic range** — places the black point below the saturation luminance,
+# `Y_black = Y_saturation/dynamic_range`, however `Y_saturation` was obtained.
 #
 # **Explicitly** — pass the two luminances directly, e.g. to reuse a range computed elsewhere.
 
-proj.set_luminance_range(white=white, dynamic_range=100.)
+proj.set_luminance_range(Y_saturation=Y_saturation, dynamic_range=100.)
 proj.luminance_range
 
 # The resolved pair is available as `luminance_range`, and applies to every subsequent
@@ -220,16 +229,16 @@ proj.luminance_range
 
 # ## Linear or logarithmic
 #
-# By default the curve between black and white is linear. For data spanning decades — our
+# By default the curve between the two is linear. For data spanning decades — our
 # hundredfold source ratio, for example — logarithmic compression shows faint and bright
 # structure at once. A black point is then mandatory: the curve is
-# $\log(Y/Y_\mathrm{black})/\log(Y_\mathrm{white}/Y_\mathrm{black})$, which is undefined at zero,
+# $\log(Y/Y_\mathrm{black})/\log(Y_\mathrm{saturation}/Y_\mathrm{black})$, undefined at zero,
 # and projecting with log compression and no black point raises.
 
 # +
 fig, axes = plt.subplots(1, 2, figsize=(7.2, 3.6))
 
-proj.set_luminance_range(white=white, black=black)
+proj.set_luminance_range(Y_saturation=Y_saturation, Y_black=Y_black)
 proj.use_log_compression(False)
 show(proj.project(cube), "linear", ax=axes[0])
 
@@ -241,25 +250,25 @@ fig.tight_layout()
 # Note that a black point is *not* tied to log compression: it applies to the linear curve too,
 # where it acts exactly like `vmin` in matplotlib.
 
-# ## What happens above the white point
+# ## What happens above the saturation luminance
 #
-# Pixels brighter than the white point have to give something up, and you choose what.
+# Pixels brighter than `Y_saturation` have to give something up, and you choose what.
 #
 # `highlights='clamp'` (the default) clamps the luminance, which preserves chromaticity: an
 # over-bright region keeps its hue and loses internal detail. `highlights='clip_channels'` lets
 # the individual sRGB channels clip independently, so a blowing-out region drifts in hue the way
 # an over-exposed camera sensor does.
 #
-# The difference only appears *above* the white point, so we deliberately place the white point
-# well below the bright source here — and switch back to a linear curve, since log compression
-# pulls almost everything back inside the range.
+# The difference only appears *above* `Y_saturation`, so we deliberately place it well below the
+# bright source here — and switch back to a linear curve, since log compression pulls almost
+# everything back inside the range.
 
 # +
 proj.use_log_compression(False)
 
 fig, axes = plt.subplots(1, 2, figsize=(7.2, 3.6))
 for ax, mode in zip(axes, ['clamp', 'clip_channels']):
-    proj.set_luminance_range(white=white/20., black=black, highlights=mode)
+    proj.set_luminance_range(Y_saturation=Y_saturation/20., Y_black=Y_black, highlights=mode)
     show(proj.project(cube), f"highlights='{mode}'", ax=ax)
 fig.tight_layout()
 # -
@@ -276,7 +285,7 @@ fig.tight_layout()
 #
 # Nothing is rescaled per column. Since luminance per unit flux varies by roughly a factor of
 # ten across the visible range, mid-spectrum columns are genuinely brighter than the red and
-# blue ends at equal flux, and the columns reach white at different heights. The legend shows
+# blue ends at equal flux, and the columns saturate at different heights. The legend shows
 # that rather than hiding it.
 #
 # You choose the flux levels, and they generally need to reach **far beyond the per-bin fluxes
@@ -287,15 +296,15 @@ fig.tight_layout()
 
 # +
 per_bin_luminance = proj.luminance_of_spectrum(np.eye(n_spec))
-level_min = black/per_bin_luminance.max()    # brightest bin just leaves the black point
-level_max = white/per_bin_luminance.min()    # faintest bin finally reaches the white point
+level_min = Y_black/per_bin_luminance.max()    # brightest bin just leaves black
+level_max = Y_saturation/per_bin_luminance.min()    # faintest bin finally saturates
 
 print(f"single-bin spectra span the tone curve from {level_min:.1f} to {level_max:.0f} flux "
       f"units, against a maximum of {cube.max():.0f} per bin in the data itself")
 # -
 
 # +
-proj.set_luminance_range(white=white, black=black)
+proj.set_luminance_range(Y_saturation=Y_saturation, Y_black=Y_black)
 proj.use_log_compression()
 proj.project(cube)                                   # sets the curve the legend will use
 
@@ -370,9 +379,9 @@ show(vivid, "colour contrast x1.8")
 # interface above is expressed in, and the reason `luminance_of_spectrum` exists.
 #
 # **3. Luminance is tone-mapped.** The linear or logarithmic curve maps
-# $[Y_\mathrm{black}, Y_\mathrm{white}]$ onto $[0, 1]$, and all three of $X$, $Y$, $Z$ are scaled
-# by the same factor $L/Y$, so only brightness changes and hue is preserved. The lower end always
-# clamps at zero; the upper end obeys `highlights`.
+# $[Y_\mathrm{black}, Y_\mathrm{saturation}]$ onto $[0, 1]$, and all three of $X$, $Y$, $Z$ are
+# scaled by the same factor $L/Y$, so only brightness changes and hue is preserved. The lower end
+# always clamps at zero; the upper end obeys `highlights`.
 #
 # **4. XYZ is embedded in sRGB.** The standard D65 matrix and gamma correction, followed by a
 # per-channel clip to $[0, 1]$.
@@ -380,4 +389,5 @@ show(vivid, "colour contrast x1.8")
 # That final clip is a known limitation. Strongly monochromatic spectra fall outside the sRGB
 # gamut and produce negative channel values, which clipping turns into a slight hue shift and a
 # brightness that no longer matches the luminance the tone curve asked for. Replacing it with a
-# proper gamut mapping — desaturating toward the white point at constant luminance — is planned.
+# proper gamut mapping — desaturating toward the D65 white point at constant luminance — is
+# planned.

@@ -125,33 +125,33 @@ def _rgb(**color_mapping_kwargs):
 
 
 @pytest.mark.parametrize('orphan', [
-    dict(black=1.),
+    dict(Y_black=1.),
     dict(dynamic_range=100.),
     dict(highlights='clip_channels'),
-    dict(black=1., highlights='clamp'),
+    dict(Y_black=1., highlights='clamp'),
 ])
-def test_range_options_without_white_point_raise(orphan):
-    # These only mean something relative to a white point; silently dropping them
-    # would render the image with an auto white point and no hint that the
-    # requested settings were ignored.
-    with pytest.raises(ValueError, match="no white point"):
+def test_range_options_without_saturation_luminance_raise(orphan):
+    # These only mean something relative to a saturation luminance; silently
+    # dropping them would render the image with an automatic one and no hint that
+    # the requested settings were ignored.
+    with pytest.raises(ValueError, match="no saturation luminance"):
         _rgb(flux_convention='bin_integrated_flux', spectral_axis_type='energy',
              visible_bin_width='uniform', **orphan)
 
 
-def test_range_options_are_accepted_alongside_a_white_point():
+def test_range_options_are_accepted_alongside_a_saturation_luminance():
     setup = dict(flux_convention='bin_integrated_flux', spectral_axis_type='energy',
                  visible_bin_width='uniform')
     for range_kwargs in (dict(quantiles=(0.3, 0.99), highlights='clip_channels'),
-                         dict(white=10., black=1.),
-                         dict(white=10., dynamic_range=100.),
+                         dict(Y_saturation=10., Y_black=1.),
+                         dict(Y_saturation=10., dynamic_range=100.),
                          dict(quantiles=(0.3, 0.99), dynamic_range=50.)):
         rgb = _rgb(**setup, **range_kwargs)
         assert rgb.shape == (16, 16, 3)
         assert np.all(rgb >= 0.) and np.all(rgb <= 1.)
 
 
-def test_log_compression_without_white_point_raises():
+def test_log_compression_without_saturation_luminance_raises():
     # would otherwise fail deeper inside the projector, phrased in terms of
     # set_luminance_range rather than of color_mapping_kwargs
     with pytest.raises(ValueError, match="log_compression"):
@@ -160,16 +160,16 @@ def test_log_compression_without_white_point_raises():
 
 
 def test_no_range_options_at_all_is_allowed():
-    # the auto white point path must keep working, so that Plot.add(field) stays
+    # the automatic-saturation path must keep working, so that Plot.add(field) stays
     # a one-liner
     assert _rgb(flux_convention='bin_integrated_flux', spectral_axis_type='energy',
                 visible_bin_width='uniform').shape == (16, 16, 3)
 
 
-def test_white_and_quantiles_are_mutually_exclusive():
+def test_saturation_and_quantiles_are_mutually_exclusive():
     with pytest.raises(ValueError, match="at most one"):
         _rgb(flux_convention='bin_integrated_flux', spectral_axis_type='energy',
-             visible_bin_width='uniform', white=10., quantiles=(0.3, 0.99))
+             visible_bin_width='uniform', Y_saturation=10., quantiles=(0.3, 0.99))
 
 
 def test_unknown_color_mapping_key_raises():

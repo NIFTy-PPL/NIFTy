@@ -167,7 +167,7 @@ def test_projection_rejects_wrong_n_bins():
 
 def test_respecifying_bins_invalidates_luminance_range():
     proj, _ = _make_projector(n_bins=10)
-    proj.set_luminance_range(white=1.)
+    proj.set_luminance_range(Y_saturation=1.)
     assert proj.luminance_range is not None
     proj.specify_input_spectrum_bins_via_bin_boundaries(np.arange(10.), np.arange(10.) + 1.)
     assert proj.luminance_range is None
@@ -190,7 +190,7 @@ def test_luminance_of_spectrum_matches_projection_luminance():
     rng = np.random.default_rng(3)
     data = rng.uniform(0., 1., (4, 10))
     captured = {}
-    proj.set_luminance_range(white=1.)
+    proj.set_luminance_range(Y_saturation=1.)
     proj.project(data, XYZ_inspect_callback=lambda raw, mapped: captured.update(raw=raw))
     assert np.allclose(captured['raw'][..., 1], proj.luminance_of_spectrum(data))
 
@@ -247,31 +247,31 @@ def test_set_luminance_range_is_keyword_only():
         proj.set_luminance_range(1., 0.1)
 
 
-def test_black_defaults_to_zero():
+def test_Y_black_defaults_to_zero():
     proj, _ = _make_projector(n_bins=10)
-    proj.set_luminance_range(white=2.)
+    proj.set_luminance_range(Y_saturation=2.)
     assert proj.luminance_range == (0., 2.)
 
 
 def test_dynamic_range_places_black_point():
     proj, _ = _make_projector(n_bins=10)
-    proj.set_luminance_range(white=10., dynamic_range=100.)
+    proj.set_luminance_range(Y_saturation=10., dynamic_range=100.)
     assert proj.luminance_range == (0.1, 10.)
 
 
 def test_black_and_dynamic_range_are_mutually_exclusive():
     proj, _ = _make_projector(n_bins=10)
     with pytest.raises(ValueError):
-        proj.set_luminance_range(white=10., black=1., dynamic_range=10.)
+        proj.set_luminance_range(Y_saturation=10., Y_black=1., dynamic_range=10.)
 
 
 @pytest.mark.parametrize('kwargs', [
-    dict(white=1., black=2.),        # black above white
-    dict(white=1., black=1.),        # degenerate
-    dict(white=1., black=-1.),       # negative
-    dict(white=-1.),                 # non-positive white
-    dict(white=1., dynamic_range=0.5),   # dynamic range below 1
-    dict(white=1., highlights='nonsense'),
+    dict(Y_saturation=1., Y_black=2.),        # black above white
+    dict(Y_saturation=1., Y_black=1.),        # degenerate
+    dict(Y_saturation=1., Y_black=-1.),       # negative
+    dict(Y_saturation=-1.),                 # non-positive white
+    dict(Y_saturation=1., dynamic_range=0.5),   # dynamic range below 1
+    dict(Y_saturation=1., highlights='nonsense'),
 ])
 def test_set_luminance_range_validation(kwargs):
     proj, _ = _make_projector(n_bins=10)
@@ -304,8 +304,8 @@ def test_flux_convention_equivalence():
     rng = np.random.default_rng(1)
     data = rng.uniform(0., 1., (5, 100))
     white = proj_int.luminance_of_spectrum(np.ones(100))
-    proj_int.set_luminance_range(white=white)
-    proj_den.set_luminance_range(white=white)
+    proj_int.set_luminance_range(Y_saturation=white)
+    proj_den.set_luminance_range(Y_saturation=white)
     assert np.allclose(proj_int.project(data), proj_den.project(data/bw), atol=1e-12)
 
 
@@ -313,10 +313,10 @@ def test_linear_curve_maps_black_and_white_points():
     proj, _ = _make_projector(n_bins=10)
     flat = np.ones(10)
     Y = proj.luminance_of_spectrum(flat)
-    proj.set_luminance_range(white=Y, black=0.5*Y)
-    image = np.stack([flat, 0.5*flat, 0.25*flat])   # at white, at black, below black
+    proj.set_luminance_range(Y_saturation=Y, Y_black=0.5*Y)
+    image = np.stack([flat, 0.5*flat, 0.25*flat])   # at saturation, at black, below black
     rgb = proj.project(image)
-    assert rgb[0].max() > 0.9, f"white-point pixel too dark: {rgb[0]}"
+    assert rgb[0].max() > 0.9, f"saturation-luminance pixel too dark: {rgb[0]}"
     assert np.allclose(rgb[1], 0., atol=1e-10), f"black-point pixel not black: {rgb[1]}"
     assert np.allclose(rgb[2], 0., atol=1e-10), "below the black point must clamp to black"
 
@@ -327,9 +327,9 @@ def test_black_point_applies_without_log_compression():
     Y = proj.luminance_of_spectrum(flat)
     image = (0.5*flat)[np.newaxis, :]
 
-    proj.set_luminance_range(white=Y)
+    proj.set_luminance_range(Y_saturation=Y)
     without_black = proj.project(image)
-    proj.set_luminance_range(white=Y, black=0.4*Y)
+    proj.set_luminance_range(Y_saturation=Y, Y_black=0.4*Y)
     with_black = proj.project(image)
     assert np.all(with_black <= without_black + 1e-12)
     assert np.any(with_black < without_black - 1e-3), \
@@ -339,7 +339,7 @@ def test_black_point_applies_without_log_compression():
 def test_log_compression_requires_black_point():
     proj, _ = _make_projector(n_bins=10)
     proj.use_log_compression()
-    proj.set_luminance_range(white=1.)
+    proj.set_luminance_range(Y_saturation=1.)
     with pytest.raises(ValueError, match="black point"):
         proj.project(np.ones((1, 10)))
 
@@ -349,7 +349,7 @@ def test_log_curve_bright_vs_faint():
     dr = 1000.
     flat = np.ones(100)
     white = proj.luminance_of_spectrum(flat)
-    proj.set_luminance_range(white=white, dynamic_range=dr)
+    proj.set_luminance_range(Y_saturation=white, dynamic_range=dr)
     proj.use_log_compression()
     rgb = proj.project(np.stack([flat, flat/dr]))
     assert rgb[0].max() > 0.8, f"bright pixel too dark: {rgb[0]}"
@@ -360,7 +360,7 @@ def test_log_curve_midpoint_is_geometric_mean():
     proj, _ = _make_projector(n_bins=10)
     flat = np.ones(10)
     white = proj.luminance_of_spectrum(flat)
-    proj.set_luminance_range(white=white, dynamic_range=100.)
+    proj.set_luminance_range(Y_saturation=white, dynamic_range=100.)
     proj.use_log_compression()
     captured = {}
     # geometric mean of the range sits exactly halfway up the log curve, and the
@@ -374,7 +374,7 @@ def test_use_log_compression_can_be_switched_off():
     proj, _ = _make_projector(n_bins=10)
     flat = np.ones(10)
     white = proj.luminance_of_spectrum(flat)
-    proj.set_luminance_range(white=white, dynamic_range=10.)
+    proj.set_luminance_range(Y_saturation=white, dynamic_range=10.)
     proj.use_log_compression()
     log_rgb = proj.project((0.3*flat)[np.newaxis, :])
     proj.use_log_compression(False)
@@ -386,16 +386,16 @@ def test_use_log_compression_can_be_switched_off():
 # Projection: highlights
 # ---------------------------------------------------------------------------
 
-def test_highlights_clamp_preserves_chromaticity_above_white():
+def test_highlights_clamp_preserves_chromaticity_above_saturation():
     proj, _ = _make_projector(n_bins=10)
     spectrum = np.zeros(10)
     spectrum[2] = 1.   # strongly coloured, i.e. far from the sRGB gamut centre
     white = proj.luminance_of_spectrum(spectrum)
-    proj.set_luminance_range(white=white, highlights='clamp')
+    proj.set_luminance_range(Y_saturation=white, highlights='clamp')
     at_white = proj.project(spectrum[np.newaxis, :])
     way_above = proj.project(5.*spectrum[np.newaxis, :])
     assert np.allclose(at_white, way_above), \
-        "clamping must render everything above the white point identically"
+        "clamping must render everything above the saturation luminance identically"
 
 
 def test_highlights_clip_channels_shifts_towards_white():
@@ -403,24 +403,24 @@ def test_highlights_clip_channels_shifts_towards_white():
     spectrum = np.zeros(10)
     spectrum[2] = 1.
     white = proj.luminance_of_spectrum(spectrum)
-    proj.set_luminance_range(white=white, highlights='clip_channels')
+    proj.set_luminance_range(Y_saturation=white, highlights='clip_channels')
     at_white = proj.project(spectrum[np.newaxis, :])
     way_above = proj.project(5.*spectrum[np.newaxis, :])
     assert not np.allclose(at_white, way_above), \
-        "clip_channels must keep changing above the white point"
+        "clip_channels must keep changing above the saturation luminance"
     # channels that have not clipped yet keep growing, so the hue drifts; channels
     # already at 0 or 1 stay put, which is exactly the uneven clipping we want
     assert np.all(way_above >= at_white - 1e-12) and np.any(way_above > at_white)
 
 
-def test_highlights_agree_below_the_white_point():
+def test_highlights_agree_below_saturation():
     proj, _ = _make_projector(n_bins=10)
     flat = np.ones(10)
     white = proj.luminance_of_spectrum(flat)
     image = (0.5*flat)[np.newaxis, :]
-    proj.set_luminance_range(white=white, highlights='clamp')
+    proj.set_luminance_range(Y_saturation=white, highlights='clamp')
     clamped = proj.project(image)
-    proj.set_luminance_range(white=white, highlights='clip_channels')
+    proj.set_luminance_range(Y_saturation=white, highlights='clip_channels')
     clipped = proj.project(image)
     assert np.allclose(clamped, clipped)
 
@@ -429,14 +429,14 @@ def test_highlights_agree_below_the_white_point():
 # Projection: auto white point
 # ---------------------------------------------------------------------------
 
-def test_auto_white_point_normalises_each_image_separately():
+def test_auto_saturation_luminance_normalises_each_image_separately():
     proj, _ = _make_projector(n_bins=10)
     flat = np.ones((1, 10))
     assert np.allclose(proj.project(flat), proj.project(0.5*flat), atol=1e-10), \
         "without a fixed range each image is normalised to its own maximum"
 
 
-def test_auto_white_point_warns_exactly_once():
+def test_auto_saturation_luminance_warns_exactly_once():
     proj, _ = _make_projector(n_bins=10)
     handler = _capture_nifty_logs()
     try:
@@ -451,7 +451,7 @@ def test_auto_white_point_warns_exactly_once():
 
 def test_explicit_range_does_not_warn():
     proj, _ = _make_projector(n_bins=10)
-    proj.set_luminance_range(white=proj.luminance_of_spectrum(np.ones(10)))
+    proj.set_luminance_range(Y_saturation=proj.luminance_of_spectrum(np.ones(10)))
     handler = _capture_nifty_logs()
     try:
         proj.project(np.ones((1, 10)))
@@ -463,7 +463,7 @@ def test_explicit_range_does_not_warn():
 def test_explicit_range_makes_images_comparable():
     proj, _ = _make_projector(n_bins=10)
     flat = np.ones((1, 10))
-    proj.set_luminance_range(white=proj.luminance_of_spectrum(np.ones(10)))
+    proj.set_luminance_range(Y_saturation=proj.luminance_of_spectrum(np.ones(10)))
     assert np.all(proj.project(0.5*flat) < proj.project(flat))
 
 
@@ -473,7 +473,7 @@ def test_explicit_range_makes_images_comparable():
 
 def test_color_map_shape_and_range():
     proj, _ = _make_projector(n_bins=10)
-    proj.set_luminance_range(white=proj.luminance_of_spectrum(np.ones(10)))
+    proj.set_luminance_range(Y_saturation=proj.luminance_of_spectrum(np.ones(10)))
     img = proj.get_color_map_image(levels=np.linspace(0., 1., 32))
     assert img.shape == (32, 10, 3)
     assert np.all(img >= 0.) and np.all(img <= 1.)
@@ -485,7 +485,7 @@ def test_color_map_uses_the_curve_of_the_last_projection():
     white = proj.luminance_of_spectrum(flat)
     levels = np.geomspace(1e-3, 1., 16)
 
-    proj.set_luminance_range(white=white, dynamic_range=100.)
+    proj.set_luminance_range(Y_saturation=white, dynamic_range=100.)
     proj.project(flat[np.newaxis, :])
     linear_map = proj.get_color_map_image(levels=levels)
 
@@ -504,7 +504,7 @@ def test_color_map_uses_the_curve_of_the_last_projection():
 def test_color_map_columns_are_not_rescaled():
     # Bins differ by up to ~10x in luminance per unit flux; the legend must show that.
     proj, _ = _make_projector(n_bins=16)
-    proj.set_luminance_range(white=proj.luminance_of_spectrum(np.ones(16)))
+    proj.set_luminance_range(Y_saturation=proj.luminance_of_spectrum(np.ones(16)))
     proj.project(np.ones((1, 16)))
     img = proj.get_color_map_image(levels=np.array([1.]))
     brightness = img[0].max(axis=-1)
@@ -530,7 +530,7 @@ def test_color_map_without_curve_raises():
 
 def test_color_map_default_levels_require_a_projection():
     proj, _ = _make_projector(n_bins=10)
-    proj.set_luminance_range(white=1.)
+    proj.set_luminance_range(Y_saturation=1.)
     with pytest.raises(RuntimeError):
         proj.get_color_map_image()
 
@@ -538,7 +538,7 @@ def test_color_map_default_levels_require_a_projection():
 def test_color_map_default_levels_span_projected_flux_range_and_warn():
     proj, _ = _make_projector(n_bins=10)
     data = np.linspace(0.5, 7., 40)[:, np.newaxis]*np.ones(10)[np.newaxis, :]
-    proj.set_luminance_range(white=proj.luminance_of_spectrum(np.ones(10)))
+    proj.set_luminance_range(Y_saturation=proj.luminance_of_spectrum(np.ones(10)))
     proj.project(data)
     handler = _capture_nifty_logs()
     try:
@@ -563,7 +563,7 @@ def test_ticks_require_a_colour_map():
 
 def test_ticks_are_round_numbers_inside_the_level_range():
     proj, _ = _make_projector(n_bins=10)
-    proj.set_luminance_range(white=1.)
+    proj.set_luminance_range(Y_saturation=1.)
     levels = np.geomspace(1e-3, 1e2, 128)
     proj.get_color_map_image(levels=levels)
     positions, labels = proj.get_color_map_ticks(n_ticks=5)
@@ -578,7 +578,7 @@ def test_ticks_are_round_numbers_inside_the_level_range():
 
 def test_ticks_respect_the_extent():
     proj, _ = _make_projector(n_bins=10)
-    proj.set_luminance_range(white=1.)
+    proj.set_luminance_range(Y_saturation=1.)
     levels = np.linspace(0., 10., 101)
     proj.get_color_map_image(levels=levels)
     pos_idx, labels_idx = proj.get_color_map_ticks(n_ticks=5)
@@ -593,7 +593,7 @@ def test_apply_color_map_ticks_sets_matplotlib_ticks():
     import matplotlib.pyplot as plt
 
     proj, _ = _make_projector(n_bins=10)
-    proj.set_luminance_range(white=1.)
+    proj.set_luminance_range(Y_saturation=1.)
     levels = np.geomspace(1e-2, 1e2, 64)
     img = proj.get_color_map_image(levels=levels)
 
