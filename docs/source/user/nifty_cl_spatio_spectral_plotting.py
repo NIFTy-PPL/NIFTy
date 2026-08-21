@@ -87,10 +87,10 @@ def spectral_peak(center, width=3.):
     return np.exp(-(np.arange(n_spec) - center)**2/(2*width**2))
 
 
-cube = (100.*blob(28, 30)[..., np.newaxis]*spectral_peak(3.)     # low energy, very bright
-        + 1.*blob(66, 34)[..., np.newaxis]*spectral_peak(12.)    # mid energy
-        + 1.*blob(46, 68)[..., np.newaxis]*spectral_peak(20.)    # high energy
-        + 0.02)                                                  # faint broadband background
+cube = (100.0*blob(28, 30)[..., np.newaxis]*spectral_peak(3.)     # low energy, very bright
+       + 10.0*blob(66, 34)[..., np.newaxis]*spectral_peak(12.)    # mid energy
+       +  2.5*blob(46, 68)[..., np.newaxis]*spectral_peak(20.)    # high energy
+       +  0.02)                                                  # faint broadband background
 
 cube.shape
 # -
@@ -118,7 +118,7 @@ proj = SpectrumToRGBProjector(flux_convention='bin_integrated_flux',
                               visible_bin_width='uniform')
 proj.specify_input_spectrum_bins_via_center_and_width(bin_centers, bin_widths)
 
-Y_black, Y_saturation = proj.luminance_quantiles(cube, q=(0.5, 0.999))
+Y_black, Y_saturation = proj.luminance_quantiles(cube, q=(0.1, 0.999))
 proj.set_luminance_range(Y_saturation=Y_saturation, Y_black=Y_black)
 
 rgb = proj.project(cube)
@@ -208,11 +208,11 @@ proj.luminance_quantiles(cube, q=(0.5, 0.999))
 # spectrum you mean and ask what luminance it produces:
 
 # +
-flat_spectrum = 5.*bin_widths/bin_widths.sum()   # a flat spectrum carrying a total flux of 5
+flat_spectrum = 10.*bin_widths/bin_widths.sum()   # a flat spectrum carrying a total flux of 10
 Y_saturation_from_spectrum = proj.luminance_of_spectrum(flat_spectrum)
 
 proj.set_luminance_range(Y_saturation=Y_saturation_from_spectrum, Y_black=0.)
-show(proj.project(cube), "saturates at a flat spectrum of total flux 5")
+show(proj.project(cube), "saturates at a flat spectrum of total flux 10")
 # -
 
 # **From a dynamic range** — places the black point below the saturation luminance,
