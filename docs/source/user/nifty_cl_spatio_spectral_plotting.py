@@ -357,10 +357,24 @@ plot.output(name=os.path.join(tempfile.mkdtemp(), "spatio_spectral_plot.png"),
 # conversions between XYZ, xyY and LMS, the CIE 1931 standard observer and D65 illuminant
 # tables, and the sRGB embedding. Most users never touch it. The one knob worth knowing is
 # `enhance_sRGB_color_contrast`, which increases colour saturation of a finished sRGB image
-# while leaving its black and white points alone:
+# while leaving its black and white points alone. It is a post-processing step on the
+# projector's output, so it composes with any luminance range and tone curve:
 
-vivid = ColorSpaceTools.enhance_sRGB_color_contrast(proj.project(cube), 1.8)
-show(vivid, "colour contrast x1.8")
+# +
+proj.use_log_compression(False)
+artifically_poor_contrast = proj.project(cube + 10) # add a "white" background
+
+fig, axes = plt.subplots(1, 2, figsize=(7.2, 3.6))
+show(artifically_poor_contrast, "poor contrast image", ax=axes[0])
+show(ColorSpaceTools.enhance_sRGB_color_contrast(artifically_poor_contrast, 1.8),
+     "colour contrast x1.8", ax=axes[1])
+fig.tight_layout()
+# -
+
+# Colours become more distinct. Each channel is pushed away from the pixel's luma, which leaves
+# the luma itself untouched — as long as no channel runs past the ends of the sRGB range. Where
+# it does, the excess is clipped, so vivid pixels do shift in both brightness and hue. Use this
+# to make a figure legible, not to read quantitative colour off one.
 
 # ## Appendix: how it works
 #
