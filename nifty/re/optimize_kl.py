@@ -741,6 +741,15 @@ class OptimizeVI:
         return samples, state
 
 
+def _nifty_version() -> str:
+    from importlib.metadata import PackageNotFoundError, version
+
+    try:
+        return version("nifty")
+    except PackageNotFoundError:
+        return "unknown"
+
+
 def optimize_kl(
     likelihood: Likelihood,
     position_or_samples,
@@ -766,6 +775,7 @@ def optimize_kl(
     resume: Union[str, bool] = False,
     callback: Optional[Callable[[Samples, OptimizeVIState], None]] = None,
     odir: Optional[str] = None,
+    metadata: Optional[dict] = None,
     devices: Optional[list] = None,
     _optimize_vi=None,
     _optimize_vi_state=None,
@@ -786,6 +796,12 @@ def optimize_kl(
         optimization state.
     odir : str or None
         Path at which all output files are saved.
+    metadata : dict or None
+        Optional entries stored alongside the optimization state in
+        `last.pkl` (e.g. versions of downstream packages needed to
+        reproduce the run). The entries are never interpreted by nifty. The
+        key "nifty" defaults to the running nifty version but is left
+        untouched if the caller sets it.
 
     Returns
     -------
@@ -836,7 +852,8 @@ def optimize_kl(
         if samples.pos is not None:
             logger.warning("overwriting `position_or_samples` with `resume`")
         with open(resume_fn, "rb") as f:
-            samples, opt_vi_st = pickle.load(f)
+            # Legacy states are `(samples, state)`
+            samples, opt_vi_st, *_ = pickle.load(f)
 
     opt_vi_st_init = opt_vi.init_state(
         key,
@@ -852,6 +869,9 @@ def optimize_kl(
     opt_vi_st = opt_vi_st_init if opt_vi_st is None else opt_vi_st
     if len(opt_vi_st.config) == 0:  # resume or _optimize_vi_state has empty config
         opt_vi_st = opt_vi_st._replace(config=opt_vi_st_init.config)
+
+    meta = dict(metadata) if metadata is not None else {}
+    meta.setdefault("nifty", _nifty_version())  # caller takes precedence
 
     if odir:
         makedirs(odir, exist_ok=True)
@@ -872,7 +892,7 @@ def optimize_kl(
             with open(last_fn, "wb") as f:
                 # TODO: Make all arrays numpy arrays as to not instantiate on
                 # the main device when loading
-                pickle.dump((samples, opt_vi_st._replace(config={})), f)
+                pickle.dump((samples, opt_vi_st._replace(config={}), meta), f)
         if callback is not None:
             callback(samples, opt_vi_st)
 
