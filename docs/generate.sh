@@ -7,6 +7,7 @@ FILES=" \
   nifty_cl_getting_started_0 \
   nifty_cl_getting_started_4_CorrelatedFields \
   nifty_cl_custom_nonlinearities \
+  nifty_cl_spatio_spectral_plotting \
   notebooks_re/0_models \
   notebooks_re/1_inference \
   notebooks_re/2_gaussian_processes \

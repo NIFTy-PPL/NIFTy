@@ -7,6 +7,7 @@ NIFTy.cl
         nifty_cl_volume
         nifty_cl_design_principles
         nifty_cl_custom_nonlinearities
+        nifty_cl_spatio_spectral_plotting
         nifty_cl_getting_started_0
         nifty_cl_getting_started_4_CorrelatedFields
 
