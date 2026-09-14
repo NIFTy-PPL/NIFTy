@@ -35,6 +35,10 @@ Change categories:
   - Add an analytic Gaussian-prior contribution to
     `estimate_evidence_lower_bound` when all relevant eigenvalues are
     available.
+- Bug fixes
+  - `StatCalculator` computes the variance of complex samples as
+    `conj(x-mean)*(x-mean)` now. Before, the conjugation was missing, such that
+    the variance of complex samples could be complex or even negative.
 - Changes
   - Reject zero requested eigenvalues when relevant metric degrees of freedom
     are present instead of failing later while processing an empty eigensystem.
