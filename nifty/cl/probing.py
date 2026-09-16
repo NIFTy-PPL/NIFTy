@@ -50,7 +50,7 @@ class StatCalculator:
             delta = value - self._mean
             self._mean = self.mean + delta*(1./self._count)
             delta2 = value - self._mean
-            self._M2 = self._M2 + delta*delta2
+            self._M2 = self._M2 + delta.conjugate()*delta2
 
     @property
     def mean(self):

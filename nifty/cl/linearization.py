@@ -12,6 +12,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Copyright(C) 2013-2020 Max-Planck-Society
+# Copyright(C) 2026 Philipp Arras
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -248,12 +249,13 @@ class Linearization(Operator):
             return self.__mul__(other)
         from .operators.outer_product_operator import OuterProduct
         if other.jac is None:
-            return self.new(OuterProduct(other.domain, self._val)(other),
-                            OuterProduct(other.domain, self._jac(self._val)))
+            return self.new(
+                OuterProduct(other.domain, self._val)(other),
+                OuterProduct(self.target, other, flip=True)(self._jac))
         tmp_op = OuterProduct(other.target, self._val)
         return self.new(
             tmp_op(other._val),
-            OuterProduct(other.target, self._jac(self._val))._myadd(
+            OuterProduct(self.target, other._val, flip=True)(self._jac)._myadd(
                 tmp_op(other._jac), False))
 
     def vdot(self, other):

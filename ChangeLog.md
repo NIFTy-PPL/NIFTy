@@ -35,6 +35,19 @@ Change categories:
   - Add an analytic Gaussian-prior contribution to
     `estimate_evidence_lower_bound` when all relevant eigenvalues are
     available.
+- Bug fixes
+  - `StatCalculator` computes the variance of complex samples as
+    `conj(x-mean)*(x-mean)` now. Before, the conjugation was missing, such that
+    the variance of complex samples could be complex or even negative.
+  - `Linearization.outer` returns the correct Jacobian now. Before, it
+    evaluated the Jacobian at the value instead of composing with it and
+    swapped the order of the two factors of the outer product, such that the
+    result was inconsistent with `Field.outer`. To this end, `OuterProduct`
+    received a new keyword argument `flip` that puts `field` behind the input
+    field instead of in front of it.
+  - `OuterProduct.adjoint_times` conjugates `field` now. Before, the
+    conjugation was missing, such that the adjoint was wrong for complex
+    `field`.
 - Changes
   - Reject zero requested eigenvalues when relevant metric degrees of freedom
     are present instead of failing later while processing an empty eigensystem.
