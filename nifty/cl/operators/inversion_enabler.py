@@ -63,7 +63,7 @@ class InversionEnabler(EndomorphicOperator):
         if self._op.capability & mode:
             return self._op.apply(x, mode)
 
-        x0 = full(x.domain, 0.)
+        x0 = full(x.domain, 0., device_id=x.device_id)
         invmode = self._modeTable[self.INVERSE_BIT][self._ilog[mode]]
         invop = self._op._flip_modes(self._ilog[invmode])
         prec = self._approximation
