@@ -10,6 +10,7 @@ from dataclasses import field
 from functools import partial
 from os import makedirs
 from typing import Any, Callable, Literal, NamedTuple, Optional, TypeVar, Union
+from pathlib import Path
 
 import jax
 import numpy as np
@@ -238,6 +239,7 @@ class OptimizeVI:
         kl_reduce=_reduce,
         mirror_samples=True,
         devices=None,
+        intermediate_samples_path: Optional[Path | str] = None,
         _kl_value_and_grad: Optional[Callable] = None,
         _kl_metric: Optional[Callable] = None,
         _draw_linear_residual: Optional[Callable] = None,
@@ -293,6 +295,9 @@ class OptimizeVI:
             jax.devices(). The samples need to be evenly distributable over the
             devices. For a demo on how to use this feature see
             `a_demo_multi-gpu.py` in the demos folder.
+        intermediate_samples_path: Optional[Path | str]
+            If given, save the intermediate samples at Path | str location, before
+            optimizing the position.
 
         Notes
         -----
@@ -387,6 +392,16 @@ class OptimizeVI:
         self.nonlinearly_update_residual = _nonlinearly_update_residual
         self.residual_map = residual_map
         self.get_status_message = _get_status_message
+
+        self.intermediate_samples_path = None
+        if intermediate_samples_path is not None:
+            save_path = Path(intermediate_samples_path)
+            save_path.parent.mkdir(parents=True, exist_ok=True)
+
+            if not os.access(save_path.parent, os.W_OK):
+                raise PermissionError(f"Directory '{save_path.parent}' is not writable")
+
+            self.intermediate_samples_path = save_path
 
     def draw_linear_samples(self, primals, keys, **kwargs):
         # NOTE, use `Partial` in favor of `partial` to allow the (potentially)
@@ -669,6 +684,58 @@ class OptimizeVI:
         )
         return OptimizeVIState(nit, key, config=config)
 
+    def _optional_save_intermediate_samples(
+        self, nit: int, samples: Samples, st_smpls: dict
+    ) -> None:
+        """Saves intermediate samples to disk via pickle if intermediate_samples_path is
+        given.
+
+        Parameters
+        ----------
+        nit : int
+            Current iteration number.
+        samples : :class:`Samples`
+            Current samples to save.
+        st_smpls : dict
+            Dictionary of state samples to save.
+        """
+        if self.intermediate_samples_path is None:
+            return
+
+        with open(self.intermediate_samples_path, "wb") as f:
+            pickle.dump({"nit": nit, "samples": samples, "st_smpls": st_smpls}, f)
+
+    def _optional_load_intermediate_samples(
+        self, nit: int
+    ) -> None | tuple[Samples, dict]:
+        """Loads intermediate samples from disk if they exist and match the given
+        iteration.
+
+        Parameters
+        ----------
+        nit : int
+            Expected iteration number. If the saved data does not match this
+            iteration, ``None`` is returned.
+
+        Returns
+        -------
+        None or tuple[:class:`Samples`, dict]
+            ``None`` if no saved file exists or the iteration does not match.
+            Otherwise, a tuple of the saved samples and state samples dictionary.
+        """
+        if (self.intermediate_samples_path is None) or (
+            not self.intermediate_samples_path.exists()
+        ):
+            return None
+
+        with open(self.intermediate_samples_path, "rb") as f:
+            data = pickle.load(f)
+
+        if data["nit"] != nit:
+            return None
+
+        return data["samples"], data["st_smpls"]
+
     def update(
         self,
         samples: Samples,
@@ -701,16 +768,22 @@ class OptimizeVI:
         )
         # Make the `key` tick independently of whether samples are drawn or not
         key, sk = random.split(key, 2)
-        samples, st_smpls = self.draw_samples(
-            samples,
-            key=sk,
-            sample_mode=sample_mode,
-            point_estimates=point_estimates,
-            n_samples=n_samples,
-            draw_linear_kwargs=draw_linear_kwargs,
-            nonlinearly_update_kwargs=nonlinearly_update_kwargs,
-            **kwargs,
-        )
+
+        # Either load intermediate samples or
+        if (loaded := self._optional_load_intermediate_samples(nit)) is not None:
+            samples, st_smpls = loaded
+        else:
+            samples, st_smpls = self.draw_samples(
+                samples,
+                key=sk,
+                sample_mode=sample_mode,
+                point_estimates=point_estimates,
+                n_samples=n_samples,
+                draw_linear_kwargs=draw_linear_kwargs,
+                nonlinearly_update_kwargs=nonlinearly_update_kwargs,
+                **kwargs,
+            )
+            self._optional_save_intermediate_samples(nit, samples, st_smpls)
 
         kl_kwargs = _getitem_at_nit(config, "kl_kwargs", nit).copy()
         kl_opt_state = self.kl_minimize(
@@ -719,6 +792,10 @@ class OptimizeVI:
         samples = samples.at(kl_opt_state.x)
         # Remove unnecessary references
         kl_opt_state = kl_opt_state._replace(x=None, jac=None, hess=None, hess_inv=None)
+
+        # Remove intermediate samples file
+        if self.intermediate_samples_path:
+            self.intermediate_samples_path.unlink(missing_ok=True)
 
         state = state._replace(
             nit=nit + 1,
@@ -777,6 +854,7 @@ def optimize_kl(
     odir: Optional[str] = None,
     metadata: Optional[dict] = None,
     devices: Optional[list] = None,
+    save_intermediate_samples: bool = False,
     _optimize_vi=None,
     _optimize_vi_state=None,
 ) -> tuple[Samples, OptimizeVIState]:
@@ -818,6 +896,11 @@ def optimize_kl(
     LAST_FILENAME = "last.pkl"
     MINISANITY_FILENAME = "minisanity.txt"
 
+    # Resolve intermediate samples path
+    intermediate_samples_path = None
+    if save_intermediate_samples and odir is not None:
+        intermediate_samples_path = Path(odir) / "intermediate_samples.pkl"
+
     opt_vi = _optimize_vi if _optimize_vi is not None else None
     if opt_vi is None:
         opt_vi = OptimizeVI(
@@ -831,6 +914,7 @@ def optimize_kl(
             kl_reduce=kl_reduce,
             mirror_samples=mirror_samples,
             devices=devices,
+            intermediate_samples_path=intermediate_samples_path,
         )
 
     last_fn = os.path.join(odir, LAST_FILENAME) if odir is not None else None
