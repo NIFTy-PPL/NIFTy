@@ -12,7 +12,7 @@ from jax.tree_util import tree_map
 from numpy.testing import assert_allclose, assert_array_equal
 
 import nifty.re as jft
-from nifty.re.optimize_kl import concatenate_zip
+from nifty.re.optimize_kl import concatenate_zip,ConvergenceChecker
 
 jax.config.update("jax_enable_x64", True)
 
@@ -384,6 +384,117 @@ def test_optimize_kl_device_consistency(sample_mode, n_samples):
     tree_map(
         assert_array_equal, samples_single_device.keys, samples_multiple_devices.keys
     )
+
+
+def test_convergence_checker():
+    checker = ConvergenceChecker(
+        likelihood=None,
+        min_lh_red_chi2=1.1,
+        memory=2,
+    )
+
+    # Not enough history yet.
+    checker.history = [0.9]
+    assert checker() is False
+
+    # Both values in the memory window are below the threshold.
+    checker.history = [0.9, 1.0]
+    assert checker() is True
+
+    # The most recent memory window contains a value above the threshold.
+    checker.history = [0.9, 1.2]
+    assert checker() is False
+
+    # Older values outside the memory window are irrelevant.
+    checker.history = [1.2, 0.9, 1.0]
+    assert checker() is True
+
+
+@pytest.mark.parametrize("memory", [1, 2, 3])
+def test_convergence_checker_memory(memory):
+    checker = ConvergenceChecker(
+        likelihood=None,
+        min_lh_red_chi2=1.1,
+        memory=memory,
+    )
+
+    # Fewer than `memory` entries -> no convergence.
+    checker.history = [0.9] * (memory - 1)
+    assert checker() is False
+
+    # Exactly `memory` successful iterations -> convergence.
+    checker.history = [0.9] * memory
+    assert checker() is True
+
+    # A bad value in the current memory window -> no convergence.
+    checker.history = [0.9] * (memory - 1) + [1.2]
+    assert checker() is False
+
+    # Bad values older than the memory window are ignored.
+    checker.history = [1.2] + [0.9] * memory
+    assert checker() is True
+
+
+def test_convergence_checker_threshold():
+    checker = ConvergenceChecker(
+        likelihood=None,
+        min_lh_red_chi2=1.1,
+        memory=1,
+    )
+
+    # Convergence requires a value strictly below the threshold.
+    checker.history = [1.099999]
+    assert checker() is True
+
+    checker.history = [1.1]
+    assert checker() is False
+
+    checker.history = [1.100001]
+    assert checker() is False
+
+
+def test_convergence_checker_collect():
+    likelihood = jft.Gaussian(
+        data=jnp.zeros(3),
+        noise_cov_inv=jnp.eye(3),
+    )
+
+    checker = ConvergenceChecker(
+        likelihood=likelihood,
+        min_lh_red_chi2=1.1,
+        memory=1,
+    )
+
+    samples = jnp.zeros(3)
+
+    assert checker.history == []
+
+    converged = checker.collect(samples, None)
+
+    assert converged is True
+    assert len(checker.history) == 1
+    assert checker.history[0] < 1.1
+
+
+def test_convergence_checker_collect_not_converged():
+    likelihood = jft.Gaussian(
+        data=jnp.ones(3),
+        noise_cov_inv=jnp.eye(3),
+    )
+
+    checker = ConvergenceChecker(
+        likelihood=likelihood,
+        min_lh_red_chi2=1.1,
+        memory=1,
+    )
+
+    samples = jnp.zeros(3)
+
+    converged = checker.collect(samples, None)
+
+    assert converged is False
+    assert len(checker.history) == 1
+    assert checker.history[0] >= 1.1
 
 
 if __name__ == "__main__":
