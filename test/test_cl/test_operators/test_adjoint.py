@@ -12,6 +12,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Copyright(C) 2013-2021 Max-Planck-Society
+# Copyright(C) 2026 Philipp Arras
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -251,10 +252,12 @@ def testRegridding(args):
                  ift.HPSpace(3)])
 @pmp('domain', [(ift.RGSpace(2), ift.GLSpace(10)),
                 ift.RGSpace((4, 3), distances=(0.1, 1.))])
-def testOuter(fdomain, domain):
-    f = ift.from_random(ift.makeDomain(fdomain), 'normal')
-    op = ift.OuterProduct(domain, f)
-    ift.extra.check_linear_operator(op)
+@pmp('dtype', [np.float64, np.complex128])
+@pmp('flip', [False, True])
+def testOuter(fdomain, domain, dtype, flip):
+    f = ift.from_random(ift.makeDomain(fdomain), dtype=dtype)
+    op = ift.OuterProduct(domain, f, flip=flip)
+    ift.extra.check_linear_operator(op, dtype, dtype)
 
 
 @pmp('sp', _h_spaces + _p_spaces + _pow_spaces)

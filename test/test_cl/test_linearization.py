@@ -12,6 +12,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Copyright(C) 2013-2019 Max-Planck-Society
+# Copyright(C) 2026 Philipp Arras
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -113,3 +114,73 @@ def test_actual_gradients2(f, dtype):
         f = (f,)
     ift.extra.check_operator(ift.ScalingOperator(dom, 1.).ptw(*f), fld, ntries=5,
                              only_r_differentiable=only_r_differentiable)
+
+
+def test_outer_with_field():
+    dom0, dom1 = ift.RGSpace((3, 2)), ift.UnstructuredDomain(5)
+    a, b, da = (ift.from_random(dd) for dd in (dom0, dom1, dom0))
+
+    lin = ift.Linearization.make_var(a).outer(b)
+
+    assert_allclose(lin.val.asnumpy(), np.multiply.outer(a.asnumpy(), b.asnumpy()))
+    assert_allclose(lin.jac(da).asnumpy(),
+                    np.multiply.outer(da.asnumpy(), b.asnumpy()))
+
+
+def test_outer_with_linearization():
+    dom = ift.makeDomain({"a": ift.RGSpace((3, 2)), "b": ift.UnstructuredDomain(5)})
+    pos, dpos = ift.from_random(dom), ift.from_random(dom)
+
+    lin = ift.Linearization.make_var(pos)
+    lin = lin["a"].outer(lin["b"])
+
+    a, b = pos["a"].asnumpy(), pos["b"].asnumpy()
+    da, db = dpos["a"].asnumpy(), dpos["b"].asnumpy()
+    assert_allclose(lin.val.asnumpy(), np.multiply.outer(a, b))
+    assert_allclose(lin.jac(dpos).asnumpy(),
+                    np.multiply.outer(da, b) + np.multiply.outer(a, db))
+
+
+class _OuterProductModel0(ift.Operator):
+    def __init__(self, domain, second):
+        self._domain = ift.makeDomain(domain)
+        self._second = second
+        self._target = ift.makeDomain(
+            tuple(self._domain["a"]) + tuple(self._second.domain)
+        )
+
+    def apply(self, x):
+        self._check_input(x)
+        return x["a"].ptw("exp").outer(self._second)
+
+
+class _OuterProductModel1(ift.Operator):
+    def __init__(self, domain, second):
+        self._domain = ift.makeDomain(domain)
+        self._target = ift.makeDomain(
+            tuple(self._domain["a"]) + tuple(self._domain["b"])
+        )
+
+    def apply(self, x):
+        self._check_input(x)
+        return x["a"].ptw("exp").outer(x["b"].ptw("sin"))
+
+
+_dom_a = ift.RGSpace((3, 2))
+_dom_b = ift.makeDomain((ift.UnstructuredDomain(5), ift.RGSpace(4)))
+
+
+@pmp('dtype', [np.float64, np.complex128])
+@pmp('const_dtype', [np.float64, np.complex128])
+def test_outer_jacobian_with_field(dtype, const_dtype):
+    op = _OuterProductModel0({"a": _dom_a},
+                             ift.from_random(_dom_b, dtype=const_dtype))
+    pos = ift.from_random(op.domain, dtype=dtype)
+    ift.extra.check_operator(op, pos, ntries=5, only_r_differentiable=False)
+
+
+@pmp('dtype', [np.float64, np.complex128, {"a": np.float64, "b": np.complex128}])
+def test_outer_jacobian_with_linearization(dtype):
+    op = _OuterProductModel1({"a": _dom_a, "b": _dom_b}, "b")
+    pos = ift.from_random(op.domain, dtype=dtype)
+    ift.extra.check_operator(op, pos, ntries=5, only_r_differentiable=False)

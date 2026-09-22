@@ -12,13 +12,101 @@ Change categories:
 - Deprecations
 -->
 
+# NIFTy.re
+- New features
+  - Extend `estimate_evidence_lower_bound` with stochastic Lanczos quadrature
+    for the trace-log, signal- and data-space evaluation, optional Radau
+    diagnostics, and an analytic Gaussian-prior contribution.
+- Changes
+  - Consolidate the public Lanczos and stochastic log-determinant routines with
+    the SLQ implementation used by the ELBO estimator so all entry points share
+    one recurrence and Gaussian quadrature kernel.
+  - Require at least two Hutchinson probes when an SLQ remainder is estimated,
+    validate resumed eigenpairs against the selected operator space, and reject
+    SLQ-only options in eigsh mode.
+- Breaking changes
+  - Change saved ELBO eigensystem filenames from
+    `{prefix}_eigenvalues.npy` and `{prefix}_eigenvectors.npy` to
+    `{prefix}_signal_eigenvalues.npy` and `{prefix}_signal_eigenvectors.npy`,
+    or the corresponding `_data` names for data-space calculations.
 
+# NIFTy.cl
+- New features
+  - Add an analytic Gaussian-prior contribution to
+    `estimate_evidence_lower_bound` when all relevant eigenvalues are
+    available.
+- Bug fixes
+  - `StatCalculator` computes the variance of complex samples as
+    `conj(x-mean)*(x-mean)` now. Before, the conjugation was missing, such that
+    the variance of complex samples could be complex or even negative.
+  - `Linearization.outer` returns the correct Jacobian now. Before, it
+    evaluated the Jacobian at the value instead of composing with it and
+    swapped the order of the two factors of the outer product, such that the
+    result was inconsistent with `Field.outer`. To this end, `OuterProduct`
+    received a new keyword argument `flip` that puts `field` behind the input
+    field instead of in front of it.
+  - `OuterProduct.adjoint_times` conjugates `field` now. Before, the
+    conjugation was missing, such that the adjoint was wrong for complex
+    `field`.
+- Changes
+  - Reject zero requested eigenvalues when relevant metric degrees of freedom
+    are present instead of failing later while processing an empty eigensystem.
+- Breaking changes
+  - Change saved ELBO eigensystem filenames from
+    `{prefix}_eigenvalues.npy` and `{prefix}_eigenvectors.npy` to
+    `{prefix}_signal_eigenvalues.npy` and `{prefix}_signal_eigenvectors.npy`.
+
+NIFTy 9.2.0 (April 17, 2026)
+============================
+
+# NIFTy.re
+- New features
+  - Add option in `optimize_kl` to distribute samples over multiple GPUs.
+  - Introduce `blackjax_nuts` wrapper to easily sample a NIFTy likelihood with
+    the BlackJAX No-U-Turn Sampler.
+  - Introduce helper function `check_model` for benchmarking models and
+    detecting potential memory overhead due to inlined constants.
+  - Introduce a wrapper `optimize.optax_wrapper` for using optimizer algorithms
+    implemented in the Optax package in NIFTy.
+  - Add option to resume `estimate_evidence_lower_bound` for computing ELBOs of
+    large problems.
+  - Add option for data-space evaluations to `wiener_filter_posterior`.
+  - Introduce option to clip latent space parameters with the `ClipModel` for
+    numerical stability.
+  - Add option to renormalize the amplitude of the correlated field Matern
+    kernel to decouple the variance from the scaling parameter.
+  - Make NIFTy.re Windows-compatible.
+  - Introduce a function to compute empirical power spectra of fields
+    on regular grids `compute_empirical_power_spectrum`.
+  - Add `MaternCovarianceModel`, replacing the now-deprecated
+    `MaternHarmonicCovariance`; supports learnable lengthscale, spectral slope,
+    and high-k cutoff in arbitrary dimensions.
+- Bug fixes:
+  - Fix bug when computing the Wiener filter posterior of a model linearized
+    around a non-zero position.
+  - Fix a bug in the `MaternHarmonicCovariance` of the `ICRField` model
+    affecting small cutoff values.
+  - Fix bug in the `SimpleOpenGrid` when initializing without an explicitly
+    specified depth.
+- Changes
+  - Change the JIT compilation strategy of `optimize_kl`. By default, the
+    optimizers themselves are no longer compiled—only the cost functions being
+    optimized.
+- Deprecations
+  - Deprecate the built-in HMC (`NUTSChain`, `HMCChain`) functions. Please use
+    the BlackJAX wrapper (`blackjax_nuts`) instead.
+  - Deprecate the experimental `MaternHarmonicCovariance` model. Please use
+    the new `MaternCovarianceModel` instead.
+
+
+# NIFTy.cl
 - New features
   - Introduce `VariablePositionNufft`, a type-2 NUFFT operator for evaluating
     signals on a regular grid at arbitrary spatial positions.
   - Introduce `ShiftedPositionFFT`, an operator to perform FFT-like transforms
     at frequency-shifted positions via NUFFT.
   - Add `FFTShiftOperator` to enable frequency-domain shifting for RGSpaces.
+  - Add `CategoricalEnergy` for categorical data.
 - Breaking changes
   - Change name of the logger from `NIFTy8` to `NIFTy`.
 - Changes

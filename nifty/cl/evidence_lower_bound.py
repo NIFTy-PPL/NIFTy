@@ -252,11 +252,21 @@ def _eigsh(
                 verbose=verbose,
             )
     else:
-        # Set up batches
-        base = remaining_eigenvalues // n_batches
-        remainder = remaining_eigenvalues % n_batches
-        batches = [base + 1] * remainder + [base] * (n_batches - remainder)
-        batches = [batch for batch in batches if batch > 0]
+        # Set up batches based on total n_eigenvalues, then skip precomputed.
+        base = n_eigenvalues // n_batches
+        remainder = n_eigenvalues % n_batches
+        full_batches = [base + 1] * remainder + [base] * (n_batches - remainder)
+        full_batches = [batch for batch in full_batches if batch > 0]
+        batches = []
+        skip = n_precomputed
+        for batch in full_batches:
+            if skip >= batch:
+                skip -= batch
+                continue
+            if skip > 0:
+                batch -= skip
+                skip = 0
+            batches.append(batch)
         projected_metric = M
         if eigenvectors is not None:
             if orthonormalize_eigenvectors:
@@ -350,6 +360,7 @@ def estimate_evidence_lower_bound(
     orthonormalize_every_n_batches=8,
     orthonormalize_threshold=1e-6,
     orthonormalize_n_probes=2,
+    analytic_prior_term=False,
 ):
     """Provides an estimate for the Evidence Lower Bound (ELBO).
 
@@ -396,10 +407,10 @@ def estimate_evidence_lower_bound(
         Collection of samples from the posterior distribution.
     n_eigenvalues : int
         Maximum number of eigenvalues to be considered for the estimation of
-        the log-determinant of the metric. Note that if `n_eigenvalues` equals
-        the total number of relevant degrees of freedom of the problem, all
-        relevant eigenvalues are always computed irrespective of other stopping
-        criteria.
+        the log-determinant of the metric. Must be at least one unless there are
+        no relevant degrees of freedom. Note that if `n_eigenvalues` equals the
+        total number of relevant degrees of freedom of the problem, all relevant
+        eigenvalues are always computed irrespective of other stopping criteria.
     compute_all : bool
         If True, compute all eigenvalues and eigenvectors of the relevant
         metric subspace. Overrides `n_eigenvalues`.
@@ -410,9 +421,11 @@ def estimate_evidence_lower_bound(
         proxy for all remaining eigenvalues in the trace-log estimation.
         Default is 1e-3.
     n_batches : int
-        Number of batches into which the eigenvalue estimation gets subdivided
-        into. Only after completing one batch the early stopping criterion
-        based on `min_lh_eval` is checked for.
+        Number of batches into which the eigenvalue estimation gets subdivided.
+        The batch schedule is defined for the total `n_eigenvalues`; when
+        resuming, the remaining work continues with the tail of this schedule.
+        Only after completing one batch the early stopping criterion based on
+        `min_lh_eval` is checked for.
     tol : Optional[float]
         Tolerance on the eigenvalue calculation. Zero indicates machine
         precision. Default is 0.
@@ -426,7 +439,8 @@ def estimate_evidence_lower_bound(
         each batch to `{output_directory}/{prefix}_eigenvalues.npy` and
         `{output_directory}/{prefix}_eigenvectors.npy`.
     save_eigensystem_prefix : str
-        Prefix for eigensystem filenames. Default is "metric".
+        Prefix for eigensystem filenames. A suffix `_signal` is appended
+        automatically. Default is "metric".
     resume_eigenvectors : Optional[np.ndarray]
         Precomputed eigenvectors to resume the eigenvalue calculation. The
         array is expected to be shaped `(metric_size, n_vectors)`.
@@ -447,6 +461,13 @@ def estimate_evidence_lower_bound(
     orthonormalize_n_probes : int
         Number of randomized probe vectors used to estimate the orthonormality
         error. Default is 2.
+    analytic_prior_term : bool
+        If True, compute the quadratic prior term
+        :math:`\\frac{1}{2}\\langle \\xi^\\dagger \\xi \\rangle_q` analytically
+        as :math:`\\frac{1}{2}(\\mathrm{Tr}\\,\\Sigma + \\bar\\xi^\\dagger\\bar\\xi)`
+        with :math:`\\Sigma = \\Lambda^{-1}`. For the CL implementation this
+        requires all relevant metric eigenvalues to be available (e.g. via
+        `compute_all=True`). Default is False.
 
     Returns
     -------
@@ -457,16 +478,18 @@ def estimate_evidence_lower_bound(
         Dictionary with a summary of the statistics of the estimated ELBO.
         The keys of this dictionary are:
 
-        - `elbo_mean`: returns the mean value of the elbo estimate calculated
-          over posterior samples
-        - `elbo_up`: returns an upper bound to the elbo estimate (given by one
-          posterior-sample standard deviation)
-        - `elbo_lw`: returns a lower bound to the elbo estimate (one standard
-          deviation plus a maximal error on the metric trace-log)
+        - `elbo_mean`: mean of the ELBO samples.
+        - `elbo_up`: `elbo_mean + elbo_std` (one-sigma upper envelope), where
+          `elbo_std` is the sample standard deviation returned by `SampleList`.
+        - `elbo_lw`: `elbo_mean - elbo_std - lower_error` (conservative lower
+          envelope).
         - `lower_error`: maximal error on the metric trace-log term given by
           the number of relevant metric eigenvalues different from 1 neglected
           in the estimation of the trace-log times the log of the smallest
           calculated eigenvalue.
+        - `trace_inv_exact`, `trace_inv_const`, `trace_inv_total`,
+          `prior_mean_sq`, `prior_term`: returned when
+          `analytic_prior_term=True`.
 
     Warning
     -------
@@ -498,7 +521,7 @@ def estimate_evidence_lower_bound(
 
     n_data_points = (
         hamiltonian.likelihood_energy.data_domain.size
-        if not None
+        if hamiltonian.likelihood_energy.data_domain is not None
         else hamiltonian.domain.size
     )
     n_relevant_dofs = min(
@@ -507,6 +530,7 @@ def estimate_evidence_lower_bound(
 
     metric = hamiltonian(Linearization.make_var(samples.mean, want_metric=True)).metric
     metric_size = metric.domain.size
+    save_eigensystem_prefix = f"{save_eigensystem_prefix}_signal"
     if compute_all:
         if verbose:
             logger.info(
@@ -514,6 +538,15 @@ def estimate_evidence_lower_bound(
                 f"eigenvalues."
             )
         n_eigenvalues = n_relevant_dofs
+    if not isinstance(n_eigenvalues, (int, np.integer)):
+        raise TypeError("n_eigenvalues must be an integer.")
+    if n_eigenvalues < 0:
+        raise ValueError("n_eigenvalues must be non-negative.")
+    if n_relevant_dofs > 0 and n_eigenvalues == 0:
+        raise ValueError(
+            "ELBO estimation requires at least one eigenvalue when relevant "
+            "degrees of freedom are present."
+        )
 
     eigenvalues, _ = _eigsh(
         metric,
@@ -534,6 +567,8 @@ def estimate_evidence_lower_bound(
         orthonormalize_threshold=orthonormalize_threshold,
         orthonormalize_n_probes=orthonormalize_n_probes,
     )
+    if eigenvalues is None:
+        eigenvalues = np.asarray([], dtype=dtype)
     if verbose:
         # FIXME
         logger.info(
@@ -545,21 +580,65 @@ def estimate_evidence_lower_bound(
     # Return a list of ELBO samples and a summary of the ELBO statistics
     log_eigenvalues = np.log(eigenvalues)
     tr_log_lat_cov = -0.5 * np.sum(log_eigenvalues)
-    tr_log_lat_cov_lower = (
-        0.5 * (n_relevant_dofs - log_eigenvalues.size) * np.min(log_eigenvalues)
-    )
+    if log_eigenvalues.size > 0:
+        tr_log_lat_cov_lower = (
+            0.5 * (n_relevant_dofs - log_eigenvalues.size) * np.min(log_eigenvalues)
+        )
+    else:
+        tr_log_lat_cov_lower = 0.0
     tr_log_lat_cov_lower = Field.scalar(tr_log_lat_cov_lower)
+
+    trace_inv_exact = 0.0
+    trace_inv_const = float(metric_size - n_relevant_dofs)
+    prior_mean_sq = 0.0
+    if analytic_prior_term:
+        if eigenvalues.size < n_relevant_dofs:
+            raise ValueError(
+                "analytic_prior_term requires all relevant eigenvalues to be "
+                "computed. Set compute_all=True."
+            )
+        trace_inv_exact = float(np.sum(1.0 / eigenvalues))
+        prior_mean_sq = float(np.real(samples.mean.s_vdot(samples.mean)))
+
     posterior_contribution = Field.scalar(tr_log_lat_cov + 0.5 * metric_size)
+    trace_inv_total = 0.0
+    prior_term = Field.scalar(0.0)
+    sample_energy = hamiltonian
+    if analytic_prior_term:
+        trace_inv_total = trace_inv_exact + trace_inv_const
+        prior_term = Field.scalar(0.5 * (trace_inv_total + prior_mean_sq))
+        sample_energy = hamiltonian.likelihood_energy
     elbo_samples = SampleList(
-        list(samples.iterator(lambda x: posterior_contribution - hamiltonian(x)))
+        list(
+            samples.iterator(
+                lambda x: posterior_contribution - sample_energy(x) - prior_term
+            )
+        )
     )
 
     stats = {"lower_error": tr_log_lat_cov_lower}
+    if analytic_prior_term:
+        stats.update(
+            {
+                "trace_inv_exact": Field.scalar(trace_inv_exact),
+                "trace_inv_const": Field.scalar(trace_inv_const),
+                "trace_inv_total": Field.scalar(trace_inv_total),
+                "prior_mean_sq": Field.scalar(prior_mean_sq),
+                "prior_term": prior_term,
+            }
+        )
     elbo_mean, elbo_var = elbo_samples.sample_stat()
     elbo_up = elbo_mean + elbo_var.sqrt()
     elbo_lw = elbo_mean - elbo_var.sqrt() - stats["lower_error"]
     stats["elbo_mean"], stats["elbo_up"], stats["elbo_lw"] = elbo_mean, elbo_up, elbo_lw
     if verbose:
+        if analytic_prior_term:
+            logger.info(
+                f"\nAnalytic prior term (in log units)"
+                f"\nTrace(inv) : {trace_inv_total:.4e} "
+                f"(exact {trace_inv_exact:.4e}, const {trace_inv_const:.4e})"
+                f"\nMean^2     : {prior_mean_sq:.4e}"
+            )
         s = (
             f"\nELBO decomposition (in log units)"
             f"\nELBO mean : {elbo_mean.asnumpy():.4e} "

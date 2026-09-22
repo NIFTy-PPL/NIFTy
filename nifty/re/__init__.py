@@ -6,6 +6,7 @@ from .. import config
 from .conjugate_gradient import cg, static_cg
 from .correlated_field import CorrelatedFieldMaker
 from .custom_map import lmap, smap
+from .empirical_power_spectrum import compute_empirical_power_spectrum
 from .evi import (
     Samples,
     draw_linear_residual,
@@ -47,6 +48,7 @@ from .multi_grid import (
     BrokenLogGrid,
     MGrid,
     SimpleOpenGrid,
+    MaternCovarianceModel,
 )
 from .num import *
 from .optimize import minimize, newton_cg, static_newton_cg, trust_ncg

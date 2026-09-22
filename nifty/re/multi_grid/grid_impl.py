@@ -263,7 +263,7 @@ def SimpleOpenGrid(
     min_shape = np.atleast_1d(min_shape)
     if np.ndim(splits) != 2:
         if depth is None:
-            desired_shape0 = desired_size0 ** (1.0 / min_shape.ndim)
+            desired_shape0 = desired_size0 ** (1.0 / min_shape.size)
             desired_shape0 = np.ceil(desired_shape0).astype(np.int_)
             desired_shape0 = np.broadcast_to(desired_shape0, min_shape.shape)
             desired_shape0 = np.min(

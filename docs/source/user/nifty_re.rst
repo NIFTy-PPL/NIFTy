@@ -17,3 +17,4 @@ Furthermore we showcases simple examples, and demonstrate the Correlated field m
 
         paper
         Introductory Notebooks <notebooks_re/notebooks>
+        Spatio-spectral plotting <nifty_cl_spatio_spectral_plotting>

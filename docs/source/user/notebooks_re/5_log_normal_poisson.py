@@ -26,6 +26,10 @@
 # and [Inference](1_inference).
 
 # %%
+import jax
+
+jax.config.update("jax_enable_x64", True)
+
 import nifty.re as jft
 
 import numpy as np
@@ -131,8 +135,7 @@ for k in range(15):
 # %%
 t_res = 2**8
 T = events.max()
-data, bins = jnp.histogram(events, t_res, (0, T))
-data = data.astype(int)
+data, bins = np.histogram(events, t_res, (0, T))
 bins = bins[:-1]
 
 plt.xlabel("Time [s]")
