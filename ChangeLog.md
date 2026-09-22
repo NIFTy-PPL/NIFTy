@@ -48,6 +48,9 @@ Change categories:
   - `OuterProduct.adjoint_times` conjugates `field` now. Before, the
     conjugation was missing, such that the adjoint was wrong for complex
     `field`.
+  - `InversionEnabler` runs the conjugate gradient on the device of its input
+    now. Before, the starting value of the iteration was always allocated on
+    the host, such that the inversion of a GPU field fell back to the CPU.
 - Changes
   - Reject zero requested eigenvalues when relevant metric degrees of freedom
     are present instead of failing later while processing an empty eigensystem.
