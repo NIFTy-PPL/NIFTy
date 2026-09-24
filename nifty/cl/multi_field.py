@@ -59,7 +59,11 @@ class MultiField(Operator):
                                     'defined on DomainTuples.')
             domain = MultiDomain.make({key: v._domain
                                        for key, v in dct.items()})
-        res = tuple(dct[key] if key in dct else Field.full(dom, 0.)
+        # If dct has one single device, allocate the zero fields on that device.
+        # Otherwise, on host.
+        device_ids = set(ff.device_id for ff in dct.values())
+        device_id = device_ids.pop() if len(device_ids) == 1 else -1
+        res = tuple(dct[key] if key in dct else Field.full(dom, 0., device_id)
                     for key, dom in zip(domain.keys(), domain.domains()))
         return MultiField(domain, res)
 
