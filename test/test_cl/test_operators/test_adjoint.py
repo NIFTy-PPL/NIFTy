@@ -129,7 +129,7 @@ def testDOFDistributor(sp, dtype):
     dofdex = np.arange(sp.size).reshape(sp.shape) % 3
     dofdex = ift.Field.from_raw(sp, dofdex)
     op = ift.DOFDistributor(dofdex)
-    ift.extra.check_linear_operator(op, dtype, dtype)
+    ift.extra.check_linear_operator(op, dtype, dtype, rtol=1e-12)
 
 
 @pmp('sp', _h_spaces)
