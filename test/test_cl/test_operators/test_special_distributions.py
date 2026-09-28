@@ -73,6 +73,6 @@ def test_beta_operator(a, b):
     assert np.max(samples) <= 1
 
     # Statistical properties
-    samples0 = beta.rvs(a, b, size=n_samples)
+    samples0 = beta.rvs(a, b, size=n_samples, random_state=np.random.default_rng(37))
     _, p_value = ks_2samp(samples0, samples)
     assert p_value >= 0.05

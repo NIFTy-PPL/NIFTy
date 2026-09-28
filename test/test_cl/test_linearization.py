@@ -149,8 +149,12 @@ class _OuterProductModel0(ift.Operator):
             tuple(self._domain["a"]) + tuple(self._second.domain)
         )
 
+    def _device_preparation(self, x):
+        self._second = self._second.at(x["a"].device_id)
+
     def apply(self, x):
         self._check_input(x)
+        self._device_preparation(x)
         return x["a"].ptw("exp").outer(self._second)
 
 
