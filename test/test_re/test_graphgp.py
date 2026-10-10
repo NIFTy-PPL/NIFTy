@@ -4,8 +4,9 @@ import numpy as np
 import pytest
 from jax.sharding import Mesh, NamedSharding, PartitionSpec as P
 
-import graphgp as gp
 import nifty.re as jft
+
+gp = pytest.importorskip("graphgp")
 
 
 jax.config.update("jax_enable_x64", True)
@@ -141,6 +142,10 @@ def test_four_device_spatial_and_two_by_two_sample_space_meshes():
     assert mapped.shape == (2,) + field2.target.shape
     assert mapped.sharding.spec == P("sample", "space")
     assert layout.position_specs_for({"other": jnp.array(1.0)})["other"] == P()
+    spatial_only = field2.sharding_layout()
+    assert spatial_only.sample_specs_for(position)[field2.excitation_name] == P(
+        None, "space"
+    )
 
 
 def test_devices_and_sharding_are_mutually_exclusive():

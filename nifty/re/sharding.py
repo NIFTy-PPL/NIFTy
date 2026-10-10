@@ -97,8 +97,6 @@ class ShardingLayout:
         return _map_specs(specs, lambda spec: NamedSharding(self.mesh, spec))
 
     def sample_specs_for(self, value):
-        if self.sample_axis is None:
-            raise ValueError("sample_axis is required for sharding sample arrays")
         return _map_specs(
             self.position_specs_for(value),
             lambda spec: _prepend_axis(spec, self.sample_axis),

@@ -27,11 +27,7 @@ def _require_graphgp():
 
 
 def _draw_sharded_normal(key, *, shape, dtype, sharding):
-    draw = jax.jit(
-        lambda k: jax.random.normal(k, shape=shape, dtype=dtype),
-        out_shardings=sharding,
-    )
-    return draw(key)
+    return jax.device_put(jax.random.normal(key, shape=shape, dtype=dtype), sharding)
 
 
 class GraphGPField(Model):
@@ -56,7 +52,7 @@ class GraphGPField(Model):
         covariance,
         *,
         mesh,
-        prefix="dust",
+        prefix="graphgp_",
         offset=0.0,
     ):
         graphgp = _require_graphgp()
@@ -76,8 +72,8 @@ class GraphGPField(Model):
             raise TypeError(
                 "covariance must be a (radii, values) pair or a NIFTy Model"
             )
-        if not (isinstance(offset, Model) or isinstance(offset, float)):
-            raise TypeError("offset must be a float or scalar NIFTy Model")
+        if not isinstance(offset, Model):
+            offset = jnp.asarray(offset)
 
         self.plan = plan
         self.covariance = covariance
