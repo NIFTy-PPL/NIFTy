@@ -362,8 +362,8 @@ class OptimizeVI:
         # NOTE, the residual functions are `Partial`s whose only pytree leaves
         # are the likelihood. With `devices`, they are passed as replicated
         # arguments to the sharded sampling instead of being captured as
-        # (potentially huge) constants. Custom residual functions are wrapped
-        # without leaves and thus remain captured.
+        # (potentially huge) constants. Custom residual functions, even
+        # `Partial`s, are wrapped without leaves and thus remain static.
         if _draw_linear_residual is None:
             _draw_linear_residual = Partial(
                 partial(
@@ -375,11 +375,7 @@ class OptimizeVI:
                 likelihood,
             )
         else:
-            _draw_linear_residual = (
-                _draw_linear_residual
-                if isinstance(_draw_linear_residual, Partial)
-                else Partial(_draw_linear_residual)
-            )
+            _draw_linear_residual = Partial(_draw_linear_residual)
         if _nonlinearly_update_residual is None:
             _nonlinearly_update_residual = Partial(
                 partial(
@@ -394,11 +390,7 @@ class OptimizeVI:
                 likelihood,
             )
         else:
-            _nonlinearly_update_residual = (
-                _nonlinearly_update_residual
-                if isinstance(_nonlinearly_update_residual, Partial)
-                else Partial(_nonlinearly_update_residual)
-            )
+            _nonlinearly_update_residual = Partial(_nonlinearly_update_residual)
         if _get_status_message is None:
             _get_status_message = partial(
                 get_status_message,
@@ -418,6 +410,18 @@ class OptimizeVI:
         if intermediate_samples_path is not None:
             self.intermediate_samples_path = Path(intermediate_samples_path)
             self.intermediate_samples_path.parent.mkdir(parents=True, exist_ok=True)
+
+    def _likelihood_shardings(self, residual):
+        # keep leaves already spread over the sampling devices, replicate the rest
+        devices = self.named_sharding.device_set
+        return tree_map(
+            lambda x: (
+                x.sharding
+                if isinstance(x, jax.Array) and x.sharding.device_set == devices
+                else self.named_sharding_rep
+            ),
+            residual,
+        )
 
     def draw_linear_samples(self, primals, keys, **kwargs):
         # NOTE, use `Partial` in favor of `partial` to allow the (potentially)
@@ -454,7 +458,7 @@ class OptimizeVI:
                 return samples.at[1::2].set(-samples[1::2])
 
             in_shardings = (
-                None,  # keep the likelihood's own placement, e.g. data already sharded
+                self._likelihood_shardings(self.draw_linear_residual),
                 tree_map(lambda x: self.named_sharding_rep, primals),
                 self.named_sharding,
             )
@@ -498,7 +502,7 @@ class OptimizeVI:
             sharding_tree_rep = tree_map(lambda x: self.named_sharding_rep, samples.pos)
             out_sharding = (sharding_tree, self.named_sharding)
             in_sharding = (
-                None,  # keep the likelihood's own placement, e.g. data already sharded
+                self._likelihood_shardings(self.nonlinearly_update_residual),
                 sharding_tree_rep,
                 sharding_tree,
                 self.named_sharding,
