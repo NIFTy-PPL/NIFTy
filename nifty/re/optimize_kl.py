@@ -359,24 +359,45 @@ class OptimizeVI:
                 named_sharding=self.named_sharding,
                 named_sharding_rep=self.named_sharding_rep,
             )
+        # NOTE, the residual functions are `Partial`s whose only pytree leaves
+        # are the likelihood. With `devices`, they are passed as replicated
+        # arguments to the sharded sampling instead of being captured as
+        # (potentially huge) constants. Custom residual functions are wrapped
+        # without leaves and thus remain captured.
         if _draw_linear_residual is None:
-            _draw_linear_residual = partial(
-                linear_minimizer_jit(
-                    draw_linear_residual, static_argnames=("jit_metric", "cg")
+            _draw_linear_residual = Partial(
+                partial(
+                    linear_minimizer_jit(
+                        draw_linear_residual, static_argnames=("jit_metric", "cg")
+                    ),
+                    jit_metric=jit if _is_no_jit(linear_minimizer_jit) else False,
                 ),
                 likelihood,
-                jit_metric=jit if _is_no_jit(linear_minimizer_jit) else False,
+            )
+        else:
+            _draw_linear_residual = (
+                _draw_linear_residual
+                if isinstance(_draw_linear_residual, Partial)
+                else Partial(_draw_linear_residual)
             )
         if _nonlinearly_update_residual is None:
-            _nonlinearly_update_residual = partial(
-                nonlinear_minimizer_jit(
-                    nonlinearly_update_residual,
-                    static_argnames=("jit_residual_funcs", "minimize"),
+            _nonlinearly_update_residual = Partial(
+                partial(
+                    nonlinear_minimizer_jit(
+                        nonlinearly_update_residual,
+                        static_argnames=("jit_residual_funcs", "minimize"),
+                    ),
+                    jit_residual_funcs=(
+                        jit if _is_no_jit(nonlinear_minimizer_jit) else False
+                    ),
                 ),
                 likelihood,
-                jit_residual_funcs=(
-                    jit if _is_no_jit(nonlinear_minimizer_jit) else False
-                ),
+            )
+        else:
+            _nonlinearly_update_residual = (
+                _nonlinearly_update_residual
+                if isinstance(_nonlinearly_update_residual, Partial)
+                else Partial(_nonlinearly_update_residual)
             )
         if _get_status_message is None:
             _get_status_message = partial(
@@ -402,10 +423,13 @@ class OptimizeVI:
         # NOTE, use `Partial` in favor of `partial` to allow the (potentially)
         # re-jitting `residual_map` to trace the kwargs
         kwargs = hide_strings(kwargs)
-        sampler = Partial(self.draw_linear_residual, **kwargs)
-        sampler = self.residual_map(sampler, in_axes=(None, 0))
+
+        def sampler(residual, primals, keys):
+            residual = Partial(residual, **kwargs)
+            return self.residual_map(residual, in_axes=(None, 0))(primals, keys)
+
         if self.named_sharding is None:
-            smpls, smpls_states = sampler(primals, keys)
+            smpls, smpls_states = sampler(self.draw_linear_residual, primals, keys)
             # zip samples such that the mirrored-counterpart always comes right
             # after the original sample
             smpls = concatenate_zip(smpls, -smpls)
@@ -430,6 +454,7 @@ class OptimizeVI:
                 return samples.at[1::2].set(-samples[1::2])
 
             in_shardings = (
+                None,  # keep the likelihood's own placement, e.g. data already sharded
                 tree_map(lambda x: self.named_sharding_rep, primals),
                 self.named_sharding,
             )
@@ -443,7 +468,7 @@ class OptimizeVI:
                 out_shardings=out_shardings,
             )
 
-            smpls, smpls_states = sampler(primals, keys)
+            smpls, smpls_states = sampler(self.draw_linear_residual, primals, keys)
             if n_samples == self.named_sharding.mesh.size / 2:
                 smpls = tree_map(_special_mirror_samples, smpls)
                 keys = keys[::2]  # undo jnp.repeat
@@ -461,8 +486,11 @@ class OptimizeVI:
         metric_sample_key = concatenate_zip(*((samples.keys,) * 2))
         sgn = jnp.ones(len(samples.keys))
         sgn = concatenate_zip(sgn, -sgn)
-        curver = Partial(self.nonlinearly_update_residual, **kwargs)
-        curver = self.residual_map(curver, in_axes=(None, 0, 0, 0))
+
+        def curver(residual, *args):
+            residual = Partial(residual, **kwargs)
+            return self.residual_map(residual, in_axes=(None, 0, 0, 0))(*args)
+
         if self.named_sharding is not None:
             metric_sample_key = jax.device_put(metric_sample_key, self.named_sharding)
             sgn = jax.device_put(sgn, self.named_sharding)
@@ -470,6 +498,7 @@ class OptimizeVI:
             sharding_tree_rep = tree_map(lambda x: self.named_sharding_rep, samples.pos)
             out_sharding = (sharding_tree, self.named_sharding)
             in_sharding = (
+                None,  # keep the likelihood's own placement, e.g. data already sharded
                 sharding_tree_rep,
                 sharding_tree,
                 self.named_sharding,
@@ -480,7 +509,11 @@ class OptimizeVI:
             )
 
         smpls, smpls_states = curver(
-            samples.pos, samples._samples, metric_sample_key, sgn
+            self.nonlinearly_update_residual,
+            samples.pos,
+            samples._samples,
+            metric_sample_key,
+            sgn,
         )
         smpls = Samples(pos=samples.pos, samples=smpls, keys=samples.keys)
         return smpls, smpls_states

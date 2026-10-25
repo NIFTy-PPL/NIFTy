@@ -18,6 +18,9 @@ Change categories:
     for the trace-log, signal- and data-space evaluation, optional Radau
     diagnostics, and an analytic Gaussian-prior contribution.
 - Changes
+  - With `devices`, `optimize_kl` passes the likelihood to the sharded sampling
+    steps as an argument instead of compiling its arrays in as constants, which
+    exhausted host memory for likelihoods holding large data.
   - Consolidate the public Lanczos and stochastic log-determinant routines with
     the SLQ implementation used by the ELBO estimator so all entry points share
     one recurrence and Gaussian quadrature kernel.
