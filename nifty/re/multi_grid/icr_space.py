@@ -149,11 +149,30 @@ class _Level:
     fine_shape: Tuple[int, ...]
     n_f: int
     invids: jnp.ndarray  # (n_cells,) index of the unique matrix of each cell
-    udist: jnp.ndarray  # (n_unique, n, n) distance matrices of the unique windows
+    ucoords: jnp.ndarray  # (n_unique, dim, n) coordinates of the unique windows' points
 
     @property
     def n_cells(self) -> int:
         return int(np.prod(self.index_shape))
+
+    @property
+    def n_unique(self) -> int:
+        return int(self.ucoords.shape[0])
+
+
+def _window_coordinates(kernel, uids, level):
+    """Coordinates ``(n_unique, dim, n_coarse + n_fine)`` of the points of the
+    windows refining the cells `uids` (``(ndim, n_unique)``)."""
+    _, ((idc, _), (idf, _)) = kernel.get_output_input_indices(uids, level)
+    gc = kernel.grid.at(level).index2coord(idc)
+    gf = kernel.grid.at(level + 1).index2coord(idf)
+    return jnp.moveaxis(jnp.concatenate((gc, gf), axis=-1), 0, 1)
+
+
+def _distances(coords):
+    """Pairwise distances ``(..., n, n)`` of points ``(..., dim, n)``."""
+    d = coords[..., :, :, jnp.newaxis] - coords[..., :, jnp.newaxis, :]
+    return jnp.sqrt(jnp.sum(d * d, axis=-3))
 
 
 class ICRSpace(KernelSpace):
@@ -167,9 +186,12 @@ class ICRSpace(KernelSpace):
         Covariance table (see :class:`~nifty.re.correlated_field.KernelSpace`).
         By default `r_max` is the largest and `r_min` half the smallest
         non-zero distance occurring in the refinement windows. The covariance
-        is interpolated linearly between the radial bins; too few bins make
-        the interpolated window covariances indefinite (the Cholesky
-        factorization then fails with NaNs), a few hundred are safe.
+        is interpolated linearly between the (logarithmically spaced) radial
+        bins; too few bins per decade make the interpolated window covariances
+        indefinite and the Cholesky factorization fails with NaNs. For a steep
+        spectrum (amplitude slope -3 in three dimensions) 35 bins per decade
+        were indefinite and 135 per decade fine; keep at least 100 per decade
+        of ``r_max / r_min``.
     window_size : tuple or None
         Coarse window of the refinement at each level (grid default: 3 along
         every axis).
@@ -179,6 +201,11 @@ class ICRSpace(KernelSpace):
         ``None`` keeps every window.
     chunk_size : int
         Number of cells refined at once.
+    kernel_chunk : int
+        Number of unique windows whose refinement matrices are built at once
+        (the distances are recomputed from the window coordinates in the
+        backward pass, so the memory of the kernel build is that of one
+        chunk).
     cholesky_jitter : float
         Added to the diagonal of every window covariance relative to its mean
         before the Cholesky factorization (windows at a grid boundary contain
@@ -195,10 +222,11 @@ class ICRSpace(KernelSpace):
         *,
         r_min=None,
         r_max=None,
-        n_bins=256,
+        n_bins=1024,
         window_size=None,
         compress: Optional[dict] = dict(rtol=1e-5, atol=1e-10, buffer_size=10_000),
-        chunk_size=2**14,
+        chunk_size=2**16,
+        kernel_chunk=4096,
         cholesky_jitter=1e-6,
         jitter=1e-6,
         radial_bins=None,
@@ -207,6 +235,7 @@ class ICRSpace(KernelSpace):
         self.multigrid = grid
         self.kernel = ICRKernel(grid, None, window_size=window_size)
         self.chunk_size = int(chunk_size)
+        self.kernel_chunk = int(kernel_chunk)
         self.cholesky_jitter = float(cholesky_jitter)
         self.compress = None if not compress else dict(compress)
 
@@ -223,7 +252,7 @@ class ICRSpace(KernelSpace):
                 uids, invids = compress_indices(self.kernel, cells, lvl, **self.compress)
             else:
                 uids, invids = cells, np.arange(cells.shape[1])
-            udist = jax.jit(lambda i, lvl=lvl: self.kernel.get_kernel_distmat(i, lvl)[0])(jnp.asarray(uids))
+            ucoords = jax.jit(lambda i, lvl=lvl: _window_coordinates(self.kernel, i, lvl))(jnp.asarray(uids))
             n_f = int(np.prod(grid.at(lvl).splits))
             logger.info(f"ICRSpace level {lvl}: {cells.shape[1]} cells, {uids.shape[1]} unique windows")
             levels.append(
@@ -234,7 +263,7 @@ class ICRSpace(KernelSpace):
                     fine_shape=tuple(int(s) for s in grid.at(lvl + 1).shape),
                     n_f=int(n_f),
                     invids=jnp.asarray(invids, dtype=jnp.int32),
-                    udist=jnp.asarray(udist),
+                    ucoords=jnp.asarray(ucoords),
                 )
             )
         self._levels = tuple(levels)
@@ -242,11 +271,21 @@ class ICRSpace(KernelSpace):
         sizes = [int(np.prod(s)) for s in self._level_shapes]
         self._level_offsets = tuple(np.cumsum([0] + sizes))
 
-        dists = [np.asarray(self._base_dist)] + [np.asarray(l.udist) for l in levels]
-        if r_max is None and radial_bins is None:
-            r_max = max(float(d.max()) for d in dists) * (1.0 + 1e-3)
-        if r_min is None and (radial_bins is None or k_bins is None):
-            r_min = 0.5 * min(float(d[d > 0].min()) for d in dists if np.any(d > 0))
+        if (r_max is None and radial_bins is None) or (r_min is None and (radial_bins is None or k_bins is None)):
+            d_max, d_min = float(np.max(self._base_dist)), np.inf
+            bd = np.asarray(self._base_dist)
+            if np.any(bd > 0):
+                d_min = float(bd[bd > 0].min())
+            for l in levels:
+                for start in range(0, l.n_unique, self.kernel_chunk):
+                    d = np.asarray(jax.jit(_distances)(l.ucoords[start : start + self.kernel_chunk]))
+                    d_max = max(d_max, float(d.max()))
+                    if np.any(d > 0):
+                        d_min = min(d_min, float(d[d > 0].min()))
+            if r_max is None and radial_bins is None:
+                r_max = d_max * (1.0 + 1e-3)
+            if r_min is None and (radial_bins is None or k_bins is None):
+                r_min = 0.5 * d_min
         super().__init__(
             self._level_shapes[-1],
             dim,
@@ -270,7 +309,7 @@ class ICRSpace(KernelSpace):
     @property
     def n_unique(self) -> Tuple[int, ...]:
         """Number of unique refinement windows per level."""
-        return tuple(int(l.udist.shape[0]) for l in self._levels)
+        return tuple(l.n_unique for l in self._levels)
 
     def _jittered(self, cov):
         eye = jnp.eye(cov.shape[-1], dtype=cov.dtype)
@@ -286,11 +325,23 @@ class ICRSpace(KernelSpace):
             return jnp.interp(d, rs, covariance, right=0.0)
 
         base = jnp.linalg.cholesky(self._jittered(kf(self._base_dist)))
-        mats = tuple(
-            vmap(partial(refinement_matrices_cholesky, n_fsz=l.n_f))(self._jittered(kf(l.udist)))
-            for l in self._levels
-        )
-        return base, mats
+        mats = []
+        for l in self._levels:
+            chunk = min(self.kernel_chunk, l.n_unique)
+            n_chunks = -(-l.n_unique // chunk)
+            pad = n_chunks * chunk - l.n_unique
+            coords = jnp.concatenate((l.ucoords, jnp.repeat(l.ucoords[-1:], pad, axis=0)))
+            coords = coords.reshape((n_chunks, chunk) + l.ucoords.shape[1:])
+
+            @jax.checkpoint
+            def build(c, n_f=l.n_f):
+                # keep XLA from folding the distance tables of all windows into constants
+                c = jax.lax.optimization_barrier(c)
+                return vmap(partial(refinement_matrices_cholesky, n_fsz=n_f))(self._jittered(kf(_distances(c))))
+
+            olf, lff = jax.lax.map(build, coords)
+            mats.append((olf.reshape((-1,) + olf.shape[2:])[: l.n_unique], lff.reshape((-1,) + lff.shape[2:])[: l.n_unique]))
+        return base, tuple(mats)
 
     def split_excitations(self, xi):
         """The per-level arrays of a flat vector of excitations."""

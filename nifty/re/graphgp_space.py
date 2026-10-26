@@ -65,7 +65,7 @@ class GraphGPSpace(KernelSpace):
         graph=None,
         r_min=None,
         r_max=None,
-        n_bins=256,
+        n_bins=1024,
         n0=512,
         k=16,
         cuda: Optional[bool] = None,
