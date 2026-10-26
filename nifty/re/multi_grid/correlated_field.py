@@ -133,8 +133,9 @@ class ICRField(Model):
         super().__init__(domain=domain, white_init=True)
 
     def __call__(self, x):
+        kernel = self.kernel
         if not self.fixed_kernel:
-            kernel = self.kernel.replace(covariance=self.covariance(x))
+            kernel = kernel.replace(covariance=self.covariance(x))
             if self.compress:
                 kernel = kernel.compress_matrices()
         off = self.offset(x) if isinstance(self.offset, Model) else self.offset

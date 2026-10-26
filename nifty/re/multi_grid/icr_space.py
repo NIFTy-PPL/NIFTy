@@ -63,7 +63,7 @@ def _quantized_hashes(dist, atol, rtol, keys):
     return jnp.stack([(q * k[jnp.newaxis, :]).sum(axis=1) for k in keys], axis=1)
 
 
-def _compress_scan(kernel, cells, level, rtol, atol, buffer_size):
+def _compress_scan(kernel, cells, level, rtol, atol):
     """Greedy tolerance merge of the distance matrices of `cells`."""
 
     def get_matrix(idx):
@@ -74,11 +74,11 @@ def _compress_scan(kernel, cells, level, rtol, atol, buffer_size):
         return u, invid
 
     shp = jax.eval_shape(get_matrix, cells[:, 0]).shape
-    unique = jnp.full((buffer_size,) + shp, jnp.nan)
+    # the merge of n representatives yields at most n uniques
+    unique = jnp.full((cells.shape[1] + 1,) + shp, jnp.nan)
     unique, invid = jax.lax.scan(step, unique, np.arange(cells.shape[1]))
     _, idx, inverse = np.unique(np.asarray(invid), return_index=True, return_inverse=True)
-    if idx.size >= buffer_size or not np.all(np.isnan(unique[idx.size :])):
-        raise ValueError("`buffer_size` of the compression too small")
+    assert np.all(np.isnan(unique[idx.size :]))
     return cells[:, idx], inverse.reshape(-1)
 
 
@@ -97,10 +97,11 @@ def compress_indices(
     the index of each cell's representative ``(n,)``.
 
     The distance matrices are quantized on the tolerance grid and hashed in
-    chunks, identical hashes are grouped, and the group representatives are
-    merged with a greedy tolerance scan so that groups split by a bin boundary
-    end up together. Every cell is mapped to a representative whose distance
-    matrix is within (twice) the tolerance of its own.
+    chunks, identical hashes are grouped, and, if there are at most
+    `buffer_size` groups, the group representatives are merged with a greedy
+    tolerance scan (quadratic in their number) so that groups split by a bin
+    boundary end up together. Every cell is mapped to a representative whose
+    distance matrix is within (twice) the tolerance of its own.
     """
     if atol <= 0.0 or rtol <= 0.0:
         raise ValueError("compression needs `atol > 0` and `rtol > 0`")
@@ -128,10 +129,15 @@ def compress_indices(
     _, first, inverse = np.unique(hashes, axis=0, return_index=True, return_inverse=True)
     inverse = inverse.reshape(-1)
     uids = cells[:, first]
-    if uids.shape[1] > 1:
-        uids, inverse2 = _compress_scan(kernel, jnp.asarray(uids), level, rtol, atol, buffer_size)
+    if 1 < uids.shape[1] <= buffer_size:
+        uids, inverse2 = _compress_scan(kernel, jnp.asarray(uids), level, rtol, atol)
         inverse = inverse2[inverse]
         uids = np.asarray(uids)
+    elif uids.shape[1] > buffer_size:
+        logger.info(
+            f"{uids.shape[1]} hash groups exceed `buffer_size` {buffer_size};"
+            " the representatives are not merged"
+        )
     return uids, inverse
 
 
@@ -206,7 +212,8 @@ class ICRSpace(KernelSpace):
 
         g0 = grid.at(0)
         dim = int(g0.index2coord(np.zeros((g0.ndim, 1), dtype=np.int64)).shape[0])
-        self._base_dist = jnp.asarray(self.kernel.get_kernel_distmat(jnp.array([-1]), None))
+        # the index arithmetic of the grids is slow op by op; always run it under jit
+        self._base_dist = jax.jit(lambda i: self.kernel.get_kernel_distmat(i, None))(jnp.array([-1]))
         levels = []
         for lvl in range(grid.depth):
             index = np.asarray(grid.at(lvl).refined_indices())
@@ -216,7 +223,8 @@ class ICRSpace(KernelSpace):
                 uids, invids = compress_indices(self.kernel, cells, lvl, **self.compress)
             else:
                 uids, invids = cells, np.arange(cells.shape[1])
-            udist, n_f = self.kernel.get_kernel_distmat(jnp.asarray(uids), lvl)
+            udist = jax.jit(lambda i, lvl=lvl: self.kernel.get_kernel_distmat(i, lvl)[0])(jnp.asarray(uids))
+            n_f = int(np.prod(grid.at(lvl).splits))
             logger.info(f"ICRSpace level {lvl}: {cells.shape[1]} cells, {uids.shape[1]} unique windows")
             levels.append(
                 _Level(
