@@ -4,7 +4,15 @@ from .blackjax import blackjax_nuts
 from .check_model import check_model
 from .. import config
 from .conjugate_gradient import cg, static_cg
-from .correlated_field import CorrelatedFieldMaker
+from .correlated_field import (
+    CorrelatedFieldMaker,
+    IsotropicGrid,
+    KernelSpace,
+    RegularSpace,
+    Space,
+    SphericalSpace,
+    make_isotropic_grid,
+)
 from .custom_map import lmap, smap
 from .empirical_power_spectrum import compute_empirical_power_spectrum
 from .evi import (
@@ -44,12 +52,14 @@ from .multi_grid import (
     HPLogRGrid,
     HPBrokenLogRGrid,
     ICRField,
+    ICRSpace,
     LogGrid,
     BrokenLogGrid,
     MGrid,
     SimpleOpenGrid,
     MaternCovarianceModel,
 )
+from .graphgp_space import GraphGPSpace
 from .num import *
 from .optimize import minimize, newton_cg, static_newton_cg, trust_ncg
 from .optimize_kl import OptimizeVI, OptimizeVIState, optimize_kl

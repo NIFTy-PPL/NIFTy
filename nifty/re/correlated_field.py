@@ -11,6 +11,7 @@ from typing import Callable, Optional, Tuple, Union
 
 import numpy as np
 from jax import numpy as jnp, vmap
+from scipy.special import gamma, jv
 
 from ..config import _config
 from .gauss_markov import IntegratedWienerProcess
@@ -515,6 +516,316 @@ class NonParametricAmplitude(Model):
         amplitude = amplitude.at[0].set(self.grid.total_volume)
         return amplitude
 
+IsotropicGrid = namedtuple(
+    "IsotropicGrid", ("dim", "total_volume", "radial_bins", "harmonic_grid")
+)
+IsotropicGrid.__doc__ = """Grid of the amplitude models of kernel-based spaces.
+
+Fields
+------
+dim : int
+    Dimension of the space the points live in.
+total_volume : float
+    Always ``1.0``; the covariance is normalized by its value at zero
+    distance, which is the sum of ``mode_multiplicity * amplitude**2``.
+radial_bins : array ``(n_r,)``
+    Radii at which the covariance is tabulated, ``radial_bins[0] == 0``.
+harmonic_grid : RegularFourierGrid
+    ``mode_lengths`` are the edges of the ``k`` bins (``mode_lengths[0] == 0``
+    is the zero mode) and ``mode_multiplicity`` the volumes of the ``k``
+    shells between them; the amplitude models need nothing else.
+"""
+
+
+def make_isotropic_grid(
+    dim, r_min=None, r_max=None, n_bins=None, *, radial_bins=None, k_bins=None
+) -> IsotropicGrid:
+    """Builds the grid for the amplitude model of a kernel-based space.
+
+    By default the radii and the ``k`` bin edges are logarithmically spaced
+    with a leading zero, the radii between `r_min` and `r_max`, the ``k``
+    edges between ``1 / r_max`` and ``1 / r_min`` (``k`` counts oscillations
+    per unit length as for the regular grids). Explicit `radial_bins` and
+    `k_bins` take precedence.
+    """
+    if radial_bins is None:
+        radial_bins = np.concatenate(([0.0], np.geomspace(r_min, r_max, n_bins - 1)))
+    if k_bins is None:
+        k_bins = np.concatenate(
+            ([0.0], np.geomspace(1.0 / r_max, 1.0 / r_min, n_bins - 1))
+        )
+    radial_bins = np.asarray(radial_bins, dtype=np.float64)
+    k_bins = np.asarray(k_bins, dtype=np.float64)
+    if radial_bins.ndim != 1 or radial_bins[0] != 0.0 or np.any(np.diff(radial_bins) <= 0):
+        raise ValueError("`radial_bins` must be increasing and start at zero")
+    if k_bins.ndim != 1 or k_bins[0] != 0.0 or np.any(np.diff(k_bins) <= 0):
+        raise ValueError("`k_bins` must be increasing and start at zero (the zero mode)")
+    um, log_vol = _log_modes(k_bins.copy())
+    # volume of the k ball of radius k_bins in `dim` dimensions
+    ball = np.pi ** (dim / 2) / gamma(dim / 2 + 1) * k_bins**dim
+    multiplicity = np.concatenate(([0.0], np.diff(ball)))
+    harmonic_grid = RegularFourierGrid(
+        shape=k_bins.shape,
+        power_distributor=np.arange(k_bins.size),
+        mode_multiplicity=multiplicity,
+        mode_lengths=k_bins,
+        relative_log_mode_lengths=um,
+        log_volume=log_vol,
+    )
+    return IsotropicGrid(
+        dim=int(dim),
+        total_volume=1.0,
+        radial_bins=radial_bins,
+        harmonic_grid=harmonic_grid,
+    )
+
+
+def _hankel_weights(k_bins, radial_bins, dim):
+    """Matrix ``W`` with ``C(r) = W @ P`` for a power spectrum ``P`` that is
+    constant on the ``k`` shells between the edges `k_bins` (`P` has one entry
+    less than `k_bins`), ``C(r) = int P(k) exp(2 pi i k.r) d^dim k``.
+    """
+    k = np.asarray(k_bins, dtype=np.float64)[np.newaxis, :]
+    r = np.asarray(radial_bins, dtype=np.float64)[:, np.newaxis]
+    with np.errstate(divide="ignore", invalid="ignore"):
+        lim = (k / r) ** (dim / 2) * jv(dim / 2, 2 * np.pi * k * r)
+    ball = np.pi ** (dim / 2) / gamma(dim / 2 + 1) * k**dim
+    return np.where(r > 0, lim[:, 1:] - lim[:, :-1], ball[:, 1:] - ball[:, :-1])
+
+
+class Space:
+    """Position space of one factor of a correlated field.
+
+    A correlated field is the outer product of factors, one per call of
+    :meth:`CorrelatedFieldMaker.add_fluctuations`. Each factor is described by
+    a `Space` which knows the shape of the field along it, the shape of its
+    latent excitations and the grid its amplitude model lives on, and which
+    applies the factor's linear map to the excitations.
+
+    The excitations of every factor contain its zero mode: for the harmonic
+    spaces at index zero of the harmonic grid, for the kernel-based spaces as
+    an additional leading entry (``excitation_shape == (n_points + 1,)``). The
+    zero mode maps to the constant one along the factor, so that the field is
+    ``offset_mean + zeromode * prod_i (1 + a_i / zeromode)`` as before.
+
+    Attributes
+    ----------
+    shape : tuple of int
+        Shape of the field along this factor.
+    excitation_shape : tuple of int
+        Shape of the excitations of this factor.
+    grid :
+        Grid of the amplitude model (with ``harmonic_grid`` and
+        ``total_volume``).
+    """
+
+    def __init__(self, shape, excitation_shape, grid):
+        self.shape = tuple(int(s) for s in shape)
+        self.excitation_shape = tuple(int(s) for s in excitation_shape)
+        self.grid = grid
+
+    @property
+    def size(self) -> int:
+        return int(np.prod(self.shape))
+
+    def make_apply(self, axes):
+        """Returns ``apply(x, amplitude, zeromode)``, the linear map of this
+        factor along the `axes` of `x` holding its excitations: the zero mode
+        becomes the constant one, the remaining excitations are correlated with
+        the amplitude divided by the zero mode (see
+        :meth:`CorrelatedFieldMaker.get_normalized_amplitudes`). The output has
+        ``self.shape`` in place of the excitation axes.
+        """
+        raise NotImplementedError()
+
+
+class HarmonicSpace(Space):
+    """Factor with a harmonic partner space (regular or spherical grid)."""
+
+    def __init__(self, grid):
+        super().__init__(grid.shape, grid.harmonic_grid.shape, grid)
+
+    def harmonic_transform(self, axes):
+        """Harmonic transform acting on `axes`."""
+        raise NotImplementedError()
+
+    def make_apply(self, axes):
+        axes = tuple(int(ax) for ax in axes)
+        ht = self.harmonic_transform(axes)
+        harmonic_dvol = 1.0 / self.grid.total_volume
+        power_distributor = self.grid.harmonic_grid.power_distributor
+
+        def apply(x, amplitude, zeromode):
+            amp = amplitude.at[1:].mul(1.0 / zeromode)[power_distributor]
+            shp = [1] * x.ndim
+            for ax, s in zip(axes, amp.shape):
+                shp[ax] = s
+            return harmonic_dvol * ht(amp.reshape(shp) * x)
+
+        return apply
+
+
+class RegularSpace(HarmonicSpace):
+    """Regular Cartesian grid with periodic boundaries, Fourier harmonic space.
+
+    Parameters
+    ----------
+    shape : tuple of int or int
+        Shape of the grid.
+    distances : tuple of float or float
+        Pixel distances along the axes.
+    """
+
+    def __init__(self, shape, distances):
+        super().__init__(make_grid(shape, distances, "fourier"))
+
+    @property
+    def distances(self):
+        return self.grid.distances
+
+    def harmonic_transform(self, axes):
+        return partial(hartley, axes=axes)
+
+
+class SphericalSpace(HarmonicSpace):
+    """HEALPix sphere with spherical harmonics as harmonic space.
+
+    Parameters
+    ----------
+    nside : int
+        HEALPix resolution parameter.
+    """
+
+    def __init__(self, nside):
+        super().__init__(make_grid((int(nside),), None, "spherical"))
+
+    @property
+    def nside(self):
+        return self.grid.nside
+
+    def harmonic_transform(self, axes):
+        (axis,) = axes
+        return get_sht(
+            nside=self.grid.nside,
+            axis=axis,
+            lmax=self.grid.harmonic_grid.lmax,
+            mmax=self.grid.harmonic_grid.mmax,
+            nthreads=1,
+        )
+
+
+class KernelSpace(Space):
+    """Factor whose correlations are an isotropic covariance function.
+
+    The amplitude model lives on the ``k`` bins of an :class:`IsotropicGrid`.
+    Its square, the power spectrum, is taken constant on the ``k`` shells
+    between the edges and transformed to the covariance on the radial bins,
+    ``C(r) = int P(k) exp(2 pi i k.r) d^dim k``, with ``C(0)`` the sum of
+    ``mode_multiplicity * amplitude**2``, that is ``fluctuations**2`` for the
+    amplitude models of :class:`CorrelatedFieldMaker`. The zero mode of the
+    amplitude is not used; the zero mode of the factor is the leading entry
+    of the excitations. Subclasses generate the field from the covariance
+    (:meth:`apply_sqrt`).
+
+    Parameters
+    ----------
+    shape : tuple of int
+        Shape of the field along this factor.
+    dim : int
+        Dimension of the space of the points.
+    n_points : int, optional
+        Number of excitations without the zero mode (the size of `shape` by
+        default; more for multigrid generators).
+    r_min, r_max, n_bins : float, float, int
+        Range and number of the radial bins and of the ``k`` bins, see
+        :func:`make_isotropic_grid`. `r_max` must exceed the largest distance
+        the field generator evaluates the covariance at.
+    jitter : float
+        Relative inflation of ``C(0)`` for the numerical stability of the
+        generator (its "nugget").
+    radial_bins, k_bins : arrays, optional
+        Explicit bins in place of `r_min`, `r_max` and `n_bins`.
+    """
+
+    def __init__(
+        self,
+        shape,
+        dim,
+        *,
+        n_points=None,
+        r_min=None,
+        r_max=None,
+        n_bins=None,
+        jitter=1e-6,
+        radial_bins=None,
+        k_bins=None,
+    ):
+        grid = make_isotropic_grid(
+            dim, r_min, r_max, n_bins, radial_bins=radial_bins, k_bins=k_bins
+        )
+        n_points = int(np.prod(shape)) if n_points is None else int(n_points)
+        super().__init__(shape, (n_points + 1,), grid)
+        self.dim = int(dim)
+        self.jitter = float(jitter)
+        self._hankel = jnp.asarray(
+            _hankel_weights(self.k_bins, self.radial_bins, self.dim)
+        )
+
+    @property
+    def radial_bins(self):
+        return self.grid.radial_bins
+
+    @property
+    def k_bins(self):
+        return self.grid.harmonic_grid.mode_lengths
+
+    @property
+    def n_points(self) -> int:
+        return self.excitation_shape[0] - 1
+
+    def covariance(self, amplitude):
+        """Covariance on :attr:`radial_bins` for `amplitude` on the ``k`` bin
+        edges (zero mode ignored), ``C(0)`` inflated by `jitter`."""
+        cov = self._hankel @ amplitude[1:] ** 2
+        return cov.at[0].mul(1.0 + self.jitter)
+
+    def apply_sqrt(self, xi, covariance):
+        """Field of shape ``(batch,) + shape`` for excitations `xi` of shape
+        ``(batch, n_points)`` and the `covariance` on :attr:`radial_bins`."""
+        raise NotImplementedError()
+
+    def make_apply(self, axes):
+        (axis,) = (int(ax) for ax in axes)
+        ndim = len(self.shape)
+
+        def apply(x, amplitude, zeromode):
+            cov = self.covariance(amplitude)
+            x = jnp.moveaxis(x, axis, -1)
+            batch = x.shape[:-1]
+            x = x.reshape((-1, x.shape[-1]))
+            out = self.apply_sqrt(x[:, 1:], cov) / zeromode
+            out = out + x[:, :1].reshape((-1,) + (1,) * ndim)
+            out = out.reshape(batch + self.shape)
+            src = tuple(range(len(batch), len(batch) + ndim))
+            return jnp.moveaxis(out, src, tuple(range(axis, axis + ndim)))
+
+        return apply
+
+
+def _parse_space(shape, distances, harmonic_type) -> Space:
+    if isinstance(shape, Space):
+        if distances is not None:
+            te = (
+                "`distances` must not be given together with a `Space`;"
+                " pass the remaining arguments by keyword"
+            )
+            raise TypeError(te)
+        return shape
+    grid = make_grid(shape, distances, harmonic_type)
+    if isinstance(grid, HEALPixGrid):
+        return SphericalSpace(grid.nside)
+    return RegularSpace(grid.shape, grid.distances)
+
 
 class CorrelatedFieldMaker:
     """Construction helper for hierarchical correlated field models.
@@ -544,6 +855,7 @@ class CorrelatedFieldMaker:
         self._azm = None
         self._offset_mean = None
         self._fluctuations = []
+        self._spaces = []
         self._target_grids = []
         self._parameter_tree = {}
 
@@ -551,10 +863,10 @@ class CorrelatedFieldMaker:
 
     def add_fluctuations(
         self,
-        shape: Union[tuple, int],
-        distances: Union[tuple, float],
-        fluctuations: Union[tuple, Callable],
-        loglogavgslope: Union[tuple, Callable],
+        shape: Union[tuple, int, Space],
+        distances: Union[tuple, float, None] = None,
+        fluctuations: Union[tuple, Callable, None] = None,
+        loglogavgslope: Union[tuple, Callable, None] = None,
         flexibility: Union[tuple, Callable, None] = None,
         asperity: Union[tuple, Callable, None] = None,
         prefix: str = "",
@@ -580,8 +892,12 @@ class CorrelatedFieldMaker:
 
         Parameters
         ----------
-        shape : tuple of int
-            Shape of the position space grid
+        shape : tuple of int or Space
+            Shape of the position space grid, or a :class:`Space` describing
+            the factor (:class:`RegularSpace`, :class:`SphericalSpace`,
+            :class:`nifty.re.ICRSpace`, :class:`nifty.re.GraphGPSpace`, ...);
+            with a `Space`, `distances` must be left out and `harmonic_type`
+            is ignored.
         distances : tuple of float or float
             Distances in the position space grid
         fluctuations : tuple of float (mean, std) or callable
@@ -617,7 +933,8 @@ class CorrelatedFieldMaker:
         Enßlin, Torsten, `<https://arxiv.org/abs/2002.05218>`_
         `<http://dx.doi.org/10.1038/s41550-021-01548-0>`_
         """
-        grid = make_grid(shape, distances, harmonic_type)
+        space = _parse_space(shape, distances, harmonic_type)
+        grid = space.grid
 
         flu = fluctuations
         if isinstance(flu, (tuple, list)):
@@ -655,17 +972,18 @@ class CorrelatedFieldMaker:
             kind=non_parametric_kind,
         )
         self._fluctuations.append(npa)
+        self._spaces.append(space)
         self._target_grids.append(grid)
         self._parameter_tree.update(npa.domain)
 
     def add_fluctuations_matern(
         self,
-        shape: Union[tuple, int],
-        distances: Union[tuple, float],
-        scale: Union[tuple, Callable],
-        cutoff: Union[tuple, Callable],
-        loglogslope: Union[tuple, Callable],
-        renormalize_amplitude: bool,
+        shape: Union[tuple, int, Space],
+        distances: Union[tuple, float, None] = None,
+        scale: Union[tuple, Callable, None] = None,
+        cutoff: Union[tuple, Callable, None] = None,
+        loglogslope: Union[tuple, Callable, None] = None,
+        renormalize_amplitude: bool = True,
         prefix: str = "",
         harmonic_type: str = "fourier",
         non_parametric_kind: str = "amplitude",
@@ -686,8 +1004,10 @@ class CorrelatedFieldMaker:
 
         Parameters
         ----------
-        shape : tuple of int
-            Shape of the position space grid.
+        shape : tuple of int or Space
+            Shape of the position space grid, or a :class:`Space` describing
+            the factor (see :meth:`add_fluctuations`); with a `Space`,
+            `distances` must be left out and `harmonic_type` is ignored.
         distances : tuple of float or float
             Distances in the position space grid.
         scale : tuple of float (mean, std) or callable
@@ -723,7 +1043,8 @@ class CorrelatedFieldMaker:
         Enßlin, Torsten, `<https://arxiv.org/abs/2105.13483>`_
         `<https://doi.org/10.1371/journal.pone.0275011>`_
         """
-        grid = make_grid(shape, distances, harmonic_type)
+        space = _parse_space(shape, distances, harmonic_type)
+        grid = space.grid
 
         if isinstance(scale, (tuple, list)):
             scale = lognormal_prior(*scale)
@@ -751,6 +1072,7 @@ class CorrelatedFieldMaker:
             renormalize_amplitude=renormalize_amplitude,
         )
         self._fluctuations.append(ma)
+        self._spaces.append(space)
         self._target_grids.append(grid)
         self._parameter_tree.update(ma.domain)
 
@@ -850,66 +1172,42 @@ class CorrelatedFieldMaker:
     def finalize(self) -> Model:
         """Finishes off the model construction process and returns the
         constructed operator.
-        """
-        harmonic_transforms = []
-        excitation_shape = ()
-        for sgrid in self._target_grids:
-            sub_shp = None
-            sub_shp = sgrid.harmonic_grid.shape
-            excitation_shape += sub_shp
-            n = len(excitation_shape)
-            harmonic_dvol = 1.0 / sgrid.total_volume
-            if isinstance(sgrid, RegularCartesianGrid):
-                axes = tuple(range(n - len(sub_shp), n))
-                # TODO: Generalize to complex
-                trafo = partial(hartley, axes=axes)
-            elif isinstance(sgrid, HEALPixGrid):
-                axis = len(excitation_shape) - 1
-                trafo = get_sht(
-                    nside=sgrid.nside,
-                    axis=axis,
-                    lmax=sgrid.harmonic_grid.lmax,
-                    mmax=sgrid.harmonic_grid.mmax,
-                    nthreads=1,
-                )
-            harmonic_transforms.append((harmonic_dvol, trafo))
 
-        # Register the parameters for the excitations in harmonic space
+        The field is the outer product of the factors added with
+        :meth:`add_fluctuations` (or :meth:`add_fluctuations_matern`),
+        ``offset_mean + zeromode * prod_i (1 + a_i / zeromode)``, applied to a
+        single array of excitations ``prefix + "xi"`` whose shape is the
+        concatenation of the factors' excitation shapes (see :class:`Space`);
+        the zero mode of a kernel-based factor is the leading entry along its
+        axis. The returned model has the attributes ``spaces``,
+        ``target_grids`` (grids of the amplitude models) and
+        ``normalized_amplitudes``.
+        """
+        if len(self._spaces) == 0:
+            raise ValueError("add fluctuations before finalizing the model")
+        applies = []
+        excitation_shape = ()
+        offset = 0
+        for space in self._spaces:
+            n_exc = len(space.excitation_shape)
+            applies.append(space.make_apply(tuple(range(offset, offset + n_exc))))
+            excitation_shape += space.excitation_shape
+            offset += len(space.shape)
+
+        # Register the parameters for the excitations
         # TODO: actually account for the dtype here
         pfx = self._prefix + "xi"
         self._parameter_tree[pfx] = ShapeWithDtype(excitation_shape)
 
-        def outer_harmonic_transform(p):
-            harmonic_dvol, ht = harmonic_transforms[0]
-            outer = harmonic_dvol * ht(p)
-            for harmonic_dvol, ht in harmonic_transforms[1:]:
-                outer = harmonic_dvol * ht(outer)
-            return outer
-
-        def _mk_expanded_amp(amp, sub_dom):  # Avoid late binding
-            def expanded_amp(p):
-                return amp(p)[sub_dom.harmonic_grid.power_distributor]
-
-            return expanded_amp
-
-        expanded_amplitudes = []
+        amplitudes = tuple(self._fluctuations)
         namps = self.get_normalized_amplitudes()
-        for amp, sgrid in zip(namps, self._target_grids):
-            expanded_amplitudes.append(_mk_expanded_amp(amp, sgrid))
-
-        def outer_amplitude(p):
-            outer = expanded_amplitudes[0](p)
-            for amp in expanded_amplitudes[1:]:
-                # NOTE, the order is important here and must match with the
-                # excitations
-                # TODO, use functions instead and utilize numpy's casting
-                outer = jnp.tensordot(outer, amp(p), axes=0)
-            return outer
 
         def correlated_field(p):
-            ea = outer_amplitude(p)
-            cf_h = self.azm(p) * ea * p[self._prefix + "xi"]
-            return self._offset_mean + outer_harmonic_transform(cf_h)
+            zeromode = self.azm(p)
+            x = p[pfx]
+            for apply, amp in zip(applies, amplitudes):
+                x = apply(x, amp(p), zeromode)
+            return self._offset_mean + zeromode * x
 
         init = {
             k: partial(random_like, primals=v) for k, v in self._parameter_tree.items()
@@ -917,4 +1215,5 @@ class CorrelatedFieldMaker:
         cf = Model(correlated_field, domain=self._parameter_tree.copy(), init=init)
         cf.normalized_amplitudes = namps
         cf.target_grids = tuple(self._target_grids)
+        cf.spaces = tuple(self._spaces)
         return cf

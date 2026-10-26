@@ -1,0 +1,330 @@
+#!/usr/bin/env python3
+
+# SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
+# Authors: Philipp Frank, Gordian Edenhofer
+
+"""Iterative charted refinement (ICR) as a factor of a correlated field.
+
+:class:`ICRSpace` holds a multigrid (:class:`~nifty.re.multi_grid.Grid`) and
+the settings of the refinement: the window sizes, the compression of the
+refinement matrices and the range of the covariance table. Given the
+covariance on its radial bins, it generates the field level by level, each
+level in chunks of cells (``chunk_size`` cells at a time, recomputed in the
+backward pass), so that the memory of an application is bounded by the field
+and one chunk of gathered windows regardless of the grid's axes.
+
+The refinement matrices come from one Cholesky factorization per unique
+window covariance (``olf = L_fc L_cc^-1``, ``L_ff``); the unique windows are
+found by hashing the distance matrices quantized on the compression
+tolerance, followed by a greedy merge of the representatives.
+"""
+
+from dataclasses import dataclass
+from functools import partial
+from typing import Optional, Tuple
+
+import jax
+import jax.numpy as jnp
+import numpy as np
+from jax import vmap
+
+from ..correlated_field import KernelSpace
+from ..logger import logger
+from ..num import amend_unique_
+from .grid import Grid
+from .kernel import ICRKernel
+
+__all__ = ["ICRSpace", "compress_indices", "refinement_matrices_cholesky"]
+
+
+def refinement_matrices_cholesky(cov, n_fsz: int):
+    """Refinement matrices from one Cholesky factorization of the window
+    covariance (coarse block first, fine block last).
+
+    With ``L = [[L_cc, 0], [L_fc, L_ff]]`` and ``L L^T = cov``:
+    ``olf = C_fc C_cc^-1 = L_fc L_cc^-1`` and
+    ``L_ff L_ff^T = C_ff - C_fc C_cc^-1 C_cf``. The fine excitations are mapped
+    through the triangular ``L_ff``.
+    """
+    n_csz = cov.shape[0] - n_fsz
+    L = jnp.linalg.cholesky(cov)
+    L_cc, L_fc, L_ff = L[:n_csz, :n_csz], L[n_csz:, :n_csz], L[n_csz:, n_csz:]
+    olf = jax.scipy.linalg.solve_triangular(L_cc.T, L_fc.T, lower=False).T
+    return olf, L_ff
+
+
+def _quantized_hashes(dist, atol, rtol, keys):
+    """Two 64-bit hashes per distance matrix, quantized on the tolerance grid
+    (entries within ``atol + rtol * |b|`` fall into the same or neighboring
+    bins of ``log(d + atol / rtol)`` with width ``log(1 + rtol)``)."""
+    eps = atol / rtol
+    q = jnp.floor(jnp.log(dist + eps) / jnp.log1p(rtol)).astype(jnp.int64)
+    q = q.reshape(q.shape[0], -1).astype(jnp.uint64)
+    return jnp.stack([(q * k[jnp.newaxis, :]).sum(axis=1) for k in keys], axis=1)
+
+
+def _compress_scan(kernel, cells, level, rtol, atol, buffer_size):
+    """Greedy tolerance merge of the distance matrices of `cells`."""
+
+    def get_matrix(idx):
+        return kernel.get_kernel_distmat(idx, level)[0]
+
+    def step(u, i):
+        u, invid = amend_unique_(u, get_matrix(cells[:, i]), axis=0, atol=atol, rtol=rtol)
+        return u, invid
+
+    shp = jax.eval_shape(get_matrix, cells[:, 0]).shape
+    unique = jnp.full((buffer_size,) + shp, jnp.nan)
+    unique, invid = jax.lax.scan(step, unique, np.arange(cells.shape[1]))
+    _, idx, inverse = np.unique(np.asarray(invid), return_index=True, return_inverse=True)
+    if idx.size >= buffer_size or not np.all(np.isnan(unique[idx.size :])):
+        raise ValueError("`buffer_size` of the compression too small")
+    return cells[:, idx], inverse.reshape(-1)
+
+
+def compress_indices(
+    kernel: ICRKernel,
+    cells,
+    level: int,
+    *,
+    rtol=1e-5,
+    atol=1e-10,
+    buffer_size=10_000,
+    chunk_size=32768,
+):
+    """Groups the `cells` (shape ``(ndim, n)``) of `level` by their window
+    distance matrices: returns the representatives ``(ndim, n_unique)`` and
+    the index of each cell's representative ``(n,)``.
+
+    The distance matrices are quantized on the tolerance grid and hashed in
+    chunks, identical hashes are grouped, and the group representatives are
+    merged with a greedy tolerance scan so that groups split by a bin boundary
+    end up together. Every cell is mapped to a representative whose distance
+    matrix is within (twice) the tolerance of its own.
+    """
+    if atol <= 0.0 or rtol <= 0.0:
+        raise ValueError("compression needs `atol > 0` and `rtol > 0`")
+    cells = np.asarray(cells)
+    n = cells.shape[1]
+    n_entries = int(
+        np.prod(
+            jax.eval_shape(
+                lambda i: kernel.get_kernel_distmat(i, level)[0], jnp.asarray(cells[:, :1])
+            ).shape[1:]
+        )
+    )
+    rng = np.random.default_rng(0)
+    keys = rng.integers(1, 2**63 - 1, size=(2, n_entries), dtype=np.int64)
+    keys = jnp.asarray(keys.astype(np.uint64) | np.uint64(1))
+
+    @jax.jit
+    def hashes_of(idx):
+        return _quantized_hashes(kernel.get_kernel_distmat(idx, level)[0], atol, rtol, keys)
+
+    hashes = np.empty((n, 2), dtype=np.uint64)
+    for start in range(0, n, chunk_size):
+        sl = slice(start, min(start + chunk_size, n))
+        hashes[sl] = np.asarray(hashes_of(jnp.asarray(cells[:, sl])))
+    _, first, inverse = np.unique(hashes, axis=0, return_index=True, return_inverse=True)
+    inverse = inverse.reshape(-1)
+    uids = cells[:, first]
+    if uids.shape[1] > 1:
+        uids, inverse2 = _compress_scan(kernel, jnp.asarray(uids), level, rtol, atol, buffer_size)
+        inverse = inverse2[inverse]
+        uids = np.asarray(uids)
+    return uids, inverse
+
+
+@dataclass(frozen=True)
+class _Level:
+    index_shape: Tuple[int, ...]  # shape of the block of refined indices
+    index_lo: np.ndarray  # first refined index along each axis
+    splits: Tuple[int, ...]
+    fine_shape: Tuple[int, ...]
+    n_f: int
+    invids: jnp.ndarray  # (n_cells,) index of the unique matrix of each cell
+    udist: jnp.ndarray  # (n_unique, n, n) distance matrices of the unique windows
+
+    @property
+    def n_cells(self) -> int:
+        return int(np.prod(self.index_shape))
+
+
+class ICRSpace(KernelSpace):
+    """Multigrid factor generated by iterative charted refinement.
+
+    Parameters
+    ----------
+    grid : nifty.re.multi_grid.Grid
+        The multigrid; the field lives on its finest level.
+    r_min, r_max, n_bins : float, float, int
+        Covariance table (see :class:`~nifty.re.correlated_field.KernelSpace`).
+        By default `r_max` is the largest and `r_min` half the smallest
+        non-zero distance occurring in the refinement windows. The covariance
+        is interpolated linearly between the radial bins; too few bins make
+        the interpolated window covariances indefinite (the Cholesky
+        factorization then fails with NaNs), a few hundred are safe.
+    window_size : tuple or None
+        Coarse window of the refinement at each level (grid default: 3 along
+        every axis).
+    compress : dict or None
+        Tolerances of the window compression (``rtol``, ``atol``,
+        ``buffer_size``, ``chunk_size``), see :func:`compress_indices`;
+        ``None`` keeps every window.
+    chunk_size : int
+        Number of cells refined at once.
+    cholesky_jitter : float
+        Added to the diagonal of every window covariance relative to its mean
+        before the Cholesky factorization (windows at a grid boundary contain
+        coincident points).
+    jitter : float
+        Relative inflation of the covariance at zero distance.
+    radial_bins, k_bins : arrays, optional
+        Explicit bins in place of `r_min`, `r_max` and `n_bins`.
+    """
+
+    def __init__(
+        self,
+        grid: Grid,
+        *,
+        r_min=None,
+        r_max=None,
+        n_bins=256,
+        window_size=None,
+        compress: Optional[dict] = dict(rtol=1e-5, atol=1e-10, buffer_size=10_000),
+        chunk_size=2**14,
+        cholesky_jitter=1e-6,
+        jitter=1e-6,
+        radial_bins=None,
+        k_bins=None,
+    ):
+        self.multigrid = grid
+        self.kernel = ICRKernel(grid, None, window_size=window_size)
+        self.chunk_size = int(chunk_size)
+        self.cholesky_jitter = float(cholesky_jitter)
+        self.compress = None if not compress else dict(compress)
+
+        g0 = grid.at(0)
+        dim = int(g0.index2coord(np.zeros((g0.ndim, 1), dtype=np.int64)).shape[0])
+        self._base_dist = jnp.asarray(self.kernel.get_kernel_distmat(jnp.array([-1]), None))
+        levels = []
+        for lvl in range(grid.depth):
+            index = np.asarray(grid.at(lvl).refined_indices())
+            index_shape = tuple(int(s) for s in index.shape[1:])
+            cells = index.reshape(index.shape[0], -1)
+            if self.compress is not None:
+                uids, invids = compress_indices(self.kernel, cells, lvl, **self.compress)
+            else:
+                uids, invids = cells, np.arange(cells.shape[1])
+            udist, n_f = self.kernel.get_kernel_distmat(jnp.asarray(uids), lvl)
+            logger.info(f"ICRSpace level {lvl}: {cells.shape[1]} cells, {uids.shape[1]} unique windows")
+            levels.append(
+                _Level(
+                    index_shape=index_shape,
+                    index_lo=index[(slice(None),) + (0,) * len(index_shape)].astype(np.int64),
+                    splits=tuple(int(s) for s in grid.at(lvl).splits),
+                    fine_shape=tuple(int(s) for s in grid.at(lvl + 1).shape),
+                    n_f=int(n_f),
+                    invids=jnp.asarray(invids, dtype=jnp.int32),
+                    udist=jnp.asarray(udist),
+                )
+            )
+        self._levels = tuple(levels)
+        self._level_shapes = tuple(tuple(int(s) for s in grid.at(l).shape) for l in range(grid.depth + 1))
+        sizes = [int(np.prod(s)) for s in self._level_shapes]
+        self._level_offsets = tuple(np.cumsum([0] + sizes))
+
+        dists = [np.asarray(self._base_dist)] + [np.asarray(l.udist) for l in levels]
+        if r_max is None and radial_bins is None:
+            r_max = max(float(d.max()) for d in dists) * (1.0 + 1e-3)
+        if r_min is None and (radial_bins is None or k_bins is None):
+            r_min = 0.5 * min(float(d[d > 0].min()) for d in dists if np.any(d > 0))
+        super().__init__(
+            self._level_shapes[-1],
+            dim,
+            n_points=sum(sizes),
+            r_min=r_min,
+            r_max=r_max,
+            n_bins=n_bins,
+            jitter=jitter,
+            radial_bins=radial_bins,
+            k_bins=k_bins,
+        )
+
+    @property
+    def depth(self) -> int:
+        return self.multigrid.depth
+
+    @property
+    def window_size(self):
+        return self.kernel.window_size
+
+    @property
+    def n_unique(self) -> Tuple[int, ...]:
+        """Number of unique refinement windows per level."""
+        return tuple(int(l.udist.shape[0]) for l in self._levels)
+
+    def _jittered(self, cov):
+        eye = jnp.eye(cov.shape[-1], dtype=cov.dtype)
+        diag = jnp.mean(jnp.diagonal(cov, axis1=-2, axis2=-1), axis=-1)
+        return cov + self.cholesky_jitter * diag[..., jnp.newaxis, jnp.newaxis] * eye
+
+    def matrices(self, covariance):
+        """Base Cholesky factor and the per-level ``(olf, L_ff)`` of the
+        unique windows for the `covariance` on :attr:`radial_bins`."""
+        rs = jnp.asarray(self.radial_bins)
+
+        def kf(d):
+            return jnp.interp(d, rs, covariance, right=0.0)
+
+        base = jnp.linalg.cholesky(self._jittered(kf(self._base_dist)))
+        mats = tuple(
+            vmap(partial(refinement_matrices_cholesky, n_fsz=l.n_f))(self._jittered(kf(l.udist)))
+            for l in self._levels
+        )
+        return base, mats
+
+    def split_excitations(self, xi):
+        """The per-level arrays of a flat vector of excitations."""
+        return [
+            xi[..., o : o + int(np.prod(s))].reshape(xi.shape[:-1] + s)
+            for o, s in zip(self._level_offsets, self._level_shapes)
+        ]
+
+    def _refine(self, lvl, coarse, xi_fine, olf, lff):
+        L = self._levels[lvl]
+        n = L.n_cells
+        chunk = min(self.chunk_size, n)
+        n_chunks = -(-n // chunk)
+        pad = n_chunks * chunk - n
+        kid = jnp.concatenate((L.invids, jnp.repeat(L.invids[-1:], pad))).reshape(n_chunks, chunk)
+        starts = jnp.arange(n_chunks) * chunk
+        index_lo = jnp.asarray(L.index_lo)
+
+        @jax.checkpoint
+        def body(start, kid):
+            flat = jnp.minimum(start + jnp.arange(chunk), n - 1)
+            cells = jnp.stack(jnp.unravel_index(flat, L.index_shape)) + index_lo[:, jnp.newaxis]
+            _, ((gc, _), (gf, _)) = self.kernel.get_output_input_indices(cells, lvl)
+            xc = coarse[tuple(gc)]
+            xf = xi_fine[tuple(gf)]
+            return jnp.einsum("cfw,cw->cf", olf[kid], xc) + jnp.einsum("cfg,cg->cf", lff[kid], xf)
+
+        res = jax.lax.map(lambda xs: body(*xs), (starts, kid))
+        res = res.reshape(-1, L.n_f)[:n]
+        nd = len(L.index_shape)
+        res = res.reshape(L.index_shape + L.splits)
+        order = sum(((i, nd + i) for i in range(nd)), ())
+        return res.transpose(order).reshape(L.fine_shape)
+
+    def apply_sqrt(self, xi, covariance):
+        base, mats = self.matrices(covariance)
+
+        def single(x):
+            xs = self.split_excitations(x)
+            f = (base @ xs[0].ravel()).reshape(self._level_shapes[0])
+            for lvl, (olf, lff) in enumerate(mats):
+                f = self._refine(lvl, f, xs[lvl + 1], olf, lff)
+            return f
+
+        return vmap(single)(xi)
