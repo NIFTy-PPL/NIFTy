@@ -7,7 +7,6 @@
 ordering) as a factor of a correlated field. Requires the optional ``graphgp``
 package (and ``graphgp_cuda`` for ``cuda=True``)."""
 
-import importlib.util
 from dataclasses import field
 from typing import Any, Optional
 
@@ -18,13 +17,6 @@ import numpy as np
 from .correlated_field import KernelSpace
 
 __all__ = ["GraphGPSpace"]
-
-
-def _cuda_available() -> bool:
-    try:
-        return jax.default_backend() == "gpu" and importlib.util.find_spec("graphgp_cuda") is not None
-    except Exception:
-        return False
 
 
 class GraphGPSpace(KernelSpace):
@@ -48,9 +40,9 @@ class GraphGPSpace(KernelSpace):
         Number of points generated densely before the refinement.
     k : int
         Number of nearest predecessors each point is conditioned on.
-    cuda : bool, optional
-        Use the graphgp CUDA extension (default: if a GPU and the extension
-        are available).
+    cuda : bool
+        Use the graphgp CUDA extension (``graphgp_cuda``, the default); set
+        it to ``False`` on machines without it.
     jitter : float
         Relative inflation of the covariance at zero distance.
     shape : tuple, optional
@@ -71,14 +63,12 @@ class GraphGPSpace(KernelSpace):
         n_bins=1024,
         n0=512,
         k=16,
-        cuda: Optional[bool] = None,
+        cuda: bool = True,
         jitter=1e-3,
         shape=None,
         radial_bins=None,
         k_bins=None,
     ):
-        if cuda is None:
-            cuda = _cuda_available()
         self.cuda = bool(cuda)
         self.n0, self.k = int(n0), int(k)
         if graph is None:
