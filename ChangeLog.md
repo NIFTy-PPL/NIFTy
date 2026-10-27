@@ -14,10 +14,22 @@ Change categories:
 
 # NIFTy.re
 - New features
+  - `CorrelatedFieldMaker.add_fluctuations` (and `add_fluctuations_matern`)
+    accept a `Space` describing the factor instead of `shape`/`distances`:
+    `RegularSpace`, `SphericalSpace` (the harmonic grids as before),
+    `ICRSpace` (a multigrid refined by iterative charted refinement, applied in
+    memory-bounded chunks of cells and of refinement windows) and
+    `GraphGPSpace` (arbitrary points, generated with the optional `graphgp`
+    package). Kernel-based factors get a leading zero-mode slot in the single
+    excitation array, so that products of harmonic and kernel-based factors
+    keep the `offset_mean + zeromode * prod(1 + a_i / zeromode)` structure.
+    `finalize` returns a `CorrelatedField` model whose spaces and amplitudes
+    are dynamic pytree children.
   - Extend `estimate_evidence_lower_bound` with stochastic Lanczos quadrature
     for the trace-log, signal- and data-space evaluation, optional Radau
     diagnostics, and an analytic Gaussian-prior contribution.
 - Changes
+  - Fix `ICRField` for a plain callable covariance (`kernel` was unbound).
   - Consolidate the public Lanczos and stochastic log-determinant routines with
     the SLQ implementation used by the ELBO estimator so all entry points share
     one recurrence and Gaussian quadrature kernel.
