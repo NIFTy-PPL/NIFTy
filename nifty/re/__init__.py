@@ -5,6 +5,7 @@ from .check_model import check_model
 from .. import config
 from .conjugate_gradient import cg, static_cg
 from .correlated_field import (
+    CorrelatedField,
     CorrelatedFieldMaker,
     IsotropicGrid,
     KernelSpace,

@@ -17,7 +17,7 @@ from ..config import _config
 from .gauss_markov import IntegratedWienerProcess
 from .logger import logger
 from .misc import wrap
-from .model import Model, WrappedCall
+from .model import Model, ModelMeta, WrappedCall
 from .num import lognormal_prior, normal_prior
 from .tree_math import ShapeWithDtype, random_like
 
@@ -593,7 +593,7 @@ def _hankel_weights(k_bins, radial_bins, dim):
     return np.where(r > 0, lim[:, 1:] - lim[:, :-1], ball[:, 1:] - ball[:, :-1])
 
 
-class Space:
+class Space(metaclass=ModelMeta):
     """Position space of one factor of a correlated field.
 
     A correlated field is the outer product of factors, one per call of
@@ -607,6 +607,10 @@ class Space:
     an additional leading entry (``excitation_shape == (n_points + 1,)``). The
     zero mode maps to the constant one along the factor, so that the field is
     ``offset_mean + zeromode * prod_i (1 + a_i / zeromode)`` as before.
+
+    Spaces are JAX pytrees (like models): their arrays are dynamic leaves, so
+    that a model built from them can be passed into jitted functions without
+    the arrays being inlined as constants.
 
     Attributes
     ----------
@@ -628,13 +632,12 @@ class Space:
     def size(self) -> int:
         return int(np.prod(self.shape))
 
-    def make_apply(self, axes):
-        """Returns ``apply(x, amplitude, zeromode)``, the linear map of this
-        factor along the `axes` of `x` holding its excitations: the zero mode
-        becomes the constant one, the remaining excitations are correlated with
-        the amplitude divided by the zero mode (see
-        :meth:`CorrelatedFieldMaker.get_normalized_amplitudes`). The output has
-        ``self.shape`` in place of the excitation axes.
+    def apply(self, x, axes, amplitude, zeromode):
+        """The linear map of this factor along the `axes` of `x` holding its
+        excitations: the zero mode becomes the constant one, the remaining
+        excitations are correlated with the amplitude divided by the zero mode
+        (see :meth:`CorrelatedFieldMaker.get_normalized_amplitudes`). The
+        output has ``self.shape`` in place of the excitation axes.
         """
         raise NotImplementedError()
 
@@ -649,20 +652,13 @@ class HarmonicSpace(Space):
         """Harmonic transform acting on `axes`."""
         raise NotImplementedError()
 
-    def make_apply(self, axes):
+    def apply(self, x, axes, amplitude, zeromode):
         axes = tuple(int(ax) for ax in axes)
-        ht = self.harmonic_transform(axes)
-        harmonic_dvol = 1.0 / self.grid.total_volume
-        power_distributor = self.grid.harmonic_grid.power_distributor
-
-        def apply(x, amplitude, zeromode):
-            amp = amplitude.at[1:].mul(1.0 / zeromode)[power_distributor]
-            shp = [1] * x.ndim
-            for ax, s in zip(axes, amp.shape):
-                shp[ax] = s
-            return harmonic_dvol * ht(amp.reshape(shp) * x)
-
-        return apply
+        amp = amplitude.at[1:].mul(1.0 / zeromode)[self.grid.harmonic_grid.power_distributor]
+        shp = [1] * x.ndim
+        for ax, s in zip(axes, amp.shape):
+            shp[ax] = s
+        return self.harmonic_transform(axes)(amp.reshape(shp) * x) / self.grid.total_volume
 
 
 class RegularSpace(HarmonicSpace):
@@ -747,6 +743,9 @@ class KernelSpace(Space):
         Explicit bins in place of `r_min`, `r_max` and `n_bins`.
     """
 
+    radial_bins: jnp.ndarray = dataclasses.field(metadata=dict(static=False))
+    _hankel: jnp.ndarray = dataclasses.field(metadata=dict(static=False))
+
     def __init__(
         self,
         shape,
@@ -767,13 +766,10 @@ class KernelSpace(Space):
         super().__init__(shape, (n_points + 1,), grid)
         self.dim = int(dim)
         self.jitter = float(jitter)
+        self.radial_bins = jnp.asarray(grid.radial_bins)
         self._hankel = jnp.asarray(
-            _hankel_weights(self.k_bins, self.radial_bins, self.dim)
+            _hankel_weights(self.k_bins, grid.radial_bins, self.dim)
         )
-
-    @property
-    def radial_bins(self):
-        return self.grid.radial_bins
 
     @property
     def k_bins(self):
@@ -794,22 +790,70 @@ class KernelSpace(Space):
         ``(batch, n_points)`` and the `covariance` on :attr:`radial_bins`."""
         raise NotImplementedError()
 
-    def make_apply(self, axes):
+    def apply(self, x, axes, amplitude, zeromode):
         (axis,) = (int(ax) for ax in axes)
         ndim = len(self.shape)
+        cov = self.covariance(amplitude)
+        x = jnp.moveaxis(x, axis, -1)
+        batch = x.shape[:-1]
+        x = x.reshape((-1, x.shape[-1]))
+        out = self.apply_sqrt(x[:, 1:], cov) / zeromode
+        out = out + x[:, :1].reshape((-1,) + (1,) * ndim)
+        out = out.reshape(batch + self.shape)
+        src = tuple(range(len(batch), len(batch) + ndim))
+        return jnp.moveaxis(out, src, tuple(range(axis, axis + ndim)))
 
-        def apply(x, amplitude, zeromode):
-            cov = self.covariance(amplitude)
-            x = jnp.moveaxis(x, axis, -1)
-            batch = x.shape[:-1]
-            x = x.reshape((-1, x.shape[-1]))
-            out = self.apply_sqrt(x[:, 1:], cov) / zeromode
-            out = out + x[:, :1].reshape((-1,) + (1,) * ndim)
-            out = out.reshape(batch + self.shape)
-            src = tuple(range(len(batch), len(batch) + ndim))
-            return jnp.moveaxis(out, src, tuple(range(axis, axis + ndim)))
 
-        return apply
+class CorrelatedField(Model):
+    """Correlated field made by :meth:`CorrelatedFieldMaker.finalize`: the
+    outer product of the factors `spaces` with the amplitude models
+    `amplitudes`, ``offset_mean + zeromode * prod_i (1 + a_i / zeromode)``,
+    applied to the single excitation array ``xi_name``. Spaces and amplitudes
+    are dynamic pytree children, so pass the model into jitted functions as
+    an argument (as NIFTy's optimizers do) rather than closing over it.
+    """
+
+    spaces: tuple = dataclasses.field(metadata=dict(static=False))
+    amplitudes: tuple = dataclasses.field(metadata=dict(static=False))
+
+    def __init__(self, spaces, amplitudes, zeromode, offset_mean, xi_name, *, domain, init):
+        self.spaces = tuple(spaces)
+        self.amplitudes = tuple(amplitudes)
+        self.zeromode = zeromode
+        self.offset_mean = offset_mean
+        self.xi_name = str(xi_name)
+        axes = []
+        offset = 0
+        for space in self.spaces:
+            n_exc = len(space.excitation_shape)
+            axes.append(tuple(range(offset, offset + n_exc)))
+            offset += len(space.shape)
+        self._axes = tuple(axes)
+        super().__init__(domain=domain, init=init)
+
+    @property
+    def target_grids(self):
+        """Grids of the amplitude models."""
+        return tuple(space.grid for space in self.spaces)
+
+    @property
+    def normalized_amplitudes(self):
+        """Amplitudes with their non-zero modes divided by the zero mode."""
+
+        def _mk_normed_amp(amp):  # Avoid late binding
+            def normed_amplitude(p):
+                return amp(p).at[1:].mul(1.0 / self.zeromode(p))
+
+            return normed_amplitude
+
+        return tuple(_mk_normed_amp(amp) for amp in self.amplitudes)
+
+    def __call__(self, p):
+        zeromode = self.zeromode(p)
+        x = p[self.xi_name]
+        for space, amp, axes in zip(self.spaces, self.amplitudes, self._axes):
+            x = space.apply(x, axes, amp(p), zeromode)
+        return self.offset_mean + zeromode * x
 
 
 def _parse_space(shape, distances, harmonic_type) -> Space:
@@ -1169,7 +1213,7 @@ class CorrelatedFieldMaker:
 
         return power
 
-    def finalize(self) -> Model:
+    def finalize(self) -> CorrelatedField:
         """Finishes off the model construction process and returns the
         constructed operator.
 
@@ -1179,41 +1223,28 @@ class CorrelatedFieldMaker:
         single array of excitations ``prefix + "xi"`` whose shape is the
         concatenation of the factors' excitation shapes (see :class:`Space`);
         the zero mode of a kernel-based factor is the leading entry along its
-        axis. The returned model has the attributes ``spaces``,
-        ``target_grids`` (grids of the amplitude models) and
-        ``normalized_amplitudes``.
+        axis. The returned :class:`CorrelatedField` has the attributes
+        ``spaces``, ``amplitudes``, ``target_grids`` (grids of the amplitude
+        models) and ``normalized_amplitudes``.
         """
         if len(self._spaces) == 0:
             raise ValueError("add fluctuations before finalizing the model")
-        applies = []
-        excitation_shape = ()
-        offset = 0
-        for space in self._spaces:
-            n_exc = len(space.excitation_shape)
-            applies.append(space.make_apply(tuple(range(offset, offset + n_exc))))
-            excitation_shape += space.excitation_shape
-            offset += len(space.shape)
+        excitation_shape = sum((space.excitation_shape for space in self._spaces), ())
 
         # Register the parameters for the excitations
         # TODO: actually account for the dtype here
         pfx = self._prefix + "xi"
         self._parameter_tree[pfx] = ShapeWithDtype(excitation_shape)
 
-        amplitudes = tuple(self._fluctuations)
-        namps = self.get_normalized_amplitudes()
-
-        def correlated_field(p):
-            zeromode = self.azm(p)
-            x = p[pfx]
-            for apply, amp in zip(applies, amplitudes):
-                x = apply(x, amp(p), zeromode)
-            return self._offset_mean + zeromode * x
-
         init = {
             k: partial(random_like, primals=v) for k, v in self._parameter_tree.items()
         }
-        cf = Model(correlated_field, domain=self._parameter_tree.copy(), init=init)
-        cf.normalized_amplitudes = namps
-        cf.target_grids = tuple(self._target_grids)
-        cf.spaces = tuple(self._spaces)
-        return cf
+        return CorrelatedField(
+            self._spaces,
+            self._fluctuations,
+            self.azm,
+            self._offset_mean,
+            pfx,
+            domain=self._parameter_tree.copy(),
+            init=init,
+        )

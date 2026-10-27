@@ -238,3 +238,83 @@ def test_matern_amplitude_on_kernel_space():
     cov = np.asarray(space.covariance(m._fluctuations[0](p)))
     assert_allclose(cov[0], 1.5**2 * (1.0 + space.jitter), rtol=1e-6)
     assert np.all(np.isfinite(cf(p)))
+
+
+def _spaces_for_adjoint():
+    out = {
+        "icr1d": lambda: [jft.ICRSpace(_open_grid_1d(), n_bins=128)],
+        "icr-healpix": lambda: [jft.ICRSpace(_hp_grid(), n_bins=256)],
+        "regular-x-icr": lambda: [jft.RegularSpace((6,), 0.5), jft.ICRSpace(_open_grid_1d(12), n_bins=128)],
+    }
+    try:
+        import graphgp  # noqa: F401
+
+        out["graphgp2d"] = lambda: [
+            jft.GraphGPSpace(np.random.default_rng(0).uniform(0.0, 10.0, (120, 2)), n0=16, k=8, n_bins=128, cuda=False)
+        ]
+        out["graphgp-x-icr"] = lambda: [
+            jft.GraphGPSpace(np.random.default_rng(1).uniform(0.0, 5.0, (20, 3)), n0=8, k=6, n_bins=64, cuda=False),
+            jft.ICRSpace(_open_grid_1d(12), n_bins=128),
+        ]
+    except ImportError:
+        pass
+    return out
+
+
+@pmp("name", list(_spaces_for_adjoint()))
+def test_jvp_vjp_adjoint(name):
+    """<J v, w> == <v, J^T w> for the full model (jvp against vjp) and the
+    linear transpose of the excitation map against its vjp."""
+    spaces = _spaces_for_adjoint()[name]()
+    m = _maker(spaces, fluctuations=(1.0, 0.3), slope=(-3.0, 0.5), offset_std=(0.8, 0.2))
+    cf = m.finalize()
+    k0, k1, k2 = jax.random.split(jax.random.PRNGKey(7), 3)
+    p = jft.random_like(k0, cf.domain)
+    v = jft.random_like(k1, cf.domain)
+    w = jax.random.normal(k2, cf.target.shape, dtype=cf.target.dtype)
+    f, jv = jax.jvp(cf, (p,), (v,))
+    _, vjp = jax.vjp(cf, p)
+    (jtw,) = vjp(w)
+    lhs = jnp.vdot(jv, w)
+    rhs = sum(jnp.vdot(v[k], jtw[k]) for k in v)
+    assert_allclose(lhs, rhs, rtol=1e-10, atol=1e-10 * abs(float(lhs)))
+    # the map from the excitations alone is linear
+    xi_name = m._prefix + "xi"
+
+    def lin(xi):
+        return cf({**p, xi_name: xi})
+
+    xi = p[xi_name]
+    assert_allclose(lin(xi) + lin(v[xi_name]) - lin(jnp.zeros_like(xi)), lin(xi + v[xi_name]), rtol=1e-10, atol=1e-10)
+    transpose = jax.linear_transpose(lambda t: jax.jvp(lin, (xi,), (t,))[1], xi)
+    (jt_lin,) = transpose(w)
+    assert_allclose(jt_lin, jtw[xi_name], rtol=1e-10, atol=1e-10)
+
+
+@pmp("name", ["icr-healpix", "graphgp2d", "regular-x-icr"])
+def test_models_are_pytrees_without_inlined_constants(name):
+    """The arrays of the spaces are dynamic leaves of the model, so passing
+    the model into a jitted function inlines no large constants and retraces
+    only once."""
+    spaces = _spaces_for_adjoint()
+    if name not in spaces:
+        pytest.importorskip("graphgp")
+    cf = _maker(spaces[name]()).finalize()
+    p = jft.random_like(jax.random.PRNGKey(0), cf.domain)
+    leaves = jax.tree_util.tree_leaves(cf)
+    n_dynamic = sum(int(np.asarray(l).nbytes) for l in leaves)
+    consts = jax.make_jaxpr(lambda cf, p: cf(p))(cf, p).consts
+    n_const = sum(int(np.asarray(c).nbytes) for c in consts)
+    assert n_const < 2**16, f"{n_const} bytes of constants inlined"
+    if any(isinstance(s, jft.KernelSpace) for s in cf.spaces):
+        assert n_dynamic > n_const
+    traces = []
+
+    @jax.jit
+    def f(cf, p):
+        traces.append(1)
+        return cf(p)
+
+    assert_allclose(f(cf, p), cf(p), rtol=1e-12, atol=1e-12)
+    f(cf, p)
+    assert len(traces) == 1

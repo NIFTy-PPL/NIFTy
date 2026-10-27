@@ -19,7 +19,7 @@ found by hashing the distance matrices quantized on the compression
 tolerance, followed by a greedy merge of the representatives.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from functools import partial
 from typing import Optional, Tuple
 
@@ -141,10 +141,11 @@ def compress_indices(
     return uids, inverse
 
 
+@partial(jax.tree_util.register_dataclass, data_fields=["invids", "ucoords"], meta_fields=["index_shape", "index_lo", "splits", "fine_shape", "n_f"])
 @dataclass(frozen=True)
 class _Level:
     index_shape: Tuple[int, ...]  # shape of the block of refined indices
-    index_lo: np.ndarray  # first refined index along each axis
+    index_lo: Tuple[int, ...]  # first refined index along each axis
     splits: Tuple[int, ...]
     fine_shape: Tuple[int, ...]
     n_f: int
@@ -216,6 +217,9 @@ class ICRSpace(KernelSpace):
         Explicit bins in place of `r_min`, `r_max` and `n_bins`.
     """
 
+    _base_dist: jnp.ndarray = field(metadata=dict(static=False))
+    _levels: Tuple[_Level, ...] = field(metadata=dict(static=False))
+
     def __init__(
         self,
         grid: Grid,
@@ -237,7 +241,7 @@ class ICRSpace(KernelSpace):
         self.chunk_size = int(chunk_size)
         self.kernel_chunk = int(kernel_chunk)
         self.cholesky_jitter = float(cholesky_jitter)
-        self.compress = None if not compress else dict(compress)
+        self._compress = None if not compress else tuple(sorted(dict(compress).items()))
 
         g0 = grid.at(0)
         dim = int(g0.index2coord(np.zeros((g0.ndim, 1), dtype=np.int64)).shape[0])
@@ -258,7 +262,7 @@ class ICRSpace(KernelSpace):
             levels.append(
                 _Level(
                     index_shape=index_shape,
-                    index_lo=index[(slice(None),) + (0,) * len(index_shape)].astype(np.int64),
+                    index_lo=tuple(int(i) for i in index[(slice(None),) + (0,) * len(index_shape)]),
                     splits=tuple(int(s) for s in grid.at(lvl).splits),
                     fine_shape=tuple(int(s) for s in grid.at(lvl + 1).shape),
                     n_f=int(n_f),
@@ -269,7 +273,7 @@ class ICRSpace(KernelSpace):
         self._levels = tuple(levels)
         self._level_shapes = tuple(tuple(int(s) for s in grid.at(l).shape) for l in range(grid.depth + 1))
         sizes = [int(np.prod(s)) for s in self._level_shapes]
-        self._level_offsets = tuple(np.cumsum([0] + sizes))
+        self._level_offsets = tuple(int(o) for o in np.cumsum([0] + sizes))
 
         if (r_max is None and radial_bins is None) or (r_min is None and (radial_bins is None or k_bins is None)):
             d_max, d_min = float(np.max(self._base_dist)), np.inf
@@ -299,6 +303,11 @@ class ICRSpace(KernelSpace):
         )
 
     @property
+    def compress(self) -> Optional[dict]:
+        """Settings of the window compression (``None``: no compression)."""
+        return None if self._compress is None else dict(self._compress)
+
+    @property
     def depth(self) -> int:
         return self.multigrid.depth
 
@@ -319,7 +328,7 @@ class ICRSpace(KernelSpace):
     def matrices(self, covariance):
         """Base Cholesky factor and the per-level ``(olf, L_ff)`` of the
         unique windows for the `covariance` on :attr:`radial_bins`."""
-        rs = jnp.asarray(self.radial_bins)
+        rs = self.radial_bins
 
         def kf(d):
             return jnp.interp(d, rs, covariance, right=0.0)

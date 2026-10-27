@@ -8,7 +8,8 @@ ordering) as a factor of a correlated field. Requires the optional ``graphgp``
 package (and ``graphgp_cuda`` for ``cuda=True``)."""
 
 import importlib.util
-from typing import Optional
+from dataclasses import field
+from typing import Any, Optional
 
 import jax
 import jax.numpy as jnp
@@ -57,6 +58,8 @@ class GraphGPSpace(KernelSpace):
     radial_bins, k_bins : arrays, optional
         Explicit bins in place of `r_min`, `r_max` and `n_bins`.
     """
+
+    graph: Any = field(metadata=dict(static=False))
 
     def __init__(
         self,
@@ -153,9 +156,13 @@ class GraphGPSpace(KernelSpace):
     def apply_sqrt(self, xi, covariance):
         import graphgp as ggp
 
-        rs = jnp.asarray(self.radial_bins)
+        rs = self.radial_bins
 
         def generate(x):
             return ggp.generate(self.graph, (rs, covariance), x, cuda=self.cuda)
 
-        return jax.vmap(generate)(xi).reshape((xi.shape[0],) + self.shape)
+        # NOTE, `lax.map` rather than `vmap` over the batch: the vjp of
+        # graphgp's pure-JAX refinement (`fast_jit=True`) is wrong under
+        # `vmap` (graphgp 0.0.3, 2026-10-27; the jvp is fine, `fast_jit=False`
+        # is fine), and the CUDA primitives need no batching this way either.
+        return jax.lax.map(generate, xi).reshape((xi.shape[0],) + self.shape)
