@@ -395,13 +395,8 @@ class OptimizeVI:
 
         self.intermediate_samples_path = None
         if intermediate_samples_path is not None:
-            save_path = Path(intermediate_samples_path)
-            save_path.parent.mkdir(parents=True, exist_ok=True)
-
-            if not os.access(save_path.parent, os.W_OK):
-                raise PermissionError(f"Directory '{save_path.parent}' is not writable")
-
-            self.intermediate_samples_path = save_path
+            self.intermediate_samples_path = Path(intermediate_samples_path)
+            self.intermediate_samples_path.parent.mkdir(parents=True, exist_ok=True)
 
     def draw_linear_samples(self, primals, keys, **kwargs):
         # NOTE, use `Partial` in favor of `partial` to allow the (potentially)
@@ -895,11 +890,12 @@ def optimize_kl(
     """
     LAST_FILENAME = "last.pkl"
     MINISANITY_FILENAME = "minisanity.txt"
+    INTERMEDIATE_SAMPLES_FILENAME = "intermediate_samples.pkl"
 
     # Resolve intermediate samples path
     intermediate_samples_path = None
     if save_intermediate_samples and odir is not None:
-        intermediate_samples_path = Path(odir) / "intermediate_samples.pkl"
+        intermediate_samples_path = os.path.join(odir, INTERMEDIATE_SAMPLES_FILENAME)
 
     opt_vi = _optimize_vi if _optimize_vi is not None else None
     if opt_vi is None:

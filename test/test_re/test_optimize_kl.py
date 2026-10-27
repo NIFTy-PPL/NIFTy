@@ -476,3 +476,29 @@ def test_intermediate_samples_from_other_iteration_are_ignored(tmp_path, monkeyp
 
     assert len(draws) == 1  # did not trust the stale file
     assert not path.exists()  # and cleaned it up
+
+
+@pmp("save_intermediate_samples", (True, False))
+def test_optimize_kl_save_intermediate_samples(tmp_path, save_intermediate_samples):
+    key = random.PRNGKey(42)
+    lh = jft.Gaussian(random.normal(key, (4,)))
+    jft.optimize_kl(
+        lh,
+        lh.init(key),
+        key=key,
+        n_total_iterations=1,
+        n_samples=1,
+        sample_mode="linear_resample",
+        draw_linear_kwargs=dict(
+            cg=jft.conjugate_gradient.cg,
+            cg_name=None,
+            cg_kwargs=dict(miniter=1, absdelta=1e-3, maxiter=3),
+        ),
+        kl_kwargs=dict(minimize_kwargs=dict(name=None, xtol=1e-3, maxiter=1)),
+        jit=False,
+        linear_minimizer_jit=False,
+        odir=tmp_path,
+        save_intermediate_samples=save_intermediate_samples,
+    )
+    assert (tmp_path / "last.pkl").exists()
+    assert not (tmp_path / "intermediate_samples.pkl").exists()
