@@ -319,22 +319,24 @@ def test_variable_position_nufft_vs_fft(shape, eps, pre_domain, shift_direction)
     else:
         ntrans = pre_domain.shape[0]
 
+    # The shifted values come from the NUFFT, so they only match up to eps.
+    rtol = max(eps, 1e-7)
     for itrans in range(ntrans):
         if ndim == 1:
-            np.testing.assert_allclose(res[itrans, 0], res[itrans, 1])
-            np.testing.assert_allclose(res[itrans, 2], res[itrans, 4])
+            np.testing.assert_allclose(res[itrans, 0], res[itrans, 1], rtol=rtol)
+            np.testing.assert_allclose(res[itrans, 2], res[itrans, 4], rtol=rtol)
         elif ndim == 2:
             if shift_direction is None:
-                np.testing.assert_allclose(res[itrans, 1, 0], res[itrans, 0, 0])
-                np.testing.assert_allclose(res[itrans, 0, 2], res[itrans, 0, 4])
-                np.testing.assert_allclose(res[itrans, 3, 3], res[itrans, 4, 1])
+                np.testing.assert_allclose(res[itrans, 1, 0], res[itrans, 0, 0], rtol=rtol)
+                np.testing.assert_allclose(res[itrans, 0, 2], res[itrans, 0, 4], rtol=rtol)
+                np.testing.assert_allclose(res[itrans, 3, 3], res[itrans, 4, 1], rtol=rtol)
             elif shift_direction == 1:
-                np.testing.assert_allclose(res[itrans, 0, 2], res[itrans, 0, 4])
-                np.testing.assert_allclose(res[itrans, 3, 3], res[itrans, 3, 1])
+                np.testing.assert_allclose(res[itrans, 0, 2], res[itrans, 0, 4], rtol=rtol)
+                np.testing.assert_allclose(res[itrans, 3, 3], res[itrans, 3, 1], rtol=rtol)
         elif ndim == 3:
             if shift_direction is None:
-                np.testing.assert_allclose(res[itrans, 6, 4, 3], res[itrans, 9, 3, 1])
-                np.testing.assert_allclose(res[itrans, 2, 1, 10], res[itrans, 17, 1, 19]) # Test wraparound
+                np.testing.assert_allclose(res[itrans, 6, 4, 3], res[itrans, 9, 3, 1], rtol=rtol)
+                np.testing.assert_allclose(res[itrans, 2, 1, 10], res[itrans, 17, 1, 19], rtol=rtol) # Test wraparound
             elif shift_direction == 1:
-                np.testing.assert_allclose(res[itrans, 6, 4, 3], res[itrans, 6, 3, 3])
-                np.testing.assert_allclose(res[itrans, 2, 1, 10], res[itrans, 2, 21%20, 10]) # Test wraparound
+                np.testing.assert_allclose(res[itrans, 6, 4, 3], res[itrans, 6, 3, 3], rtol=rtol)
+                np.testing.assert_allclose(res[itrans, 2, 1, 10], res[itrans, 2, 21%20, 10], rtol=rtol) # Test wraparound
