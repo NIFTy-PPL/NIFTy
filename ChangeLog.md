@@ -40,6 +40,14 @@ Change categories:
     diagnostics, and an analytic Gaussian-prior contribution.
 - Changes
   - Fix `ICRField` for a plain callable covariance (`kernel` was unbound).
+  - `MaternCovarianceModel` gains `mode="table"` (the covariance values on
+    `radial_bins`), usable as the kernel model of `ICRGP` and `GraphGP`.
+- Deprecations
+  - `nifty.re.multi_grid.ICRField` in favour of `ICRGP` (or an `ICRSpace`
+    factor of `CorrelatedFieldMaker`); `ICRGP` also accepts the covariance
+    functions `k(x, y)` that `ICRField` took.
+  - `MaternCovarianceModel` modes `"ICR"` and `"graphgp"` in favour of
+    `"table"`.
   - Consolidate the public Lanczos and stochastic log-determinant routines with
     the SLQ implementation used by the ELBO estimator so all entry points share
     one recurrence and Gaussian quadrature kernel.

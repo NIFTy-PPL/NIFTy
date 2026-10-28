@@ -38,14 +38,24 @@ from .tree_math import ShapeWithDtype, random_like
 __all__ = ["KernelGP", "GraphGP", "ICRGP", "parse_kernel", "compress_indices", "refinement_matrices_cholesky"]
 
 
-def parse_kernel(kernel, radial_bins=None):
+def parse_kernel(kernel, radial_bins=None, *, allow_callable=False):
     """Splits `kernel` into ``(model, radial_bins, cov_vals)``: a kernel model
     (with a ``radial_bins`` attribute unless `radial_bins` is given) and no
     fixed table, or no model and a fixed table from an array of covariance
-    values on `radial_bins` or a ``(radial_bins, cov_vals)`` tuple."""
+    values on `radial_bins` or a ``(radial_bins, cov_vals)`` tuple.
+
+    With `allow_callable`, a covariance *function* of two coordinate arrays
+    ``k(x, y)`` (shapes ``(dim, ...)``, as the kernels of
+    :class:`~nifty.re.multi_grid.ICRField`) is accepted as well, either
+    directly (fixed) or as a model returning such a function (a model without
+    ``radial_bins``); then ``radial_bins`` is ``None`` and `cov_vals` is the
+    function (or ``None`` for the model).
+    """
     if isinstance(kernel, Model):
         rs = getattr(kernel, "radial_bins", None) if radial_bins is None else radial_bins
         if rs is None:
+            if allow_callable:
+                return kernel, None, None
             raise ValueError("a kernel model must have `radial_bins` or they must be given explicitly")
         return kernel, jnp.asarray(rs), None
     if isinstance(kernel, (tuple, list)) and len(kernel) == 2:
@@ -53,6 +63,12 @@ def parse_kernel(kernel, radial_bins=None):
             raise ValueError("`radial_bins` given twice")
         rs, cov = kernel
         return None, jnp.asarray(rs), jnp.asarray(cov)
+    if callable(kernel):
+        if not allow_callable:
+            raise TypeError("a covariance function is not supported here; pass a table or a kernel model")
+        if radial_bins is not None:
+            raise ValueError("a covariance function has no `radial_bins`")
+        return None, None, jax.tree_util.Partial(kernel)
     if radial_bins is None:
         raise ValueError("a fixed kernel needs `radial_bins`: pass them or a `(radial_bins, cov_vals)` tuple")
     return None, jnp.asarray(radial_bins), jnp.asarray(kernel)
@@ -78,10 +94,10 @@ class KernelGP(Model):
 
     kernel: Optional[Model] = dataclasses.field(metadata=dict(static=False))
     cov_vals: Optional[jnp.ndarray] = dataclasses.field(metadata=dict(static=False))
-    radial_bins: jnp.ndarray = dataclasses.field(metadata=dict(static=False))
+    radial_bins: Optional[jnp.ndarray] = dataclasses.field(metadata=dict(static=False))
 
-    def __init__(self, kernel, *, radial_bins=None, shape, excitation_shape, prefix="", dtype=jnp.float64):
-        self.kernel, self.radial_bins, self.cov_vals = parse_kernel(kernel, radial_bins)
+    def __init__(self, kernel, *, radial_bins=None, shape, excitation_shape, prefix="", dtype=jnp.float64, allow_callable=False):
+        self.kernel, self.radial_bins, self.cov_vals = parse_kernel(kernel, radial_bins, allow_callable=allow_callable)
         self.shape = tuple(int(s) for s in shape)
         self.excitation_shape = tuple(int(s) for s in excitation_shape)
         self.xi_name = str(prefix) + "xi"
@@ -98,14 +114,22 @@ class KernelGP(Model):
         """Whether the kernel is a model (its parameters are inferred)."""
         return self.kernel is not None
 
+    @property
+    def coordinate_kernel(self) -> bool:
+        """Whether the kernel is a covariance function of coordinates rather
+        than a table on radial bins."""
+        return self.radial_bins is None
+
     def covariance(self, p=None):
-        """The covariance table on :attr:`radial_bins` for the parameters `p`."""
+        """The covariance table on :attr:`radial_bins` (or the covariance
+        function for a coordinate kernel) for the parameters `p`."""
         return self.cov_vals if self.kernel is None else self.kernel(p)
 
     def generate(self, xi, cov_vals):
         """Field of shape ``batch + shape`` for excitations `xi` of shape
         ``batch + excitation_shape`` and the covariance table `cov_vals` on
-        :attr:`radial_bins` (the linear map of the GP for a fixed table)."""
+        :attr:`radial_bins` (the linear map of the GP for a fixed table; a
+        covariance function for a coordinate kernel)."""
         raise NotImplementedError()
 
     def __call__(self, p):
@@ -123,8 +147,13 @@ class GraphGP(KernelGP):
         The points (the field gets the shape ``points.shape[:-1]``), or a graph
         built with :meth:`build_graph` (then the shape is ``(n_points,)``
         unless `shape` is given).
-    kernel : Model, array or (radial_bins, cov_vals)
-        See :class:`KernelGP`. graphgp holds the covariance constant beyond the
+    kernel : Model, array, (radial_bins, cov_vals) or callable
+        See :class:`KernelGP`; additionally a covariance function ``k(x, y)``
+        of two coordinate arrays (or a model returning one, such as
+        :class:`~nifty.re.multi_grid.MaternCovarianceModel` in mode ``"ICR"``)
+        is accepted and evaluated on the window coordinates. The compression
+        of the windows groups them by their distance matrices, which is exact
+        for isotropic kernels only; pass ``compress=None`` otherwise. graphgp holds the covariance constant beyond the
         last radial bin, so the bins must reach the largest separation.
     n0, k : int
         Points generated densely before the refinement; nearest predecessors
@@ -398,6 +427,7 @@ class ICRGP(KernelGP):
     """
 
     _base_dist: jnp.ndarray = field(metadata=dict(static=False))
+    _base_coords: jnp.ndarray = field(metadata=dict(static=False))
     _levels: Tuple[_Level, ...] = field(metadata=dict(static=False))
 
     def __init__(
@@ -423,6 +453,8 @@ class ICRGP(KernelGP):
 
         # the index arithmetic of the grids is slow op by op; always run it under jit
         self._base_dist = jax.jit(lambda i: self.icr_kernel.get_kernel_distmat(i, None))(jnp.array([-1]))
+        _, ((base_ids, _),) = self.icr_kernel.get_output_input_indices(jnp.array([-1]), None)
+        self._base_coords = jax.jit(grid.at(0).index2coord)(jnp.asarray(base_ids))  # (dim, n0)
         levels = []
         for lvl in range(grid.depth):
             index = np.asarray(grid.at(lvl).refined_indices())
@@ -452,14 +484,15 @@ class ICRGP(KernelGP):
         self._level_offsets = tuple(int(o) for o in np.cumsum([0] + sizes))
 
         super().__init__(
-            kernel, radial_bins=radial_bins, shape=self._level_shapes[-1], excitation_shape=(sum(sizes),), prefix=prefix, dtype=dtype
+            kernel, radial_bins=radial_bins, shape=self._level_shapes[-1], excitation_shape=(sum(sizes),), prefix=prefix,
+            dtype=dtype, allow_callable=True,
         )
         d_max = float(np.max(self._base_dist))
         for l in levels:
             for start in range(0, l.n_unique, self.kernel_chunk):
                 d_max = max(d_max, float(np.max(jax.jit(_distances)(l.ucoords[start : start + self.kernel_chunk]))))
         self.max_distance = d_max
-        if d_max > float(self.radial_bins[-1]):
+        if self.radial_bins is not None and d_max > float(self.radial_bins[-1]):
             logger.warning(
                 f"the covariance table ends at {float(self.radial_bins[-1]):.4g} but the refinement windows reach"
                 f" distance {d_max:.4g}; the covariance is zero beyond the table"
@@ -490,13 +523,29 @@ class ICRGP(KernelGP):
 
     def matrices(self, covariance):
         """Base Cholesky factor and the per-level ``(olf, L_ff)`` of the
-        unique windows for the `covariance` on :attr:`radial_bins`."""
-        rs = self.radial_bins
+        unique windows for the `covariance` on :attr:`radial_bins` (a table,
+        interpolated linearly at the window distances) or, for a coordinate
+        kernel, the covariance function ``k(x, y)`` evaluated on the window
+        coordinates."""
+        if self.coordinate_kernel:
+            k = covariance
+            k = vmap(k, in_axes=(None, -1), out_axes=-1)
+            k = vmap(k, in_axes=(-1, None), out_axes=-1)
 
-        def kf(d):
-            return jnp.interp(d, rs, covariance, right=0.0)
+            def window_cov(c):  # c: (..., dim, n) -> (..., n, n)
+                return jnp.vectorize(lambda cc: k(cc, cc), signature="(d,n)->(n,n)")(c)
 
-        base = jnp.linalg.cholesky(self._jittered(kf(self._base_dist)))
+            base = jnp.linalg.cholesky(self._jittered(window_cov(self._base_coords)))
+        else:
+            rs = self.radial_bins
+
+            def kf(d):
+                return jnp.interp(d, rs, covariance, right=0.0)
+
+            def window_cov(c):
+                return kf(_distances(c))
+
+            base = jnp.linalg.cholesky(self._jittered(kf(self._base_dist)))
         mats = []
         for l in self._levels:
             chunk = min(self.kernel_chunk, l.n_unique)
@@ -509,7 +558,7 @@ class ICRGP(KernelGP):
             def build(c, n_f=l.n_f):
                 # keep XLA from folding the distance tables of all windows into constants
                 c = jax.lax.optimization_barrier(c)
-                return vmap(partial(refinement_matrices_cholesky, n_fsz=n_f))(self._jittered(kf(_distances(c))))
+                return vmap(partial(refinement_matrices_cholesky, n_fsz=n_f))(self._jittered(window_cov(c)))
 
             olf, lff = jax.lax.map(build, coords)
             mats.append((olf.reshape((-1,) + olf.shape[2:])[: l.n_unique], lff.reshape((-1,) + lff.shape[2:])[: l.n_unique]))

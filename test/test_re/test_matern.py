@@ -18,7 +18,7 @@ pmp = pytest.mark.parametrize
 @pmp("negloglogslope", [3.0, (1.0, 0.1)])
 @pmp("kcutoff", ["auto", 10.0])
 @pmp("Ninterp", [128, "auto"])
-@pmp("mode", ["ICR", "graphgp"])
+@pmp("mode", ["ICR", "graphgp", "table"])
 def test_initialisation(
     Ndim, r_min, r_max, variance, lengthscale, negloglogslope, kcutoff, Ninterp, mode
 ):
@@ -40,6 +40,9 @@ def test_initialisation(
         assert callable(res)
         cov = res(0.5, 0.0)
         assert jnp.all(jnp.isfinite(cov))
+    elif mode == "table":
+        assert isinstance(res, jnp.ndarray) and res.ndim == 1
+        assert jnp.all(jnp.isfinite(res)) and res.shape == kernel.radial_bins.shape
     elif mode == "graphgp":
         rs, cov = res
         assert isinstance(rs, jnp.ndarray)

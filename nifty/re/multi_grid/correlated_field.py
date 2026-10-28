@@ -19,6 +19,9 @@ from .kernel import ICRKernel, Kernel, apply_kernel
 
 
 class ICRField(Model):
+    """Deprecated: superseded by :class:`nifty.re.ICRGP` and the
+    :class:`nifty.re.ICRSpace` factor of :class:`nifty.re.CorrelatedFieldMaker`."""
+
     grid: Grid
     kernel: Kernel
     covariance: Union[Model, Callable] = field(metadata=dict(static=False))
@@ -77,6 +80,15 @@ class ICRField(Model):
             Prefix for the latent parameter names.
         """
 
+        from warnings import warn
+
+        warn(
+            "`ICRField` is deprecated: use `nifty.re.ICRGP(grid, kernel, ...)` (the same multigrid and"
+            " kernels, memory-bounded chunked refinement, one flat excitation array) or"
+            " `nifty.re.CorrelatedFieldMaker.add_fluctuations(nifty.re.ICRSpace(grid, ...), ...)`",
+            category=DeprecationWarning,
+            stacklevel=2,
+        )
         self.grid = grid
         shapes = [
             ShapeWithDtype(self.grid.at(lvl).shape, jnp.float_)

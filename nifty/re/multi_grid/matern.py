@@ -865,6 +865,12 @@ class MaternCovarianceModel(MaternCovarianceKernel, Model):
         :class:`MaternCovarianceModel`. The final prior names will be
         ``prefix + attribute name``, e.g. ``"MaternCovarianceModel_lengthscale"``.
     mode : str
+        ``"table"``: the model returns the covariance values on
+        :attr:`radial_bins` and can be passed as the `kernel` of
+        :class:`nifty.re.ICRGP` and :class:`nifty.re.GraphGP`. The modes
+        ``"ICR"`` (a covariance function ``k(x, y)`` for the deprecated
+        :class:`ICRField`) and ``"graphgp"`` (a ``(radial_bins, cov_vals)``
+        tuple) are deprecated.
         Mode of operation. If ``"ICR"``, the model is intended to be used with
         ICR and the ``__call__`` method will return a callable covariance kernel
         function. If ``"graphgp"``, the model is intended to be used with
@@ -910,8 +916,18 @@ class MaternCovarianceModel(MaternCovarianceKernel, Model):
         # Input validation
         if not isinstance(prefix, str):
             raise ValueError("prefix must be a string.")
-        if not isinstance(mode, str) or mode not in ["ICR", "graphgp"]:
-            raise ValueError("mode must be either 'ICR' or 'graphgp'.")
+        if not isinstance(mode, str) or mode not in ["ICR", "graphgp", "table"]:
+            raise ValueError("mode must be 'table', 'ICR' or 'graphgp'.")
+        if mode != "table":
+            from warnings import warn
+
+            warn(
+                f"MaternCovarianceModel(mode={mode!r}) is deprecated: use mode='table' (the covariance values"
+                " on `radial_bins`), which the Gaussian process models `nifty.re.ICRGP` and `nifty.re.GraphGP`"
+                " take as a kernel model",
+                category=DeprecationWarning,
+                stacklevel=2,
+            )
         self.mode = mode
 
         MaternCovarianceKernel.__init__(
@@ -975,7 +991,16 @@ class MaternCovarianceModel(MaternCovarianceKernel, Model):
             | getattr(self.kcutoff, "domain", {}),
         )
 
+    @property
+    def radial_bins(self):
+        """Radii of the covariance table (``0`` and the interpolation radii)
+        in mode ``"table"``; ``None`` otherwise (the deprecated modes return a
+        covariance function or a tuple, not a table)."""
+        return jnp.append(0.0, self.cov_rs_no_zero) if self.mode == "table" else None
+
     def __call__(self, x):
+        if self.mode == "table":
+            return self._call_graphgp(x)[1]
         if self.mode == "ICR":
             return self._call_ICR(x)
         else:

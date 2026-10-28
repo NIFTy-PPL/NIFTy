@@ -182,3 +182,49 @@ def test_icr_excitation_layout_and_table_warning(caplog):
     with caplog.at_level("WARNING", logger="nifty.re.logger"):
         jft.ICRGP(_grid(), (short, jnp.exp(-0.5 * (short / 4.0) ** 2)))
     assert any("covariance table ends" in r.getMessage() for r in caplog.records)
+
+
+def test_icrgp_coordinate_kernel():
+    """A covariance function of coordinates gives the same field as its table
+    (fine table, so the interpolation error is negligible); a model returning
+    such a function is hierarchical."""
+    length = 7.0
+
+    def k(x, y):  # (dim, ...) coordinate arrays
+        return jnp.exp(-0.5 * jnp.sum((x - y) ** 2, axis=0) / length**2)
+
+    rs = jnp.concatenate((jnp.zeros(1), jnp.geomspace(1e-3, 200.0, 4000)))
+    gp_fun = jft.ICRGP(_grid(), k)
+    gp_tab = jft.ICRGP(_grid(), (rs, jnp.exp(-0.5 * (rs / length) ** 2)))
+    assert gp_fun.coordinate_kernel and not gp_fun.hierarchical and gp_fun.radial_bins is None
+    assert set(gp_fun.domain) == {"xi"}
+    p = jft.random_like(jax.random.PRNGKey(0), gp_fun.domain)
+    assert_allclose(gp_fun(p), gp_tab(p), rtol=1e-3, atol=1e-4)  # the table is interpolated linearly
+    jax.jit(jax.grad(lambda p: (gp_fun(p) ** 2).sum()))(p)
+    with pytest.raises(TypeError):
+        jft.GraphGP(_points(), k, n0=8, k=4, cuda=False) if "graphgp" in _models() else (_ for _ in ()).throw(TypeError())
+
+
+def test_matern_model_as_kernel():
+    """`MaternCovarianceModel(mode="table")` is a kernel model of both GPs; the
+    deprecated mode "ICR" (a coordinate kernel) gives the same ICR field."""
+    kw = dict(Ndim=1, r_min=0.02, r_max=300.0, variance=(1.0, 0.2), lengthscale=(5.0, 0.5), negloglogslope=(3.0, 0.3), Ninterp=512, prefix="m_")
+    table = jft.MaternCovarianceModel(mode="table", **kw)
+    assert table.radial_bins[0] == 0.0 and table.radial_bins.shape == (513,)
+    for name, make in _models().items():
+        gp = make(table)
+        assert gp.hierarchical and {"m_variance", "m_lengthscale", "m_negloglogslope"} <= set(gp.domain)
+        p = jft.random_like(jax.random.PRNGKey(1), gp.domain)
+        f = gp(p)
+        assert f.shape == gp.shape and np.all(np.isfinite(f))
+        if name == "icr":
+            with pytest.warns(DeprecationWarning, match="mode='ICR'"):
+                icr_mode = jft.MaternCovarianceModel(mode="ICR", **kw)
+            gp_fun = jft.ICRGP(_grid(), icr_mode)
+            assert gp_fun.coordinate_kernel and gp_fun.hierarchical
+            assert_allclose(gp_fun(p), f, rtol=1e-10, atol=1e-10)
+
+
+def test_icrfield_deprecated():
+    with pytest.warns(DeprecationWarning, match="ICRGP"):
+        jft.ICRField(_grid(12), lambda x, y: jnp.exp(-0.5 * jnp.sum((x - y) ** 2, axis=0)), compress=dict(rtol=1e-5, atol=1e-10, buffer_size=1000, use_distances=True))
