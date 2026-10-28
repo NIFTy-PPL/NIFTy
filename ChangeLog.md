@@ -14,17 +14,27 @@ Change categories:
 
 # NIFTy.re
 - New features
+  - General Gaussian process models with a tabulated isotropic kernel:
+    `ICRGP(grid, kernel, ...)` generates on a multigrid by iterative charted
+    refinement (memory-bounded chunks of cells and of refinement windows) and
+    `GraphGP(points_or_graph, kernel, ...)` on arbitrary points with the
+    optional `graphgp` package. The kernel is either a model returning the
+    covariance on its radial bins (hierarchical: its parameters join the
+    domain) or a fixed table (an array with `radial_bins`, or a
+    `(radial_bins, cov_vals)` tuple). Both implement
+    `generate(xi, cov_vals)`, the linear map for a given table.
   - `CorrelatedFieldMaker.add_fluctuations` (and `add_fluctuations_matern`)
-    accept a `Space` describing the factor instead of `shape`/`distances`:
-    `RegularSpace`, `SphericalSpace` (the harmonic grids as before),
-    `ICRSpace` (a multigrid refined by iterative charted refinement, applied in
-    memory-bounded chunks of cells and of refinement windows) and
-    `GraphGPSpace` (arbitrary points, generated with the optional `graphgp`
-    package). Kernel-based factors get a leading zero-mode slot in the single
-    excitation array, so that products of harmonic and kernel-based factors
-    keep the `offset_mean + zeromode * prod(1 + a_i / zeromode)` structure.
-    `finalize` returns a `CorrelatedField` model whose spaces and amplitudes
-    are dynamic pytree children.
+    accept a `Space` describing the geometry of the factor instead of
+    `shape`/`distances`: `RegularSpace`, `SphericalSpace` (the harmonic grids
+    as before), `ICRSpace` (a multigrid and the ICR settings) and
+    `GraphGPSpace` (points or a graph and the graphgp settings). At
+    `finalize` the kernel-based factors get a `SpectralKernel` (amplitude to
+    covariance table) and an `ICRGP`/`GraphGP` model built from the space
+    (`build_gp`). Kernel-based factors have a leading zero-mode slot in the
+    single excitation array, so that products of harmonic and kernel-based
+    factors keep the `offset_mean + zeromode * prod(1 + a_i / zeromode)`
+    structure. `finalize` returns a `CorrelatedField` model whose spaces,
+    amplitudes, kernels and GP models are dynamic pytree children.
   - Extend `estimate_evidence_lower_bound` with stochastic Lanczos quadrature
     for the trace-log, signal- and data-space evaluation, optional Radau
     diagnostics, and an analytic Gaussian-prior contribution.
