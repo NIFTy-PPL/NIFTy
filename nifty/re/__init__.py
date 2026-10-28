@@ -53,6 +53,7 @@ from .multi_grid import (
     HPLogRGrid,
     HPBrokenLogRGrid,
     ICRField,
+    ICRGP,
     ICRSpace,
     LogGrid,
     BrokenLogGrid,
@@ -60,6 +61,7 @@ from .multi_grid import (
     SimpleOpenGrid,
     MaternCovarianceModel,
 )
+from .gaussian_process import GraphGP, KernelGP
 from .graphgp_space import GraphGPSpace
 from .num import *
 from .optimize import minimize, newton_cg, static_newton_cg, trust_ncg
