@@ -46,8 +46,10 @@ Change categories:
   - `nifty.re.multi_grid.ICRField` in favour of `ICRGP` (or an `ICRSpace`
     factor of `CorrelatedFieldMaker`); `ICRGP` also accepts the covariance
     functions `k(x, y)` that `ICRField` took.
-  - `MaternCovarianceModel` modes `"ICR"` and `"graphgp"` in favour of
-    `"table"`.
+  - `MaternCovarianceModel` in favour of `add_fluctuations_matern` on a
+    kernel-based factor (`lengthscale = 1/cutoff`, `negloglogslope =
+    -loglogslope`) or, standalone, `SpectralKernel` of a `MaternAmplitude`;
+    its `mode="table"` remains as a drop-in kernel model of `ICRGP`/`GraphGP`.
   - Consolidate the public Lanczos and stochastic log-determinant routines with
     the SLQ implementation used by the ELBO estimator so all entry points share
     one recurrence and Gaussian quadrature kernel.

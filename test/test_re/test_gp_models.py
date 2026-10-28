@@ -209,7 +209,8 @@ def test_matern_model_as_kernel():
     """`MaternCovarianceModel(mode="table")` is a kernel model of both GPs; the
     deprecated mode "ICR" (a coordinate kernel) gives the same ICR field."""
     kw = dict(Ndim=1, r_min=0.02, r_max=300.0, variance=(1.0, 0.2), lengthscale=(5.0, 0.5), negloglogslope=(3.0, 0.3), Ninterp=512, prefix="m_")
-    table = jft.MaternCovarianceModel(mode="table", **kw)
+    with pytest.warns(DeprecationWarning, match="add_fluctuations_matern"):
+        table = jft.MaternCovarianceModel(mode="table", **kw)
     assert table.radial_bins[0] == 0.0 and table.radial_bins.shape == (513,)
     for name, make in _models().items():
         gp = make(table)
@@ -218,7 +219,7 @@ def test_matern_model_as_kernel():
         f = gp(p)
         assert f.shape == gp.shape and np.all(np.isfinite(f))
         if name == "icr":
-            with pytest.warns(DeprecationWarning, match="mode='ICR'"):
+            with pytest.warns(DeprecationWarning, match="Mode 'ICR'"):
                 icr_mode = jft.MaternCovarianceModel(mode="ICR", **kw)
             gp_fun = jft.ICRGP(_grid(), icr_mode)
             assert gp_fun.coordinate_kernel and gp_fun.hierarchical

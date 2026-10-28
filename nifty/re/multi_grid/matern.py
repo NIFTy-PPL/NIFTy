@@ -800,6 +800,12 @@ def _icr_cov_wrapper(x, y, fun):
 
 class MaternCovarianceModel(MaternCovarianceKernel, Model):
     """
+    Deprecated: superseded by :meth:`nifty.re.CorrelatedFieldMaker.add_fluctuations_matern`
+    on a kernel-based factor and, for standalone Gaussian processes, by
+    :class:`nifty.re.SpectralKernel` of a
+    :class:`nifty.re.correlated_field.MaternAmplitude`; ``mode="table"`` remains
+    as a drop-in kernel model of :class:`nifty.re.ICRGP`/:class:`nifty.re.GraphGP`.
+
     NIFTy-wrapper for the Matern covariance kernel.
     Computes the covariance kernel for a Matern-like power spectrum
     with a high-k cutoff. The power spectrum is given by:
@@ -918,16 +924,18 @@ class MaternCovarianceModel(MaternCovarianceKernel, Model):
             raise ValueError("prefix must be a string.")
         if not isinstance(mode, str) or mode not in ["ICR", "graphgp", "table"]:
             raise ValueError("mode must be 'table', 'ICR' or 'graphgp'.")
-        if mode != "table":
-            from warnings import warn
+        from warnings import warn
 
-            warn(
-                f"MaternCovarianceModel(mode={mode!r}) is deprecated: use mode='table' (the covariance values"
-                " on `radial_bins`), which the Gaussian process models `nifty.re.ICRGP` and `nifty.re.GraphGP`"
-                " take as a kernel model",
-                category=DeprecationWarning,
-                stacklevel=2,
-            )
+        warn(
+            "`MaternCovarianceModel` is deprecated: the same Matern spectrum is"
+            " `nifty.re.CorrelatedFieldMaker.add_fluctuations_matern(space, scale, cutoff, loglogslope)` on an"
+            " `ICRSpace`/`GraphGPSpace` factor (lengthscale = 1/cutoff, negloglogslope = -loglogslope), or for a"
+            " standalone GP the kernel model `space.spectral_kernel(nifty.re.correlated_field.MaternAmplitude(...))`"
+            " passed to `nifty.re.ICRGP`/`nifty.re.GraphGP`."
+            + ("" if mode == "table" else f" Mode {mode!r} is superseded by mode='table' (a kernel model of those GPs)."),
+            category=DeprecationWarning,
+            stacklevel=2,
+        )
         self.mode = mode
 
         MaternCovarianceKernel.__init__(
