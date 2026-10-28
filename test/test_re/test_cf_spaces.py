@@ -125,7 +125,7 @@ def test_hankel_weights_gaussian(dim):
     "make_space",
     [
         lambda: jft.ICRSpace(_open_grid_1d(), n_bins=128, chunk_size=7),
-        lambda: jft.ICRSpace(_open_grid_2d(), n_bins=128, chunk_size=5),
+        lambda: jft.ICRSpace(_open_grid_2d(), n_bins=256, chunk_size=5),
         lambda: jft.ICRSpace(_open_grid_1d(), n_bins=128, compress=None),
         lambda: jft.GraphGPSpace(
             np.random.default_rng(0).uniform(0.0, 10.0, (200, 2)), n0=32, k=12, n_bins=128, cuda=False
@@ -220,7 +220,7 @@ def test_product_icr_graphgp_spherical():
     pytest.importorskip("graphgp")
     pytest.importorskip("jaxbind")
     pts = np.random.default_rng(1).uniform(0.0, 5.0, (50, 3))
-    spaces = [jft.SphericalSpace(1), jft.GraphGPSpace(pts, n0=16, k=8, n_bins=64, cuda=False), jft.ICRSpace(_open_grid_1d(12), n_bins=64)]
+    spaces = [jft.SphericalSpace(1), jft.GraphGPSpace(pts, n0=16, k=8, n_bins=64, cuda=False), jft.ICRSpace(_open_grid_1d(12), n_bins=256)]
     cf = _maker(spaces).finalize()
     p = jft.random_like(jax.random.PRNGKey(0), cf.domain)
     f = jax.jit(cf)(p)

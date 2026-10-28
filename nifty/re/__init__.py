@@ -11,7 +11,9 @@ from .correlated_field import (
     KernelSpace,
     RegularSpace,
     Space,
+    SpectralKernel,
     SphericalSpace,
+    build_gp,
     make_isotropic_grid,
 )
 from .custom_map import lmap, smap

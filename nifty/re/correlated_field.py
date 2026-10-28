@@ -594,13 +594,17 @@ def _hankel_weights(k_bins, radial_bins, dim):
 
 
 class Space(metaclass=ModelMeta):
-    """Position space of one factor of a correlated field.
+    """Geometry of one factor of a correlated field.
 
     A correlated field is the outer product of factors, one per call of
-    :meth:`CorrelatedFieldMaker.add_fluctuations`. Each factor is described by
-    a `Space` which knows the shape of the field along it, the shape of its
-    latent excitations and the grid its amplitude model lives on, and which
-    applies the factor's linear map to the excitations.
+    :meth:`CorrelatedFieldMaker.add_fluctuations`. A `Space` describes a
+    factor's geometry only: the shape of the field along it, the shape of its
+    latent excitations and the grid its amplitude model lives on. The linear
+    maps are implemented elsewhere: harmonic transforms for the harmonic
+    spaces (in the correlated field) and the Gaussian process models
+    :class:`~nifty.re.gaussian_process.GraphGP` and
+    :class:`~nifty.re.multi_grid.ICRGP` for the kernel-based spaces, which the
+    correlated field builds from the space's settings and its amplitude.
 
     The excitations of every factor contain its zero mode: for the harmonic
     spaces at index zero of the harmonic grid, for the kernel-based spaces as
@@ -608,9 +612,7 @@ class Space(metaclass=ModelMeta):
     zero mode maps to the constant one along the factor, so that the field is
     ``offset_mean + zeromode * prod_i (1 + a_i / zeromode)`` as before.
 
-    Spaces are JAX pytrees (like models): their arrays are dynamic leaves, so
-    that a model built from them can be passed into jitted functions without
-    the arrays being inlined as constants.
+    Spaces are JAX pytrees (like models): their arrays are dynamic leaves.
 
     Attributes
     ----------
@@ -632,33 +634,12 @@ class Space(metaclass=ModelMeta):
     def size(self) -> int:
         return int(np.prod(self.shape))
 
-    def apply(self, x, axes, amplitude, zeromode):
-        """The linear map of this factor along the `axes` of `x` holding its
-        excitations: the zero mode becomes the constant one, the remaining
-        excitations are correlated with the amplitude divided by the zero mode
-        (see :meth:`CorrelatedFieldMaker.get_normalized_amplitudes`). The
-        output has ``self.shape`` in place of the excitation axes.
-        """
-        raise NotImplementedError()
-
 
 class HarmonicSpace(Space):
     """Factor with a harmonic partner space (regular or spherical grid)."""
 
     def __init__(self, grid):
         super().__init__(grid.shape, grid.harmonic_grid.shape, grid)
-
-    def harmonic_transform(self, axes):
-        """Harmonic transform acting on `axes`."""
-        raise NotImplementedError()
-
-    def apply(self, x, axes, amplitude, zeromode):
-        axes = tuple(int(ax) for ax in axes)
-        amp = amplitude.at[1:].mul(1.0 / zeromode)[self.grid.harmonic_grid.power_distributor]
-        shp = [1] * x.ndim
-        for ax, s in zip(axes, amp.shape):
-            shp[ax] = s
-        return self.harmonic_transform(axes)(amp.reshape(shp) * x) / self.grid.total_volume
 
 
 class RegularSpace(HarmonicSpace):
@@ -679,9 +660,6 @@ class RegularSpace(HarmonicSpace):
     def distances(self):
         return self.grid.distances
 
-    def harmonic_transform(self, axes):
-        return partial(hartley, axes=axes)
-
 
 class SphericalSpace(HarmonicSpace):
     """HEALPix sphere with spherical harmonics as harmonic space.
@@ -699,29 +677,45 @@ class SphericalSpace(HarmonicSpace):
     def nside(self):
         return self.grid.nside
 
-    def harmonic_transform(self, axes):
-        (axis,) = axes
-        return get_sht(
-            nside=self.grid.nside,
-            axis=axis,
-            lmax=self.grid.harmonic_grid.lmax,
-            mmax=self.grid.harmonic_grid.mmax,
-            nthreads=1,
-        )
+
+class SpectralKernel(Model):
+    """Covariance table of a kernel-based factor from its amplitude model.
+
+    The amplitude lives on the ``k`` bin edges of an :class:`IsotropicGrid`;
+    its square, the power spectrum, is taken constant on the ``k`` shells
+    between the edges and transformed to the covariance on the radial bins,
+    ``C(r) = int P(k) exp(2 pi i k.r) d^dim k`` (`hankel` holds the weights,
+    see :func:`_hankel_weights`), so that ``C(0)`` is the sum of
+    ``mode_multiplicity * amplitude**2``, that is ``fluctuations**2`` for the
+    amplitude models of :class:`CorrelatedFieldMaker`. ``C(0)`` is inflated by
+    `jitter`. The zero mode of the amplitude is not used.
+    """
+
+    amplitude: Model = dataclasses.field(metadata=dict(static=False))
+    hankel: jnp.ndarray = dataclasses.field(metadata=dict(static=False))
+    radial_bins: jnp.ndarray = dataclasses.field(metadata=dict(static=False))
+
+    def __init__(self, amplitude, hankel, radial_bins, jitter=0.0):
+        self.amplitude = amplitude
+        self.hankel = jnp.asarray(hankel)
+        self.radial_bins = jnp.asarray(radial_bins)
+        self.jitter = float(jitter)
+        super().__init__(domain=amplitude.domain, init=amplitude.init)
+
+    def __call__(self, p):
+        cov = self.hankel @ self.amplitude(p)[1:] ** 2
+        return cov.at[0].mul(1.0 + self.jitter)
 
 
 class KernelSpace(Space):
     """Factor whose correlations are an isotropic covariance function.
 
-    The amplitude model lives on the ``k`` bins of an :class:`IsotropicGrid`.
-    Its square, the power spectrum, is taken constant on the ``k`` shells
-    between the edges and transformed to the covariance on the radial bins,
-    ``C(r) = int P(k) exp(2 pi i k.r) d^dim k``, with ``C(0)`` the sum of
-    ``mode_multiplicity * amplitude**2``, that is ``fluctuations**2`` for the
-    amplitude models of :class:`CorrelatedFieldMaker`. The zero mode of the
-    amplitude is not used; the zero mode of the factor is the leading entry
-    of the excitations. Subclasses generate the field from the covariance
-    (:meth:`apply_sqrt`).
+    The amplitude model lives on the ``k`` bins of an :class:`IsotropicGrid`
+    and is turned into the covariance on the radial bins by a
+    :class:`SpectralKernel` (:meth:`spectral_kernel`). The zero mode of the
+    factor is the leading entry of the excitations. Subclasses hold the
+    geometry and settings of a Gaussian process model that generates the
+    field from a covariance table (see :class:`Space`).
 
     Parameters
     ----------
@@ -780,45 +774,105 @@ class KernelSpace(Space):
         return self.excitation_shape[0] - 1
 
     def covariance(self, amplitude):
-        """Covariance on :attr:`radial_bins` for `amplitude` on the ``k`` bin
-        edges (zero mode ignored), ``C(0)`` inflated by `jitter`."""
+        """Covariance on :attr:`radial_bins` for `amplitude` values on the
+        ``k`` bin edges (zero mode ignored), ``C(0)`` inflated by `jitter`."""
         cov = self._hankel @ amplitude[1:] ** 2
         return cov.at[0].mul(1.0 + self.jitter)
 
-    def apply_sqrt(self, xi, covariance):
-        """Field of shape ``(batch,) + shape`` for excitations `xi` of shape
-        ``(batch, n_points)`` and the `covariance` on :attr:`radial_bins`."""
+    def spectral_kernel(self, amplitude: Model) -> SpectralKernel:
+        """The kernel model of this factor for the amplitude model."""
+        return SpectralKernel(amplitude, self._hankel, self.radial_bins, self.jitter)
+
+    @property
+    def gp_kwargs(self) -> dict:
+        """Settings of the Gaussian process model built for this factor."""
         raise NotImplementedError()
 
-    def apply(self, x, axes, amplitude, zeromode):
-        (axis,) = (int(ax) for ax in axes)
-        ndim = len(self.shape)
-        cov = self.covariance(amplitude)
-        x = jnp.moveaxis(x, axis, -1)
-        batch = x.shape[:-1]
-        x = x.reshape((-1, x.shape[-1]))
-        out = self.apply_sqrt(x[:, 1:], cov) / zeromode
-        out = out + x[:, :1].reshape((-1,) + (1,) * ndim)
-        out = out.reshape(batch + self.shape)
-        src = tuple(range(len(batch), len(batch) + ndim))
-        return jnp.moveaxis(out, src, tuple(range(axis, axis + ndim)))
+
+def build_gp(space: KernelSpace, kernel):
+    """The Gaussian process model of a kernel-based `space` for `kernel` (a
+    kernel model or a fixed table, see
+    :class:`~nifty.re.gaussian_process.KernelGP`)."""
+    from .graphgp_space import GraphGPSpace
+    from .multi_grid.icr_space import ICRSpace
+
+    if isinstance(space, ICRSpace):
+        from .multi_grid.icr_gp import ICRGP
+
+        return ICRGP(space.multigrid, kernel, **space.gp_kwargs)
+    if isinstance(space, GraphGPSpace):
+        from .gaussian_process import GraphGP
+
+        return GraphGP(space.graph, kernel, shape=space.shape, **space.gp_kwargs)
+    raise TypeError(f"no Gaussian process model for {type(space).__name__}")
+
+
+def _harmonic_transform(space: HarmonicSpace, axes):
+    """The harmonic transform of a harmonic space acting on `axes`."""
+    if isinstance(space, RegularSpace):
+        return partial(hartley, axes=axes)
+    if isinstance(space, SphericalSpace):
+        (axis,) = axes
+        return get_sht(
+            nside=space.grid.nside,
+            axis=axis,
+            lmax=space.grid.harmonic_grid.lmax,
+            mmax=space.grid.harmonic_grid.mmax,
+            nthreads=1,
+        )
+    raise TypeError(f"no harmonic transform for {type(space).__name__}")
+
+
+def _apply_harmonic(space, x, axes, amplitude, zeromode):
+    """Harmonic factor: the normalized amplitude times the excitations,
+    transformed to position space (the zero mode becomes the constant one)."""
+    axes = tuple(int(ax) for ax in axes)
+    amp = amplitude.at[1:].mul(1.0 / zeromode)[space.grid.harmonic_grid.power_distributor]
+    shp = [1] * x.ndim
+    for ax, s in zip(axes, amp.shape):
+        shp[ax] = s
+    return _harmonic_transform(space, axes)(amp.reshape(shp) * x) / space.grid.total_volume
+
+
+def _apply_kernel(gp, x, axis, cov_vals, zeromode):
+    """Kernel-based factor along `axis`: the leading entry (zero mode) becomes
+    the constant one, the rest is generated by the Gaussian process `gp` with
+    the covariance table and divided by the zero mode."""
+    axis = int(axis)
+    ndim = len(gp.shape)
+    x = jnp.moveaxis(x, axis, -1)
+    batch = x.shape[:-1]
+    x = x.reshape((-1, x.shape[-1]))
+    out = gp.generate(x[:, 1:], cov_vals) / zeromode
+    out = out + x[:, :1].reshape((-1,) + (1,) * ndim)
+    out = out.reshape(batch + gp.shape)
+    src = tuple(range(len(batch), len(batch) + ndim))
+    return jnp.moveaxis(out, src, tuple(range(axis, axis + ndim)))
 
 
 class CorrelatedField(Model):
     """Correlated field made by :meth:`CorrelatedFieldMaker.finalize`: the
     outer product of the factors `spaces` with the amplitude models
     `amplitudes`, ``offset_mean + zeromode * prod_i (1 + a_i / zeromode)``,
-    applied to the single excitation array ``xi_name``. Spaces and amplitudes
-    are dynamic pytree children, so pass the model into jitted functions as
-    an argument (as NIFTy's optimizers do) rather than closing over it.
+    applied to the single excitation array ``xi_name``. Harmonic factors are
+    applied by their harmonic transforms, kernel-based factors by their
+    Gaussian process models `gps` with the covariance tables of their
+    `kernels` (:class:`SpectralKernel` of the amplitude). Spaces, amplitudes,
+    kernels and GP models are dynamic pytree children, so pass the model into
+    jitted functions as an argument (as NIFTy's optimizers do) rather than
+    closing over it.
     """
 
     spaces: tuple = dataclasses.field(metadata=dict(static=False))
     amplitudes: tuple = dataclasses.field(metadata=dict(static=False))
+    kernels: tuple = dataclasses.field(metadata=dict(static=False))
+    gps: tuple = dataclasses.field(metadata=dict(static=False))
 
-    def __init__(self, spaces, amplitudes, zeromode, offset_mean, xi_name, *, domain, init):
+    def __init__(self, spaces, amplitudes, kernels, gps, zeromode, offset_mean, xi_name, *, domain, init):
         self.spaces = tuple(spaces)
         self.amplitudes = tuple(amplitudes)
+        self.kernels = tuple(kernels)
+        self.gps = tuple(gps)
         self.zeromode = zeromode
         self.offset_mean = offset_mean
         self.xi_name = str(xi_name)
@@ -851,8 +905,11 @@ class CorrelatedField(Model):
     def __call__(self, p):
         zeromode = self.zeromode(p)
         x = p[self.xi_name]
-        for space, amp, axes in zip(self.spaces, self.amplitudes, self._axes):
-            x = space.apply(x, axes, amp(p), zeromode)
+        for space, amp, kernel, gp, axes in zip(self.spaces, self.amplitudes, self.kernels, self.gps, self._axes):
+            if gp is None:
+                x = _apply_harmonic(space, x, axes, amp(p), zeromode)
+            else:
+                x = _apply_kernel(gp, x, axes[0], kernel(p), zeromode)
         return self.offset_mean + zeromode * x
 
 
@@ -1223,13 +1280,26 @@ class CorrelatedFieldMaker:
         single array of excitations ``prefix + "xi"`` whose shape is the
         concatenation of the factors' excitation shapes (see :class:`Space`);
         the zero mode of a kernel-based factor is the leading entry along its
-        axis. The returned :class:`CorrelatedField` has the attributes
-        ``spaces``, ``amplitudes``, ``target_grids`` (grids of the amplitude
-        models) and ``normalized_amplitudes``.
+        axis. Kernel-based factors are generated by the Gaussian process
+        models (:class:`~nifty.re.multi_grid.ICRGP`,
+        :class:`~nifty.re.gaussian_process.GraphGP`) built here from the
+        spaces with a :class:`SpectralKernel` of their amplitudes. The
+        returned :class:`CorrelatedField` has the attributes ``spaces``,
+        ``amplitudes``, ``kernels``, ``gps``, ``target_grids`` (grids of the
+        amplitude models) and ``normalized_amplitudes``.
         """
         if len(self._spaces) == 0:
             raise ValueError("add fluctuations before finalizing the model")
         excitation_shape = sum((space.excitation_shape for space in self._spaces), ())
+        kernels, gps = [], []
+        for space, amp in zip(self._spaces, self._fluctuations):
+            if isinstance(space, KernelSpace):
+                kernel = space.spectral_kernel(amp)
+                kernels.append(kernel)
+                gps.append(build_gp(space, kernel))
+            else:
+                kernels.append(None)
+                gps.append(None)
 
         # Register the parameters for the excitations
         # TODO: actually account for the dtype here
@@ -1242,6 +1312,8 @@ class CorrelatedFieldMaker:
         return CorrelatedField(
             self._spaces,
             self._fluctuations,
+            kernels,
+            gps,
             self.azm,
             self._offset_mean,
             pfx,

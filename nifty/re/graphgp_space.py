@@ -3,8 +3,9 @@
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 # Authors: Philipp Frank
 
-"""graphgp (nearest-neighbour Vecchia Gaussian processes on a k-d tree
-ordering) as a factor of a correlated field. Requires the optional ``graphgp``
+"""The graphgp factor of a correlated field: the points (as a graph) and the
+settings of its :class:`~nifty.re.gaussian_process.GraphGP` model, which the
+correlated field builds at `finalize`. Requires the optional ``graphgp``
 package (and ``graphgp_cuda`` for ``cuda=True``)."""
 
 from dataclasses import field
@@ -15,12 +16,14 @@ import jax.numpy as jnp
 import numpy as np
 
 from .correlated_field import KernelSpace
+from .gaussian_process import GraphGP
 
 __all__ = ["GraphGPSpace"]
 
 
 class GraphGPSpace(KernelSpace):
-    """Factor on arbitrary points, generated with graphgp.
+    """Factor on arbitrary points, generated with graphgp
+    (:class:`~nifty.re.gaussian_process.GraphGP`, built by the correlated field).
 
     Parameters
     ----------
@@ -76,7 +79,7 @@ class GraphGPSpace(KernelSpace):
                 raise TypeError("either `points` or `graph` is required")
             points = np.asarray(points)
             shape = points.shape[:-1] if shape is None else tuple(shape)
-            graph = self.build_graph(points.reshape(-1, points.shape[-1]), n0=self.n0, k=self.k, cuda=self.cuda)
+            graph = GraphGP.build_graph(points.reshape(-1, points.shape[-1]), n0=self.n0, k=self.k, cuda=self.cuda)
         elif shape is None:
             shape = (int(graph.points.shape[0]),) if points is None else np.shape(points)[:-1]
         if int(np.prod(shape)) != int(graph.points.shape[0]):
@@ -113,25 +116,7 @@ class GraphGPSpace(KernelSpace):
             raise ValueError("could not infer `r_min` from the graph; pass it explicitly")
         return dmin
 
-    @staticmethod
-    def build_graph(points, *, n0: int, k: int, cuda: bool = False):
-        """``graphgp.build_graph`` on ``points`` of shape ``(n, dim)`` with the
-        dtypes of the CUDA kernels (float32 points, int32 neighbours)."""
-        import graphgp as ggp
-
-        points = np.asarray(points, dtype=np.float32).reshape(-1, np.shape(points)[-1])
-        n0 = min(int(n0), points.shape[0])
-        if cuda:
-            graph = ggp.build_graph(jnp.asarray(points), n0=n0, k=int(k), cuda=True)
-        else:
-            with jax.enable_x64(False):
-                graph = ggp.build_graph(jnp.asarray(points), n0=n0, k=int(k), cuda=False)
-        indices = graph.indices
-        if indices is not None:
-            indices = indices.astype(jnp.int32)
-        return ggp.Graph(
-            graph.points.astype(jnp.float32), graph.neighbors.astype(jnp.int32), graph.offsets, indices
-        )
+    build_graph = staticmethod(GraphGP.build_graph)
 
     @property
     def points(self):
@@ -143,16 +128,6 @@ class GraphGPSpace(KernelSpace):
             pts = out
         return pts.reshape(self.shape + (pts.shape[-1],))
 
-    def apply_sqrt(self, xi, covariance):
-        import graphgp as ggp
-
-        rs = self.radial_bins
-
-        def generate(x):
-            return ggp.generate(self.graph, (rs, covariance), x, cuda=self.cuda)
-
-        # NOTE, `lax.map` rather than `vmap` over the batch: the vjp of
-        # graphgp's pure-JAX refinement (`fast_jit=True`) is wrong under
-        # `vmap` (graphgp 0.0.3, 2026-10-27; the jvp is fine, `fast_jit=False`
-        # is fine), and the CUDA primitives need no batching this way either.
-        return jax.lax.map(generate, xi).reshape((xi.shape[0],) + self.shape)
+    @property
+    def gp_kwargs(self) -> dict:
+        return dict(n0=self.n0, k=self.k, cuda=self.cuda)
