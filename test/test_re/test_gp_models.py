@@ -229,3 +229,49 @@ def test_matern_model_as_kernel():
 def test_icrfield_deprecated():
     with pytest.warns(DeprecationWarning, match="ICRGP"):
         jft.ICRField(_grid(12), lambda x, y: jnp.exp(-0.5 * jnp.sum((x - y) ** 2, axis=0)), compress=dict(rtol=1e-5, atol=1e-10, buffer_size=1000, use_distances=True))
+
+
+@pytest.mark.skipif(jax.device_count() < 2, reason="needs several devices (XLA_FLAGS=--xla_force_host_platform_device_count=4)")
+def test_icrgp_sharded_matches_unsharded():
+    """ICRGP on a one-dimensional mesh (halo exchange per level) equals the
+    unsharded model: forward, gradients (excitations and kernel parameters)
+    and the adjointness of its derivatives."""
+    from jax.sharding import Mesh
+
+    grid = jft.HPLogRGrid(nside=4, r_min_shape=4, r_min=1.0, r_max=10.0, nside0=1)
+    rs = jnp.asarray(np.concatenate(([0.0], np.geomspace(0.01, 50.0, 511))))
+
+    class Cov(jft.Model):
+        radial_bins = rs
+
+        def __init__(self):
+            super().__init__(domain={"scale": jft.ShapeWithDtype(())})
+
+        def __call__(self, p):
+            return (p["scale"] ** 2) * jnp.exp(-0.5 * (rs / 2.0) ** 2).at[0].mul(1.001)
+
+    mesh = Mesh(np.array(jax.devices()), ("x",))
+    ref = jft.ICRGP(grid, Cov())
+    sharded = jft.ICRGP(grid, Cov(), mesh=mesh)
+    assert sharded.excitation_shape == ref.excitation_shape and sharded.shape == ref.shape
+    assert [t.sharded for t in sharded._shard_levels] == [True, True] and sharded._shard_levels[0].coarse_full
+    p = jft.random_like(jax.random.PRNGKey(0), ref.domain)
+    p["scale"] = jnp.asarray(1.2)
+    ps = sharded.shard(p)
+    f_ref, f_sh = ref(p), sharded(ps)
+    assert f_sh.sharding.is_equivalent_to(sharded.sharding, f_sh.ndim)
+    assert_allclose(f_sh, f_ref, rtol=1e-12, atol=1e-12)
+    w = jax.random.normal(jax.random.PRNGKey(3), f_ref.shape)
+    g_ref = jax.grad(lambda p: jnp.sum(w * ref(p)))(p)
+    g_sh = jax.jit(jax.grad(lambda p: jnp.sum(w * sharded(p))))(ps)
+    assert_allclose(g_sh["scale"], g_ref["scale"], rtol=1e-10)
+    assert_allclose(sharded.relayout(np.asarray(g_sh["xi"]), inverse=True), g_ref["xi"], rtol=1e-10, atol=1e-12)
+    v = jft.random_like(jax.random.PRNGKey(5), sharded.domain)
+    _, jv = jax.jvp(sharded, (ps,), (v,))
+    _, vjp = jax.vjp(sharded, ps)
+    (jt,) = vjp(w)
+    lhs, rhs = jnp.vdot(jv, w), sum(jnp.vdot(v[k], jt[k]) for k in v)
+    assert_allclose(lhs, rhs, rtol=1e-10)
+    # the relayout is a permutation and its own inverse composition
+    xi = p["xi"]
+    assert_allclose(sharded.relayout(sharded.relayout(xi), inverse=True), xi)
