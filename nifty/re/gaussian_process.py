@@ -568,42 +568,40 @@ class ICRGP(KernelGP):
         interpolated linearly at the window distances) or, for a coordinate
         kernel, the covariance function ``k(x, y)`` evaluated on the window
         coordinates."""
+        window_cov = self._window_covariance(covariance)
+        base = jnp.linalg.cholesky(self._jittered(window_cov(self._base_coords)))
+        mats = tuple(self._window_matrices(window_cov, l.ucoords, l.n_f) for l in self._levels)
+        return base, mats
+
+    def _window_covariance(self, covariance):
+        """``window_cov(coords)``: the covariance matrices of windows given by their
+        coordinates, from the table (interpolated at the distances) or the covariance function."""
         if self.coordinate_kernel:
             k = covariance
             k = vmap(k, in_axes=(None, -1), out_axes=-1)
             k = vmap(k, in_axes=(-1, None), out_axes=-1)
+            return lambda c: jnp.vectorize(lambda cc: k(cc, cc), signature="(d,n)->(n,n)")(c)
+        rs = self.radial_bins
+        return lambda c: jnp.interp(_distances(c), rs, covariance, right=0.0)
 
-            def window_cov(c):  # c: (..., dim, n) -> (..., n, n)
-                return jnp.vectorize(lambda cc: k(cc, cc), signature="(d,n)->(n,n)")(c)
+    def _window_matrices(self, window_cov, ucoords, n_f):
+        """Refinement matrices ``(olf, L_ff)`` of the windows `ucoords` (K, dim, n),
+        built in chunks of ``kernel_chunk`` with recomputation in the backward pass."""
+        K = ucoords.shape[0]
+        chunk = min(self.kernel_chunk, K)
+        n_chunks = -(-K // chunk)
+        pad = n_chunks * chunk - K
+        coords = jnp.concatenate((ucoords, jnp.repeat(ucoords[-1:], pad, axis=0)))
+        coords = coords.reshape((n_chunks, chunk) + ucoords.shape[1:])
 
-            base = jnp.linalg.cholesky(self._jittered(window_cov(self._base_coords)))
-        else:
-            rs = self.radial_bins
+        @jax.checkpoint
+        def build(c):
+            # keep XLA from folding the distance tables of all windows into constants
+            c = jax.lax.optimization_barrier(c)
+            return vmap(partial(refinement_matrices_cholesky, n_fsz=n_f))(self._jittered(window_cov(c)))
 
-            def kf(d):
-                return jnp.interp(d, rs, covariance, right=0.0)
-
-            def window_cov(c):
-                return kf(_distances(c))
-
-            base = jnp.linalg.cholesky(self._jittered(kf(self._base_dist)))
-        mats = []
-        for l in self._levels:
-            chunk = min(self.kernel_chunk, l.n_unique)
-            n_chunks = -(-l.n_unique // chunk)
-            pad = n_chunks * chunk - l.n_unique
-            coords = jnp.concatenate((l.ucoords, jnp.repeat(l.ucoords[-1:], pad, axis=0)))
-            coords = coords.reshape((n_chunks, chunk) + l.ucoords.shape[1:])
-
-            @jax.checkpoint
-            def build(c, n_f=l.n_f):
-                # keep XLA from folding the distance tables of all windows into constants
-                c = jax.lax.optimization_barrier(c)
-                return vmap(partial(refinement_matrices_cholesky, n_fsz=n_f))(self._jittered(window_cov(c)))
-
-            olf, lff = jax.lax.map(build, coords)
-            mats.append((olf.reshape((-1,) + olf.shape[2:])[: l.n_unique], lff.reshape((-1,) + lff.shape[2:])[: l.n_unique]))
-        return base, tuple(mats)
+        olf, lff = jax.lax.map(build, coords)
+        return olf.reshape((-1,) + olf.shape[2:])[:K], lff.reshape((-1,) + lff.shape[2:])[:K]
 
     def split_excitations(self, xi):
         """The per-level arrays of a flat vector of excitations."""
@@ -759,16 +757,34 @@ class ICRGP(KernelGP):
         return x
 
     def _generate_sharded(self, xi, cov_vals):
-        base, mats = self.matrices(cov_vals)
         S, ax = self.n_shards, self.axis
+        window_cov = self._window_covariance(cov_vals)
+        base = jnp.linalg.cholesky(self._jittered(window_cov(self._base_coords)))  # replicated (small)
+        # the unique windows are distributed over the shards: every shard builds its share of the
+        # refinement matrices and the shares are all-gathered (the kernel build dominates the ICR cost)
+        padded = []
+        for l in self._levels:
+            K = l.n_unique
+            Ks = -(-K // S)
+            uc = jnp.concatenate((l.ucoords, jnp.repeat(l.ucoords[-1:], Ks * S - K, axis=0)))
+            padded.append(uc.reshape((S, Ks) + l.ucoords.shape[1:]))
+        n_fs = tuple(l.n_f for l in self._levels)
+        n_uniques = tuple(l.n_unique for l in self._levels)
+        mats = None
         sizes = [int(np.prod(sh)) for sh in self._level_shapes]
         chunks = [n // S for n in sizes]
         offsets = np.cumsum([0] + chunks)
         shard_levels = self._shard_levels
         spec = jax.tree_util.tree_map(lambda _: P(ax), shard_levels)
 
-        def local(xi_block, base, mats, tabs):
+        def local(xi_block, base, coords, tabs):
             sidx = jax.lax.axis_index(ax)
+            mats = []
+            for uc, n_f, K in zip(coords, n_fs, n_uniques):
+                olf, lff = self._window_matrices(window_cov, uc[0], n_f)
+                olf = jax.lax.all_gather(olf, ax, axis=0, tiled=True)[:K]
+                lff = jax.lax.all_gather(lff, ax, axis=0, tiled=True)[:K]
+                mats.append((olf, lff))
             parts = [xi_block[..., o : o + c] for o, c in zip(offsets[:-1], chunks)]
             # level 0: replicated dense generation from the gathered excitations
             xi0 = jax.lax.all_gather(parts[0], ax, axis=-1, tiled=True)
@@ -795,15 +811,15 @@ class ICRGP(KernelGP):
                 f = f.reshape(xi0.shape[:-1] + T.block_fine_shape)
             return f
 
-        in_specs = (P(ax), P(), P(), spec)
+        in_specs = (P(ax), P(), tuple(P(ax) for _ in padded), spec)
         out_specs = P(ax)
         f = jax.shard_map(local, mesh=self.mesh, in_specs=in_specs, out_specs=out_specs, check_vma=False)
-        # the sharded output axis is the last-but-ndim axis: shard_map concatenates along axis 0 of the
-        # block, which is the leading (batch) axis if present; so run the batch outside
+        # shard_map concatenates along axis 0 of the block, which would be a leading batch axis: run the
+        # batch outside
         batch = xi.shape[:-1]
         if len(batch) == 0:
-            return f(xi, base, mats, shard_levels)
-        return vmap(lambda x: f(x, base, mats, shard_levels))(xi.reshape((-1, xi.shape[-1]))).reshape(batch + self.shape)
+            return f(xi, base, tuple(padded), shard_levels)
+        return vmap(lambda x: f(x, base, tuple(padded), shard_levels))(xi.reshape((-1, xi.shape[-1]))).reshape(batch + self.shape)
 
     def _refine_block(self, lvl, T, sidx, ext, xi_fine, olf, lff):
         """Refinement of one shard's block of cells at level `lvl` from the extended
