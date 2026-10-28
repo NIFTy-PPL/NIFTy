@@ -219,11 +219,9 @@ class GraphGP(KernelGP):
         def gen(x):
             return ggp.generate(self.graph, (rs, cov_vals), x, cuda=self.cuda)
 
-        # NOTE, `lax.map` rather than `vmap` over the batch: the vjp of graphgp's
-        # pure-JAX refinement (`fast_jit=True`) is wrong under `vmap` (graphgp
-        # 0.0.3, 2026-10-27; the jvp is fine), and the CUDA primitives need no
-        # batching this way either.
-        return jax.lax.map(gen, xi).reshape(batch + self.shape)
+        # NOTE, requires graphgp with the fix of the fast_jit vjp under vmap
+        # (branch fix-fast-jit-vmap, 2026-10-28); earlier versions need lax.map here
+        return jax.vmap(gen)(xi).reshape(batch + self.shape)
 
 
 # ---- iterative charted refinement on a multigrid

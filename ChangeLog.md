@@ -40,6 +40,10 @@ Change categories:
     diagnostics, and an analytic Gaussian-prior contribution.
 - Changes
   - Fix `ICRField` for a plain callable covariance (`kernel` was unbound).
+  - `GraphGP` batches `graphgp.generate` with `vmap`; this needs graphgp with
+    the fix of its `fast_jit` vjp under `vmap` (graphgp branch
+    `fix-fast-jit-vmap`), earlier versions give wrong gradients for batched
+    fields.
   - `MaternCovarianceModel` gains `mode="table"` (the covariance values on
     `radial_bins`), usable as the kernel model of `ICRGP` and `GraphGP`.
 - Deprecations
