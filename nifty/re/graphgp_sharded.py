@@ -374,10 +374,22 @@ def _local_graph(pts, n0_s: int, k: int, *, cuda: bool):
     if isinstance(nbr, tuple):
         nbr = nbr[0]
     nbr = jnp.concatenate([jnp.zeros((n0_s, k), jnp.int32), jnp.asarray(nbr).astype(jnp.int32)], axis=0)
-    ptsd = pts_t.astype(jnp.float64)
-    d = jnp.linalg.norm(ptsd[nbr] - ptsd[:, None, :], axis=-1)
-    r_k = jnp.where(jnp.arange(pts.shape[0]) < n0_s, 0.0, d.max(axis=1))
-    return pts_t.astype(jnp.float32), split_dims.astype(jnp.int32), idx.astype(jnp.int32), nbr, r_k
+    # distances to the local neighbours in chunks: the (B, k, d) float64 temporaries of one pass are
+    # 10 GB at 25 M points per device (nside 128 x 516 bins on 4 GPUs OOM'd in the merge, 2026-10-29)
+    pts_f = pts_t.astype(jnp.float32)
+    chunk = 2**20
+    pad = (-pts.shape[0]) % chunk
+    nbr_p = jnp.concatenate([nbr, jnp.zeros((pad, k), nbr.dtype)]) if pad else nbr
+    pts_p = jnp.concatenate([pts_f, jnp.zeros((pad, pts_f.shape[1]), pts_f.dtype)]) if pad else pts_f
+
+    def chunk_dist(args):
+        nb, p = args
+        diff = pts_f[nb].astype(jnp.float64) - p[:, None, :].astype(jnp.float64)
+        return jnp.sqrt(jnp.sum(jnp.square(diff), axis=-1)).astype(jnp.float32)
+
+    nbr_dist = lax.map(chunk_dist, (nbr_p.reshape(-1, chunk, k), pts_p.reshape(-1, chunk, pts_f.shape[1]))).reshape(-1, k)[: pts.shape[0]]
+    r_k = jnp.where(jnp.arange(pts.shape[0]) < n0_s, 0.0, nbr_dist.max(axis=1).astype(jnp.float64))
+    return pts_f, split_dims.astype(jnp.int32), idx.astype(jnp.int32), nbr, r_k, nbr_dist
 
 
 def _stack(mesh, arrays):
@@ -438,6 +450,7 @@ def _build_device_graph(points, mesh: Mesh, *, n0: int, k: int, cuda: bool = Tru
     idx = _stack(mesh, [l[2] for l in local])  # tree position -> block position
     nbr_loc = _stack(mesh, [l[3] for l in local])  # (S, B, k) tree positions
     r_k = _stack(mesh, [l[4] for l in local])
+    nbr_dist = _stack(mesh, [l[5] for l in local])  # (S, B, k) float32 distances to the local neighbours
     jax.block_until_ready(r_k)
     log(f"{S} local graphs of {B} points (n0 {n0_s}, k {k})")
     smap = partial(shard_map, mesh=mesh, check_vma=False)
@@ -485,8 +498,8 @@ def _build_device_graph(points, mesh: Mesh, *, n0: int, k: int, cuda: bool = Tru
     chunk = 2**18
 
     # ---- phase 2: send the queries, answer on graphgp's tree, send the hits back, merge
-    def merge(pts_t, split_dims, idx, nbr_loc, r_k):
-        pts_t, split_dims, idx, nbr_loc, r_k = pts_t[0], split_dims[0], idx[0], nbr_loc[0], r_k[0]
+    def merge(pts_t, split_dims, idx, nbr_loc, r_k, nbr_dist):
+        pts_t, split_dims, idx, nbr_loc, r_k, nbr_dist = pts_t[0], split_dims[0], idx[0], nbr_loc[0], r_k[0], nbr_dist[0]
         sidx = lax.axis_index(ax)
         need = _need(pts_t, r_k, sidx)
         slots = jax.vmap(lambda n: jnp.nonzero(n, size=E, fill_value=-1)[0])(need)  # (S_tgt, E) tree positions
@@ -517,7 +530,7 @@ def _build_device_graph(points, mesh: Mesh, *, n0: int, k: int, cuda: bool = Tru
         back = lax.all_to_all(answer, ax, 0, 0, tiled=False)  # (S_target, E, 2k): hits of my queries
         # merge target by target with a running best k (no (B, S, k) candidate arrays: 28 M points OOM'd)
         best_ids = (sidx * B + idx[nbr_loc]).astype(jnp.int32)
-        best_dist = jnp.sqrt(jnp.sum(jnp.square(pts_t[nbr_loc].astype(jnp.float64) - pts_t[:, None, :].astype(jnp.float64)), axis=-1)).astype(jnp.float32)
+        best_dist = nbr_dist  # (B, k) float32, computed chunked in _local_graph (no (B, k, d) temporaries here)
         for t in range(S):
             row = jnp.where(valid[t], slots[t], B)  # B: dropped
             ids_t = jnp.full((B, k), -1, dtype=jnp.int32).at[row].set(back[t, :, :k], mode="drop")
@@ -536,7 +549,7 @@ def _build_device_graph(points, mesh: Mesh, *, n0: int, k: int, cuda: bool = Tru
         tree_pos = jnp.zeros((B,), jnp.int32).at[idx].set(jnp.arange(B, dtype=jnp.int32))
         return nbr_user[None], init_user[None], tree_pos[None], jnp.array([n_foreign])
 
-    nbr_user, init_user, tree_pos, n_foreign = smap(merge, in_specs=(P(ax),) * 5, out_specs=(P(ax),) * 4)(pts_t, split_dims, idx, nbr_loc, r_k)
+    nbr_user, init_user, tree_pos, n_foreign = smap(merge, in_specs=(P(ax),) * 6, out_specs=(P(ax),) * 4)(pts_t, split_dims, idx, nbr_loc, r_k, nbr_dist)
     jax.block_until_ready(nbr_user)  # (S, B, k) global user ids of the merged neighbours (-1 for initial points), user order
     log("queries answered and merged")
 
