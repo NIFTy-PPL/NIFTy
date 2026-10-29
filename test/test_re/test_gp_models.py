@@ -406,3 +406,16 @@ def test_build_sharded_graph_matches_brute_force_and_generate():
     g_sh = jax.jit(jax.grad(lambda m, p: jnp.sum(w * m(p)), argnums=1))(sharded, sharded.shard(p))
     for key in p:
         assert_allclose(g_sh[key], g_ref[key], rtol=1e-9, atol=1e-12, err_msg=key)
+
+
+def test_tree_level_without_x64():
+    """The tree-level helper of the device graph build must not depend on
+    64-bit integers (a 64-bit shift silently overflowed with x64 disabled and
+    the device build then found no foreign neighbours at all)."""
+    from nifty.re.graphgp_sharded import _tree_level
+
+    pos = np.array([0, 1, 2, 3, 6, 7, 14, 15, 62, 63, 2**20 - 1, 2**30 - 1])
+    expected = np.floor(np.log2(pos + 1)).astype(int)
+    with jax.enable_x64(False):
+        np.testing.assert_array_equal(np.asarray(_tree_level(jnp.asarray(pos, jnp.int32))), expected)
+    np.testing.assert_array_equal(np.asarray(_tree_level(jnp.asarray(pos))), expected)

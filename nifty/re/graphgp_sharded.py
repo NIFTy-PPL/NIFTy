@@ -51,6 +51,8 @@ from dataclasses import dataclass
 from functools import partial
 from typing import Optional, Tuple
 
+import copy
+
 import jax
 import jax.numpy as jnp
 import numpy as np
@@ -346,9 +348,12 @@ def _query_points(points, split_dims, queries, max_indices, radii, *, k, cuda=Fa
 
 
 def _tree_level(pos):
-    """Level of a tree position in graphgp's layout (level l at [2^l - 1, 2^(l+1) - 1)); integer arithmetic."""
-    pos = jnp.asarray(pos, jnp.int64)[..., None] + 1
-    return (jnp.sum(pos >= (jnp.int64(1) << jnp.arange(62, dtype=jnp.int64)), axis=-1) - 1).astype(jnp.int32)
+    """Level of a tree position in graphgp's layout (level l at [2^l - 1, 2^(l+1) - 1)):
+    ``floor(log2(pos + 1))`` in 32-bit integer arithmetic (positions are below 2^31;
+    64-bit shifts would silently overflow when x64 is disabled)."""
+    pos = jnp.asarray(pos).astype(jnp.int32)[..., None] + 1
+    thresholds = jnp.left_shift(jnp.int32(1), jnp.arange(31, dtype=jnp.int32))  # 2^0 .. 2^30
+    return (jnp.sum(pos >= thresholds, axis=-1) - 1).astype(jnp.int32)
 
 
 # ---------------------------------------------------------------------------- per-device local graphs
@@ -940,43 +945,53 @@ class _ShardedGenerate:
         mode (and the transpose of either) go through the level-by-level
         tangent and its transpose, which rebuild every level's input from the
         final extended array."""
-        g, ax = self.g, self.axis
-        spec = jax.tree_util.tree_map(lambda _: P(ax), g)
+        ax = self.axis
+        spec = jax.tree_util.tree_map(lambda _: P(ax), self.g)
         spec = ShardedGraph(**{**{f: getattr(spec, f) for f in spec.__dataclass_fields__}, "init_src": P(), "init_pos": P(), "initial_points": P()})
+        # the graph tables and the radial bins are explicit arguments of the custom-derivative
+        # function and of the shard_map bodies, not closures: when the model is an argument of a
+        # jitted function they are tracers, and a custom_jvp closing over tracers fails to lower
+        # inside a nested jit ("no constant handler for DynamicJaxprTracer")
 
-        def forward_ext(xi, cov_vals):
-            f = shard_map(self._fwd_local, mesh=self.mesh, in_specs=(P(ax), P(), spec), out_specs=(P(ax), P(ax)), check_vma=False)
-            return f(xi, cov_vals, g)
+        def forward_ext(xi, cov_vals, g, rb):
+            f = shard_map(lambda x, c, g, rb: self._with_bins(rb)._fwd_local(x, c, g), mesh=self.mesh, in_specs=(P(ax), P(), spec, P()), out_specs=(P(ax), P(ax)), check_vma=False)
+            return f(xi, cov_vals, g, rb)
 
-        def tangent(ext, xi, cov_vals, d_xi, d_cov):
-            f = shard_map(self._tangent_local, mesh=self.mesh, in_specs=(P(ax), P(), P(ax), P(ax), P(), spec), out_specs=P(ax), check_vma=False)
-            return f(d_xi, d_cov, ext, xi, cov_vals, g)
+        def tangent(ext, xi, cov_vals, d_xi, d_cov, g, rb):
+            f = shard_map(lambda *a: self._with_bins(a[-1])._tangent_local(*a[:-1]), mesh=self.mesh, in_specs=(P(ax), P(), P(ax), P(ax), P(), spec, P()), out_specs=P(ax), check_vma=False)
+            return f(d_xi, d_cov, ext, xi, cov_vals, g, rb)
 
-        def cotangent(ext, xi, cov_vals, ct):
-            b = shard_map(self._bwd_local, mesh=self.mesh, in_specs=(P(ax), P(ax), P(ax), P(), spec), out_specs=(P(ax), P()), check_vma=False)
-            return b(ct, ext, xi, cov_vals, g)
+        def cotangent(ext, xi, cov_vals, ct, g, rb):
+            b = shard_map(lambda *a: self._with_bins(a[-1])._bwd_local(*a[:-1]), mesh=self.mesh, in_specs=(P(ax), P(ax), P(ax), P(), spec, P()), out_specs=(P(ax), P()), check_vma=False)
+            return b(ct, ext, xi, cov_vals, g, rb)
 
         @jax.custom_jvp
-        def generate(xi, cov_vals):
-            return forward_ext(xi, cov_vals)[0]
+        def generate(xi, cov_vals, g, rb):
+            return forward_ext(xi, cov_vals, g, rb)[0]
 
         @generate.defjvp
         def generate_jvp(primals, tangents):
-            xi, cov_vals = primals
-            d_xi, d_cov = tangents
-            values, ext = forward_ext(xi, cov_vals)
+            xi, cov_vals, g, rb = primals
+            d_xi, d_cov = tangents[:2]  # the tables and bins are constants of the model
+            values, ext = forward_ext(xi, cov_vals, g, rb)
             # the linear tangent map and its transpose as a custom_linear_solve with the identity as
             # matrix: jit, vmap, linear_transpose and vjp all work through it
             rhs = {"xi": d_xi, "cov": d_cov}
 
             def solve(_, b):
-                return {"xi": tangent(ext, xi, cov_vals, b["xi"], b["cov"]), "cov": jnp.zeros_like(b["cov"])}
+                return {"xi": tangent(ext, xi, cov_vals, b["xi"], b["cov"], g, rb), "cov": jnp.zeros_like(b["cov"])}
 
             def transpose_solve(_, ct):
-                ct_xi, ct_cov = cotangent(ext, xi, cov_vals, ct["xi"])
+                ct_xi, ct_cov = cotangent(ext, xi, cov_vals, ct["xi"], g, rb)
                 return {"xi": ct_xi, "cov": ct_cov}
 
             d_values = lax.custom_linear_solve(lambda x: x, rhs, solve, transpose_solve=transpose_solve)["xi"]
             return values, d_values
 
-        return generate(xi, cov_vals)
+        return generate(xi, cov_vals, self.g, self.radial_bins)
+
+    def _with_bins(self, radial_bins):
+        """A copy using `radial_bins` (the shard_map bodies' local view of the bins)."""
+        other = copy.copy(self)
+        other.radial_bins = radial_bins
+        return other
