@@ -426,6 +426,13 @@ def test_correlated_field_sharded_matches_unsharded(kind):
     assert_allclose(fr, fs, rtol=1e-12, atol=1e-12)
     gr = jax.jit(jax.grad(lambda cf, p: jnp.sum(cf(p) ** 2), argnums=1))(cfs, pr)
     assert all(np.all(np.isfinite(a)) for a in jax.tree_util.tree_leaves(gr))
+    # differentiation of a jitted inner function inside an outer jit (NIFTy's optimizers jit
+    # the likelihood pieces and call them from jitted KL steps): the custom derivatives of
+    # the sharded generators must not close over the model's arrays
+    inner = jax.jit(lambda cf, p: jnp.sum(cf(p) ** 2))
+    vg = jax.jit(lambda cf, p: jax.value_and_grad(lambda p: inner(cf, p))(p))(cfs, pr)
+    assert np.isfinite(vg[0]) and all(np.all(np.isfinite(a)) for a in jax.tree_util.tree_leaves(vg[1]))
+    jax.block_until_ready(jax.jit(lambda cf, p: jax.jvp(lambda p: inner(cf, p), (p,), (p,)))(cfs, pr))
     # init draws straight onto the mesh
     q = cfs.init(jax.random.PRNGKey(7))
     for name, s in cfs.shardings.items():
