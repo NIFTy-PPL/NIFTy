@@ -160,7 +160,7 @@ def sharded_graph_from_graph(graph, n_shards: int, n_points: Optional[int] = Non
         nb = nbr[s * B : (s + 1) * B]
         nb = nb[nb >= 0]
         halos.append(np.unique(nb[(owner[nb] != s) & (init_slot[nb] < 0)]))
-    H = max((len(h) for h in halos), default=0)
+    H = max(max((len(h) for h in halos), default=0), 1)  # XLA needs non-empty arrays
     junk = B + H + n0
     halo_pos = np.full((n_shards, n), -1, dtype=np.int64)
     for s, h in enumerate(halos):
@@ -589,7 +589,7 @@ class _HaloTables:
         self.halo_valid = self.halo < N
         needed = jnp.stack([jnp.sort(jnp.where(self.halo_valid & (self.halo // B == t), self.halo, N)) for t in range(S)])
         req = lax.all_to_all(needed, ax, 0, 0, tiled=False)  # (S_src, H): my ids that src needs
-        n_exp = min(S * H, B)
+        n_exp = max(min(S * H, B), 1)
         self.exp_all = jnp.unique(req.reshape(-1), size=n_exp + 1, fill_value=N)[:n_exp]  # sorted global ids
         self.exp_valid = self.exp_all < N
         self.exp_loc = jnp.where(self.exp_valid, self.exp_all - sidx * B, 0)
@@ -690,7 +690,7 @@ def _compact_tables(dg: _DeviceGraph, mesh: Mesh, *, group_by="log2", verbose: b
         return M[None], E[None], I[None], h2.halo_valid.sum()[None]
 
     M, E, I, H2 = (np.asarray(a).max(axis=0) for a in smap(count, in_specs=(P(ax),) * 4, out_specs=(P(ax),) * 4)(dg.neighbors, dg.initial, dg.depth, dg.tree_pos))
-    H = int(H2)  # non-initial foreign neighbours: the halo of the tables
+    H = max(int(H2), 1)  # non-initial foreign neighbours: the halo of the tables (non-empty for XLA)
     junk = B + H + dg.n0
     M_l, E_l, I_l = [int(x) for x in M[1:]], [int(x) for x in E[1:]], [int(x) for x in I[1:]]
     cls = [int(np.ceil(np.log2(max(m, 1)))) for m in M_l] if group_by == "log2" else [0] * len(M_l)
