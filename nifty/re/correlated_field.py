@@ -1449,10 +1449,14 @@ class CorrelatedFieldMaker:
             swd = [ShapeWithDtype(sh) for sh in shapes]
             self._parameter_tree[name] = swd[0] if len(swd) == 1 else swd
         if mesh is None:
-            for space in self._spaces:
+            for i, space in enumerate(self._spaces):
                 m = getattr(space, "mesh", None)
                 if m is not None:
                     mesh = m
+                    logger.info(
+                        f"CorrelatedFieldMaker.finalize: mesh inferred from the sharded points of factor {i} "
+                        f"({type(space).__name__}): {mesh.shape[mesh.axis_names[0]]} devices along '{mesh.axis_names[0]}'; the field is generated on this mesh"
+                    )
                     break
         if mesh is not None and len(mesh.axis_names) != 1:
             raise ValueError("mesh must be one-dimensional")

@@ -17,6 +17,7 @@ import numpy as np
 
 from .correlated_field import KernelSpace
 from .gaussian_process import GraphGP
+from .logger import logger
 
 __all__ = ["GraphGPSpace"]
 
@@ -95,10 +96,15 @@ class GraphGPSpace(KernelSpace):
         self.graph = graph
         if (r_max is None and radial_bins is None) or (r_min is None and (radial_bins is None or k_bins is None)):
             pts = self._coordinates()
+            inferred = []
             if r_max is None and radial_bins is None:
                 r_max = float(np.linalg.norm(pts.max(axis=0) - pts.min(axis=0))) * (1.0 + 1e-3)
+                inferred.append(f"r_max = {r_max:.4g} (diagonal of the bounding box)")
             if r_min is None and (radial_bins is None or k_bins is None):
-                r_min = 0.5 * self._min_neighbour_distance(pts)
+                d_min, n_q = self._min_neighbour_distance(pts)
+                r_min = 0.5 * d_min
+                inferred.append(f"r_min = {r_min:.4g} (half the smallest nearest-neighbour distance{'' if n_q == pts.shape[0] else f' of a sample of {n_q} points'})")
+            logger.info(f"GraphGPSpace: {' and '.join(inferred)} inferred from the {pts.shape[0]} points; pass them explicitly to override")
         super().__init__(
             shape,
             dim,
@@ -124,8 +130,9 @@ class GraphGPSpace(KernelSpace):
     @staticmethod
     def _min_neighbour_distance(pts, n_sample=2**17, seed=0):
         """Smallest distance between a point and its nearest neighbour, over a
-        random sample of the points (the full set for small sets); this sets the
-        finest bin of the covariance table (``r_min = 0.5 x``)."""
+        random sample of the points (the full set for small sets), and the size
+        of the sample; this sets the finest bin of the covariance table
+        (``r_min = 0.5 x``)."""
         from scipy.spatial import cKDTree
 
         tree = cKDTree(pts)
@@ -135,7 +142,7 @@ class GraphGPSpace(KernelSpace):
         d = d[d > 0]
         if d.size == 0:
             raise ValueError("could not infer `r_min` from the points; pass it explicitly")
-        return float(d.min())
+        return float(d.min()), int(q.shape[0])
 
     build_graph = staticmethod(GraphGP.build_graph)
 

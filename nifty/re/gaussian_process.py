@@ -763,6 +763,17 @@ class ICRGP(KernelGP):
         first = next((i for i, v in enumerate(sharded) if v), len(sharded))
         if any(sharded[:first]) or not all(sharded[first:]):
             raise ValueError("the sharded levels must be the finer ones (replicated coarse levels first)")
+        n_rep = sum(sizes[:first])
+        msg = (
+            f"ICRGP on {S} shards: levels 0-{first - 1} replicated ({', '.join(str(sh) for sh in shapes[:first])}; "
+            f"{n_rep} of {sizes[-1]} finest-level pixels), levels {first}-{len(shapes) - 1} sharded along the first axis"
+        )
+        if first == len(shapes):
+            msg = f"ICRGP on {S} shards: no level is sharded (the first axis of every level is not divisible by {S}); everything is replicated"
+        if first > 1 and n_rep > 0.05 * sizes[-1] or first == len(shapes):
+            logger.warning(msg + " -- choose a mesh size that divides the first axis of the coarse levels, or a finer base grid")
+        else:
+            logger.info(msg)
         levels = []
         for lvl, L in enumerate(self._levels):
             fine_sharded = sharded[lvl + 1]
