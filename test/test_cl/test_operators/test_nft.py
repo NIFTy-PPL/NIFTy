@@ -320,7 +320,7 @@ def test_variable_position_nufft_vs_fft(shape, eps, pre_domain, shift_direction)
         ntrans = pre_domain.shape[0]
 
     # The shifted values come from the NUFFT, so they only match up to eps.
-    rtol = max(eps, 1e-7)
+    rtol = eps
     for itrans in range(ntrans):
         if ndim == 1:
             np.testing.assert_allclose(res[itrans, 0], res[itrans, 1], rtol=rtol)
