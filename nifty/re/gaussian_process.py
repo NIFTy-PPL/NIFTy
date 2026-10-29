@@ -867,8 +867,11 @@ class ICRGP(KernelGP):
 
     def _generate_sharded(self, xi, cov_vals):
         S, ax = self.n_shards, self.axis
-        window_cov = self._window_covariance(cov_vals)
-        base = jnp.linalg.cholesky(self._jittered(window_cov(self._base_coords)))  # replicated (small)
+        # the covariance table enters the shard_map body as an argument (replicated), not through a
+        # closure: a closed-over value placed on the mesh (replicated hyperparameters of the model)
+        # carries the mesh's sharding into the body, where the context mesh is the manual one and
+        # XLA rejects the mix; a coordinate kernel (a callable) stays a closure
+        cov_arg = None if self.coordinate_kernel else cov_vals
         # the unique windows are distributed over the shards: every shard builds its share of the
         # refinement matrices and the shares are all-gathered (the kernel build dominates the ICR cost)
         padded = []
@@ -882,9 +885,11 @@ class ICRGP(KernelGP):
         shard_levels = self._shard_levels
         spec = jax.tree_util.tree_map(lambda _: P(ax), shard_levels)
 
-        def local(xs, base, coords, tabs):
+        def local(xs, cov, coords, tabs):
             # xs: the per-level excitations, the block of the level for sharded levels, full otherwise
             sidx = jax.lax.axis_index(ax)
+            window_cov = self._window_covariance(cov_vals if cov is None else cov)
+            base = jnp.linalg.cholesky(self._jittered(window_cov(self._base_coords)))  # replicated (small)
             mats = []
             for uc, n_f, K in zip(coords, n_fs, n_uniques):
                 olf, lff = self._window_matrices(window_cov, uc[0], n_f)
@@ -908,14 +913,14 @@ class ICRGP(KernelGP):
             return f
 
         xi_specs = tuple(P(ax, *([None] * (len(sh) - 1))) if sharded else P() for sharded, sh in zip(self.level_sharded, self._level_shapes))
-        in_specs = (xi_specs, P(), tuple(P(ax) for _ in padded), spec)
+        in_specs = (xi_specs, None if cov_arg is None else P(), tuple(P(ax) for _ in padded), spec)
         f = jax.shard_map(local, mesh=self.mesh, in_specs=in_specs, out_specs=P(ax), check_vma=False)
         batch = self.batch_shape(xi)
         if len(batch) == 0:
-            return f(tuple(xi), base, tuple(padded), shard_levels)
+            return f(tuple(xi), cov_arg, tuple(padded), shard_levels)
         # shard_map maps the first axis of every input onto the mesh: run leading batch axes outside
         xs = [x.reshape((-1,) + sh) for x, sh in zip(xi, self._level_shapes)]
-        return vmap(lambda *x: f(x, base, tuple(padded), shard_levels))(*xs).reshape(batch + self.shape)
+        return vmap(lambda *x: f(x, cov_arg, tuple(padded), shard_levels))(*xs).reshape(batch + self.shape)
 
     def _refine_block(self, lvl, T, sidx, ext, xi_fine, olf, lff):
         """Refinement of one shard's block of cells at level `lvl` from the extended

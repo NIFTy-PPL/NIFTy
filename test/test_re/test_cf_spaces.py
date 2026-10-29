@@ -374,7 +374,8 @@ def test_correlated_field_sharded_matches_unsharded(kind):
     points, whose mesh is inferred) times a harmonic factor on the second axis
     equals the unsharded field, values and gradients; excitations drawn by
     `init` and placed by `shard` carry the field's shardings."""
-    from jax.sharding import Mesh
+    from jax.sharding import Mesh, NamedSharding
+    from jax.sharding import PartitionSpec as P
 
     mesh = Mesh(np.array(jax.devices()), ("x",))
     grid = jft.HPLogRGrid(nside=4, r_min_shape=4, r_min=1.0, r_max=10.0, nside0=1)
@@ -416,6 +417,15 @@ def test_correlated_field_sharded_matches_unsharded(kind):
         for key in g:
             for a, b in zip(jax.tree_util.tree_leaves(gs[key]), jax.tree_util.tree_leaves(g[key])):
                 assert_allclose(a, b, rtol=1e-8, atol=1e-10, err_msg=key)
+    # the amplitude parameters placed on the mesh (replicated), as an optimizer running on the
+    # mesh holds them: the same field (the covariance table must not reach the manual region
+    # of the generator through a closure)
+    rep = NamedSharding(mesh, P())
+    pr = {k: (v if k in cfs.shardings else jax.device_put(np.asarray(v), rep)) for k, v in ps.items()}
+    fr = jax.jit(lambda cf, p: cf(p))(cfs, pr)
+    assert_allclose(fr, fs, rtol=1e-12, atol=1e-12)
+    gr = jax.jit(jax.grad(lambda cf, p: jnp.sum(cf(p) ** 2), argnums=1))(cfs, pr)
+    assert all(np.all(np.isfinite(a)) for a in jax.tree_util.tree_leaves(gr))
     # init draws straight onto the mesh
     q = cfs.init(jax.random.PRNGKey(7))
     for name, s in cfs.shardings.items():
