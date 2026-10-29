@@ -111,7 +111,7 @@ class ICRSpace(KernelSpace):
         super().__init__(
             self._level_shapes[-1],
             dim,
-            n_points=sum(sizes),
+            excitation_shapes=self._level_shapes,
             r_min=r_min,
             r_max=r_max,
             n_bins=n_bins,

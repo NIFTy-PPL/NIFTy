@@ -40,17 +40,32 @@ def _hp_grid():
 
 def _fluctuation_covariance(cf, p, space):
     """Covariance of the fluctuations of a single-factor field: the outer
-    product of its Jacobian with respect to the excitations without the zero
-    mode."""
-    xi = p["cfxi"]
+    product of its Jacobian with respect to the main excitation block, with
+    the zero-mode block at zero."""
+    gp = cf.gps[0]
 
-    def fluct(rest):
+    def unflatten(vec):
+        if not gp.structured:
+            return vec.reshape(gp.excitation_shape)
+        out, o = [], 0
+        for sh in gp.excitation_shapes:
+            n = int(np.prod(sh))
+            out.append(vec[o : o + n].reshape(sh))
+            o += n
+        return out
+
+    def fluct(vec):
         q = dict(p)
-        q["cfxi"] = xi.at[0].set(0.0).at[1:].set(rest)
+        q["cfxi"] = unflatten(vec)
+        q["cfxi0"] = jnp.zeros(())
         return cf(q).ravel()
 
     A = jax.jacfwd(fluct)(jnp.zeros(space.n_points))
     return np.asarray(A @ A.T)
+
+
+def _vdot(a, b):
+    return sum(jnp.vdot(x, y) for x, y in zip(jax.tree_util.tree_leaves(a), jax.tree_util.tree_leaves(b)))
 
 
 def _coordinates(space):
@@ -125,7 +140,7 @@ def test_hankel_weights_gaussian(dim):
     "make_space",
     [
         lambda: jft.ICRSpace(_open_grid_1d(), n_bins=128, chunk_size=7),
-        lambda: jft.ICRSpace(_open_grid_2d(), n_bins=256, chunk_size=5),
+        lambda: jft.ICRSpace(_open_grid_2d(), n_bins=256, chunk_size=5),  # 128 bins sit at the positive-definiteness limit here
         lambda: jft.ICRSpace(_open_grid_1d(), n_bins=128, compress=None),
         lambda: jft.GraphGPSpace(
             np.random.default_rng(0).uniform(0.0, 10.0, (200, 2)), n0=32, k=12, n_bins=128, cuda=False
@@ -139,9 +154,11 @@ def test_kernel_space_covariance(make_space):
     space = make_space()
     m = _maker([space])
     cf = m.finalize()
-    assert cf.domain["cfxi"].shape == space.excitation_shape
+    xi_dom = cf.domain["cfxi"]
+    shapes = tuple(x.shape for x in xi_dom) if isinstance(xi_dom, list) else (xi_dom.shape,)
+    assert shapes == space.excitation_shapes and cf.domain["cfxi0"].shape == ()
     p = jft.random_like(jax.random.PRNGKey(1), cf.domain)
-    f = jax.jit(cf)(p)
+    f = jax.jit(lambda cf, p: cf(p))(cf, p)
     assert f.shape == space.shape and np.all(np.isfinite(f))
     # covariance of the generated fluctuations versus the covariance function
     C = _fluctuation_covariance(cf, p, space)
@@ -152,13 +169,14 @@ def test_kernel_space_covariance(make_space):
     r = np.linalg.norm(coords[:, None, :] - coords[None, :, :], axis=-1)
     truth = np.interp(r, space.radial_bins, cov)
     assert np.linalg.norm(C - truth) / np.linalg.norm(truth) < 3e-2
-    # the zero mode is the constant one, scaled by the zero-mode amplitude
+    # the zero-mode block is the constant one, scaled by the zero-mode amplitude
     q = dict(p)
-    q["cfxi"] = jnp.zeros_like(p["cfxi"]).at[0].set(1.5)
+    q["cfxi"] = jax.tree_util.tree_map(jnp.zeros_like, p["cfxi"])
+    q["cfxi0"] = jnp.asarray(1.5)
     assert_allclose(cf(q), 1.5 * m.azm(p), rtol=1e-12)
     # gradients and vmap over samples
     g = jax.jit(jax.grad(lambda p: (cf(p) ** 2).sum()))(p)
-    assert all(np.all(np.isfinite(v)) for v in g.values())
+    assert all(np.all(np.isfinite(v)) for v in jax.tree_util.tree_leaves(g))
     ps = jax.vmap(lambda k: jft.random_like(k, cf.domain))(jax.random.split(jax.random.PRNGKey(2), 3))
     fs = jax.jit(jax.vmap(cf))(ps)
     for i in range(3):
@@ -169,14 +187,15 @@ def test_icr_space_healpix_log_r():
     space = jft.ICRSpace(_hp_grid(), n_bins=256, chunk_size=100)
     assert space.dim == 3
     assert space.shape == tuple(int(s) for s in space.multigrid.at(space.depth).shape)
-    assert space.excitation_shape == (sum(int(space.multigrid.at(l).size) for l in range(space.depth + 1)) + 1,)
-    cf = _maker([space]).finalize()
+    assert space.excitation_shapes == tuple(tuple(int(s) for s in space.multigrid.at(l).shape) for l in range(space.depth + 1))
+    m = _maker([space])
+    cf = m.finalize()
     p = jft.random_like(jax.random.PRNGKey(0), cf.domain)
-    f = jax.jit(cf)(p)
+    f = jax.jit(lambda cf, p: cf(p))(cf, p)
     assert f.shape == space.shape and np.all(np.isfinite(f))
     # the chunked assembly equals the layout of the grid's `resort`
     C = _fluctuation_covariance(cf, p, space)
-    cov = np.asarray(space.covariance(cf.normalized_amplitudes and _maker([space])._fluctuations[0](p)))
+    cov = np.asarray(space.covariance(m._fluctuations[0](p)))
     coords = _coordinates(space)
     r = np.linalg.norm(coords[:, None, :] - coords[None, :, :], axis=-1)
     truth = np.interp(r, space.radial_bins, cov)
@@ -188,30 +207,35 @@ def test_product_regular_icr():
     icr = jft.ICRSpace(_open_grid_1d(), n_bins=128)
     m = _maker([reg, icr], offset_std=(0.7, 1e-6))
     cf = m.finalize()
-    assert cf.domain["cfxi"].shape == reg.excitation_shape + icr.excitation_shape
     assert cf.spaces == (reg, icr)
+    # main block: the regular modes times every ICR level; zero block of the ICR factor: the regular modes
+    assert [x.shape for x in cf.domain["cfxi"]] == [(16,) + sh for sh in icr.excitation_shapes]
+    assert cf.domain["cfxi0"].shape == (16,)
     p = jft.random_like(jax.random.PRNGKey(5), cf.domain)
-    f = jax.jit(cf)(p)
+    f = jax.jit(lambda cf, p: cf(p))(cf, p)
     assert f.shape == reg.shape + icr.shape
     azm = float(m.azm(p))
-    xi = p["cfxi"]
-    # zero mode of both factors: the constant field
+    zero_main = jax.tree_util.tree_map(jnp.zeros_like, p["cfxi"])
+    # both zero modes: the constant field (regular zero mode = index 0 of the zero block)
     q = dict(p)
-    q["cfxi"] = jnp.zeros_like(xi).at[0, 0].set(2.0)
+    q["cfxi"] = zero_main
+    q["cfxi0"] = jnp.zeros(16).at[0].set(2.0)
     assert_allclose(cf(q), 2.0 * azm, rtol=1e-12)
-    # zero mode of the regular factor only: constant along the regular axis
-    q["cfxi"] = jnp.zeros_like(xi).at[0, 1:].set(xi[0, 1:])
-    g = cf(q)
-    assert_allclose(g, np.broadcast_to(g[:1], g.shape), rtol=1e-12, atol=1e-12)
-    assert np.std(g[0]) > 0
-    # zero mode of the ICR factor only: constant along the ICR axis
-    q["cfxi"] = jnp.zeros_like(xi).at[1:, 0].set(xi[1:, 0])
+    # ICR zero block with regular modes: constant along the ICR axis
+    q["cfxi0"] = p["cfxi0"]
     g = cf(q)
     assert_allclose(g, np.broadcast_to(g[:, :1], g.shape), rtol=1e-12, atol=1e-12)
     assert np.std(g[:, 0]) > 0
-    # the map is linear in the excitations
+    # regular zero mode (index 0 of the main block's regular axis) with ICR excitations: constant along the regular axis
+    q["cfxi0"] = jnp.zeros(16)
+    q["cfxi"] = [jnp.zeros_like(x).at[0].set(x[0]) for x in p["cfxi"]]
+    g = cf(q)
+    assert_allclose(g, np.broadcast_to(g[:1], g.shape), rtol=1e-12, atol=1e-12)
+    assert np.std(g[0]) > 0
+    # the map is linear in the excitation blocks
     q2 = dict(p)
-    q2["cfxi"] = 2.0 * xi
+    q2["cfxi"] = jax.tree_util.tree_map(lambda x: 2.0 * x, p["cfxi"])
+    q2["cfxi0"] = 2.0 * p["cfxi0"]
     assert_allclose(cf(q2), 2.0 * f, rtol=1e-12)
     jax.jit(jax.grad(lambda p: (cf(p) ** 2).sum()))(p)
 
@@ -220,10 +244,13 @@ def test_product_icr_graphgp_spherical():
     pytest.importorskip("graphgp")
     pytest.importorskip("jaxbind")
     pts = np.random.default_rng(1).uniform(0.0, 5.0, (50, 3))
-    spaces = [jft.SphericalSpace(1), jft.GraphGPSpace(pts, n0=16, k=8, n_bins=64, cuda=False), jft.ICRSpace(_open_grid_1d(12), n_bins=256)]
+    spaces = [jft.SphericalSpace(1), jft.GraphGPSpace(pts, n0=16, k=8, n_bins=256, cuda=False), jft.ICRSpace(_open_grid_1d(12), n_bins=256)]
     cf = _maker(spaces).finalize()
+    names = [b[0] for b in cf.blocks]
+    assert names == ["cfxi", "cfxi0_1", "cfxi0_2", "cfxi0_1_2"]
+    assert cf.domain["cfxi0_1_2"].shape == spaces[0].excitation_shape  # spherical harmonic modes only
     p = jft.random_like(jax.random.PRNGKey(0), cf.domain)
-    f = jax.jit(cf)(p)
+    f = jax.jit(lambda cf, p: cf(p))(cf, p)
     assert f.shape == sum((s.shape for s in spaces), ())
     assert np.all(np.isfinite(f))
 
@@ -276,19 +303,23 @@ def test_jvp_vjp_adjoint(name):
     _, vjp = jax.vjp(cf, p)
     (jtw,) = vjp(w)
     lhs = jnp.vdot(jv, w)
-    rhs = sum(jnp.vdot(v[k], jtw[k]) for k in v)
+    rhs = _vdot(v, jtw)
     assert_allclose(lhs, rhs, rtol=1e-10, atol=1e-10 * abs(float(lhs)))
-    # the map from the excitations alone is linear
-    xi_name = m._prefix + "xi"
+    # the map from the excitation blocks alone is linear
+    names = [b[0] for b in cf.blocks]
+    xi = {k: p[k] for k in names}
+    v_xi = {k: v[k] for k in names}
 
-    def lin(xi):
-        return cf({**p, xi_name: xi})
+    def lin(x):
+        return cf({**p, **x})
 
-    xi = p[xi_name]
-    assert_allclose(lin(xi) + lin(v[xi_name]) - lin(jnp.zeros_like(xi)), lin(xi + v[xi_name]), rtol=1e-10, atol=1e-10)
+    zero = jax.tree_util.tree_map(jnp.zeros_like, xi)
+    assert_allclose(lin(xi) + lin(v_xi) - lin(zero), lin(jax.tree_util.tree_map(jnp.add, xi, v_xi)), rtol=1e-10, atol=1e-10)
     transpose = jax.linear_transpose(lambda t: jax.jvp(lin, (xi,), (t,))[1], xi)
     (jt_lin,) = transpose(w)
-    assert_allclose(jt_lin, jtw[xi_name], rtol=1e-10, atol=1e-10)
+    for k in names:
+        for a, b in zip(jax.tree_util.tree_leaves(jt_lin[k]), jax.tree_util.tree_leaves(jtw[k])):
+            assert_allclose(a, b, rtol=1e-10, atol=1e-10)
 
 
 @pmp("name", ["icr-healpix", "graphgp2d", "regular-x-icr"])

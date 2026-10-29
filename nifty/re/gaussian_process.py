@@ -77,8 +77,12 @@ def parse_kernel(kernel, radial_bins=None, *, allow_callable=False):
 
 
 class KernelGP(Model):
-    """Gaussian process with excitations ``prefix + "xi"`` of shape
-    ``excitation_shape`` and a tabulated isotropic kernel.
+    """Gaussian process with standard-normal excitations ``prefix + "xi"`` and
+    a tabulated isotropic kernel.
+
+    The excitations are one array of shape ``excitation_shapes[0]`` or, for a
+    multigrid generator, a list of arrays (one per level, shapes
+    ``excitation_shapes``); ``structured`` tells which.
 
     Parameters
     ----------
@@ -88,8 +92,10 @@ class KernelGP(Model):
     radial_bins : array, optional
         Radii of a fixed table given as an array (or of a kernel model without
         ``radial_bins``).
-    shape, excitation_shape : tuples
-        Shape of the field and of the excitations.
+    shape : tuple
+        Shape of the field.
+    excitation_shapes : tuple of tuples
+        Shapes of the excitation arrays (one entry: a single array).
     prefix : str
         Name prefix of the excitations.
     """
@@ -98,12 +104,13 @@ class KernelGP(Model):
     cov_vals: Optional[jnp.ndarray] = dataclasses.field(metadata=dict(static=False))
     radial_bins: Optional[jnp.ndarray] = dataclasses.field(metadata=dict(static=False))
 
-    def __init__(self, kernel, *, radial_bins=None, shape, excitation_shape, prefix="", dtype=jnp.float64, allow_callable=False):
+    def __init__(self, kernel, *, radial_bins=None, shape, excitation_shapes, prefix="", dtype=jnp.float64, allow_callable=False):
         self.kernel, self.radial_bins, self.cov_vals = parse_kernel(kernel, radial_bins, allow_callable=allow_callable)
         self.shape = tuple(int(s) for s in shape)
-        self.excitation_shape = tuple(int(s) for s in excitation_shape)
+        self.excitation_shapes = tuple(tuple(int(s) for s in sh) for sh in excitation_shapes)
         self.xi_name = str(prefix) + "xi"
-        xi_dom = ShapeWithDtype(self.excitation_shape, dtype)
+        xi_dom = [ShapeWithDtype(sh, dtype) for sh in self.excitation_shapes]
+        xi_dom = xi_dom[0] if len(xi_dom) == 1 else xi_dom
         domain = {self.xi_name: xi_dom}
         init = Initializer({self.xi_name: partial(random_like, primals=xi_dom)})
         if self.kernel is not None:
@@ -117,6 +124,23 @@ class KernelGP(Model):
         return self.kernel is not None
 
     @property
+    def structured(self) -> bool:
+        """Whether the excitations are a list of arrays rather than one array."""
+        return len(self.excitation_shapes) > 1
+
+    @property
+    def excitation_shape(self):
+        """The shape of the (single) excitation array."""
+        if self.structured:
+            raise AttributeError("the excitations are a list of arrays, see `excitation_shapes`")
+        return self.excitation_shapes[0]
+
+    def batch_shape(self, xi):
+        """Leading batch dimensions of excitations `xi` (an array or a list of arrays)."""
+        x = xi[0] if self.structured else xi
+        return tuple(x.shape[: x.ndim - len(self.excitation_shapes[0])])
+
+    @property
     def coordinate_kernel(self) -> bool:
         """Whether the kernel is a covariance function of coordinates rather
         than a table on radial bins."""
@@ -128,8 +152,9 @@ class KernelGP(Model):
         return self.cov_vals if self.kernel is None else self.kernel(p)
 
     def generate(self, xi, cov_vals):
-        """Field of shape ``batch + shape`` for excitations `xi` of shape
-        ``batch + excitation_shape`` and the covariance table `cov_vals` on
+        """Field of shape ``batch + shape`` for excitations `xi` (an array of
+        shape ``batch + excitation_shapes[0]``, or a list of such arrays for a
+        structured generator) and the covariance table `cov_vals` on
         :attr:`radial_bins` (the linear map of the GP for a fixed table; a
         covariance function for a coordinate kernel)."""
         raise NotImplementedError()
@@ -181,7 +206,7 @@ class GraphGP(KernelGP):
         if int(np.prod(shape)) != int(graph.points.shape[0]):
             raise ValueError(f"shape {shape} does not match the {graph.points.shape[0]} graph points")
         self.graph = graph
-        super().__init__(kernel, radial_bins=radial_bins, shape=shape, excitation_shape=shape, prefix=prefix, dtype=dtype)
+        super().__init__(kernel, radial_bins=radial_bins, shape=shape, excitation_shapes=(shape,), prefix=prefix, dtype=dtype)
 
     @staticmethod
     def build_graph(points, *, n0: int, k: int, cuda: bool = False):
@@ -215,7 +240,7 @@ class GraphGP(KernelGP):
         import graphgp as ggp
 
         rs = self.radial_bins
-        batch = xi.shape[: xi.ndim - len(self.excitation_shape)]
+        batch = self.batch_shape(xi)
         xi = xi.reshape((-1, int(np.prod(self.excitation_shape))))
 
         def gen(x):
@@ -420,9 +445,8 @@ class _ShardLevel:
 
 class ICRGP(KernelGP):
     """Gaussian process on a multigrid, generated by iterative charted
-    refinement; the field lives on the finest level, the excitations are one
-    flat array holding the levels one after the other (coarsest first, each
-    level in the C order of its grid shape; see :meth:`split_excitations`).
+    refinement; the field lives on the finest level, the excitations are a
+    list of arrays, one per level in the level's grid shape (coarsest first).
 
     Parameters
     ----------
@@ -525,7 +549,7 @@ class ICRGP(KernelGP):
         if mesh is not None:  # before Model.__init__, which traces the generation for the target shape
             self._build_shard_tables()
         super().__init__(
-            kernel, radial_bins=radial_bins, shape=self._level_shapes[-1], excitation_shape=(sum(sizes),), prefix=prefix,
+            kernel, radial_bins=radial_bins, shape=self._level_shapes[-1], excitation_shapes=self._level_shapes, prefix=prefix,
             dtype=dtype, allow_callable=True,
         )
         d_max = float(np.max(self._base_dist))
@@ -603,13 +627,6 @@ class ICRGP(KernelGP):
         olf, lff = jax.lax.map(build, coords)
         return olf.reshape((-1,) + olf.shape[2:])[:K], lff.reshape((-1,) + lff.shape[2:])[:K]
 
-    def split_excitations(self, xi):
-        """The per-level arrays of a flat vector of excitations."""
-        return [
-            xi[..., o : o + int(np.prod(s))].reshape(xi.shape[:-1] + s)
-            for o, s in zip(self._level_offsets, self._level_shapes)
-        ]
-
     def _refine(self, lvl, coarse, xi_fine, olf, lff):
         L = self._levels[lvl]
         n = L.n_cells
@@ -637,20 +654,20 @@ class ICRGP(KernelGP):
         return res.transpose(order).reshape(L.fine_shape)
 
     def generate(self, xi, cov_vals):
+        """`xi`: the per-level excitation arrays (list, shapes ``batch + level shape``)."""
         if self.mesh is not None:
             return self._generate_sharded(xi, cov_vals)
         base, mats = self.matrices(cov_vals)
-        batch = xi.shape[:-1]
-        xi = xi.reshape((-1, xi.shape[-1]))
+        batch = self.batch_shape(xi)
+        xs = [x.reshape((-1,) + sh) for x, sh in zip(xi, self._level_shapes)]
 
-        def single(x):
-            xs = self.split_excitations(x)
+        def single(*xs):
             f = (base @ xs[0].ravel()).reshape(self._level_shapes[0])
             for lvl, (olf, lff) in enumerate(mats):
                 f = self._refine(lvl, f, xs[lvl + 1], olf, lff)
             return f
 
-        return vmap(single)(xi).reshape(batch + self.shape)
+        return vmap(single)(*xs).reshape(batch + self.shape)
 
     # ---- sharded generation: one shard per contiguous block along the first grid axis
     @property
@@ -733,27 +750,28 @@ class ICRGP(KernelGP):
             )
         self._shard_levels = tuple(levels)
 
-    def relayout(self, xi, inverse=False):
-        """Permutes a flat excitation vector between the level-major layout of the
-        unsharded model and the shard-major layout of the sharded one (shard `s`
-        holds the `s`-th contiguous chunk of every level, one after the other)."""
-        S = self.n_shards
-        sizes = [int(np.prod(sh)) for sh in self._level_shapes]
-        perm = np.concatenate([np.arange(o + sidx * (n // S), o + (sidx + 1) * (n // S)) for sidx in range(S) for o, n in zip(self._level_offsets, sizes)])
-        if inverse:
-            inv = np.empty_like(perm)
-            inv[perm] = np.arange(perm.size)
-            perm = inv
-        return xi[..., perm]
+    @property
+    def level_sharded(self):
+        """Per level: whether it is sharded along its first axis (else replicated)."""
+        return (False,) + tuple(t.sharded for t in self._shard_levels)
+
+    @property
+    def shardings(self):
+        """Per level: the sharding of its excitation array (and of the field at that level)."""
+        return tuple(
+            NamedSharding(self.mesh, P(self.axis, *([None] * (len(sh) - 1))) if sharded else P())
+            for sharded, sh in zip(self.level_sharded, self._level_shapes)
+        )
 
     @property
     def sharding(self):
-        return NamedSharding(self.mesh, P(self.axis))
+        """Sharding of the output (the finest level)."""
+        return self.shardings[-1]
 
     def shard(self, x):
-        """Relayouts and places the excitations of a (level-major) parameter dict on the mesh."""
+        """Places the per-level excitations of a parameter dict on the mesh."""
         x = dict(x)
-        x[self.xi_name] = jax.device_put(self.relayout(np.asarray(x[self.xi_name])), self.sharding)
+        x[self.xi_name] = [jax.device_put(np.asarray(a), s) for a, s in zip(x[self.xi_name], self.shardings)]
         return x
 
     def _generate_sharded(self, xi, cov_vals):
@@ -770,14 +788,11 @@ class ICRGP(KernelGP):
             padded.append(uc.reshape((S, Ks) + l.ucoords.shape[1:]))
         n_fs = tuple(l.n_f for l in self._levels)
         n_uniques = tuple(l.n_unique for l in self._levels)
-        mats = None
-        sizes = [int(np.prod(sh)) for sh in self._level_shapes]
-        chunks = [n // S for n in sizes]
-        offsets = np.cumsum([0] + chunks)
         shard_levels = self._shard_levels
         spec = jax.tree_util.tree_map(lambda _: P(ax), shard_levels)
 
-        def local(xi_block, base, coords, tabs):
+        def local(xs, base, coords, tabs):
+            # xs: the per-level excitations, the block of the level for sharded levels, full otherwise
             sidx = jax.lax.axis_index(ax)
             mats = []
             for uc, n_f, K in zip(coords, n_fs, n_uniques):
@@ -785,41 +800,31 @@ class ICRGP(KernelGP):
                 olf = jax.lax.all_gather(olf, ax, axis=0, tiled=True)[:K]
                 lff = jax.lax.all_gather(lff, ax, axis=0, tiled=True)[:K]
                 mats.append((olf, lff))
-            parts = [xi_block[..., o : o + c] for o, c in zip(offsets[:-1], chunks)]
-            # level 0: replicated dense generation from the gathered excitations
-            xi0 = jax.lax.all_gather(parts[0], ax, axis=-1, tiled=True)
-            f = jnp.einsum("ij,...j->...i", base, xi0).reshape(xi0.shape[:-1] + self._level_shapes[0])
+            f = (base @ xs[0].ravel()).reshape(self._level_shapes[0])  # level 0: replicated dense generation
             for lvl, (olf, lff) in enumerate(mats):
                 T = tabs[lvl]
                 if not T.sharded:  # replicated fine level
-                    xf = jax.lax.all_gather(parts[lvl + 1], ax, axis=-1, tiled=True).reshape(xi0.shape[:-1] + self._level_shapes[lvl + 1])
-                    f = vmap(lambda c, x: self._refine(lvl, c, x, olf, lff))(f.reshape((-1,) + f.shape[-len(self._level_shapes[lvl]):]), xf.reshape((-1,) + xf.shape[-len(self._level_shapes[lvl + 1]):]))
-                    f = f.reshape(xi0.shape[:-1] + self._level_shapes[lvl + 1])
+                    f = self._refine(lvl, f, xs[lvl + 1], olf, lff)
                     continue
-                xf = parts[lvl + 1].reshape(xi0.shape[:-1] + (T.block_fine,))
-                fb = f.reshape(xi0.shape[:-1] + (-1,))
+                fb = f.reshape(-1)
                 if T.coarse_full:
                     ext = fb
                 else:
-                    buf = fb[..., T.exp[0]]
-                    gathered = jax.lax.all_gather(buf, ax, axis=0, tiled=False)  # (S, ..., E)
-                    gathered = jnp.moveaxis(gathered, 0, -2)  # (..., S, E)
-                    halo = gathered[..., T.imp_src[0], T.imp_pos[0]]  # (..., I)
-                    ext = jnp.concatenate([fb, jnp.zeros(fb.shape[:-1] + (T.halo_size + 1,), fb.dtype)], axis=-1)
-                    ext = ext.at[..., T.imp_slot[0]].set(halo)
-                f = vmap(lambda e, x: self._refine_block(lvl, T, sidx, e, x, olf, lff))(ext.reshape((-1, ext.shape[-1])), xf.reshape((-1, T.block_fine)))
-                f = f.reshape(xi0.shape[:-1] + T.block_fine_shape)
+                    gathered = jax.lax.all_gather(fb[T.exp[0]], ax, axis=0, tiled=False)  # (S, E)
+                    ext = jnp.concatenate([fb, jnp.zeros((T.halo_size + 1,), fb.dtype)])
+                    ext = ext.at[T.imp_slot[0]].set(gathered[T.imp_src[0], T.imp_pos[0]])
+                f = self._refine_block(lvl, T, sidx, ext, xs[lvl + 1].reshape(-1), olf, lff)
             return f
 
-        in_specs = (P(ax), P(), tuple(P(ax) for _ in padded), spec)
-        out_specs = P(ax)
-        f = jax.shard_map(local, mesh=self.mesh, in_specs=in_specs, out_specs=out_specs, check_vma=False)
-        # shard_map concatenates along axis 0 of the block, which would be a leading batch axis: run the
-        # batch outside
-        batch = xi.shape[:-1]
+        xi_specs = tuple(P(ax, *([None] * (len(sh) - 1))) if sharded else P() for sharded, sh in zip(self.level_sharded, self._level_shapes))
+        in_specs = (xi_specs, P(), tuple(P(ax) for _ in padded), spec)
+        f = jax.shard_map(local, mesh=self.mesh, in_specs=in_specs, out_specs=P(ax), check_vma=False)
+        batch = self.batch_shape(xi)
         if len(batch) == 0:
-            return f(xi, base, tuple(padded), shard_levels)
-        return vmap(lambda x: f(x, base, tuple(padded), shard_levels))(xi.reshape((-1, xi.shape[-1]))).reshape(batch + self.shape)
+            return f(tuple(xi), base, tuple(padded), shard_levels)
+        # shard_map maps the first axis of every input onto the mesh: run leading batch axes outside
+        xs = [x.reshape((-1,) + sh) for x, sh in zip(xi, self._level_shapes)]
+        return vmap(lambda *x: f(x, base, tuple(padded), shard_levels))(*xs).reshape(batch + self.shape)
 
     def _refine_block(self, lvl, T, sidx, ext, xi_fine, olf, lff):
         """Refinement of one shard's block of cells at level `lvl` from the extended

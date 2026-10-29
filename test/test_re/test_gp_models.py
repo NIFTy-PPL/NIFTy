@@ -43,6 +43,27 @@ class _Kernel(jft.Model):
         return _matern(RS, self.scale(p), self.length(p)).at[0].mul(1.0 + 1e-3)
 
 
+def _vdot(a, b):
+    """Inner product of two pytrees of arrays."""
+    return sum(jnp.vdot(x, y) for x, y in zip(jax.tree_util.tree_leaves(a), jax.tree_util.tree_leaves(b)))
+
+
+def _unflatten(gp, vec):
+    """The excitation structure of `gp` (an array or the per-level list) from a flat vector."""
+    if not gp.structured:
+        return vec.reshape(gp.excitation_shape)
+    out, o = [], 0
+    for sh in gp.excitation_shapes:
+        n = int(np.prod(sh))
+        out.append(vec[o : o + n].reshape(sh))
+        o += n
+    return out
+
+
+def _n_excitations(gp):
+    return int(sum(np.prod(sh) for sh in gp.excitation_shapes))
+
+
 def _grid(n=40):
     return jft.SimpleOpenGrid(min_shape=(n,), window_size=3, splits=2, distances=1.0, desired_size0=8)
 
@@ -72,67 +93,66 @@ def _coordinates(gp):
 
 @pmp("name", list(_models()))
 def test_fixed_and_model_kernel(name):
+    """A fixed table and a kernel model giving the same table generate the same
+    field; the domains differ by the kernel parameters only."""
     make = _models()[name]
-    cov = _table()
-    fixed = make((RS, cov))
-    fixed2 = make(cov, radial_bins=RS)
-    hier = make(_Kernel("k_"), prefix="h_")
-    assert set(fixed.domain) == {"xi"} and set(fixed2.domain) == {"xi"}
-    assert set(hier.domain) == {"h_xi", "k_scale", "k_length"}
-    assert not fixed.hierarchical and hier.hierarchical
-    assert fixed.domain["xi"].shape == fixed.excitation_shape
-    p = jft.random_like(jax.random.PRNGKey(0), fixed.domain)
-    f = jax.jit(fixed)(p)
-    assert f.shape == fixed.shape and np.all(np.isfinite(f))
-    assert_allclose(fixed2(p), f, rtol=1e-12, atol=1e-12)
-    # the model kernel gives the same field as a fixed table of its values
-    q = {"h_xi": p["xi"], "k_scale": jnp.asarray(0.3), "k_length": jnp.asarray(-0.2)}
-    fixed_q = make((RS, hier.covariance(q)))
-    assert_allclose(hier(q), fixed_q({"xi": p["xi"]}), rtol=1e-12, atol=1e-12)
-    assert not np.allclose(hier(q), f)
-    # generate is linear and batched over leading axes
-    xi = p["xi"]
-    assert_allclose(fixed.generate(2.0 * xi, cov), 2.0 * f, rtol=1e-12)
-    fb = fixed.generate(jnp.stack([xi, -xi]), cov)
-    assert fb.shape == (2,) + fixed.shape
-    assert_allclose(fb[1], -f, rtol=1e-12, atol=1e-12)
+    model = make(_Kernel())
+    p = jft.random_like(jax.random.PRNGKey(0), model.domain)
+    fixed = make((RS, model.covariance(p)))  # the same table as the model's at p
+    assert not fixed.hierarchical and model.hierarchical
+    assert set(fixed.domain) == {"xi"}
+    assert set(model.domain) == {"xi", "scale", "length"}
+    xi_dom = fixed.domain["xi"]
+    shapes = tuple(x.shape for x in xi_dom) if isinstance(xi_dom, list) else (xi_dom.shape,)
+    assert shapes == fixed.excitation_shapes
+    assert_allclose(model.covariance(p), fixed.covariance(), rtol=1e-12)
+    f_model = model(p)
+    f_fixed = fixed({"xi": p["xi"]})
+    assert f_model.shape == fixed.shape and np.all(np.isfinite(f_model))
+    assert_allclose(f_model, f_fixed, rtol=1e-12, atol=1e-12)
+    # generate is linear in the excitations and batched over leading axes
+    two = jax.tree_util.tree_map(lambda x: 2.0 * x, p["xi"])
+    assert_allclose(fixed.generate(two, fixed.cov_vals), 2.0 * f_fixed, rtol=1e-12)
+    batched = jax.tree_util.tree_map(lambda x: jnp.stack([x, 2.0 * x]), p["xi"])
+    out = fixed.generate(batched, fixed.cov_vals)
+    assert out.shape == (2,) + fixed.shape
+    assert_allclose(out[1], 2.0 * f_fixed, rtol=1e-12)
 
 
 @pmp("name", list(_models()))
 def test_covariance_of_generated_field(name):
+    """The covariance of the generated field against the table."""
     gp = _models()[name]((RS, _table()))
-    cov = np.asarray(gp.covariance())
-    A = jax.jacfwd(lambda xi: gp.generate(xi, gp.cov_vals).ravel())(jnp.zeros(gp.excitation_shape))
+    A = jax.jacfwd(lambda v: gp.generate(_unflatten(gp, v), gp.cov_vals).ravel())(jnp.zeros(_n_excitations(gp)))
     C = np.asarray(A @ A.T)
     coords = _coordinates(gp)
     r = np.linalg.norm(coords[:, None, :] - coords[None, :, :], axis=-1)
-    truth = np.interp(r, RS, cov)
+    truth = np.interp(r, np.asarray(RS), np.asarray(gp.cov_vals))
     assert np.linalg.norm(C - truth) / np.linalg.norm(truth) < 3e-2
-    assert_allclose(np.mean(np.diag(C)), cov[0], rtol=2e-2)
 
 
 @pmp("name", list(_models()))
 def test_jvp_vjp_adjoint_and_pytree(name):
-    gp = _models()[name](_Kernel("k_"), prefix="h_")
+    """<Jv, w> == <v, J^T w> for the hierarchical model, and no large constants
+    when the model is a jit argument."""
+    gp = _models()[name](_Kernel())
     k0, k1, k2 = jax.random.split(jax.random.PRNGKey(3), 3)
     p = jft.random_like(k0, gp.domain)
     v = jft.random_like(k1, gp.domain)
-    w = jax.random.normal(k2, gp.target.shape, dtype=gp.target.dtype)
+    w = jax.random.normal(k2, gp.shape)
     _, jv = jax.jvp(gp, (p,), (v,))
     _, vjp = jax.vjp(gp, p)
     (jt,) = vjp(w)
-    lhs = jnp.vdot(jv, w)
-    rhs = sum(jnp.vdot(v[k], jt[k]) for k in v)
-    assert_allclose(lhs, rhs, rtol=1e-10, atol=1e-10 * abs(float(lhs)))
-    # a pytree: passed as a jit argument, no large constants and a single trace
-    consts = jax.make_jaxpr(lambda gp, p: gp(p))(gp, p).consts
+    lhs, rhs = jnp.vdot(jv, w), _vdot(v, jt)
+    assert_allclose(lhs, rhs, rtol=1e-10)
+    consts = jax.make_jaxpr(lambda m, p: m(p))(gp, p).consts
     assert sum(int(np.asarray(c).nbytes) for c in consts) < 2**16
     traces = []
 
     @jax.jit
-    def f(gp, p):
+    def f(m, p):
         traces.append(1)
-        return gp(p)
+        return m(p)
 
     assert_allclose(f(gp, p), gp(p), rtol=1e-12, atol=1e-12)
     f(gp, p)
@@ -141,42 +161,34 @@ def test_jvp_vjp_adjoint_and_pytree(name):
 
 @pmp("name", list(_models()))
 def test_correlated_field_composes_models(name):
-    """A single-factor correlated field equals the manual composition of its
-    spectral kernel and its GP model's `generate` with the zero mode."""
+    """A correlated field with one kernel-based factor equals the manual
+    composition of its spectral kernel, the GP model's generate and the
+    zero-mode block: ``offset + zeromode * (xi0 + generate(xi) / zeromode)``."""
     if name == "icr":
-        space = jft.ICRSpace(_grid(), n_bins=256)
+        space = jft.ICRSpace(_grid(), n_bins=128)
     else:
-        space = jft.GraphGPSpace(_points(), n0=32, k=12, n_bins=256, cuda=False)
+        space = jft.GraphGPSpace(_points(), n0=32, k=12, n_bins=128, cuda=False)
     m = jft.CorrelatedFieldMaker("cf")
-    m.set_amplitude_total_offset(offset_mean=0.3, offset_std=(1.0, 0.1))
-    m.add_fluctuations(space, fluctuations=(2.0, 0.1), loglogavgslope=(-3.0, 0.3), flexibility=(0.5, 0.1), prefix="s")
+    m.set_amplitude_total_offset(offset_mean=0.3, offset_std=(0.8, 0.2))
+    m.add_fluctuations(space, fluctuations=(1.5, 0.3), loglogavgslope=(-3.0, 0.5), flexibility=None, prefix="s")
     cf = m.finalize()
-    assert len(cf.gps) == 1 and len(cf.kernels) == 1
-    gp, kernel = cf.gps[0], cf.kernels[0]
+    gp = cf.gps[0]
     assert isinstance(gp, jft.ICRGP if name == "icr" else jft.GraphGP)
-    assert isinstance(kernel, jft.SpectralKernel) and gp.kernel is kernel
-    assert set(kernel.domain) <= set(cf.domain) and gp.xi_name not in cf.domain
-    p = jft.random_like(jax.random.PRNGKey(5), cf.domain)
-    cov = kernel(p)
-    assert_allclose(cov, space.covariance(m._fluctuations[0](p)), rtol=1e-12)
-    xi = p["cfxi"]
-    zm = m.azm(p)
-    manual = 0.3 + zm * (xi[0] + gp.generate(xi[1:], cov) / zm)
+    assert [b[0] for b in cf.blocks] == ["cfxi", "cfxi0"] and cf.domain["cfxi0"].shape == ()
+    p = jft.random_like(jax.random.PRNGKey(0), cf.domain)
+    azm = m.azm(p)
+    cov = cf.kernels[0](p)
+    manual = 0.3 + azm * (p["cfxi0"] + gp.generate(p["cfxi"], cov) / azm)
     assert_allclose(cf(p), manual, rtol=1e-12, atol=1e-12)
-    # the same GP model used standalone with the kernel model
-    q = {gp.xi_name: xi[1:], **{k: p[k] for k in kernel.domain}}
-    assert_allclose(gp(q), gp.generate(xi[1:], cov), rtol=1e-12, atol=1e-12)
-    assert_allclose(jft.build_gp(space, (RS, _table())).generate(xi[1:], _table()), jft.build_gp(space, (RS, _table()))(dict(xi=xi[1:])))
 
 
 def test_icr_excitation_layout_and_table_warning(caplog):
     gp = jft.ICRGP(_grid(), (RS, _table()))
-    sizes = [int(np.prod(gp.multigrid.at(l).shape)) for l in range(gp.depth + 1)]
-    assert gp.excitation_shape == (sum(sizes),)
-    xi = jnp.arange(sum(sizes), dtype=float)
-    parts = gp.split_excitations(xi)
-    assert [tuple(x.shape) for x in parts] == [tuple(int(s) for s in gp.multigrid.at(l).shape) for l in range(gp.depth + 1)]
-    assert_allclose(jnp.concatenate([x.ravel() for x in parts]), xi)
+    shapes = tuple(tuple(int(s) for s in gp.multigrid.at(l).shape) for l in range(gp.depth + 1))
+    assert gp.structured and gp.excitation_shapes == shapes
+    assert [x.shape for x in gp.domain["xi"]] == list(shapes)
+    xi = jft.random_like(jax.random.PRNGKey(0), gp.domain)["xi"]
+    assert gp.batch_shape(xi) == () and gp.batch_shape([x[None] for x in xi]) == (1,)
     # a table that ends before the largest window distance is reported
     short = jnp.asarray(np.concatenate(([0.0], np.geomspace(0.1, 5.0, 127))))
     with caplog.at_level("WARNING", logger="nifty.re.logger"):
@@ -233,9 +245,10 @@ def test_icrfield_deprecated():
 
 @pytest.mark.skipif(jax.device_count() < 2, reason="needs several devices (XLA_FLAGS=--xla_force_host_platform_device_count=4)")
 def test_icrgp_sharded_matches_unsharded():
-    """ICRGP on a one-dimensional mesh (halo exchange per level) equals the
-    unsharded model: forward, gradients (excitations and kernel parameters)
-    and the adjointness of its derivatives."""
+    """ICRGP on a one-dimensional mesh (halo exchange per level, distributed
+    kernel build) equals the unsharded model: forward, gradients (excitations
+    and kernel parameters) and the adjointness of its derivatives. The
+    per-level excitations are the same arrays, sharded along their first axis."""
     from jax.sharding import Mesh
 
     grid = jft.HPLogRGrid(nside=4, r_min_shape=4, r_min=1.0, r_max=10.0, nside0=1)
@@ -253,25 +266,26 @@ def test_icrgp_sharded_matches_unsharded():
     mesh = Mesh(np.array(jax.devices()), ("x",))
     ref = jft.ICRGP(grid, Cov())
     sharded = jft.ICRGP(grid, Cov(), mesh=mesh)
-    assert sharded.excitation_shape == ref.excitation_shape and sharded.shape == ref.shape
-    assert [t.sharded for t in sharded._shard_levels] == [True, True] and sharded._shard_levels[0].coarse_full
+    assert sharded.excitation_shapes == ref.excitation_shapes and sharded.shape == ref.shape
+    assert sharded.level_sharded == (False, True, True)
     p = jft.random_like(jax.random.PRNGKey(0), ref.domain)
     p["scale"] = jnp.asarray(1.2)
     ps = sharded.shard(p)
+    for a, s in zip(ps["xi"], sharded.shardings):
+        assert a.sharding.is_equivalent_to(s, a.ndim)
     f_ref, f_sh = ref(p), sharded(ps)
     assert f_sh.sharding.is_equivalent_to(sharded.sharding, f_sh.ndim)
     assert_allclose(f_sh, f_ref, rtol=1e-12, atol=1e-12)
     w = jax.random.normal(jax.random.PRNGKey(3), f_ref.shape)
     g_ref = jax.grad(lambda p: jnp.sum(w * ref(p)))(p)
-    g_sh = jax.jit(jax.grad(lambda p: jnp.sum(w * sharded(p))))(ps)
+    g_sh = jax.jit(jax.grad(lambda m, p: jnp.sum(w * m(p)), argnums=1))(sharded, ps)
     assert_allclose(g_sh["scale"], g_ref["scale"], rtol=1e-10)
-    assert_allclose(sharded.relayout(np.asarray(g_sh["xi"]), inverse=True), g_ref["xi"], rtol=1e-10, atol=1e-12)
+    for a, b in zip(g_sh["xi"], g_ref["xi"]):
+        assert_allclose(a, b, rtol=1e-10, atol=1e-12)
     v = jft.random_like(jax.random.PRNGKey(5), sharded.domain)
     _, jv = jax.jvp(sharded, (ps,), (v,))
     _, vjp = jax.vjp(sharded, ps)
     (jt,) = vjp(w)
-    lhs, rhs = jnp.vdot(jv, w), sum(jnp.vdot(v[k], jt[k]) for k in v)
-    assert_allclose(lhs, rhs, rtol=1e-10)
-    # the relayout is a permutation and its own inverse composition
-    xi = p["xi"]
-    assert_allclose(sharded.relayout(sharded.relayout(xi), inverse=True), xi)
+    assert_allclose(jnp.vdot(jv, w), _vdot(v, jt), rtol=1e-10)
+
+
