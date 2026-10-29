@@ -463,19 +463,48 @@ def test_intermediate_samples_survive_crash(tmp_path, monkeypatch, save):
     assert not path.exists()
 
 
+def _plant_intermediate_samples(opt_vi, samples, nit):
+    """Write a file as if `update` had crashed after drawing samples."""
+    with open(opt_vi.intermediate_samples_path, "wb") as f:
+        pickle.dump({"nit": nit, "samples": samples, "st_smpls": None}, f)
+
+
 def test_intermediate_samples_from_other_iteration_are_ignored(tmp_path, monkeypatch):
     opt_vi, samples, state = _make_opt_vi_tiny(tmp_path, save=True)
     path = tmp_path / "smpls.pkl"
 
     # Plant a file that claims to belong to iteration 7.
-    with open(path, "wb") as f:
-        pickle.dump({"nit": 7, "samples": samples, "st_smpls": None}, f)
+    _plant_intermediate_samples(opt_vi, samples, nit=7)
 
     draws = _count_calls(monkeypatch, opt_vi, "draw_samples")
     opt_vi.update(samples, state)  # state.nit == 0
 
     assert len(draws) == 1  # did not trust the stale file
     assert not path.exists()  # and cleaned it up
+
+
+@pmp("resume", (True, False))
+def test_optimize_kl_resume_controls_intermediate_samples(
+    tmp_path, monkeypatch, resume
+):
+    opt_vi, samples, state = _make_opt_vi_tiny(tmp_path, save=True)
+    _plant_intermediate_samples(opt_vi, samples, nit=state.nit)
+
+    draws = _count_calls(monkeypatch, opt_vi, "draw_samples")
+    jft.optimize_kl(
+        None,  # likelihood is unused when `_optimize_vi` is given
+        samples.pos,
+        key=state.key,
+        n_total_iterations=1,
+        n_samples=1,
+        odir=tmp_path,
+        resume=resume,
+        _optimize_vi=opt_vi,
+        _optimize_vi_state=state,
+    )
+
+    # Only a resumed run may pick up the leftover samples.
+    assert len(draws) == (0 if resume else 1)
 
 
 @pmp("save_intermediate_samples", (True, False))

@@ -958,6 +958,9 @@ def optimize_kl(
     if not resume and sanity_fn is not None:
         with open(sanity_fn, "w"):
             pass
+    if not resume and opt_vi.intermediate_samples_path is not None:
+        # A fresh run must not start from samples left over by an earlier run
+        opt_vi.intermediate_samples_path.unlink(missing_ok=True)
 
     nm = "OPTIMIZE_KL"
     for i in range(opt_vi_st.nit, opt_vi.n_total_iterations):
