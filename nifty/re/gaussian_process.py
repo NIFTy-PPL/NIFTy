@@ -202,10 +202,15 @@ class GraphGP(KernelGP):
 
         self.cuda = bool(cuda)
         self.n0, self.k = int(n0), int(k)
-        if mesh is None and isinstance(points, jax.Array) and isinstance(points.sharding, NamedSharding) and points.sharding.spec and points.sharding.spec[0] is not None:
-            mesh = points.sharding.mesh
+        if mesh is None and isinstance(points, jax.Array) and isinstance(points.sharding, NamedSharding) and points.sharding.spec:
+            if points.sharding.spec[0] is not None:
+                mesh = points.sharding.mesh
+            elif any(s is not None for s in points.sharding.spec):
+                logger.warning(
+                    f"GraphGP: the points are sharded along a non-leading axis ({points.sharding.spec}); only the leading axis can be sharded, the field is generated unsharded"
+                )
         if mesh is not None and len(mesh.axis_names) != 1:
-            raise ValueError("mesh must be one-dimensional")
+            raise ValueError(f"mesh must be one-dimensional (one sharded axis per field), got axes {mesh.axis_names}")
         self.mesh = mesh
         if isinstance(points, ShardedGraph):
             graph = points
@@ -579,6 +584,8 @@ class ICRGP(KernelGP):
         mesh: Optional[Mesh] = None,
     ):
         self.multigrid = grid
+        if mesh is not None and len(mesh.axis_names) != 1:
+            raise ValueError(f"mesh must be one-dimensional (one sharded axis per field), got axes {mesh.axis_names}")
         self.mesh = mesh
         self._shard_levels = None
         self.icr_kernel = ICRKernel(grid, None, window_size=window_size)
