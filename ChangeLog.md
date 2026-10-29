@@ -15,7 +15,8 @@ Change categories:
 # NIFTy.re
 - New features
   - General Gaussian process models with a tabulated isotropic kernel:
-    `ICRGP(grid, kernel, ...)` generates on a multigrid by iterative charted
+    `ICRGP(grid, kernel, ...)` (excitations: one array per level in the
+    level's grid shape) generates on a multigrid by iterative charted
     refinement (memory-bounded chunks of cells and of refinement windows) and
     `GraphGP(points_or_graph, kernel, ...)` on arbitrary points with the
     optional `graphgp` package. The kernel is either a model returning the
@@ -30,11 +31,16 @@ Change categories:
     `GraphGPSpace` (points or a graph and the graphgp settings). At
     `finalize` the kernel-based factors get a `SpectralKernel` (amplitude to
     covariance table) and an `ICRGP`/`GraphGP` model built from the space
-    (`build_gp`). Kernel-based factors have a leading zero-mode slot in the
-    single excitation array, so that products of harmonic and kernel-based
-    factors keep the `offset_mean + zeromode * prod(1 + a_i / zeromode)`
-    structure. `finalize` returns a `CorrelatedField` model whose spaces,
-    amplitudes, kernels and GP models are dynamic pytree children.
+    (`build_gp`). The excitations are blocks: the main block `prefix + "xi"`
+    holds the product of all factors' excitations (a list of per-level
+    arrays if a multigrid factor is present) and one block per combination
+    of kernel-based factors at their zero mode (`prefix + "xi0"` for a single
+    such factor) holds the excitations of the remaining factors, so that
+    products of harmonic and kernel-based factors keep the `offset_mean +
+    zeromode * prod(1 + a_i / zeromode)` structure; harmonic-only fields keep
+    the single array they had. `finalize` returns a `CorrelatedField` model
+    whose spaces, amplitudes, kernels and GP models are dynamic pytree
+    children.
   - Extend `estimate_evidence_lower_bound` with stochastic Lanczos quadrature
     for the trace-log, signal- and data-space evaluation, optional Radau
     diagnostics, and an analytic Gaussian-prior contribution.
