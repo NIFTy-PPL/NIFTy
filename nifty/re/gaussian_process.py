@@ -632,15 +632,25 @@ class ICRGP(KernelGP):
             kernel, radial_bins=radial_bins, shape=self._level_shapes[-1], excitation_shapes=self._level_shapes, prefix=prefix,
             dtype=dtype, allow_callable=True,
         )
-        d_max = float(np.max(self._base_dist))
+        bd = np.asarray(self._base_dist)
+        d_max, d_min = float(np.max(bd)), float(np.min(bd[bd > 0])) if np.any(bd > 0) else np.inf
         for l in levels:
             for start in range(0, l.n_unique, self.kernel_chunk):
-                d_max = max(d_max, float(np.max(jax.jit(_distances)(l.ucoords[start : start + self.kernel_chunk]))))
-        self.max_distance = d_max
+                dd = np.asarray(jax.jit(_distances)(l.ucoords[start : start + self.kernel_chunk]))
+                d_max = max(d_max, float(np.max(dd)))
+                if np.any(dd > 0):
+                    d_min = min(d_min, float(np.min(dd[dd > 0])))
+        self.max_distance, self.min_distance = d_max, d_min
         if self.radial_bins is not None and d_max > float(self.radial_bins[-1]):
             logger.warning(
                 f"the covariance table ends at {float(self.radial_bins[-1]):.4g} but the refinement windows reach"
                 f" distance {d_max:.4g}; the covariance is zero beyond the table"
+            )
+        if self.radial_bins is not None and self.radial_bins.shape[0] > 1 and d_min < float(self.radial_bins[1]):
+            logger.warning(
+                f"the covariance table's first bin is at {float(self.radial_bins[1]):.4g} but distinct points are"
+                f" {d_min:.4g} apart: separations below the first bin interpolate towards the nugget-inflated C(0)"
+                f" and can make the window covariances indefinite (NaN); choose r_min <= {0.5 * d_min:.4g}"
             )
 
     @property

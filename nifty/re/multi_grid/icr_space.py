@@ -35,8 +35,9 @@ class ICRSpace(KernelSpace):
         By default `r_max` is 1.05 times the diagonal of the bounding box of
         the points of all levels (which bounds every window distance) and
         `r_min` half the smallest distance in the window of one finest-level
-        cell; the ICRGP checks the windows it actually uses against the table
-        and warns if they reach beyond it.
+        cell or among the base-level points; the ICRGP checks the windows it
+        actually uses against the table and warns if they reach beyond it or
+        fall below its first bin.
         The covariance is interpolated linearly between the (logarithmically
         spaced) radial bins; too few bins per decade make the interpolated
         window covariances indefinite and the Cholesky factorization fails
@@ -102,12 +103,16 @@ class ICRSpace(KernelSpace):
                 hi = c[1] if hi is None else jnp.maximum(hi, c[1])
             r_max = 1.05 * float(jnp.linalg.norm(hi - lo))
         if r_min is None and (radial_bins is None or k_bins is None):
-            # half the smallest distance in the window of one finest-level cell
+            # half the smallest distance in the window of one finest-level cell or among the
+            # base-level points: padded coarse levels can hold closer pairs than the finest level
+            # (e.g. a radial grid padded inwards), and separations below the first radial bin
+            # would interpolate to the nugget-inflated C(0) and spoil the base Cholesky
             kernel = ICRKernel(grid, None, window_size=window_size)
             lvl = grid.depth - 1
             cell = np.asarray(grid.at(lvl).refined_indices()).reshape(grid.at(lvl).ndim, -1)[:, :1]
             d = np.asarray(jax.jit(lambda i: _distances(_window_coordinates(kernel, i, lvl)))(jnp.asarray(cell)))
-            r_min = 0.5 * float(d[d > 0].min())
+            d0 = np.asarray(jax.jit(lambda i: kernel.get_kernel_distmat(i, None))(jnp.array([-1])))
+            r_min = 0.5 * min(float(d[d > 0].min()), float(d0[d0 > 0].min()))
         super().__init__(
             self._level_shapes[-1],
             dim,
