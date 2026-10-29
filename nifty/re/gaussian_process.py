@@ -374,8 +374,11 @@ def _quantized_hashes(dist, atol, rtol, keys):
     return jnp.stack([(q * k[jnp.newaxis, :]).sum(axis=1) for k in keys], axis=1)
 
 
-def _compress_scan(kernel, cells, level, rtol, atol):
-    """Greedy tolerance merge of the distance matrices of `cells`."""
+def _compress_scan(kernel, cells, level, rtol, atol, buffer_size):
+    """Greedy tolerance merge of the distance matrices of `cells`: every matrix
+    is compared with the uniques found so far (at most `buffer_size` of them;
+    a ``ValueError`` if more are needed) and joins the first one within
+    ``atol + rtol * |.|``, as dust's ``compress_kernel(method="scan")``."""
 
     def get_matrix(idx):
         return kernel.get_kernel_distmat(idx, level)[0]
@@ -385,11 +388,12 @@ def _compress_scan(kernel, cells, level, rtol, atol):
         return u, invid
 
     shp = jax.eval_shape(get_matrix, cells[:, 0]).shape
-    # the merge of n representatives yields at most n uniques
-    unique = jnp.full((cells.shape[1] + 1,) + shp, jnp.nan)
+    n_buf = min(int(buffer_size), cells.shape[1]) + 1  # the merge of n representatives yields at most n uniques
+    unique = jnp.full((n_buf,) + shp, jnp.nan)
     unique, invid = jax.lax.scan(step, unique, np.arange(cells.shape[1]))
     _, idx, inverse = np.unique(np.asarray(invid), return_index=True, return_inverse=True)
-    assert np.all(np.isnan(unique[idx.size :]))
+    if idx.size >= n_buf or not np.all(np.isnan(unique[idx.size :])):
+        raise ValueError(f"more than `buffer_size` {buffer_size} unique windows after the merge at level {level}")
     return cells[:, idx], inverse.reshape(-1)
 
 
@@ -408,11 +412,12 @@ def compress_indices(
     the index of each cell's representative ``(n,)``.
 
     The distance matrices are quantized on the tolerance grid and hashed in
-    chunks, identical hashes are grouped, and, if there are at most
-    `buffer_size` groups, the group representatives are merged with a greedy
-    tolerance scan (quadratic in their number) so that groups split by a bin
-    boundary end up together. Every cell is mapped to a representative whose
-    distance matrix is within (twice) the tolerance of its own.
+    chunks, identical hashes are grouped, and the group representatives are
+    merged with a greedy tolerance scan (linear in their number, times the
+    number of uniques) so that groups split by a bin boundary end up together;
+    `buffer_size` bounds the number of uniques after the merge (``ValueError``
+    beyond it). Every cell is mapped to a representative whose distance matrix
+    is within (twice) the tolerance of its own.
     """
     if atol <= 0.0 or rtol <= 0.0:
         raise ValueError("compression needs `atol > 0` and `rtol > 0`")
@@ -440,15 +445,25 @@ def compress_indices(
     _, first, inverse = np.unique(hashes, axis=0, return_index=True, return_inverse=True)
     inverse = inverse.reshape(-1)
     uids = cells[:, first]
-    if 1 < uids.shape[1] <= buffer_size:
-        uids, inverse2 = _compress_scan(kernel, jnp.asarray(uids), level, rtol, atol)
+    if uids.shape[1] > 1:
+        # always merge the representatives (dust's behaviour): the quantization splits one tolerance
+        # ball into many hash groups at fine levels (1.0 M groups for 4263 uniques at nside 128 x 516
+        # bins, 2026-10-29); `buffer_size` caps the uniques after the merge, not the groups
+        if uids.shape[1] > buffer_size:
+            logger.info(f"level {level}: merging {uids.shape[1]} hash groups (more than `buffer_size` {buffer_size}) with the tolerance scan")
+        # the scan compares every representative with the whole uniques buffer: start small and
+        # grow it (doubling) when the uniques exceed it, up to `buffer_size`
+        n_buf = min(4096, buffer_size)
+        while True:
+            try:
+                uids_m, inverse2 = _compress_scan(kernel, jnp.asarray(uids), level, rtol, atol, n_buf)
+                break
+            except ValueError:
+                if n_buf >= buffer_size:
+                    raise
+                n_buf = min(2 * n_buf, buffer_size)
         inverse = inverse2[inverse]
-        uids = np.asarray(uids)
-    elif uids.shape[1] > buffer_size:
-        logger.info(
-            f"{uids.shape[1]} hash groups exceed `buffer_size` {buffer_size};"
-            " the representatives are not merged"
-        )
+        uids = np.asarray(uids_m)
     return uids, inverse
 
 
