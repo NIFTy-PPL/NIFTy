@@ -54,6 +54,7 @@ class GraphGPSpace(KernelSpace):
         Explicit bins in place of `r_min`, `r_max` and `n_bins`.
     """
 
+    points: Any = field(metadata=dict(static=False))
     graph: Any = field(metadata=dict(static=False))
 
     def __init__(
@@ -72,25 +73,32 @@ class GraphGPSpace(KernelSpace):
         radial_bins=None,
         k_bins=None,
     ):
+        from .graphgp_sharded import ShardedGraph
+
         self.cuda = bool(cuda)
         self.n0, self.k = int(n0), int(k)
-        if graph is None:
-            if points is None:
-                raise TypeError("either `points` or `graph` is required")
-            points = np.asarray(points)
-            shape = points.shape[:-1] if shape is None else tuple(shape)
-            graph = GraphGP.build_graph(points.reshape(-1, points.shape[-1]), n0=self.n0, k=self.k, cuda=self.cuda)
-        elif shape is None:
-            shape = (int(graph.points.shape[0]),) if points is None else np.shape(points)[:-1]
-        if int(np.prod(shape)) != int(graph.points.shape[0]):
-            raise ValueError(f"shape {shape} does not match the {graph.points.shape[0]} graph points")
+        if points is None and graph is None:
+            raise TypeError("either `points` or `graph` is required")
+        if points is not None:
+            shape = tuple(np.shape(points)[:-1]) if shape is None else tuple(shape)
+            dim = int(np.shape(points)[-1])
+        elif isinstance(graph, ShardedGraph):
+            shape = (graph.n_shards * graph.block_size,) if shape is None else tuple(shape)
+            dim = int(np.shape(graph.ext_points)[-1])
+        else:
+            shape = (int(graph.points.shape[0]),) if shape is None else tuple(shape)
+            dim = int(graph.points.shape[1])
+        n_points = graph.n_shards * graph.block_size if isinstance(graph, ShardedGraph) else int(graph.points.shape[0]) if graph is not None else int(np.prod(shape))
+        if int(np.prod(shape)) != n_points:
+            raise ValueError(f"shape {shape} does not match the {n_points} graph points")
+        self.points = points
         self.graph = graph
-        pts = np.asarray(graph.points, dtype=np.float64)
-        dim = int(pts.shape[1])
-        if r_max is None and radial_bins is None:
-            r_max = float(np.linalg.norm(pts.max(axis=0) - pts.min(axis=0))) * (1.0 + 1e-3)
-        if r_min is None and (radial_bins is None or k_bins is None):
-            r_min = 0.5 * self._min_neighbour_distance(pts, np.asarray(graph.neighbors))
+        if (r_max is None and radial_bins is None) or (r_min is None and (radial_bins is None or k_bins is None)):
+            pts = self._coordinates()
+            if r_max is None and radial_bins is None:
+                r_max = float(np.linalg.norm(pts.max(axis=0) - pts.min(axis=0))) * (1.0 + 1e-3)
+            if r_min is None and (radial_bins is None or k_bins is None):
+                r_min = 0.5 * self._min_neighbour_distance(pts)
         super().__init__(
             shape,
             dim,
@@ -102,32 +110,55 @@ class GraphGPSpace(KernelSpace):
             k_bins=k_bins,
         )
 
+    def _coordinates(self):
+        """The points as a flat ``(n, dim)`` float64 numpy array (any order)."""
+        from .graphgp_sharded import ShardedGraph
+
+        if self.points is not None:
+            return np.asarray(self.points, dtype=np.float64).reshape(-1, np.shape(self.points)[-1])
+        if isinstance(self.graph, ShardedGraph):
+            g = self.graph
+            return np.asarray(g.ext_points, dtype=np.float64)[:, : g.block_size].reshape(-1, np.shape(g.ext_points)[-1])
+        return np.asarray(self.graph.points, dtype=np.float64)
+
     @staticmethod
-    def _min_neighbour_distance(pts, neighbors, chunk=2**18):
-        n0 = pts.shape[0] - neighbors.shape[0]
-        dmin = np.inf
-        for start in range(0, neighbors.shape[0], chunk):
-            sl = slice(start, min(start + chunk, neighbors.shape[0]))
-            d = np.linalg.norm(pts[n0 + start : n0 + sl.stop, np.newaxis, :] - pts[neighbors[sl]], axis=-1)
-            d = d[d > 0]
-            if d.size:
-                dmin = min(dmin, float(d.min()))
-        if not np.isfinite(dmin):
-            raise ValueError("could not infer `r_min` from the graph; pass it explicitly")
-        return dmin
+    def _min_neighbour_distance(pts, n_sample=2**17, seed=0):
+        """Smallest distance between a point and its nearest neighbour, over a
+        random sample of the points (the full set for small sets); this sets the
+        finest bin of the covariance table (``r_min = 0.5 x``)."""
+        from scipy.spatial import cKDTree
+
+        tree = cKDTree(pts)
+        q = pts if pts.shape[0] <= n_sample else pts[np.random.default_rng(seed).choice(pts.shape[0], n_sample, replace=False)]
+        d, _ = tree.query(q, k=2)
+        d = d[:, 1]
+        d = d[d > 0]
+        if d.size == 0:
+            raise ValueError("could not infer `r_min` from the points; pass it explicitly")
+        return float(d.min())
 
     build_graph = staticmethod(GraphGP.build_graph)
 
     @property
-    def points(self):
-        """The points in their original order, shape ``shape + (dim,)``."""
-        pts = np.asarray(self.graph.points)
-        if self.graph.indices is not None:
-            out = np.empty_like(pts)
-            out[np.asarray(self.graph.indices)] = pts
-            pts = out
-        return pts.reshape(self.shape + (pts.shape[-1],))
+    def n_points(self):
+        return int(np.prod(self.shape))
+
+    @property
+    def mesh(self):
+        """The mesh of sharded `points` or of a sharded graph, else None."""
+        from jax.sharding import NamedSharding
+
+        p = self.points
+        if isinstance(p, jax.Array) and isinstance(p.sharding, NamedSharding) and p.sharding.spec and p.sharding.spec[0] is not None:
+            return p.sharding.mesh
+        return None
 
     @property
     def gp_kwargs(self) -> dict:
         return dict(n0=self.n0, k=self.k, cuda=self.cuda)
+
+    def points_or_graph(self):
+        """What :class:`~nifty.re.gaussian_process.GraphGP` is built from: the
+        prebuilt graph if any, else the points (the graph is built lazily, on
+        the devices when a mesh is given)."""
+        return self.graph if self.graph is not None else self.points

@@ -12,3 +12,4 @@ from .grid_impl import (
     HPBrokenLogRGrid,
 )
 from .matern import MaternCovarianceModel
+from .grid_points import grid_points

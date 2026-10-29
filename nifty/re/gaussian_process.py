@@ -170,17 +170,13 @@ class GraphGP(KernelGP):
 
     Parameters
     ----------
-    points : array ``(..., dim)`` or graphgp.Graph
+    points : array ``(..., dim)``, graphgp.Graph or ShardedGraph
         The points (the field gets the shape ``points.shape[:-1]``), or a graph
         built with :meth:`build_graph` (then the shape is ``(n_points,)``
-        unless `shape` is given).
+        unless `shape` is given). A ``jax.Array`` sharded along its leading
+        axis implies ``mesh`` (its mesh).
     kernel : Model, array, (radial_bins, cov_vals) or callable
-        See :class:`KernelGP`; additionally a covariance function ``k(x, y)``
-        of two coordinate arrays (or a model returning one, such as
-        :class:`~nifty.re.multi_grid.MaternCovarianceModel` in mode ``"ICR"``)
-        is accepted and evaluated on the window coordinates. The compression
-        of the windows groups them by their distance matrices, which is exact
-        for isotropic kernels only; pass ``compress=None`` otherwise. graphgp holds the covariance constant beyond the
+        See :class:`KernelGP`; graphgp holds the covariance constant beyond the
         last radial bin, so the bins must reach the largest separation.
     n0, k : int
         Points generated densely before the refinement; nearest predecessors
@@ -189,31 +185,74 @@ class GraphGP(KernelGP):
         Use the graphgp CUDA extension (the default).
     shape : tuple, optional
         Shape of the field for a given graph.
+    mesh : jax.sharding.Mesh, optional
+        One-dimensional device mesh: the field (and its excitations) is sharded
+        along its leading axis in contiguous blocks, generated with compacted
+        levels and a halo exchange (:mod:`nifty.re.graphgp_sharded`). For
+        points the graph is built on the devices (:func:`~nifty.re.graphgp_sharded.build_sharded_graph`);
+        a global ``graphgp.Graph`` is converted (:func:`~nifty.re.graphgp_sharded.sharded_graph_from_graph`).
+        The leading axis must be divisible by the number of devices.
     """
 
     graph: Any = dataclasses.field(metadata=dict(static=False))
+    mesh: Optional[Mesh] = dataclasses.field(metadata=dict(static=True))
 
-    def __init__(self, points, kernel, *, n0=512, k=16, cuda=True, shape=None, prefix="", radial_bins=None, dtype=jnp.float64):
+    def __init__(self, points, kernel, *, n0=512, k=16, cuda=True, shape=None, prefix="", radial_bins=None, dtype=jnp.float64, mesh=None):
+        from .graphgp_sharded import ShardedGraph
+
         self.cuda = bool(cuda)
         self.n0, self.k = int(n0), int(k)
-        if hasattr(points, "neighbors") and hasattr(points, "offsets"):
+        if mesh is None and isinstance(points, jax.Array) and isinstance(points.sharding, NamedSharding) and points.sharding.spec and points.sharding.spec[0] is not None:
+            mesh = points.sharding.mesh
+        if mesh is not None and len(mesh.axis_names) != 1:
+            raise ValueError("mesh must be one-dimensional")
+        self.mesh = mesh
+        if isinstance(points, ShardedGraph):
             graph = points
-            shape = (int(graph.points.shape[0]),) if shape is None else tuple(shape)
+            if mesh is None:
+                raise TypeError("a ShardedGraph needs the mesh it was built for")
+            n_points = graph.n_shards * graph.block_size
+            shape = (n_points,) if shape is None else tuple(shape)
+        elif hasattr(points, "neighbors") and hasattr(points, "offsets"):
+            graph = points
+            n_points = int(graph.points.shape[0])
+            shape = (n_points,) if shape is None else tuple(shape)
+            if mesh is not None:
+                graph = self.build_graph(graph, n0=self.n0, k=self.k, cuda=self.cuda, mesh=mesh)
         else:
-            points = np.asarray(points)
-            shape = points.shape[:-1] if shape is None else tuple(shape)
-            graph = self.build_graph(points.reshape(-1, points.shape[-1]), n0=self.n0, k=self.k, cuda=self.cuda)
-        if int(np.prod(shape)) != int(graph.points.shape[0]):
-            raise ValueError(f"shape {shape} does not match the {graph.points.shape[0]} graph points")
+            shape = tuple(points.shape[:-1]) if shape is None else tuple(shape)
+            graph = self.build_graph(points, n0=self.n0, k=self.k, cuda=self.cuda, mesh=mesh)
+            n_points = graph.n_shards * graph.block_size if mesh is not None else int(graph.points.shape[0])
+        if int(np.prod(shape)) != n_points:
+            raise ValueError(f"shape {shape} does not match the {n_points} graph points")
+        if mesh is not None:
+            S = mesh.shape[mesh.axis_names[0]]
+            if graph.n_shards != S:
+                raise ValueError(f"graph sharded {graph.n_shards}-fold, mesh has {S} devices")
+            if shape[0] % S:
+                raise ValueError(f"leading axis {shape[0]} is not divisible into {S} blocks")
+            put = partial(jax.device_put, device=NamedSharding(mesh, P(mesh.axis_names[0])))
+            rep = partial(jax.device_put, device=NamedSharding(mesh, P()))
+            graph = jax.tree_util.tree_map(put, graph)
+            graph = dataclasses.replace(graph, init_src=rep(graph.init_src), init_pos=rep(graph.init_pos), initial_points=rep(graph.initial_points))
         self.graph = graph
         super().__init__(kernel, radial_bins=radial_bins, shape=shape, excitation_shapes=(shape,), prefix=prefix, dtype=dtype)
 
     @staticmethod
-    def build_graph(points, *, n0: int, k: int, cuda: bool = False):
-        """``graphgp.build_graph`` on ``points`` of shape ``(n, dim)`` with the
-        dtypes of the CUDA kernels (float32 points, int32 neighbours)."""
+    def build_graph(points, *, n0: int, k: int, cuda: bool = False, mesh=None):
+        """``graphgp.build_graph`` on ``points`` of shape ``(..., dim)`` with the
+        dtypes of the CUDA kernels (float32 points, int32 neighbours). With a
+        `mesh` the graph is built on the devices and returned as a
+        :class:`~nifty.re.graphgp_sharded.ShardedGraph` (``points`` may also be
+        a global ``graphgp.Graph`` to convert)."""
         import graphgp as ggp
 
+        if mesh is not None:
+            from .graphgp_sharded import build_sharded_graph, sharded_graph_from_graph
+
+            if hasattr(points, "neighbors") and hasattr(points, "offsets"):
+                return sharded_graph_from_graph(points, mesh.shape[mesh.axis_names[0]])
+            return build_sharded_graph(points, mesh, n0=n0, k=k, cuda=cuda)
         points = np.asarray(points, dtype=np.float32).reshape(-1, np.shape(points)[-1])
         n0 = min(int(n0), points.shape[0])
         if cuda:
@@ -229,6 +268,10 @@ class GraphGP(KernelGP):
     @property
     def points(self):
         """The points in their original order, shape ``shape + (dim,)``."""
+        if self.mesh is not None:
+            g = self.graph
+            pts = np.asarray(g.ext_points)[:, : g.block_size].reshape(-1, np.shape(g.ext_points)[-1])
+            return pts.reshape(self.shape + (pts.shape[-1],))
         pts = np.asarray(self.graph.points)
         if self.graph.indices is not None:
             out = np.empty_like(pts)
@@ -236,12 +279,42 @@ class GraphGP(KernelGP):
             pts = out
         return pts.reshape(self.shape + (pts.shape[-1],))
 
+    # ---- sharding (mesh given)
+    @property
+    def axis(self):
+        return None if self.mesh is None else self.mesh.axis_names[0]
+
+    @property
+    def sharding(self):
+        """Sharding of the excitations and of the field (leading axis on the mesh)."""
+        if self.mesh is None:
+            return None
+        return NamedSharding(self.mesh, P(self.axis, *([None] * (len(self.shape) - 1))))
+
+    @property
+    def shardings(self):
+        """Per excitation block (one): its sharding."""
+        return (self.sharding,)
+
+    def shard(self, x):
+        """Places the excitations of a parameter dict on the mesh."""
+        x = dict(x)
+        x[self.xi_name] = jax.device_put(np.asarray(x[self.xi_name]), self.sharding)
+        return x
+
     def generate(self, xi, cov_vals):
         import graphgp as ggp
 
         rs = self.radial_bins
         batch = self.batch_shape(xi)
         xi = xi.reshape((-1, int(np.prod(self.excitation_shape))))
+        if self.mesh is not None:
+            from .graphgp_sharded import _ShardedGenerate
+
+            gen = _ShardedGenerate(self.graph, self.mesh, cuda=self.cuda, radial_bins=rs)
+            if len(batch) == 0:
+                return gen(xi[0], cov_vals).reshape(self.shape)
+            return jax.vmap(lambda x: gen(x, cov_vals))(xi).reshape(batch + self.shape)
 
         def gen(x):
             return ggp.generate(self.graph, (rs, cov_vals), x, cuda=self.cuda)

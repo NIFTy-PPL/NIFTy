@@ -289,3 +289,120 @@ def test_icrgp_sharded_matches_unsharded():
     assert_allclose(jnp.vdot(jv, w), _vdot(v, jt), rtol=1e-10)
 
 
+
+
+_needs_graphgp_and_devices = pytest.mark.skipif(
+    jax.device_count() < 2 or "graphgp" not in _models(),
+    reason="needs graphgp and several devices (XLA_FLAGS=--xla_force_host_platform_device_count=4)",
+)
+
+
+def _sky_points(n_pix=16, n_bins=40, seed=1):
+    """Points in (pixel, bin) order: pixel directions on a sphere, bins are radii;
+    contiguous pixel blocks are patches of the sky."""
+    theta = np.linspace(0.2, 3.0, n_pix)
+    phi = np.linspace(0.0, 6.0, n_pix)
+    r = np.geomspace(0.5, 10.0, n_bins)
+    direction = np.stack([np.sin(theta) * np.cos(phi), np.sin(theta) * np.sin(phi), np.cos(theta)], -1)
+    pts = direction[:, None, :] * r[None, :, None]
+    return pts + 0.1 * np.random.default_rng(seed).normal(size=pts.shape)  # (n_pix, n_bins, 3)
+
+
+@_needs_graphgp_and_devices
+def test_graphgp_sharded_matches_unsharded():
+    """GraphGP on a one-dimensional mesh (sharded graph of a global graph: compacted
+    levels, halo exchange, custom derivatives) equals the unsharded model: forward,
+    gradients, adjointness, batches."""
+    from jax.sharding import Mesh
+
+    pts = _sky_points()
+    mesh = Mesh(np.array(jax.devices()), ("x",))
+    graph = jft.GraphGP.build_graph(pts, n0=32, k=8, cuda=False)
+    ref = jft.GraphGP(graph, _Kernel(), shape=pts.shape[:-1], cuda=False)
+    sharded = jft.GraphGP(graph, _Kernel(), shape=pts.shape[:-1], cuda=False, mesh=mesh)
+    assert sharded.shape == ref.shape and sharded.excitation_shapes == ref.excitation_shapes
+    assert_allclose(sharded.points, ref.points)
+    p = jft.random_like(jax.random.PRNGKey(0), ref.domain)
+    ps = sharded.shard(p)
+    assert ps["xi"].sharding.is_equivalent_to(sharded.sharding, ps["xi"].ndim)
+    f_ref, f_sh = ref(p), sharded(ps)
+    assert f_sh.sharding.is_equivalent_to(sharded.sharding, f_sh.ndim)
+    assert_allclose(f_sh, f_ref, rtol=1e-10, atol=1e-12)
+    w = jax.random.normal(jax.random.PRNGKey(3), f_ref.shape)
+    g_ref = jax.grad(lambda p: jnp.sum(w * ref(p)))(p)
+    g_sh = jax.jit(jax.grad(lambda m, p: jnp.sum(w * m(p)), argnums=1))(sharded, ps)
+    for key in p:
+        assert_allclose(g_sh[key], g_ref[key], rtol=1e-9, atol=1e-12, err_msg=key)
+    v = jft.random_like(jax.random.PRNGKey(5), sharded.domain)
+    _, jv = jax.jvp(sharded, (ps,), (v,))
+    _, vjp = jax.vjp(sharded, ps)
+    (jt,) = vjp(w)
+    assert_allclose(jnp.vdot(jv, w), _vdot(v, jt), rtol=1e-10)
+    # batches of excitations
+    xi_b = jax.random.normal(jax.random.PRNGKey(7), (3,) + ref.shape)
+    cov = ref.covariance(p)
+    assert_allclose(sharded.generate(xi_b, cov), ref.generate(xi_b, cov), rtol=1e-10, atol=1e-12)
+
+
+@_needs_graphgp_and_devices
+def test_build_sharded_graph_matches_brute_force_and_generate():
+    """The graph built on the devices (per-shard graphgp builds, merged by querying
+    the owners' trees) has, for every point, the k nearest among its own tree's
+    predecessors and the foreign points of strictly lower tree level; its tables equal
+    the host tables of the equivalent global graph; GraphGP on it equals graphgp's
+    generation on that global graph; a sharded points array implies the mesh."""
+    from jax.sharding import Mesh, NamedSharding, PartitionSpec as P
+
+    from nifty.re.graphgp_sharded import _build_device_graph, _compact_tables, _device_graph_to_graph, _local_graph, sharded_graph_from_graph
+
+    pts = _sky_points()
+    N, k, n0 = int(np.prod(pts.shape[:-1])), 6, 64
+    mesh = Mesh(np.array(jax.devices()), ("x",))
+    S = jax.device_count()
+    B = N // S
+    flat = pts.reshape(N, 3)
+    dg = _build_device_graph(flat, mesh, n0=n0, k=k, cuda=False)
+    assert dg.stats["n0"] == n0 and dg.stats["foreign_neighbours"] > 0
+    # brute force of the merge rule on the host
+    tpos, lvl = np.zeros(N, int), np.zeros(N, int)
+    for s in range(S):
+        ix = np.asarray(_local_graph(jnp.asarray(flat[s * B : (s + 1) * B]), n0 // S, k, cuda=False)[2])
+        tpos[s * B + ix] = np.arange(B)
+        lvl[s * B + ix] = np.floor(np.log2(np.arange(B) + 1.5))
+    pd = flat.astype(np.float64)
+    nbr = np.asarray(dg.neighbors).reshape(N, k)
+    init = np.asarray(dg.initial).reshape(N)
+    shard = np.arange(N) // B
+    for p in range(N):
+        if init[p]:
+            assert np.all(nbr[p] == -1)
+            continue
+        cand = np.where(((shard == shard[p]) & (tpos < tpos[p])) | ((shard != shard[p]) & (lvl < lvl[p])))[0]
+        dist = np.sort(np.linalg.norm(pd[cand] - pd[p], axis=1))[:k]
+        assert_allclose(np.sort(np.linalg.norm(pd[nbr[p]] - pd[p], axis=1)), dist, rtol=1e-6, err_msg=str(p))
+    # equivalent global graph, host tables == device tables
+    graph = _device_graph_to_graph(dg)
+    host = sharded_graph_from_graph(graph, S)
+    dev = _compact_tables(dg, mesh)
+    assert dev.group_sizes == host.group_sizes and dev.halo_size == host.halo_size and dev.n0 == host.n0
+    np.testing.assert_array_equal(np.asarray(dev.halo), host.halo)
+    np.testing.assert_array_equal(np.asarray(dev.ext_level), host.ext_level)
+    fills = dict(own=host.junk, nbr=host.junk, valid=0, exp=host.junk, imp_src=0, imp_pos=0, imp_slot=host.junk, lvl=0)
+    for g in range(len(host.group_sizes)):
+        for name, fill in fills.items():
+            a, b = np.asarray(getattr(dev, name)[g]), getattr(host, name)[g]
+            padded = np.full(a.shape, fill, dtype=b.dtype)  # the device pads empty tables to width 1
+            padded[tuple(slice(0, n) for n in b.shape)] = b
+            np.testing.assert_array_equal(a, padded, err_msg=f"{name} group {g}")
+    # GraphGP on the device-built graph (sharded points imply the mesh) == graphgp on the global graph
+    pts_sharded = jax.device_put(pts, NamedSharding(mesh, P("x")))
+    sharded = jft.GraphGP(pts_sharded, _Kernel(), n0=n0, k=k, cuda=False)
+    assert sharded.mesh is not None and sharded.shape == pts.shape[:-1]
+    ref = jft.GraphGP(graph, _Kernel(), shape=pts.shape[:-1], cuda=False)
+    p = jft.random_like(jax.random.PRNGKey(0), ref.domain)
+    assert_allclose(sharded(sharded.shard(p)), ref(p), rtol=1e-10, atol=1e-12)
+    w = jax.random.normal(jax.random.PRNGKey(3), ref.shape)
+    g_ref = jax.grad(lambda p: jnp.sum(w * ref(p)))(p)
+    g_sh = jax.jit(jax.grad(lambda m, p: jnp.sum(w * m(p)), argnums=1))(sharded, sharded.shard(p))
+    for key in p:
+        assert_allclose(g_sh[key], g_ref[key], rtol=1e-9, atol=1e-12, err_msg=key)

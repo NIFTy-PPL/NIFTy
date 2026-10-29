@@ -349,3 +349,102 @@ def test_models_are_pytrees_without_inlined_constants(name):
     assert_allclose(f(cf, p), cf(p), rtol=1e-12, atol=1e-12)
     f(cf, p)
     assert len(traces) == 1
+
+
+_needs_devices = pytest.mark.skipif(jax.device_count() < 2, reason="needs several devices (XLA_FLAGS=--xla_force_host_platform_device_count=4)")
+
+
+def test_grid_points():
+    """Coordinates of a multigrid level in pixel order, shape + (dim,)."""
+    grid = _hp_grid()
+    pts = jft.grid_points(grid)
+    shape = tuple(grid.at(-1).shape)
+    assert pts.shape == shape + (3,)
+    idx = np.stack(np.meshgrid(*(np.arange(s) for s in shape), indexing="ij"), axis=0)
+    ref = np.moveaxis(np.asarray(grid.at(-1).index2coord(idx.reshape(2, -1))), 0, -1).reshape(shape + (3,))
+    assert_allclose(pts, ref)
+    assert_allclose(jft.grid_points(grid, 0), np.moveaxis(np.asarray(grid.at(0).index2coord(np.stack(np.meshgrid(*(np.arange(s) for s in grid.at(0).shape), indexing="ij"), 0).reshape(2, -1))), 0, -1).reshape(tuple(grid.at(0).shape) + (3,)))
+
+
+@_needs_devices
+@pytest.mark.parametrize("kind", ["icr", "graphgp"])
+def test_correlated_field_sharded_matches_unsharded(kind):
+    """`finalize(mesh=)`: a correlated field with a kernel factor on the mesh
+    (ICR or graphgp, the latter with its graph built on the devices from sharded
+    points, whose mesh is inferred) times a harmonic factor on the second axis
+    equals the unsharded field, values and gradients; excitations drawn by
+    `init` and placed by `shard` carry the field's shardings."""
+    from jax.sharding import Mesh
+
+    mesh = Mesh(np.array(jax.devices()), ("x",))
+    grid = jft.HPLogRGrid(nside=4, r_min_shape=4, r_min=1.0, r_max=10.0, nside0=1)
+    reg = jft.RegularSpace((6,), 0.5)
+    if kind == "icr":
+        kernel_space = jft.ICRSpace(grid, n_bins=256)
+        kernel_space_sharded = kernel_space
+        explicit = mesh
+    else:
+        pytest.importorskip("graphgp")
+        pts = jft.grid_points(grid)
+        kernel_space = jft.GraphGPSpace(pts, n0=32, k=6, n_bins=256, cuda=False)
+        kernel_space_sharded = jft.GraphGPSpace(jft.grid_points(grid, mesh=mesh), n0=32, k=6, n_bins=256, cuda=False)
+        assert kernel_space_sharded.mesh is not None
+        explicit = None  # inferred from the sharded points
+    cf = _maker([kernel_space, reg]).finalize()
+    cfs = _maker([kernel_space_sharded, reg]).finalize(mesh=explicit)
+    assert cfs.mesh is not None and cfs.domain.keys() == cf.domain.keys()
+    assert set(cfs.shardings) == {"cfxi", "cfxi0"}
+    p = jft.random_like(jax.random.PRNGKey(0), cf.domain)
+    ps = cfs.shard(p)
+    for name, s in cfs.shardings.items():
+        if isinstance(s, list):
+            assert all(a.sharding.is_equivalent_to(si, a.ndim) for a, si in zip(ps[name], s))
+        else:
+            assert ps[name].sharding.is_equivalent_to(s, ps[name].ndim)
+    f, fs = jax.jit(lambda cf, p: cf(p))(cf, p), jax.jit(lambda cf, p: cf(p))(cfs, ps)
+    assert fs.shape == f.shape == kernel_space.shape + reg.shape
+    assert fs.sharding.is_equivalent_to(cfs.sharding, fs.ndim)
+    if kind == "graphgp":  # different graphs (global vs device-built): same statistics, not the same field
+        return_early = True
+    else:
+        return_early = False
+    if not return_early:
+        assert_allclose(fs, f, rtol=1e-9, atol=1e-10)
+        w = jax.random.normal(jax.random.PRNGKey(3), f.shape)
+        g = jax.jit(jax.grad(lambda cf, p: jnp.sum(w * cf(p)), argnums=1))(cf, p)
+        gs = jax.jit(jax.grad(lambda cf, p: jnp.sum(w * cf(p)), argnums=1))(cfs, ps)
+        for key in g:
+            for a, b in zip(jax.tree_util.tree_leaves(gs[key]), jax.tree_util.tree_leaves(g[key])):
+                assert_allclose(a, b, rtol=1e-8, atol=1e-10, err_msg=key)
+    # init draws straight onto the mesh
+    q = cfs.init(jax.random.PRNGKey(7))
+    for name, s in cfs.shardings.items():
+        if isinstance(s, list):
+            assert all(a.sharding.is_equivalent_to(si, a.ndim) for a, si in zip(q[name], s))
+        else:
+            assert q[name].sharding.is_equivalent_to(s, q[name].ndim)
+    assert np.all(np.isfinite(jax.jit(lambda cf, p: cf(p))(cfs, q)))
+
+
+@_needs_devices
+def test_correlated_field_sharded_graphgp_same_graph():
+    """With the same (global) graph the sharded graphgp field equals the unsharded one."""
+    pytest.importorskip("graphgp")
+    from jax.sharding import Mesh
+
+    mesh = Mesh(np.array(jax.devices()), ("x",))
+    grid = jft.HPLogRGrid(nside=4, r_min_shape=4, r_min=1.0, r_max=10.0, nside0=1)
+    pts = jft.grid_points(grid)
+    graph = jft.GraphGP.build_graph(pts, n0=32, k=6, cuda=False)
+    reg = jft.RegularSpace((6,), 0.5)
+    space = jft.GraphGPSpace(pts, graph=graph, n_bins=256, cuda=False)
+    cf = _maker([space, reg]).finalize()
+    cfs = _maker([space, reg]).finalize(mesh=mesh)
+    p = jft.random_like(jax.random.PRNGKey(0), cf.domain)
+    ps = cfs.shard(p)
+    assert_allclose(jax.jit(lambda cf, p: cf(p))(cfs, ps), jax.jit(lambda cf, p: cf(p))(cf, p), rtol=1e-9, atol=1e-10)
+    w = jax.random.normal(jax.random.PRNGKey(3), cf.target.shape if hasattr(cf.target, "shape") else sum((s.shape for s in (space, reg)), ()))
+    g = jax.jit(jax.grad(lambda cf, p: jnp.sum(w * cf(p)), argnums=1))(cf, p)
+    gs = jax.jit(jax.grad(lambda cf, p: jnp.sum(w * cf(p)), argnums=1))(cfs, ps)
+    for key in g:
+        assert_allclose(gs[key], g[key], rtol=1e-8, atol=1e-10, err_msg=key)

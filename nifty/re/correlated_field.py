@@ -10,7 +10,10 @@ from functools import partial, reduce
 from typing import Callable, Optional, Tuple, Union
 
 import numpy as np
+import jax
 from jax import numpy as jnp, vmap
+from jax.sharding import NamedSharding
+from jax.sharding import PartitionSpec as P
 from scipy.special import gamma, jv
 
 from ..config import _config
@@ -803,21 +806,23 @@ class KernelSpace(Space):
         raise NotImplementedError()
 
 
-def build_gp(space: KernelSpace, kernel):
+def build_gp(space: KernelSpace, kernel, *, mesh=None):
     """The Gaussian process model of a kernel-based `space` for `kernel` (a
     kernel model or a fixed table, see
-    :class:`~nifty.re.gaussian_process.KernelGP`)."""
+    :class:`~nifty.re.gaussian_process.KernelGP`); with a one-dimensional
+    `mesh` the model is generated on the mesh, sharded along the space's
+    leading axis (graphgp graphs are then built on the devices)."""
     from .graphgp_space import GraphGPSpace
     from .multi_grid.icr_space import ICRSpace
 
     if isinstance(space, ICRSpace):
         from .gaussian_process import ICRGP
 
-        return ICRGP(space.multigrid, kernel, **space.gp_kwargs)
+        return ICRGP(space.multigrid, kernel, mesh=mesh, **space.gp_kwargs)
     if isinstance(space, GraphGPSpace):
         from .gaussian_process import GraphGP
 
-        return GraphGP(space.graph, kernel, shape=space.shape, **space.gp_kwargs)
+        return GraphGP(space.points_or_graph(), kernel, shape=space.shape, mesh=mesh, **space.gp_kwargs)
     raise TypeError(f"no Gaussian process model for {type(space).__name__}")
 
 
@@ -872,6 +877,14 @@ def _apply_kernel(gp, x, pos, cov_vals, zeromode):
     out = out.reshape(batch + gp.shape)
     src = tuple(range(len(batch), len(batch) + ndim))
     return jnp.moveaxis(out, src, tuple(range(pos, pos + ndim)))
+
+
+def _init_sharded(draw, sharding, key, *args, **kwargs):
+    """`draw` (random_like of a block) placed on `sharding` (one or per array)."""
+    x = draw(key, *args, **kwargs)
+    if isinstance(sharding, list):
+        return [jax.device_put(a, s) for a, s in zip(x, sharding)]
+    return jax.device_put(x, sharding)
 
 
 def excitation_blocks(spaces, prefix):
@@ -932,7 +945,7 @@ class CorrelatedField(Model):
     kernels: tuple = dataclasses.field(metadata=dict(static=False))
     gps: tuple = dataclasses.field(metadata=dict(static=False))
 
-    def __init__(self, spaces, amplitudes, kernels, gps, zeromode, offset_mean, prefix, *, domain, init):
+    def __init__(self, spaces, amplitudes, kernels, gps, zeromode, offset_mean, prefix, *, domain, init, mesh=None):
         self.spaces = tuple(spaces)
         self.amplitudes = tuple(amplitudes)
         self.kernels = tuple(kernels)
@@ -942,7 +955,63 @@ class CorrelatedField(Model):
         self.prefix = str(prefix)
         self.blocks = tuple(excitation_blocks(self.spaces, self.prefix))
         self.xi_name = self.blocks[0][0]
+        self.mesh = mesh
+        if mesh is not None:  # excitations are drawn straight onto the mesh
+            shardings = self.shardings
+            init = {k: (partial(_init_sharded, v, shardings[k]) if k in shardings else v) for k, v in dict(init).items()}
         super().__init__(domain=domain, init=init)
+
+    @property
+    def shardings(self):
+        """With a mesh: the sharding of every excitation block (a list for the
+        per-level arrays of a multigrid factor); blocks without the sharded
+        factor's axis and the amplitude parameters are replicated."""
+        if self.mesh is None:
+            return {}
+        ax = self.mesh.axis_names[0]
+        rep = NamedSharding(self.mesh, P())
+        out = {}
+        for name, Z, shapes in self.blocks:
+            pos = 0
+            specs = None
+            for i, (space, gp) in enumerate(zip(self.spaces, self.gps)):
+                if gp is not None and getattr(gp, "mesh", None) is not None and i not in Z:
+                    gp_shardings = gp.shardings  # per excitation array of the factor
+                    specs = [
+                        NamedSharding(self.mesh, P(*([None] * pos), ax, *([None] * (len(sh) - pos - 1)))) if s is not None and s.spec and s.spec[0] is not None else rep
+                        for s, sh in zip(gp_shardings, shapes)
+                    ]
+                    break
+                pos += 0 if i in Z else len(space.excitation_shape) if gp is None else len(space.excitation_shapes[0])
+            if specs is None:
+                specs = [rep] * len(shapes)
+            out[name] = specs[0] if len(shapes) == 1 else specs
+        return out
+
+    def shard(self, x):
+        """Places the excitation blocks of a parameter dict on the mesh."""
+        x = dict(x)
+        for name, s in self.shardings.items():
+            v = x[name]
+            x[name] = [jax.device_put(np.asarray(a), si) for a, si in zip(v, s)] if isinstance(s, list) else jax.device_put(np.asarray(v), s)
+        return x
+
+    @property
+    def sharding(self):
+        """With a mesh: the sharding of the field (leading kernel axis on the mesh)."""
+        if self.mesh is None:
+            return None
+        ax = self.mesh.axis_names[0]
+        pos = 0
+        for space, gp in zip(self.spaces, self.gps):
+            if gp is not None and getattr(gp, "mesh", None) is not None:
+                return NamedSharding(self.mesh, P(*([None] * pos), ax, *([None] * (len(self.target_shape) - pos - 1))))
+            pos += len(space.shape)
+        return NamedSharding(self.mesh, P())
+
+    @property
+    def target_shape(self):
+        return sum((tuple(space.shape) for space in self.spaces), ())
 
     @property
     def target_grids(self):
@@ -1346,9 +1415,18 @@ class CorrelatedFieldMaker:
 
         return power
 
-    def finalize(self) -> CorrelatedField:
+    def finalize(self, *, mesh=None) -> CorrelatedField:
         """Finishes off the model construction process and returns the
         constructed operator.
+
+        With `mesh` (a one-dimensional ``jax.sharding.Mesh``) the kernel-based
+        factor is generated on the mesh, sharded along its leading axis in
+        contiguous blocks (:class:`~nifty.re.gaussian_process.ICRGP` and
+        :class:`~nifty.re.gaussian_process.GraphGP` with ``mesh=``; graphgp
+        graphs are built on the devices), and the excitations of the field are
+        sharded alike (``shardings``, ``shard``, ``init`` of the returned
+        field). If the points of a :class:`GraphGPSpace` are already a sharded
+        ``jax.Array``, their mesh is used when `mesh` is None.
 
         The field is the outer product of the factors added with
         :meth:`add_fluctuations` (or :meth:`add_fluctuations_matern`),
@@ -1370,12 +1448,20 @@ class CorrelatedFieldMaker:
         for name, _, shapes in excitation_blocks(self._spaces, self._prefix):
             swd = [ShapeWithDtype(sh) for sh in shapes]
             self._parameter_tree[name] = swd[0] if len(swd) == 1 else swd
+        if mesh is None:
+            for space in self._spaces:
+                m = getattr(space, "mesh", None)
+                if m is not None:
+                    mesh = m
+                    break
+        if mesh is not None and len(mesh.axis_names) != 1:
+            raise ValueError("mesh must be one-dimensional")
         kernels, gps = [], []
         for space, amp in zip(self._spaces, self._fluctuations):
             if isinstance(space, KernelSpace):
                 kernel = space.spectral_kernel(amp)
                 kernels.append(kernel)
-                gps.append(build_gp(space, kernel))
+                gps.append(build_gp(space, kernel, mesh=mesh))
             else:
                 kernels.append(None)
                 gps.append(None)
@@ -1393,4 +1479,5 @@ class CorrelatedFieldMaker:
             self._prefix,
             domain=self._parameter_tree.copy(),
             init=init,
+            mesh=mesh,
         )

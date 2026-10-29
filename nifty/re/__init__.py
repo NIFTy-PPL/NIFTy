@@ -63,6 +63,8 @@ from .multi_grid import (
     MaternCovarianceModel,
 )
 from .gaussian_process import GraphGP, ICRGP, KernelGP
+from .graphgp_sharded import ShardedGraph, build_sharded_graph, sharded_graph_from_graph
+from .multi_grid.grid_points import grid_points
 from .graphgp_space import GraphGPSpace
 from .num import *
 from .optimize import minimize, newton_cg, static_newton_cg, trust_ncg

@@ -41,6 +41,23 @@ Change categories:
     the single array they had. `finalize` returns a `CorrelatedField` model
     whose spaces, amplitudes, kernels and GP models are dynamic pytree
     children.
+  - Sharded Gaussian processes on a one-dimensional device mesh:
+    `ICRGP(..., mesh=)` (every shard refines its own block of cells, the
+    coarse values its windows need are exchanged after each level) and
+    `GraphGP(..., mesh=)` (`nifty.re.graphgp_sharded`: compacted levels with a
+    halo exchange and custom derivatives that rebuild every level's input
+    from the final array; the graph is either converted from a global one,
+    `sharded_graph_from_graph`, or built on the devices from the points,
+    `build_sharded_graph`: per-shard graphgp builds merged by radius-limited
+    searches of the other shards' trees). Both expose `shardings`, `shard`
+    and the field sharded along its leading axis. `CorrelatedFieldMaker.
+    finalize(mesh=)` generates the kernel-based factor on the mesh (inferred
+    from sharded points of a `GraphGPSpace` if not given) and the returned
+    field has `shardings`, `shard` and draws its excitations on the mesh.
+    `GraphGPSpace` keeps the points and builds the graph lazily (a prebuilt
+    graph, global or sharded, can be passed). `grid_points(grid, level,
+    mesh=)` gives the coordinates of a multigrid level as a (sharded) point
+    set, the point set for a graphgp factor on a semi-structured grid.
   - Extend `estimate_evidence_lower_bound` with stochastic Lanczos quadrature
     for the trace-log, signal- and data-space evaluation, optional Radau
     diagnostics, and an analytic Gaussian-prior contribution.
