@@ -504,7 +504,7 @@ def _distances(coords):
 
 @partial(
     jax.tree_util.register_dataclass,
-    data_fields=["halo_ids", "exp", "imp_src", "imp_pos", "imp_slot"],
+    data_fields=["halo_ids", "exp", "imp_src", "imp_pos", "imp_slot", "pos_of_global"],
     meta_fields=["sharded", "coarse_full", "block_cells", "block_coarse", "block_fine", "halo_size", "block_index_shape", "block_fine_shape"],
 )
 @dataclass(frozen=True)
@@ -534,6 +534,7 @@ class _ShardLevel:
     imp_src: Optional[jnp.ndarray]
     imp_pos: Optional[jnp.ndarray]
     imp_slot: Optional[jnp.ndarray]
+    pos_of_global: Optional[jnp.ndarray] = None  # (S, coarse size): position of every global coarse cell in the shard's extended array (junk if absent)
 
 
 def _icr_shard_tables(icr_kernel, levels_in, level_shapes, mesh, chunk_size):
@@ -611,12 +612,20 @@ def _icr_shard_tables(icr_kernel, levels_in, level_shapes, mesh, chunk_size):
                 imp_pos[sidx, j] = exp_pos[int(g)]
                 imp_slot[sidx, j] = block_coarse + j
         logger.info(f"ICRGP level {lvl + 1} on {S} shards: block {block_cells} cells, halo up to {H} coarse cells, exports up to {E}")
+        # the window indices are translated with one gather into this table instead of a searchsorted
+        # over the halo per window slot (27 lookups per cell per level: the sharded forward was slower
+        # than the single-device one at 204 M points, 2026-10-30)
+        pos_of_global = np.full((S, sizes[lvl]), junk, dtype=np.int32)
+        for sidx in range(S):
+            pos_of_global[sidx, sidx * block_coarse : (sidx + 1) * block_coarse] = np.arange(block_coarse, dtype=np.int32)
+            pos_of_global[sidx, halos[sidx]] = block_coarse + np.arange(len(halos[sidx]), dtype=np.int32)
         put = partial(jax.device_put, device=NamedSharding(mesh, P(ax)))
         levels.append(
             _ShardLevel(
                 True, False, block_cells, block_coarse, block_fine, H, bis, bfs,
                 put(jnp.asarray(halo_ids, dtype=jnp.int32)), put(jnp.asarray(exp, dtype=jnp.int32)),
                 put(jnp.asarray(imp_src, dtype=jnp.int32)), put(jnp.asarray(imp_pos, dtype=jnp.int32)), put(jnp.asarray(imp_slot, dtype=jnp.int32)),
+                put(jnp.asarray(pos_of_global)),
             )
         )
     return tuple(levels)
@@ -1062,6 +1071,7 @@ class ICRGP(KernelGP):
         coarse0 = 0 if T.coarse_full else sidx * T.block_coarse
         fine0 = sidx * T.block_fine
         halo_ids = None if T.coarse_full else T.halo_ids[0]
+        pos_of_global = None if T.coarse_full or T.pos_of_global is None else T.pos_of_global[0]
 
         @jax.checkpoint
         def body(start, kid):
@@ -1071,7 +1081,9 @@ class ICRGP(KernelGP):
             gidx = jnp.ravel_multi_index(tuple(gc), cshape, mode="clip")
             if halo_ids is None:
                 pos = gidx
-            else:
+            elif pos_of_global is not None:
+                pos = pos_of_global[gidx]  # one gather per window slot
+            else:  # tables of an older structure without the position table
                 own = (gidx >= coarse0) & (gidx < coarse0 + T.block_coarse)
                 pos = jnp.where(own, gidx - coarse0, T.block_coarse + jnp.searchsorted(halo_ids, gidx))
             xc = ext[pos]
