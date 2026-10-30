@@ -86,7 +86,13 @@ def make_field(space, name, mesh=None):
 # sharded.
 
 # %%
-cf_icr = make_field(jft.ICRSpace(grid, n_bins=256), "icr", mesh=mesh)
+# covariance table shared by both spaces: 3 decades with ~170 bins per decade (ICR needs >= 100 per
+# decade), r_min below the smallest separation of the padded coarse levels, r_max above the diagonal
+# of the box, and a relative nugget of 0.5 % at zero distance: for steep spectra (slope below about
+# -3.2) the tabulated kernel of this amplitude model makes the 3x3x3 refinement windows indefinite
+# and the ICR Cholesky returns NaN without it (graphgp's small k x k systems survive either way)
+table = dict(r_min=0.02, r_max=40.0, n_bins=512, jitter=5e-3)
+cf_icr = make_field(jft.ICRSpace(grid, **table), "icr", mesh=mesh)
 print("field shape", cf_icr.target_shape, "sharded as", cf_icr.sharding.spec)
 for name, s in cf_icr.shardings.items():
     print(f"  excitations {name!r}:", [x.spec for x in s] if isinstance(s, list) else s.spec)
@@ -97,16 +103,16 @@ for name, s in cf_icr.shardings.items():
 # `grid_points` gives the coordinates of the finest level as a point set,
 # here already placed on the mesh. `GraphGPSpace` keeps the points, the graph
 # is built when the field is finalized (on the devices: per-device k-d trees,
-# radius-limited queries of the neighbours' trees, compact per-level tables);
-# the covariance table range is inferred from the points and reported. The
-# mesh is inferred from the sharded points.
+# a ring of edge tests against the neighbours' trees, compact per-level tables).
+# Without `r_min`/`r_max` the table range would be inferred from the points and
+# reported. The mesh is inferred from the sharded points.
 
 # %%
 points = jft.grid_points(grid, mesh=mesh)
 print("points", points.shape, "sharded as", points.sharding.spec)
 
 t0 = time.time()
-cf_ggp = make_field(jft.GraphGPSpace(points, k=8, n0=64, cuda=cuda), "ggp")
+cf_ggp = make_field(jft.GraphGPSpace(points, k=8, n0=64, cuda=cuda, **table), "ggp")
 print(f"graph build and tables: {time.time() - t0:.1f} s")
 print("field shape", cf_ggp.target_shape, "sharded as", cf_ggp.sharding.spec)
 for name, s in cf_ggp.shardings.items():
@@ -153,24 +159,27 @@ for cf in (cf_icr, cf_ggp):
         key, sub = random.split(key)
         fs.append(np.asarray(jax.jit(cf)(cf.init(sub))))
     fs = np.stack(fs)
+    print(f"{cf.prefix}: {n_samples} samples, finite: {np.isfinite(fs).all()}, std {fs.std():.3f}")
     std[cf.prefix] = fs.std(axis=(0, 1, 3))  # over samples, pixels and frequencies
     sample[cf.prefix] = fs[0]
 
 try:
     import healpy as hp
 
-    fig = plt.figure(figsize=(10, 6))
+    fig = plt.figure(figsize=(10, 6.5))
     r = grid.at(grid.depth).shape[1] // 2
     for i, (name, f) in enumerate(sample.items()):
-        hp.mollview(f[:, r, n_freq // 2], fig=fig, sub=(2, 2, i + 1), title=f"{name}: sky at radial bin {r}", cmap="RdBu_r")
+        # the HEALPix grids of nifty.re are in NESTED order (refinement = children of a pixel)
+        hp.mollview(f[:, r, n_freq // 2], fig=fig, sub=(2, 2, i + 1), title=f"{name}: sky at radial bin {r}", cmap="RdBu_r", nest=True)
     owner = np.repeat(np.arange(mesh.size), f.shape[0] // mesh.size)
-    hp.mollview(owner, fig=fig, sub=(2, 2, 3), title="device owning the pixel", cmap="tab10", min=-0.5, max=9.5)
+    hp.mollview(owner, fig=fig, sub=(2, 2, 3), title="device owning the pixel", cmap="tab10", min=-0.5, max=9.5, nest=True)
     ax = fig.add_subplot(2, 2, 4)
     for name, s in std.items():
         ax.plot(s, label=name)
     ax.set_xlabel("radial bin")
     ax.set_ylabel("sample std")
     ax.legend()
+    fig.subplots_adjust(top=0.94, hspace=0.3)
     fig.savefig("results_sharded_correlated_field.png", dpi=150)
     print("saved results_sharded_correlated_field.png")
 except ImportError:
@@ -188,7 +197,7 @@ except ImportError:
 # script on four GPUs is the production setup.
 
 # %%
-cf = cf_ggp
+cf = cf_icr  # the ICR field; on CPU the graphgp derivatives (pure-JAX fallback) are much slower
 key, k_truth, k_noise, k_init, k_opt = random.split(key, 5)
 truth = cf.init(k_truth)
 noise_std = 0.5
