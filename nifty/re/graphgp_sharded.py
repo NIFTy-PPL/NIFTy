@@ -513,7 +513,7 @@ def _build_device_graph(points, mesh: Mesh, *, n0: int, k: int, cuda: bool = Tru
         flags.append(fl)
         cand[t - 1] = np.asarray(fl.sum(axis=1)).ravel()
         log(f"edge test round {t}: candidates per device {cand[t - 1].tolist()} of {B}")
-    Q = max(int(cand.max()), 1)  # one static candidate buffer size for all rounds
+    Q = max(int(cand.max()), 1) if cand.size else 1  # one static candidate buffer size for all rounds (one shard: no ring)
 
     # ---- phase 2: per round: k-NN of the candidates on the owner's tree, back to their owner, merge
     def round_merge(pts_t, split_dims, idx, r_k, flags, best_ids, best_dist, *, t):
@@ -571,7 +571,7 @@ def _build_device_graph(points, mesh: Mesh, *, n0: int, k: int, cuda: bool = Tru
         foreign = (ids >= 0) & (ids // B != sidx)
         n_foreign = foreign.sum()
         # the halo: the candidate ids (sorted) that a foreign slot actually uses
-        cand = jnp.unique(jnp.concatenate([c[0] for c in cands]), size=Hc + 1, fill_value=N)[:Hc]
+        cand = jnp.unique(jnp.concatenate([c[0] for c in cands]), size=Hc + 1, fill_value=N)[:Hc] if cands else jnp.full((Hc,), N, jnp.int32)
         pos = jnp.searchsorted(cand, ids).astype(jnp.int32)
         used = jnp.zeros((Hc + 1,), bool).at[jnp.where(foreign, pos, Hc)].set(True)[:Hc]
         # back to the block's user order
@@ -592,7 +592,7 @@ def _build_device_graph(points, mesh: Mesh, *, n0: int, k: int, cuda: bool = Tru
 
     def halo_of(cand, used):
         i = jnp.nonzero(used[0], size=H, fill_value=Hc)[0]
-        return jnp.where(i < Hc, cand[0][jnp.minimum(i, Hc - 1)], N)[None]  # sorted, N padding
+        return jnp.concatenate([cand[0], jnp.array([N], cand.dtype)])[i][None]  # sorted, N padding (slot Hc)
 
     halo = smap(halo_of, in_specs=(P(ax), P(ax)), out_specs=P(ax))(cand_halo, used)  # (S, H)
     del cand_halo, used

@@ -408,6 +408,33 @@ def test_build_sharded_graph_matches_brute_force_and_generate():
         assert_allclose(g_sh[key], g_ref[key], rtol=1e-9, atol=1e-12, err_msg=key)
 
 
+@pytest.mark.skipif("graphgp" not in _models(), reason="needs graphgp")
+def test_graphgp_sharded_on_one_device_matches_unsharded():
+    """A one-device mesh has no ring: no edge tests, no candidates, an empty halo.
+    The device build must not choke on the empty candidate table (it did: a maximum
+    over a zero-size array) and must equal the host build on the same points."""
+    from jax.sharding import Mesh, NamedSharding, PartitionSpec as P
+
+    from nifty.re.graphgp_sharded import _build_device_graph
+
+    pts = _sky_points()
+    n0, k = 64, 6
+    mesh = Mesh(np.array(jax.devices()[:1]), ("x",))
+    dg = _build_device_graph(pts.reshape(-1, 3), mesh, n0=n0, k=k, cuda=False)
+    assert dg.stats["foreign_neighbours"] == 0 and dg.stats["candidates"] == []
+    pts_one = jax.device_put(pts, NamedSharding(mesh, P("x")))
+    sharded = jft.GraphGP(pts_one, _Kernel(), n0=n0, k=k, cuda=False)
+    ref = jft.GraphGP(pts, _Kernel(), n0=n0, k=k, cuda=False)
+    assert sharded.mesh is not None and sharded.shape == ref.shape
+    p = jft.random_like(jax.random.PRNGKey(0), ref.domain)
+    assert_allclose(sharded(sharded.shard(p)), ref(p), rtol=1e-10, atol=1e-12)
+    w = jax.random.normal(jax.random.PRNGKey(3), ref.shape)
+    g_ref = jax.grad(lambda p: jnp.sum(w * ref(p)))(p)
+    g_sh = jax.jit(jax.grad(lambda m, p: jnp.sum(w * m(p)), argnums=1))(sharded, sharded.shard(p))
+    for key in p:
+        assert_allclose(g_sh[key], g_ref[key], rtol=1e-9, atol=1e-12, err_msg=key)
+
+
 def test_tree_level_without_x64():
     """The tree-level helper of the device graph build must not depend on
     64-bit integers (a 64-bit shift silently overflowed with x64 disabled and
