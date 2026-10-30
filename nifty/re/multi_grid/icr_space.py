@@ -78,7 +78,7 @@ class ICRSpace(KernelSpace):
         n_bins=1024,
         window_size=None,
         compress: Optional[dict] = dict(rtol=1e-5, atol=1e-10, buffer_size=10_000),
-        chunk_size=2**16,
+        chunk_size=2**20,
         kernel_chunk=4096,
         cholesky_jitter=1e-6,
         jitter=1e-6,

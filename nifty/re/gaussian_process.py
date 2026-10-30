@@ -670,7 +670,7 @@ def build_icr_structure(
     *,
     window_size=None,
     compress: Optional[dict] = dict(rtol=1e-5, atol=1e-10, buffer_size=10_000),
-    chunk_size=2**16,
+    chunk_size=2**20,
     kernel_chunk=4096,
     mesh: Optional[Mesh] = None,
 ) -> ICRStructure:
@@ -756,7 +756,10 @@ class ICRGP(KernelGP):
         ``buffer_size``, ``chunk_size``), see :func:`compress_indices`;
         ``None`` keeps every window.
     chunk_size : int
-        Number of cells refined at once.
+        Number of cells refined at once. The reverse pass accumulates every
+        chunk's cotangent into the full coarse level, so few large chunks are
+        much cheaper than many small ones (204 M points on one A100: vjp 2.2 s
+        with 2^16, 0.22 s with 2^20, same memory within 2 %).
     kernel_chunk : int
         Number of unique windows whose refinement matrices are built at once
         (the distances are recomputed from the window coordinates in the
@@ -785,7 +788,7 @@ class ICRGP(KernelGP):
         *,
         window_size=None,
         compress: Optional[dict] = dict(rtol=1e-5, atol=1e-10, buffer_size=10_000),
-        chunk_size=2**16,
+        chunk_size=2**20,
         kernel_chunk=4096,
         cholesky_jitter=1e-6,
         prefix="",
