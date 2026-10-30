@@ -63,6 +63,10 @@ class ICRSpace(KernelSpace):
         Relative inflation of the covariance at zero distance.
     radial_bins, k_bins : arrays, optional
         Explicit bins in place of `r_min`, `r_max` and `n_bins`.
+    structure : nifty.re.ICRStructure, optional
+        Compressed windows and shard tables built once (``build_structure``
+        or :func:`~nifty.re.build_icr_structure`) and shared with other fields
+        on the same grid; without it the model compresses the windows itself.
     """
 
     def __init__(
@@ -80,9 +84,11 @@ class ICRSpace(KernelSpace):
         jitter=1e-6,
         radial_bins=None,
         k_bins=None,
+        structure=None,
     ):
         self.multigrid = grid
         self._window_size = window_size
+        self.structure = structure  # a shared nifty.re.ICRStructure (compressed windows, shard tables), or None
         self._compress = None if not compress else tuple(sorted(dict(compress).items()))
         self.chunk_size = int(chunk_size)
         self.kernel_chunk = int(kernel_chunk)
@@ -150,4 +156,16 @@ class ICRSpace(KernelSpace):
             chunk_size=self.chunk_size,
             kernel_chunk=self.kernel_chunk,
             cholesky_jitter=self.cholesky_jitter,
+            structure=self.structure,
+        )
+
+    def build_structure(self, mesh=None):
+        """The :class:`~nifty.re.ICRStructure` of this space (window compression
+        and, with `mesh`, the shard tables), built once and shared by every
+        space on the same grid via ``ICRSpace(grid, structure=...)``."""
+        from ..gaussian_process import build_icr_structure
+
+        return build_icr_structure(
+            self.multigrid, window_size=self._window_size, compress=self.compress, chunk_size=self.chunk_size,
+            kernel_chunk=self.kernel_chunk, mesh=mesh,
         )

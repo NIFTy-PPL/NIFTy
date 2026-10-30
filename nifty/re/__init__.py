@@ -62,7 +62,7 @@ from .multi_grid import (
     SimpleOpenGrid,
     MaternCovarianceModel,
 )
-from .gaussian_process import GraphGP, ICRGP, KernelGP
+from .gaussian_process import GraphGP, ICRGP, ICRStructure, KernelGP, build_icr_structure
 from .graphgp_sharded import ShardedGraph, build_sharded_graph, sharded_graph_from_graph
 from .multi_grid.grid_points import grid_points
 from .graphgp_space import GraphGPSpace

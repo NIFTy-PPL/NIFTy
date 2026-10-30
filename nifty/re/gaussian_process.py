@@ -37,7 +37,7 @@ from .multi_grid.kernel import ICRKernel
 from .num import amend_unique_
 from .tree_math import ShapeWithDtype, random_like
 
-__all__ = ["KernelGP", "GraphGP", "ICRGP", "parse_kernel", "compress_indices", "refinement_matrices_cholesky"]
+__all__ = ["KernelGP", "GraphGP", "ICRGP", "ICRStructure", "build_icr_structure", "parse_kernel", "compress_indices", "refinement_matrices_cholesky"]
 
 
 def parse_kernel(kernel, radial_bins=None, *, allow_callable=False):
@@ -536,6 +536,192 @@ class _ShardLevel:
     imp_slot: Optional[jnp.ndarray]
 
 
+def _icr_shard_tables(icr_kernel, levels_in, level_shapes, mesh, chunk_size):
+    """Per-shard halo tables of every refinement step for `mesh` (see :class:`_ShardLevel`)."""
+    ax = mesh.axis_names[0]
+    S = int(mesh.shape[ax])
+    shapes = level_shapes
+    sizes = [int(np.prod(sh)) for sh in shapes]
+    for l, size in enumerate(sizes):
+        if size % S:
+            raise ValueError(f"level {l} of size {size} is not divisible into {S} shards")
+    sharded = [sh[0] % S == 0 and sh[0] >= S for sh in shapes]
+    sharded[0] = False  # the base level is generated replicated (dense, from the gathered excitations)
+    first = next((i for i, v in enumerate(sharded) if v), len(sharded))
+    if any(sharded[:first]) or not all(sharded[first:]):
+        raise ValueError("the sharded levels must be the finer ones (replicated coarse levels first)")
+    n_rep = sum(sizes[:first])
+    msg = (
+        f"ICRGP on {S} shards: levels 0-{first - 1} replicated ({', '.join(str(sh) for sh in shapes[:first])}; "
+        f"{n_rep} of {sizes[-1]} finest-level pixels), levels {first}-{len(shapes) - 1} sharded along the first axis"
+    )
+    if first == len(shapes):
+        msg = f"ICRGP on {S} shards: no level is sharded (the first axis of every level is not divisible by {S}); everything is replicated"
+    if first > 1 and n_rep > 0.05 * sizes[-1] or first == len(shapes):
+        logger.warning(msg + " -- choose a mesh size that divides the first axis of the coarse levels, or a finer base grid")
+    else:
+        logger.info(msg)
+    levels = []
+    for lvl, L in enumerate(levels_in):
+        fine_sharded = sharded[lvl + 1]
+        coarse_full = not sharded[lvl]
+        if fine_sharded and (L.index_lo[0] != 0 or L.index_shape[0] != shapes[lvl][0]):
+            raise ValueError("sharding needs a first grid axis without padding (e.g. HEALPix)")
+        block_cells = L.n_cells // S if fine_sharded else L.n_cells
+        block_fine = sizes[lvl + 1] // S if fine_sharded else sizes[lvl + 1]
+        block_coarse = sizes[lvl] // S if not coarse_full else sizes[lvl]
+        bis = ((L.index_shape[0] // S,) + L.index_shape[1:]) if fine_sharded else L.index_shape
+        bfs = ((L.fine_shape[0] // S,) + L.fine_shape[1:]) if fine_sharded else L.fine_shape
+        if not fine_sharded or coarse_full:
+            levels.append(_ShardLevel(fine_sharded, coarse_full, block_cells, block_coarse, block_fine, 0, bis, bfs, None, None, None, None, None))
+            continue
+        # halo of every shard: foreign coarse cells in the windows of its block
+        cshape = shapes[lvl]
+        win = jax.jit(lambda c, lvl=lvl: icr_kernel.get_output_input_indices(c, lvl)[1][0][0])
+        halos = []
+        for sidx in range(S):
+            foreign = []
+            for start in range(0, block_cells, chunk_size):
+                flat = np.arange(sidx * block_cells + start, sidx * block_cells + min(start + chunk_size, block_cells))
+                cells = np.stack(np.unravel_index(flat, L.index_shape)) + np.asarray(L.index_lo)[:, None]
+                gc = np.asarray(win(jnp.asarray(cells)))  # (ndim, n, nw)
+                gidx = np.ravel_multi_index(tuple(gc.reshape(gc.shape[0], -1)), cshape)
+                foreign.append(np.unique(gidx[(gidx < sidx * block_coarse) | (gidx >= (sidx + 1) * block_coarse)]))
+            halos.append(np.unique(np.concatenate(foreign)) if foreign else np.zeros(0, np.int64))
+        H = max(len(h) for h in halos)
+        needed = [[] for _ in range(S)]  # needed[owner]: global ids other shards import
+        for h in halos:
+            for g in h:
+                needed[int(g) // block_coarse].append(int(g))
+        exp_lists = [np.unique(np.array(needed[t], dtype=np.int64)) for t in range(S)]
+        E = max((len(e) for e in exp_lists), default=0)
+        exp_pos = {int(g): i for t in range(S) for i, g in enumerate(exp_lists[t])}
+        I = H
+        junk = block_coarse + H
+        halo_ids = np.full((S, H), sizes[lvl], dtype=np.int64)
+        exp = np.zeros((S, max(E, 1)), dtype=np.int64)
+        imp_src = np.zeros((S, max(I, 1)), dtype=np.int64)
+        imp_pos = np.zeros((S, max(I, 1)), dtype=np.int64)
+        imp_slot = np.full((S, max(I, 1)), junk, dtype=np.int64)
+        for sidx in range(S):
+            halo_ids[sidx, : len(halos[sidx])] = halos[sidx]
+            exp[sidx, : len(exp_lists[sidx])] = exp_lists[sidx] - sidx * block_coarse
+            for j, g in enumerate(halos[sidx]):
+                imp_src[sidx, j] = int(g) // block_coarse
+                imp_pos[sidx, j] = exp_pos[int(g)]
+                imp_slot[sidx, j] = block_coarse + j
+        logger.info(f"ICRGP level {lvl + 1} on {S} shards: block {block_cells} cells, halo up to {H} coarse cells, exports up to {E}")
+        put = partial(jax.device_put, device=NamedSharding(mesh, P(ax)))
+        levels.append(
+            _ShardLevel(
+                True, False, block_cells, block_coarse, block_fine, H, bis, bfs,
+                put(jnp.asarray(halo_ids, dtype=jnp.int32)), put(jnp.asarray(exp, dtype=jnp.int32)),
+                put(jnp.asarray(imp_src, dtype=jnp.int32)), put(jnp.asarray(imp_pos, dtype=jnp.int32)), put(jnp.asarray(imp_slot, dtype=jnp.int32)),
+            )
+        )
+    return tuple(levels)
+
+
+@partial(
+    jax.tree_util.register_dataclass,
+    data_fields=["base_dist", "base_coords", "levels", "shard_levels"],
+    meta_fields=["level_shapes", "window_size", "compress", "chunk_size", "n_shards", "max_distance", "min_distance"],
+)
+@dataclass(frozen=True)
+class ICRStructure:
+    """The grid-dependent part of an :class:`ICRGP`, independent of the kernel:
+    the compressed refinement windows of every level (unique window
+    coordinates and each cell's representative), the base-level distances and
+    coordinates and, when built for a mesh, the per-shard halo tables.
+    Build it once with :func:`build_icr_structure` (or
+    :meth:`~nifty.re.ICRSpace.build_structure`) and pass it to every
+    ``ICRGP`` / ``ICRSpace`` on the same grid: one compression, one copy of
+    the tables on the devices, shared by all fields.
+    """
+
+    level_shapes: Tuple[Tuple[int, ...], ...]
+    window_size: Any
+    compress: Optional[tuple]
+    chunk_size: int
+    n_shards: int
+    max_distance: float
+    min_distance: float
+    base_dist: jnp.ndarray
+    base_coords: jnp.ndarray
+    levels: Tuple[_Level, ...]
+    shard_levels: Optional[Tuple[_ShardLevel, ...]]
+
+    @property
+    def n_unique(self) -> Tuple[int, ...]:
+        return tuple(l.n_unique for l in self.levels)
+
+
+def build_icr_structure(
+    grid: Grid,
+    *,
+    window_size=None,
+    compress: Optional[dict] = dict(rtol=1e-5, atol=1e-10, buffer_size=10_000),
+    chunk_size=2**16,
+    kernel_chunk=4096,
+    mesh: Optional[Mesh] = None,
+) -> ICRStructure:
+    """Compress the refinement windows of `grid` (see :class:`ICRGP` for the
+    parameters) and, with a one-dimensional `mesh`, build the per-shard halo
+    tables; the result is shared by every ICR model on this grid."""
+    if mesh is not None and len(mesh.axis_names) != 1:
+        raise ValueError(f"mesh must be one-dimensional (one sharded axis per field), got axes {mesh.axis_names}")
+    icr_kernel = ICRKernel(grid, None, window_size=window_size)
+    compress_t = None if not compress else tuple(sorted(dict(compress).items()))
+    compress_d = None if compress_t is None else dict(compress_t)
+    # the index arithmetic of the grids is slow op by op; always run it under jit
+    base_dist = jax.jit(lambda i: icr_kernel.get_kernel_distmat(i, None))(jnp.array([-1]))
+    _, ((base_ids, _),) = icr_kernel.get_output_input_indices(jnp.array([-1]), None)
+    base_coords = jax.jit(grid.at(0).index2coord)(jnp.asarray(base_ids))  # (dim, n0)
+    levels = []
+    for lvl in range(grid.depth):
+        index = np.asarray(grid.at(lvl).refined_indices())
+        index_shape = tuple(int(s) for s in index.shape[1:])
+        cells = index.reshape(index.shape[0], -1)
+        if compress_d is not None:
+            uids, invids = compress_indices(icr_kernel, cells, lvl, **compress_d)
+        else:
+            uids, invids = cells, np.arange(cells.shape[1])
+        ucoords = jax.jit(lambda i, lvl=lvl: _window_coordinates(icr_kernel, i, lvl))(jnp.asarray(uids))
+        n_f = int(np.prod(grid.at(lvl).splits))
+        logger.info(f"ICRGP level {lvl}: {cells.shape[1]} cells, {uids.shape[1]} unique windows")
+        levels.append(
+            _Level(
+                index_shape=index_shape,
+                index_lo=tuple(int(i) for i in index[(slice(None),) + (0,) * len(index_shape)]),
+                splits=tuple(int(s) for s in grid.at(lvl).splits),
+                fine_shape=tuple(int(s) for s in grid.at(lvl + 1).shape),
+                n_f=int(n_f),
+                invids=jnp.asarray(invids, dtype=jnp.int32),
+                ucoords=jnp.asarray(ucoords),
+            )
+        )
+    levels = tuple(levels)
+    level_shapes = tuple(tuple(int(s) for s in grid.at(l).shape) for l in range(grid.depth + 1))
+    bd = np.asarray(base_dist)
+    d_max, d_min = float(np.max(bd)), float(np.min(bd[bd > 0])) if np.any(bd > 0) else np.inf
+    for l in levels:
+        for start in range(0, l.n_unique, int(kernel_chunk)):
+            dd = np.asarray(jax.jit(_distances)(l.ucoords[start : start + int(kernel_chunk)]))
+            d_max = max(d_max, float(np.max(dd)))
+            if np.any(dd > 0):
+                d_min = min(d_min, float(np.min(dd[dd > 0])))
+    shard_levels = None if mesh is None else _icr_shard_tables(icr_kernel, levels, level_shapes, mesh, int(chunk_size))
+    if mesh is not None:  # the replicated tables live on the mesh too (not on device 0 alone)
+        rep = partial(jax.device_put, device=NamedSharding(mesh, P()))
+        base_dist, base_coords = rep(base_dist), rep(base_coords)
+        levels = tuple(dataclasses.replace(l, invids=rep(l.invids), ucoords=rep(l.ucoords)) for l in levels)
+    return ICRStructure(
+        level_shapes=level_shapes, window_size=icr_kernel.window_size, compress=compress_t, chunk_size=int(chunk_size),
+        n_shards=1 if mesh is None else int(mesh.shape[mesh.axis_names[0]]), max_distance=d_max, min_distance=d_min,
+        base_dist=base_dist, base_coords=base_coords, levels=levels, shard_levels=shard_levels,
+    )
+
+
 class ICRGP(KernelGP):
     """Gaussian process on a multigrid, generated by iterative charted
     refinement; the field lives on the finest level, the excitations are a
@@ -597,65 +783,45 @@ class ICRGP(KernelGP):
         radial_bins=None,
         dtype=jnp.float64,
         mesh: Optional[Mesh] = None,
+        structure: Optional[ICRStructure] = None,
     ):
         self.multigrid = grid
         if mesh is not None and len(mesh.axis_names) != 1:
             raise ValueError(f"mesh must be one-dimensional (one sharded axis per field), got axes {mesh.axis_names}")
         self.mesh = mesh
-        self._shard_levels = None
-        self.icr_kernel = ICRKernel(grid, None, window_size=window_size)
         self.chunk_size = int(chunk_size)
         self.kernel_chunk = int(kernel_chunk)
         self.cholesky_jitter = float(cholesky_jitter)
-        self._compress = None if not compress else tuple(sorted(dict(compress).items()))
-
-        # the index arithmetic of the grids is slow op by op; always run it under jit
-        self._base_dist = jax.jit(lambda i: self.icr_kernel.get_kernel_distmat(i, None))(jnp.array([-1]))
-        _, ((base_ids, _),) = self.icr_kernel.get_output_input_indices(jnp.array([-1]), None)
-        self._base_coords = jax.jit(grid.at(0).index2coord)(jnp.asarray(base_ids))  # (dim, n0)
-        levels = []
-        for lvl in range(grid.depth):
-            index = np.asarray(grid.at(lvl).refined_indices())
-            index_shape = tuple(int(s) for s in index.shape[1:])
-            cells = index.reshape(index.shape[0], -1)
-            if self.compress is not None:
-                uids, invids = compress_indices(self.icr_kernel, cells, lvl, **self.compress)
-            else:
-                uids, invids = cells, np.arange(cells.shape[1])
-            ucoords = jax.jit(lambda i, lvl=lvl: _window_coordinates(self.icr_kernel, i, lvl))(jnp.asarray(uids))
-            n_f = int(np.prod(grid.at(lvl).splits))
-            logger.info(f"ICRGP level {lvl}: {cells.shape[1]} cells, {uids.shape[1]} unique windows")
-            levels.append(
-                _Level(
-                    index_shape=index_shape,
-                    index_lo=tuple(int(i) for i in index[(slice(None),) + (0,) * len(index_shape)]),
-                    splits=tuple(int(s) for s in grid.at(lvl).splits),
-                    fine_shape=tuple(int(s) for s in grid.at(lvl + 1).shape),
-                    n_f=int(n_f),
-                    invids=jnp.asarray(invids, dtype=jnp.int32),
-                    ucoords=jnp.asarray(ucoords),
+        level_shapes = tuple(tuple(int(s) for s in grid.at(l).shape) for l in range(grid.depth + 1))
+        if structure is None:
+            structure = build_icr_structure(grid, window_size=window_size, compress=compress, chunk_size=chunk_size, kernel_chunk=kernel_chunk, mesh=mesh)
+        else:
+            # a shared structure: the grid must be the same; its window size and compression take precedence
+            if tuple(structure.level_shapes) != level_shapes:
+                raise ValueError(f"the ICRStructure was built for levels {structure.level_shapes}, this grid has {level_shapes}")
+            S = 1 if mesh is None else int(mesh.shape[mesh.axis_names[0]])
+            if mesh is not None and (structure.shard_levels is None or structure.n_shards != S):
+                logger.info(f"ICRGP: the shared ICRStructure has no tables for {S} shards; building them")
+                structure = dataclasses.replace(
+                    structure,
+                    shard_levels=_icr_shard_tables(ICRKernel(grid, None, window_size=structure.window_size), structure.levels, level_shapes, mesh, self.chunk_size),
+                    n_shards=S,
                 )
-            )
-        self._levels = tuple(levels)
-        self._level_shapes = tuple(tuple(int(s) for s in grid.at(l).shape) for l in range(grid.depth + 1))
-        sizes = [int(np.prod(s)) for s in self._level_shapes]
+        self.icr_kernel = ICRKernel(grid, None, window_size=structure.window_size)
+        self._compress = structure.compress
+        self._base_dist, self._base_coords = structure.base_dist, structure.base_coords
+        self._levels = structure.levels
+        self._shard_levels = structure.shard_levels if mesh is not None else None
+        self._level_shapes = level_shapes
+        sizes = [int(np.prod(sh)) for sh in self._level_shapes]
         self._level_offsets = tuple(int(o) for o in np.cumsum([0] + sizes))
-
-        if mesh is not None:  # before Model.__init__, which traces the generation for the target shape
-            self._build_shard_tables()
+        self.max_distance, self.min_distance = structure.max_distance, structure.min_distance
+        d_max, d_min = self.max_distance, self.min_distance
         super().__init__(
             kernel, radial_bins=radial_bins, shape=self._level_shapes[-1], excitation_shapes=self._level_shapes, prefix=prefix,
             dtype=dtype, allow_callable=True,
         )
-        bd = np.asarray(self._base_dist)
-        d_max, d_min = float(np.max(bd)), float(np.min(bd[bd > 0])) if np.any(bd > 0) else np.inf
-        for l in levels:
-            for start in range(0, l.n_unique, self.kernel_chunk):
-                dd = np.asarray(jax.jit(_distances)(l.ucoords[start : start + self.kernel_chunk]))
-                d_max = max(d_max, float(np.max(dd)))
-                if np.any(dd > 0):
-                    d_min = min(d_min, float(np.min(dd[dd > 0])))
-        self.max_distance, self.min_distance = d_max, d_min
+
         if self.radial_bins is not None and d_max > float(self.radial_bins[-1]):
             logger.warning(
                 f"the covariance table ends at {float(self.radial_bins[-1]):.4g} but the refinement windows reach"
@@ -672,6 +838,16 @@ class ICRGP(KernelGP):
     def compress(self) -> Optional[dict]:
         """Settings of the window compression (``None``: no compression)."""
         return None if self._compress is None else dict(self._compress)
+
+    @property
+    def structure(self) -> ICRStructure:
+        """The grid-dependent tables of this model (compressed windows, base level,
+        shard tables), to be passed to other ICR models on the same grid."""
+        return ICRStructure(
+            level_shapes=self._level_shapes, window_size=self.icr_kernel.window_size, compress=self._compress, chunk_size=self.chunk_size,
+            n_shards=self.n_shards, max_distance=self.max_distance, min_distance=self.min_distance,
+            base_dist=self._base_dist, base_coords=self._base_coords, levels=self._levels, shard_levels=self._shard_levels,
+        )
 
     @property
     def depth(self) -> int:
@@ -784,87 +960,7 @@ class ICRGP(KernelGP):
         return None if self.mesh is None else self.mesh.axis_names[0]
 
     def _build_shard_tables(self):
-        S = self.n_shards
-        shapes = self._level_shapes
-        sizes = [int(np.prod(sh)) for sh in shapes]
-        for l, size in enumerate(sizes):
-            if size % S:
-                raise ValueError(f"level {l} of size {size} is not divisible into {S} shards")
-        sharded = [sh[0] % S == 0 and sh[0] >= S for sh in shapes]
-        sharded[0] = False  # the base level is generated replicated (dense, from the gathered excitations)
-        first = next((i for i, v in enumerate(sharded) if v), len(sharded))
-        if any(sharded[:first]) or not all(sharded[first:]):
-            raise ValueError("the sharded levels must be the finer ones (replicated coarse levels first)")
-        n_rep = sum(sizes[:first])
-        msg = (
-            f"ICRGP on {S} shards: levels 0-{first - 1} replicated ({', '.join(str(sh) for sh in shapes[:first])}; "
-            f"{n_rep} of {sizes[-1]} finest-level pixels), levels {first}-{len(shapes) - 1} sharded along the first axis"
-        )
-        if first == len(shapes):
-            msg = f"ICRGP on {S} shards: no level is sharded (the first axis of every level is not divisible by {S}); everything is replicated"
-        if first > 1 and n_rep > 0.05 * sizes[-1] or first == len(shapes):
-            logger.warning(msg + " -- choose a mesh size that divides the first axis of the coarse levels, or a finer base grid")
-        else:
-            logger.info(msg)
-        levels = []
-        for lvl, L in enumerate(self._levels):
-            fine_sharded = sharded[lvl + 1]
-            coarse_full = not sharded[lvl]
-            if fine_sharded and (L.index_lo[0] != 0 or L.index_shape[0] != shapes[lvl][0]):
-                raise ValueError("sharding needs a first grid axis without padding (e.g. HEALPix)")
-            block_cells = L.n_cells // S if fine_sharded else L.n_cells
-            block_fine = sizes[lvl + 1] // S if fine_sharded else sizes[lvl + 1]
-            block_coarse = sizes[lvl] // S if not coarse_full else sizes[lvl]
-            bis = ((L.index_shape[0] // S,) + L.index_shape[1:]) if fine_sharded else L.index_shape
-            bfs = ((L.fine_shape[0] // S,) + L.fine_shape[1:]) if fine_sharded else L.fine_shape
-            if not fine_sharded or coarse_full:
-                levels.append(_ShardLevel(fine_sharded, coarse_full, block_cells, block_coarse, block_fine, 0, bis, bfs, None, None, None, None, None))
-                continue
-            # halo of every shard: foreign coarse cells in the windows of its block
-            cshape = shapes[lvl]
-            win = jax.jit(lambda c, lvl=lvl: self.icr_kernel.get_output_input_indices(c, lvl)[1][0][0])
-            halos = []
-            for sidx in range(S):
-                foreign = []
-                for start in range(0, block_cells, self.chunk_size):
-                    flat = np.arange(sidx * block_cells + start, sidx * block_cells + min(start + self.chunk_size, block_cells))
-                    cells = np.stack(np.unravel_index(flat, L.index_shape)) + np.asarray(L.index_lo)[:, None]
-                    gc = np.asarray(win(jnp.asarray(cells)))  # (ndim, n, nw)
-                    gidx = np.ravel_multi_index(tuple(gc.reshape(gc.shape[0], -1)), cshape)
-                    foreign.append(np.unique(gidx[(gidx < sidx * block_coarse) | (gidx >= (sidx + 1) * block_coarse)]))
-                halos.append(np.unique(np.concatenate(foreign)) if foreign else np.zeros(0, np.int64))
-            H = max(len(h) for h in halos)
-            needed = [[] for _ in range(S)]  # needed[owner]: global ids other shards import
-            for h in halos:
-                for g in h:
-                    needed[int(g) // block_coarse].append(int(g))
-            exp_lists = [np.unique(np.array(needed[t], dtype=np.int64)) for t in range(S)]
-            E = max((len(e) for e in exp_lists), default=0)
-            exp_pos = {int(g): i for t in range(S) for i, g in enumerate(exp_lists[t])}
-            I = H
-            junk = block_coarse + H
-            halo_ids = np.full((S, H), sizes[lvl], dtype=np.int64)
-            exp = np.zeros((S, max(E, 1)), dtype=np.int64)
-            imp_src = np.zeros((S, max(I, 1)), dtype=np.int64)
-            imp_pos = np.zeros((S, max(I, 1)), dtype=np.int64)
-            imp_slot = np.full((S, max(I, 1)), junk, dtype=np.int64)
-            for sidx in range(S):
-                halo_ids[sidx, : len(halos[sidx])] = halos[sidx]
-                exp[sidx, : len(exp_lists[sidx])] = exp_lists[sidx] - sidx * block_coarse
-                for j, g in enumerate(halos[sidx]):
-                    imp_src[sidx, j] = int(g) // block_coarse
-                    imp_pos[sidx, j] = exp_pos[int(g)]
-                    imp_slot[sidx, j] = block_coarse + j
-            logger.info(f"ICRGP level {lvl + 1} on {S} shards: block {block_cells} cells, halo up to {H} coarse cells, exports up to {E}")
-            put = partial(jax.device_put, device=NamedSharding(self.mesh, P(self.axis)))
-            levels.append(
-                _ShardLevel(
-                    True, False, block_cells, block_coarse, block_fine, H, bis, bfs,
-                    put(jnp.asarray(halo_ids, dtype=jnp.int32)), put(jnp.asarray(exp, dtype=jnp.int32)),
-                    put(jnp.asarray(imp_src, dtype=jnp.int32)), put(jnp.asarray(imp_pos, dtype=jnp.int32)), put(jnp.asarray(imp_slot, dtype=jnp.int32)),
-                )
-            )
-        self._shard_levels = tuple(levels)
+        self._shard_levels = _icr_shard_tables(self.icr_kernel, self._levels, self._level_shapes, self.mesh, self.chunk_size)
 
     @property
     def level_sharded(self):

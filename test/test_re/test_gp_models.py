@@ -477,3 +477,36 @@ def test_graphgp_sharded_fixed_table_gradient():
     lin = sum(jnp.vdot(g_sh[k_], d[k_]) for k_ in p)
     assert_allclose(lin, fd, rtol=1e-4, atol=1e-6)
     assert np.isfinite(np.asarray(jax.tree.leaves(g_sh)[0])).all()
+
+
+@pytest.mark.parametrize("sharded", [False, True])
+def test_icr_structure_shared(sharded):
+    """An ICRStructure built once is shared by several ICR models on the same
+    grid: same field as a model that compresses itself, the table arrays are
+    the same objects (no second copy), and the structure of a model can be
+    handed on. With a mesh the shard tables are part of the structure."""
+    from jax.sharding import Mesh
+
+    grid = jft.HPLogRGrid(nside=2, r_min_shape=4, r_min=1.0, r_max=10.0, nside0=1)
+    mesh = Mesh(np.array(jax.devices()), ("x",)) if sharded else None
+    structure = jft.build_icr_structure(grid, compress=dict(rtol=1e-5, atol=1e-10, buffer_size=1000), mesh=mesh)
+    assert structure.n_shards == (len(jax.devices()) if sharded else 1)
+    a = jft.ICRGP(grid, _Kernel(), compress=dict(rtol=1e-5, atol=1e-10, buffer_size=1000), mesh=mesh)
+    b = jft.ICRGP(grid, _Kernel(), structure=structure, mesh=mesh)
+    c = jft.ICRGP(grid, _Kernel(), structure=b.structure, mesh=mesh)
+    assert b.n_unique == a.n_unique == structure.n_unique
+    for lb, lc, ls in zip(b._levels, c._levels, structure.levels):
+        assert lb.invids is ls.invids and lc.invids is ls.invids and lb.ucoords is ls.ucoords
+    if sharded:
+        assert b._shard_levels is structure.shard_levels and c._shard_levels is structure.shard_levels
+    p = jft.random_like(jax.random.PRNGKey(0), a.domain)
+    pa = a.shard(p) if sharded else p
+    fa, fb, fc = jax.jit(a)(pa), jax.jit(b)(b.shard(p) if sharded else p), jax.jit(c)(c.shard(p) if sharded else p)
+    assert_allclose(fb, fa, rtol=1e-12, atol=1e-12)
+    assert_allclose(fc, fa, rtol=1e-12, atol=1e-12)
+    # the correlated field takes the structure through the space
+    m = jft.CorrelatedFieldMaker("s")
+    m.set_amplitude_total_offset(offset_mean=0.0, offset_std=(0.1, 0.01))
+    m.add_fluctuations(jft.ICRSpace(grid, n_bins=256, structure=structure), fluctuations=(1.0, 0.1), loglogavgslope=(-3.0, 0.5), prefix="a")
+    cf = m.finalize(mesh=mesh)
+    assert cf.gps[0]._levels[0].invids is structure.levels[0].invids
