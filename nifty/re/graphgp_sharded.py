@@ -1025,21 +1025,42 @@ class _ShardedGenerate:
         def generate(xi, cov_vals, g, rb):
             return forward_ext(xi, cov_vals, g, rb)[0]
 
-        @generate.defjvp
+        @partial(generate.defjvp, symbolic_zeros=True)
         def generate_jvp(primals, tangents):
             xi, cov_vals, g, rb = primals
             d_xi, d_cov = tangents[:2]  # the tables and bins are constants of the model
             values, ext = forward_ext(xi, cov_vals, g, rb)
             # the linear tangent map and its transpose as a custom_linear_solve with the identity as
-            # matrix: jit, vmap, linear_transpose and vjp all work through it
-            rhs = {"xi": d_xi, "cov": d_cov}
+            # matrix: jit, vmap, linear_transpose and vjp all work through it. Only the tangents that
+            # are not symbolic zeros enter the solve: a constant covariance table (fixed kernel) has
+            # a zero tangent, and the transpose rule of custom_linear_solve requires every rhs leaf
+            # to be a linear input ("assert all(ad.is_undefined_primal(x) for x in b)")
+            zero = jax.custom_derivatives.SymbolicZero
+            lin_xi, lin_cov = not isinstance(d_xi, zero), not isinstance(d_cov, zero)
+            if not (lin_xi or lin_cov):
+                return values, jnp.zeros_like(values)
+            rhs = {}
+            if lin_xi:
+                rhs["xi"] = d_xi
+            if lin_cov:
+                rhs["cov"] = d_cov
 
             def solve(_, b):
-                return {"xi": tangent(ext, xi, cov_vals, b["xi"], b["cov"], g, rb), "cov": jnp.zeros_like(b["cov"])}
+                bx = b["xi"] if lin_xi else jnp.zeros_like(xi)
+                bc = b["cov"] if lin_cov else jnp.zeros_like(cov_vals)
+                out = {"xi": tangent(ext, xi, cov_vals, bx, bc, g, rb)}
+                if lin_cov:
+                    out["cov"] = jnp.zeros_like(bc)
+                return out
 
             def transpose_solve(_, ct):
                 ct_xi, ct_cov = cotangent(ext, xi, cov_vals, ct["xi"], g, rb)
-                return {"xi": ct_xi, "cov": ct_cov}
+                out = {}
+                if lin_xi:
+                    out["xi"] = ct_xi
+                if lin_cov:
+                    out["cov"] = ct_cov
+                return out
 
             d_values = lax.custom_linear_solve(lambda x: x, rhs, solve, transpose_solve=transpose_solve)["xi"]
             return values, d_values

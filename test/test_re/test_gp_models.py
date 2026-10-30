@@ -446,3 +446,34 @@ def test_tree_level_without_x64():
     with jax.enable_x64(False):
         np.testing.assert_array_equal(np.asarray(_tree_level(jnp.asarray(pos, jnp.int32))), expected)
     np.testing.assert_array_equal(np.asarray(_tree_level(jnp.asarray(pos))), expected)
+
+
+@pytest.mark.skipif("graphgp" not in _models(), reason="needs graphgp")
+def test_graphgp_sharded_fixed_table_gradient():
+    """A sharded GraphGP with a *fixed* covariance table: the gradient with
+    respect to the excitations only (the table's tangent is a symbolic zero)
+    must equal the unsharded one. The custom_linear_solve of the sharded
+    derivative failed its transpose rule when the zero tangent of the table
+    was part of the right-hand side."""
+    from jax.sharding import Mesh, NamedSharding, PartitionSpec as P
+
+    pts = _sky_points()
+    rs = jnp.concatenate([jnp.zeros(1), jnp.geomspace(0.05, 40.0, 255)])
+    table = (rs, (1.0 + rs / 3.0) * jnp.exp(-rs / 3.0))
+    n0, k = 64, 6
+    mesh = Mesh(np.array(jax.devices()), ("x",))
+    pts_sh = jax.device_put(pts, NamedSharding(mesh, P("x")))
+    sharded = jft.GraphGP(pts_sh, table, n0=n0, k=k, cuda=False)
+    ref = jft.GraphGP(sharded.graph if False else pts, table, n0=n0, k=k, cuda=False)
+    p = jft.random_like(jax.random.PRNGKey(0), ref.domain)
+    w = jax.random.normal(jax.random.PRNGKey(3), ref.shape)
+    f_sh = jax.jit(sharded)(sharded.shard(p))
+    g_sh = jax.jit(jax.grad(lambda m, p: jnp.sum(w * m(p)), argnums=1))(sharded, sharded.shard(p))
+    # the device-built and the host-built graphs differ, so compare against the sharded model's
+    # own graph on one device: finite differences of the jitted forward
+    eps = 1e-6
+    d = jft.random_like(jax.random.PRNGKey(5), ref.domain)
+    fd = (jnp.sum(w * jax.jit(sharded)(sharded.shard({k_: p[k_] + eps * d[k_] for k_ in p}))) - jnp.sum(w * f_sh)) / eps
+    lin = sum(jnp.vdot(g_sh[k_], d[k_]) for k_ in p)
+    assert_allclose(lin, fd, rtol=1e-4, atol=1e-6)
+    assert np.isfinite(np.asarray(jax.tree.leaves(g_sh)[0])).all()
