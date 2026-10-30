@@ -444,8 +444,16 @@ def _build_device_graph(points, mesh: Mesh, *, n0: int, k: int, cuda: bool = Tru
     import time
 
     t0 = time.time()
-    log = (lambda msg: logger.info(f"sharded graph: {msg} ({time.time() - t0:.1f} s)")) if verbose else (lambda msg: None)
     devices = mesh.devices.ravel()
+
+    def _peak():
+        """Peak device memory so far (GB per device), where the backend reports it."""
+        try:
+            return "; peak " + "/".join(f"{d.memory_stats()['peak_bytes_in_use'] / 2**30:.1f}" for d in devices) + " GB"
+        except Exception:
+            return ""
+
+    log = (lambda msg: logger.info(f"sharded graph: {msg} ({time.time() - t0:.1f} s{_peak()})")) if verbose else (lambda msg: None)
     local = [_local_graph(jax.device_put(points[s * B : (s + 1) * B], dev), n0_s, k, cuda=cuda) for s, dev in enumerate(devices)]
     pts_t = _stack(mesh, [l[0] for l in local])  # (S, B, d) tree order
     split_dims = _stack(mesh, [l[1] for l in local])
@@ -531,7 +539,11 @@ def _build_device_graph(points, mesh: Mesh, *, n0: int, k: int, cuda: bool = Tru
         new_ids, new_dist = jnp.take_along_axis(all_ids, sel, axis=1), -neg
         best_ids = best_ids.at[safe_b].set(jnp.where(valid_b[:, None], new_ids, best_ids[safe_b]))
         best_dist = best_dist.at[safe_b].set(jnp.where(valid_b[:, None], new_dist, best_dist[safe_b]))
-        return best_ids[None], best_dist[None]
+        # the foreign ids this device can end up with are among the hits it received: the halo is
+        # built from them (a few million entries) instead of a unique over all B x k neighbour slots
+        got = jnp.where(valid_b[:, None] & (ids_t >= 0), ids_t, N).reshape(-1)
+        cand_ids = jnp.unique(got, size=Q * k + 1, fill_value=N)[: Q * k]
+        return best_ids[None], best_dist[None], cand_ids[None]
 
     def init_best(idx, nbr_loc, nbr_dist):
         idx, nbr_loc, nbr_dist = idx[0], nbr_loc[0], nbr_dist[0]
@@ -539,47 +551,59 @@ def _build_device_graph(points, mesh: Mesh, *, n0: int, k: int, cuda: bool = Tru
 
     best_ids, best_dist = smap(init_best, in_specs=(P(ax),) * 3, out_specs=(P(ax), P(ax)))(idx, nbr_loc, nbr_dist)
     del nbr_dist
+    cands = []
     for t in range(1, S):
-        best_ids, best_dist = smap(partial(round_merge, t=t), in_specs=(P(ax),) * 7, out_specs=(P(ax), P(ax)))(
+        best_ids, best_dist, c = smap(partial(round_merge, t=t), in_specs=(P(ax),) * 7, out_specs=(P(ax),) * 3)(
             pts_t, split_dims, idx, r_k, flags[t - 1], best_ids, best_dist
         )
+        cands.append(c)
         jax.block_until_ready(best_ids)
         log(f"round {t}: candidates queried and merged")
     del flags, best_dist
+    Hc = (S - 1) * Q * k  # candidate halo entries per device (static)
 
-    def finish(merged, idx):
+    def finish(merged, idx, cands):
         merged, idx = merged[0], idx[0]  # (B, k) tree order
         sidx = lax.axis_index(ax)
         is_init = jnp.arange(B) < n0_s
         merged = jnp.where(is_init[:, None], -1, merged)
-        n_foreign = ((merged >= 0) & (merged // B != sidx)).sum()
+        ids = merged.reshape(-1)
+        foreign = (ids >= 0) & (ids // B != sidx)
+        n_foreign = foreign.sum()
+        # the halo: the candidate ids (sorted) that a foreign slot actually uses
+        cand = jnp.unique(jnp.concatenate([c[0] for c in cands]), size=Hc + 1, fill_value=N)[:Hc]
+        pos = jnp.searchsorted(cand, ids).astype(jnp.int32)
+        used = jnp.zeros((Hc + 1,), bool).at[jnp.where(foreign, pos, Hc)].set(True)[:Hc]
         # back to the block's user order
         nbr_user = jnp.zeros((B, k), jnp.int32).at[idx].set(merged)
         init_user = jnp.zeros((B,), bool).at[idx].set(is_init)
         tree_pos = jnp.zeros((B,), jnp.int32).at[idx].set(jnp.arange(B, dtype=jnp.int32))
-        return nbr_user[None], init_user[None], tree_pos[None], jnp.array([n_foreign])
+        return nbr_user[None], init_user[None], tree_pos[None], jnp.array([n_foreign]), cand[None], used[None], used.sum()[None]
 
-    nbr_user, init_user, tree_pos, n_foreign = smap(finish, in_specs=(P(ax), P(ax)), out_specs=(P(ax),) * 4)(best_ids, idx)
+    nbr_user, init_user, tree_pos, n_foreign, cand_halo, used, n_halo = smap(
+        finish, in_specs=(P(ax), P(ax), (P(ax),) * len(cands)), out_specs=(P(ax),) * 7
+    )(best_ids, idx, tuple(cands))
+    del cands
     jax.block_until_ready(nbr_user)  # (S, B, k) global user ids of the merged neighbours (-1 for initial points), user order
     log(f"merged: foreign neighbour slots per device {np.asarray(n_foreign).ravel().tolist()}")
 
-    # ---- phase 3: halo (counting pass, then static) and the depths
-    def count_halo(nbr_user):
-        ids = nbr_user[0].reshape(-1)
-        foreign = (ids >= 0) & (ids // B != lax.axis_index(ax))
-        srt = jnp.sort(jnp.where(foreign, ids, -1))
-        distinct = (srt >= 0) & jnp.concatenate([jnp.array([True]), srt[1:] != srt[:-1]])
-        return distinct.sum()[None]
+    # ---- phase 3: the halo (static size from the count) and the depths
+    H = max(int(np.asarray(n_halo).max()), 1)
 
-    H = max(int(np.asarray(smap(count_halo, in_specs=P(ax), out_specs=P(ax))(nbr_user)).max()), 1)
+    def halo_of(cand, used):
+        i = jnp.nonzero(used[0], size=H, fill_value=Hc)[0]
+        return jnp.where(i < Hc, cand[0][jnp.minimum(i, Hc - 1)], N)[None]  # sorted, N padding
+
+    halo = smap(halo_of, in_specs=(P(ax), P(ax)), out_specs=P(ax))(cand_halo, used)  # (S, H)
+    del cand_halo, used
     log(f"halo up to {H}")
 
-    def depths(nbr_user, init_user):
+    def depths(nbr_user, init_user, halo):
         nbr, init = nbr_user[0], init_user[0]
         sidx = lax.axis_index(ax)
         ids = nbr.reshape(-1)
-        ht = _halo_tables(ids, sidx, N=N, B=B, H=H, S=S, ax=ax)
-        ext_pos = jnp.where(ht.foreign, B + jnp.searchsorted(ht.halo, ids), jnp.where(ids >= 0, ids - sidx * B, B + H)).reshape(B, k)
+        ht = _halo_tables(ids, sidx, N=N, B=B, H=H, S=S, ax=ax, halo=halo[0])
+        ext_pos = jnp.where(ht.foreign, B + jnp.searchsorted(ht.halo, ids), jnp.where(ids >= 0, ids - sidx * B, B + H)).astype(jnp.int32).reshape(B, k)
 
         def body(carry):
             depth, _, it = carry
@@ -592,7 +616,7 @@ def _build_device_graph(points, mesh: Mesh, *, n0: int, k: int, cuda: bool = Tru
         depth, _, it = lax.while_loop(lambda c: c[1], body, (depth0, jnp.array(True), jnp.array(0)))
         return depth[None], ht.halo[None], ht.gather(depth, -1)[None], it[None]
 
-    depth, halo, halo_depth, its = smap(depths, in_specs=(P(ax), P(ax)), out_specs=(P(ax),) * 4)(nbr_user, init_user)
+    depth, halo, halo_depth, its = smap(depths, in_specs=(P(ax),) * 3, out_specs=(P(ax),) * 4)(nbr_user, init_user, halo)
     stats = dict(
         n0=S * n0_s, candidates_max=Q, candidates=cand.tolist(), halo_max=H,
         foreign_neighbours=float(np.asarray(n_foreign).sum() / (N * k)), depth_iterations=int(np.asarray(its).max()),
@@ -611,9 +635,11 @@ class _HaloTables:
     ``gather(attr, fill)`` fetching an owner attribute (``(B, ...)`` per
     shard) for every halo entry with one ``all_gather`` of the exports."""
 
-    def __init__(self, ids, sidx, *, N, B, H, S, ax):
+    def __init__(self, ids, sidx, *, N, B, H, S, ax, halo=None):
         self.foreign = (ids >= 0) & (ids // B != sidx)
-        self.halo = jnp.unique(jnp.where(self.foreign, ids, N), size=H + 1, fill_value=N)[:H]
+        # `halo`: the sorted foreign ids (N padding, length H) when known; the unique over all
+        # neighbour slots is the memory peak of the build at 25 M points per device
+        self.halo = jnp.unique(jnp.where(self.foreign, ids, N), size=H + 1, fill_value=N)[:H] if halo is None else halo
         self.halo_valid = self.halo < N
         needed = jnp.stack([jnp.sort(jnp.where(self.halo_valid & (self.halo // B == t), self.halo, N)) for t in range(S)])
         req = lax.all_to_all(needed, ax, 0, 0, tiled=False)  # (S_src, H): my ids that src needs
@@ -687,16 +713,19 @@ def _compact_tables(dg: _DeviceGraph, mesh: Mesh, *, group_by="log2", verbose: b
     smap = partial(shard_map, mesh=mesh, check_vma=False)
     pts_all = jax.device_put(dg.points.reshape(S, B, d), NamedSharding(mesh, P(ax)))
 
-    def common(nbr, init, depth, tree_pos, sidx, H2):
+    def common(nbr, init, depth, tree_pos, sidx, H2, halo_all):
         """Halo (size `H2`) of the non-initial foreign neighbours, their depths
         and export ranks, and the extended index of every neighbour slot."""
         junk = B + H2 + dg.n0
         ids = nbr.reshape(-1)
-        h1 = _halo_tables(ids, sidx, N=N, B=B, H=H_all, S=S, ax=ax)
+        h1 = _halo_tables(ids, sidx, N=N, B=B, H=H_all, S=S, ax=ax, halo=halo_all)
         tpos1 = h1.gather(tree_pos, B)  # tree position of every foreign neighbour (initial iff < n0_s)
-        nbr_tpos = jnp.where(h1.foreign, tpos1[jnp.searchsorted(h1.halo, ids)], tree_pos[jnp.where(ids >= 0, ids - sidx * B, 0)])
+        nbr_tpos = jnp.where(h1.foreign, tpos1[jnp.searchsorted(h1.halo, ids).astype(jnp.int32)], tree_pos[jnp.where(ids >= 0, ids - sidx * B, 0)])
         nbr_init = (ids >= 0) & (nbr_tpos < n0_s)
-        h2 = _halo_tables(jnp.where(nbr_init, -1, ids), sidx, N=N, B=B, H=H2, S=S, ax=ax)
+        # the non-initial part of the halo, from h1's entries (no second unique over the slots)
+        i2 = jnp.nonzero(h1.halo_valid & (tpos1 >= n0_s), size=H2, fill_value=H_all)[0]
+        halo2 = jnp.where(i2 < H_all, h1.halo[jnp.minimum(i2, H_all - 1)], N)
+        h2 = _halo_tables(jnp.where(nbr_init, -1, ids), sidx, N=N, B=B, H=H2, S=S, ax=ax, halo=halo2)
         halo_depth = h2.gather(depth, L)
         # rank of every export inside its level's (id-sorted) export list
         exp_depth = jnp.where(h2.exp_valid, depth[h2.exp_loc], L)
@@ -707,17 +736,17 @@ def _compact_tables(dg: _DeviceGraph, mesh: Mesh, *, group_by="log2", verbose: b
         ext_idx = jnp.where(
             nbr_init, B + H2 + (ids // B) * n0_s + nbr_tpos,
             jnp.where(h2.foreign, B + jnp.searchsorted(h2.halo, ids), jnp.where(ids >= 0, ids - sidx * B, junk)),
-        ).reshape(B, k)
+        ).astype(jnp.int32).reshape(B, k)
         return h2, halo_depth, exp_depth, halo_rank, ext_idx
 
-    def count(nbr_user, init_user, depth, tree_pos):
-        h2, halo_depth, exp_depth, _, _ = common(nbr_user[0], init_user[0], depth[0], tree_pos[0], lax.axis_index(ax), H_all)
+    def count(nbr_user, init_user, depth, tree_pos, halo_all):
+        h2, halo_depth, exp_depth, _, _ = common(nbr_user[0], init_user[0], depth[0], tree_pos[0], lax.axis_index(ax), H_all, halo_all[0])
         M = jnp.bincount(depth[0], length=L)
         E = jnp.bincount(exp_depth, length=L + 1)[:L]
         I = jnp.bincount(jnp.where(h2.halo_valid, halo_depth, L), length=L + 1)[:L]
         return M[None], E[None], I[None], h2.halo_valid.sum()[None]
 
-    M, E, I, H2 = (np.asarray(a).max(axis=0) for a in smap(count, in_specs=(P(ax),) * 4, out_specs=(P(ax),) * 4)(dg.neighbors, dg.initial, dg.depth, dg.tree_pos))
+    M, E, I, H2 = (np.asarray(a).max(axis=0) for a in smap(count, in_specs=(P(ax),) * 5, out_specs=(P(ax),) * 4)(dg.neighbors, dg.initial, dg.depth, dg.tree_pos, dg.halo))
     H = max(int(H2), 1)  # non-initial foreign neighbours: the halo of the tables (non-empty for XLA)
     junk = B + H + dg.n0
     M_l, E_l, I_l = [int(x) for x in M[1:]], [int(x) for x in E[1:]], [int(x) for x in I[1:]]
@@ -735,10 +764,10 @@ def _compact_tables(dg: _DeviceGraph, mesh: Mesh, *, group_by="log2", verbose: b
         groups.append((start, size, max(max(M_l[sl]), 1), max(max(E_l[sl]), 1), max(max(I_l[sl]), 1)))  # XLA needs non-empty outputs
         start += size
 
-    def fill(nbr_user, init_user, depth, tree_pos, pts):
+    def fill(nbr_user, init_user, depth, tree_pos, pts, halo_all):
         nbr, init, depth, tree_pos, pts = nbr_user[0], init_user[0], depth[0], tree_pos[0], pts[0]
         sidx = lax.axis_index(ax)
-        h2, halo_depth, exp_depth, halo_rank, ext_idx = common(nbr, init, depth, tree_pos, sidx, H)
+        h2, halo_depth, exp_depth, halo_rank, ext_idx = common(nbr, init, depth, tree_pos, sidx, H, halo_all[0])
 
         def level_tables(l, Mg, Eg, Ig):
             """Tables of one level at the group's widths."""
@@ -773,10 +802,14 @@ def _compact_tables(dg: _DeviceGraph, mesh: Mesh, *, group_by="log2", verbose: b
 
     n_g = len(groups)
     out_specs = ((P(ax),) * n_g,) * 9 + (P(ax),) * 4 + (P(),) + (P(ax),)
-    out = smap(fill, in_specs=(P(ax),) * 5, out_specs=out_specs)(dg.neighbors, dg.initial, dg.depth, dg.tree_pos, pts_all)
+    out = smap(fill, in_specs=(P(ax),) * 6, out_specs=out_specs)(dg.neighbors, dg.initial, dg.depth, dg.tree_pos, pts_all, dg.halo)
     jax.block_until_ready(out)
     if verbose:
-        logger.info(f"sharded graph tables: {L} levels in {len(groups)} groups, halo {H}, widths up to {max(M_l)}/{max(E_l)}/{max(I_l)} ({time.time() - t0:.1f} s)")
+        try:
+            peak = "; peak " + "/".join(f"{dv.memory_stats()['peak_bytes_in_use'] / 2**30:.1f}" for dv in mesh.devices.ravel()) + " GB"
+        except Exception:
+            peak = ""
+        logger.info(f"sharded graph tables: {L} levels in {len(groups)} groups, halo {H}, widths up to {max(M_l)}/{max(E_l)}/{max(I_l)} ({time.time() - t0:.1f} s{peak})")
     halo = jnp.where(out[14] < N, out[14], -1)
     init_src = np.arange(dg.n0) // n0_s
     init_pos = np.arange(dg.n0) % n0_s
