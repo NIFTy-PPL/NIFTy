@@ -30,14 +30,16 @@ Two ways to a :class:`ShardedGraph`:
   initial points, ``k`` preceding neighbours in the block); the blocks are then
   merged on the mesh: a point of tree level ``L`` can only replace one of its
   ``k`` local predecessors by a foreign point closer than its ``k``-th local
-  predecessor (``r_k``), so it is sent as a query to every shard whose points
-  can lie within ``r_k`` (bounding boxes of the owner tree's subtrees, a
-  superset); the owner answers with its ``k`` nearest points on tree levels
-  strictly below ``L`` (graphgp's tree is stored level by level, so this is the
-  prefix ``max_index = 2**L - 1`` of its own tree, the same restriction
-  graphgp's preceding search uses) and closer than ``r_k`` (radius-limited
-  search); every point keeps the ``k`` nearest of its local predecessors and
-  the hits. "Preceding" is thus: earlier in the own tree, or on a lower tree
+  predecessor (``r_k``). The blocks travel around the mesh in a ring: in round
+  ``t`` every device receives the coordinates, levels and radii of block
+  ``i + t`` and runs an *edge test* on its own tree, a one-slot radius-``r_k``
+  query on the tree levels strictly below ``L`` (graphgp's tree is stored
+  level by level, so this is the prefix ``max_index = 2**L - 1``, the same
+  restriction graphgp's preceding search uses); the points with a hit are the
+  candidates (exact, no geometry), they are queried with ``k`` slots and the
+  hits go back to their owner, who keeps the ``k`` nearest of the local
+  predecessors and the hits. Only one block is in flight per round and the
+  ``k``-slot buffers hold candidates only. "Preceding" is thus: earlier in the own tree, or on a lower tree
   level of a foreign tree (acyclic). The dependency depths are recomputed by
   relaxation with the foreign depths exchanged through the halo, and the
   tables are assembled on the devices; only a few counts (static sizes) pass
@@ -424,14 +426,6 @@ class _DeviceGraph:
         return self.neighbors.shape[1]
 
 
-# depth of the owner-tree subtrees whose bounding boxes decide which points query which shard
-# (2^level boxes per block). Coarse boxes of cone-shaped subtrees (HEALPix x radius layouts) overlap
-# at small radii and make nearly every point query every shard; see the 2026-10-29 journal.
-BOX_LEVEL_MAX = 6
-# rows (tree positions) merged per pass: bounds the query/hit buffers of the merge
-ROW_CHUNK = 2**21
-
-
 def _build_device_graph(points, mesh: Mesh, *, n0: int, k: int, cuda: bool = True, verbose: bool = False) -> _DeviceGraph:
     """Build the sharded graph of `points` (``(N, d)`` in user order, split into
     contiguous blocks over the one-dimensional `mesh`) on the devices; see the
@@ -463,111 +457,98 @@ def _build_device_graph(points, mesh: Mesh, *, n0: int, k: int, cuda: bool = Tru
     log(f"{S} local graphs of {B} points (n0 {n0_s}, k {k})")
     smap = partial(shard_map, mesh=mesh, check_vma=False)
 
-    # subtree boxes: the owner tree's level-`box_level` subtrees (points of upper levels individually)
-    box_level = max(0, min(BOX_LEVEL_MAX, int(np.floor(np.log2(B + 1))) - 3))
-    n_box = 2**box_level
-    n_upper = n_box - 1
     level = _tree_level(jnp.arange(B))
+    f32 = jnp.float32
+    qchunk = 2**18  # queries per batch of the tree traversal
 
-    def _need(pts_t, r_k, sidx):
-        """(S, B) which of my points must be queried against which shard: a
-        foreign point can only enter the k nearest if it is closer than
-        ``r_k(p)``, tested against the bounding boxes of the owner tree's
-        level-`box_level` subtrees (a lower bound, so a superset)."""
-        pos = jnp.arange(B)
-        anc = jnp.where(level >= box_level, ((pos + 1) >> jnp.maximum(level - box_level, 0)) - 1 - n_upper, n_box)  # subtree id, n_box: dropped
-        lo = jax.ops.segment_min(pts_t, anc, num_segments=n_box)
-        hi = jax.ops.segment_max(pts_t, anc, num_segments=n_box)
-        boxes = lax.all_gather(jnp.stack([lo, hi], axis=1), ax, axis=0)  # (S, n_box, 2, d)
-        upper = lax.all_gather(pts_t[:n_upper], ax, axis=0)  # (S, n_upper, d)
-
-        def min_dist(t):
-            def box(i, m):
-                gap = jnp.maximum(jnp.maximum(boxes[t, i, 0] - pts_t, pts_t - boxes[t, i, 1]), 0.0)
-                return jnp.minimum(m, jnp.sum(jnp.square(gap), axis=-1))
-
-            def point(i, m):
-                return jnp.minimum(m, jnp.sum(jnp.square(upper[t, i] - pts_t), axis=-1))
-
-            m = lax.fori_loop(0, n_box, box, jnp.full((B,), jnp.inf, pts_t.dtype))
-            return lax.fori_loop(0, n_upper, point, m)
-
-        d2 = jnp.stack([min_dist(t) for t in range(S)])  # (S, B)
-        return (d2 < jnp.square(r_k[None, :]).astype(pts_t.dtype)) & (jnp.arange(S)[:, None] != sidx) & (jnp.arange(B)[None, :] >= n0_s)
-
-    # ---- phase 1: which of my points query which shard ((S_tgt, B) per device, kept for the chunks)
-    def need_all(pts_t, r_k):
-        return _need(pts_t[0], r_k[0], lax.axis_index(ax))[None]
-
-    need = smap(need_all, in_specs=(P(ax), P(ax)), out_specs=P(ax))(pts_t, r_k)  # (S_dev, S_tgt, B) bool
-    # the merge runs over chunks of rows (tree positions): the query payload, the returned hits and the
-    # candidate arrays are then bounded by the chunk, not by B (every point of a HEALPix x radius block
-    # queries the other shards, the subtree boxes exclude nothing there; (S, B, 2k) buffers OOM'd at 25 M
-    # points per device, 2026-10-29)
-    row_chunk = min(B, ROW_CHUNK)
-    starts = list(range(0, B, row_chunk))
-    counts = np.stack([np.asarray(need[:, :, c0 : c0 + row_chunk].sum(axis=-1)) for c0 in starts], axis=-1)  # (S_dev, S_tgt, n_chunks)
-    E = max(int(counts.max()), 1)  # queries per target and row chunk (one buffer size for all chunks: one compile)
-    log(f"queries per target up to {E} per chunk of {row_chunk} rows ({100 * counts.sum() / N:.0f} % of the points, summed over targets; {n_box} subtree boxes; {len(starts)} chunks)")
-    chunk = 2**18  # queries per answer batch
-
-    # ---- phase 2: per row chunk: send the queries, answer on graphgp's tree, send the hits back, merge
-    def merge_rows(c0, rows):
-        def body(pts_t, split_dims, idx, nbr_loc, nbr_dist, r_k, need):
-            pts_t, split_dims, idx, nbr_loc, nbr_dist, r_k, need = pts_t[0], split_dims[0], idx[0], nbr_loc[0], nbr_dist[0], r_k[0], need[0]
-            sidx = lax.axis_index(ax)
-            need_c = need[:, c0 : c0 + rows]  # (S_tgt, rows)
-            slots = jax.vmap(lambda n: jnp.nonzero(n, size=E, fill_value=-1)[0])(need_c)  # (S_tgt, E) chunk-local rows
-            valid = slots >= 0
-            sl = jnp.where(valid, c0 + slots, 0)  # tree positions
-            coords = jnp.where(valid[..., None], pts_t[sl], jnp.inf)
-            payload = jnp.concatenate([coords, level[sl][..., None].astype(pts_t.dtype), r_k[sl][..., None].astype(pts_t.dtype)], axis=-1)  # (S_tgt, E, d + 2) float32
-            recv = lax.all_to_all(payload, ax, 0, 0, tiled=False)  # (S_src, E, d + 2): queries to me
-
-            def answer_chunk(args):
-                q, qlevel, qr = args
-                qvalid = jnp.isfinite(q[:, 0])
-                max_index = jnp.where(qvalid, jnp.minimum((1 << jnp.maximum(qlevel, 0)) - 1, B), 0)  # levels strictly below L
-                hits, dist = _query_points(pts_t, split_dims, jnp.where(qvalid[:, None], q, 0.0), max_index, jnp.where(qvalid, qr, 0.0), k=k, cuda=cuda)
-                hit_ids = jnp.where(hits >= 0, sidx * B + idx[jnp.maximum(hits, 0)], -1).astype(jnp.int32)  # global user ids
-                return jnp.concatenate([hit_ids, lax.bitcast_convert_type(dist.astype(jnp.float32), jnp.int32)], axis=1)
-
-            q = recv[..., :d].reshape(-1, d)
-            qlevel = recv[..., d].reshape(-1).astype(jnp.int32)
-            qr = recv[..., d + 1].reshape(-1)
-            n_q = q.shape[0]
-            qchunk = min(chunk, n_q)  # no padding to 2^18 for small chunks
-            pad = (-n_q) % qchunk
-            q = jnp.concatenate([q, jnp.full((pad, d), jnp.inf, q.dtype)])
-            qlevel = jnp.concatenate([qlevel, jnp.zeros(pad, jnp.int32)])
+    def batched_query(pts_t, split_dims, q, max_index, qr, kq):
+        """`_query_points` in batches of `qchunk` queries (bounded temporaries)."""
+        n_q = q.shape[0]
+        c = min(qchunk, n_q)
+        pad = (-n_q) % c
+        if pad:
+            q = jnp.concatenate([q, jnp.zeros((pad, d), q.dtype)])
+            max_index = jnp.concatenate([max_index, jnp.zeros(pad, max_index.dtype)])
             qr = jnp.concatenate([qr, jnp.zeros(pad, qr.dtype)])
-            answer = lax.map(answer_chunk, (q.reshape(-1, qchunk, d), qlevel.reshape(-1, qchunk), qr.reshape(-1, qchunk)))
-            answer = answer.reshape(-1, 2 * k)[:n_q].reshape(S, E, 2 * k)
-            back = lax.all_to_all(answer, ax, 0, 0, tiled=False)  # (S_target, E, 2k): hits of my queries
-            # merge target by target with a running best k over the chunk's rows
-            best_ids = (sidx * B + idx[nbr_loc[c0 : c0 + rows]]).astype(jnp.int32)  # (rows, k)
-            best_dist = nbr_dist[c0 : c0 + rows]  # (rows, k) float32 from _local_graph
-            for t in range(S):
-                row = jnp.where(valid[t], slots[t], rows)  # rows: dropped
-                ids_t = jnp.full((rows, k), -1, dtype=jnp.int32).at[row].set(back[t, :, :k], mode="drop")
-                dist_t = jnp.full((rows, k), jnp.inf, dtype=jnp.float32).at[row].set(lax.bitcast_convert_type(back[t, :, k:], jnp.float32), mode="drop")
-                all_ids = jnp.concatenate([best_ids, ids_t], axis=1)
-                all_dist = jnp.where(all_ids >= 0, jnp.concatenate([best_dist, dist_t], axis=1), jnp.inf)
-                neg, sel = lax.top_k(-all_dist, k)
-                best_ids, best_dist = jnp.take_along_axis(all_ids, sel, axis=1), -neg
-            return best_ids[None]
+        hits, dist = lax.map(
+            lambda a: _query_points(pts_t, split_dims, a[0], a[1], a[2], k=kq, cuda=cuda),
+            (q.reshape(-1, c, d), max_index.reshape(-1, c), qr.reshape(-1, c)),
+        )
+        return hits.reshape(-1, kq)[:n_q], dist.reshape(-1, kq)[:n_q]
 
-        return smap(body, in_specs=(P(ax),) * 7, out_specs=P(ax))(pts_t, split_dims, idx, nbr_loc, nbr_dist, r_k, need)
+    def payload_of(pts_t, r_k):
+        """Coordinates, tree level and search radius of my points, (B, d + 2) float32."""
+        return jnp.concatenate([pts_t, level[:, None].astype(f32), r_k[:, None].astype(f32)], axis=1)
 
-    parts = []
-    for i, c0 in enumerate(starts):
-        parts.append(merge_rows(c0, min(row_chunk, B - c0)))
-        jax.block_until_ready(parts[-1])
-        if len(starts) > 1:
-            log(f"merged rows {c0}-{min(c0 + row_chunk, B)} ({i + 1}/{len(starts)})")
+    def unpack(recv, rows):
+        q = recv[rows, :d]
+        qlevel = recv[rows, d].astype(jnp.int32)
+        max_index = jnp.minimum((1 << jnp.maximum(qlevel, 0)) - 1, B)  # the owner's levels strictly below the point's
+        return q, max_index, recv[rows, d + 1]
 
-    def finish(parts, idx):
-        merged, idx = jnp.concatenate([p[0] for p in parts], axis=0), idx[0]  # (B, k) tree order
+    # ---- phase 1: the ring. In round t device i receives the block of device (i + t) % S and tests
+    # every point of it against its own tree: a radius-r_k query with one slot on the lower levels says
+    # whether anything of mine can enter that point's k nearest ("edge test"; exact, no geometry). The
+    # candidates are compacted, queried with k slots, and sent back to their owner, who merges them into
+    # its running best k. One block in flight per round; the k-slot buffers hold candidates only.
+    def edge_test(pts_t, split_dims, r_k, *, t):
+        pts_t, split_dims, r_k = pts_t[0], split_dims[0], r_k[0]
+        recv = lax.ppermute(payload_of(pts_t, r_k), ax, perm=[(j, (j - t) % S) for j in range(S)])
+        q, max_index, qr = unpack(recv, jnp.arange(B))
+        hits, _ = batched_query(pts_t, split_dims, q, max_index, qr, 1)
+        return (hits[:, 0] >= 0)[None]  # (1, B): rows of block (i + t) % S with a candidate on me
+
+    flags = []
+    cand = np.zeros((S - 1, S), dtype=int)  # [round, device]: candidates tested on the device
+    for t in range(1, S):
+        fl = smap(partial(edge_test, t=t), in_specs=(P(ax),) * 3, out_specs=P(ax))(pts_t, split_dims, r_k)
+        flags.append(fl)
+        cand[t - 1] = np.asarray(fl.sum(axis=1)).ravel()
+        log(f"edge test round {t}: candidates per device {cand[t - 1].tolist()} of {B}")
+    Q = max(int(cand.max()), 1)  # one static candidate buffer size for all rounds
+
+    # ---- phase 2: per round: k-NN of the candidates on the owner's tree, back to their owner, merge
+    def round_merge(pts_t, split_dims, idx, r_k, flags, best_ids, best_dist, *, t):
+        pts_t, split_dims, idx, r_k, flags, best_ids, best_dist = pts_t[0], split_dims[0], idx[0], r_k[0], flags[0], best_ids[0], best_dist[0]
+        sidx = lax.axis_index(ax)
+        recv = lax.ppermute(payload_of(pts_t, r_k), ax, perm=[(j, (j - t) % S) for j in range(S)])
+        rows = jnp.nonzero(flags, size=Q, fill_value=-1)[0].astype(jnp.int32)
+        valid = rows >= 0
+        safe = jnp.where(valid, rows, 0)
+        q, max_index, qr = unpack(recv, safe)
+        hits, dist = batched_query(pts_t, split_dims, q, jnp.where(valid, max_index, 0), jnp.where(valid, qr, 0.0), k)
+        hit_ids = jnp.where(hits >= 0, sidx * B + idx[jnp.maximum(hits, 0)], -1).astype(jnp.int32)  # global user ids
+        answer = jnp.concatenate([jnp.where(valid, rows, -1).astype(jnp.int32)[:, None], hit_ids, lax.bitcast_convert_type(dist.astype(f32), jnp.int32)], axis=1)  # (Q, 1 + 2k) int32 (no int64 promotion under x64)
+        back = lax.ppermute(answer, ax, perm=[(j, (j + t) % S) for j in range(S)])  # to the owner of the rows
+        rows_b = back[:, 0]
+        valid_b = rows_b >= 0
+        safe_b = jnp.where(valid_b, rows_b, 0)
+        ids_t = jnp.where(valid_b[:, None], back[:, 1 : 1 + k], -1)
+        dist_t = jnp.where(valid_b[:, None], lax.bitcast_convert_type(back[:, 1 + k :], f32), jnp.inf)
+        all_ids = jnp.concatenate([best_ids[safe_b], ids_t], axis=1)  # (Q, 2k)
+        all_dist = jnp.where(all_ids >= 0, jnp.concatenate([best_dist[safe_b], dist_t], axis=1), jnp.inf)
+        neg, sel = lax.top_k(-all_dist, k)
+        new_ids, new_dist = jnp.take_along_axis(all_ids, sel, axis=1), -neg
+        best_ids = best_ids.at[safe_b].set(jnp.where(valid_b[:, None], new_ids, best_ids[safe_b]))
+        best_dist = best_dist.at[safe_b].set(jnp.where(valid_b[:, None], new_dist, best_dist[safe_b]))
+        return best_ids[None], best_dist[None]
+
+    def init_best(idx, nbr_loc, nbr_dist):
+        idx, nbr_loc, nbr_dist = idx[0], nbr_loc[0], nbr_dist[0]
+        return (lax.axis_index(ax) * B + idx[nbr_loc]).astype(jnp.int32)[None], nbr_dist[None]
+
+    best_ids, best_dist = smap(init_best, in_specs=(P(ax),) * 3, out_specs=(P(ax), P(ax)))(idx, nbr_loc, nbr_dist)
+    del nbr_dist
+    for t in range(1, S):
+        best_ids, best_dist = smap(partial(round_merge, t=t), in_specs=(P(ax),) * 7, out_specs=(P(ax), P(ax)))(
+            pts_t, split_dims, idx, r_k, flags[t - 1], best_ids, best_dist
+        )
+        jax.block_until_ready(best_ids)
+        log(f"round {t}: candidates queried and merged")
+    del flags, best_dist
+
+    def finish(merged, idx):
+        merged, idx = merged[0], idx[0]  # (B, k) tree order
         sidx = lax.axis_index(ax)
         is_init = jnp.arange(B) < n0_s
         merged = jnp.where(is_init[:, None], -1, merged)
@@ -578,10 +559,9 @@ def _build_device_graph(points, mesh: Mesh, *, n0: int, k: int, cuda: bool = Tru
         tree_pos = jnp.zeros((B,), jnp.int32).at[idx].set(jnp.arange(B, dtype=jnp.int32))
         return nbr_user[None], init_user[None], tree_pos[None], jnp.array([n_foreign])
 
-    nbr_user, init_user, tree_pos, n_foreign = smap(finish, in_specs=((P(ax),) * len(parts), P(ax)), out_specs=(P(ax),) * 4)(tuple(parts), idx)
-    del parts, need
+    nbr_user, init_user, tree_pos, n_foreign = smap(finish, in_specs=(P(ax), P(ax)), out_specs=(P(ax),) * 4)(best_ids, idx)
     jax.block_until_ready(nbr_user)  # (S, B, k) global user ids of the merged neighbours (-1 for initial points), user order
-    log("queries answered and merged")
+    log(f"merged: foreign neighbour slots per device {np.asarray(n_foreign).ravel().tolist()}")
 
     # ---- phase 3: halo (counting pass, then static) and the depths
     def count_halo(nbr_user):
@@ -614,7 +594,7 @@ def _build_device_graph(points, mesh: Mesh, *, n0: int, k: int, cuda: bool = Tru
 
     depth, halo, halo_depth, its = smap(depths, in_specs=(P(ax), P(ax)), out_specs=(P(ax),) * 4)(nbr_user, init_user)
     stats = dict(
-        n0=S * n0_s, queries_max=E, queries=counts.sum(axis=-1).tolist(), halo_max=H,
+        n0=S * n0_s, candidates_max=Q, candidates=cand.tolist(), halo_max=H,
         foreign_neighbours=float(np.asarray(n_foreign).sum() / (N * k)), depth_iterations=int(np.asarray(its).max()),
         depth_max=int(np.asarray(depth).max()),
     )
