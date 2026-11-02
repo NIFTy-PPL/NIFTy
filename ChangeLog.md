@@ -18,9 +18,11 @@ Change categories:
     for the trace-log, signal- and data-space evaluation, optional Radau
     diagnostics, and an analytic Gaussian-prior contribution.
 - Changes
-  - With `devices`, `optimize_kl` passes the likelihood to the sharded sampling
-    steps as an argument instead of compiling its arrays in as constants, which
-    exhausted host memory for likelihoods holding large data.
+  - With `devices`, `optimize_kl` places the likelihood on the devices once and
+    passes it to the sharded sampling and KL steps as an argument instead of
+    compiling its arrays in as constants, which exhausted host memory for
+    likelihoods holding large data. Likelihood data committed to a single device
+    now works.
   - With `devices`, `OptimizeVI` jits the sharded sampling steps once instead of
     on every call, so they are no longer retraced and recompiled each iteration.
   - Consolidate the public Lanczos and stochastic log-determinant routines with

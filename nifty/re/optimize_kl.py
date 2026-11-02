@@ -104,14 +104,17 @@ def _kl_vg(
     if len(primals_samples) == 0:
         return jax.value_and_grad(ham)(primals)
 
-    vvg = map(jax.value_and_grad(ham))
+    # NOTE, take `ham` as argument so that a jit does not capture the likelihood
+    def vvg(ham, samples):
+        return map(jax.value_and_grad(ham))(samples)
+
     if named_sharding is not None:
         sharding_tree = tree_map(lambda x: named_sharding, primals)
         out_sharding = (named_sharding, sharding_tree)
-        in_sharding = (sharding_tree,)
+        in_sharding = (None, sharding_tree)
         vvg = jax.jit(vvg, in_shardings=in_sharding, out_shardings=out_sharding)
 
-    s = vvg(primals_samples.at(primals).samples)
+    s = vvg(ham, primals_samples.at(primals).samples)
     return reduce(s)
 
 
@@ -133,15 +136,17 @@ def _kl_met(
     if len(primals_samples) == 0:
         return ham.metric(primals, tangents)
 
-    vmet = map(ham.metric, in_axes=(0, None))
+    def vmet(ham, samples, tangents):  # see `_kl_vg`
+        return map(ham.metric, in_axes=(0, None))(samples, tangents)
+
     if named_sharding is not None:
         sharding_tree = tree_map(lambda x: named_sharding, primals)
         sharding_tree_rep = tree_map(lambda x: named_sharding_rep, tangents)
         out_sharding = sharding_tree
-        in_sharding = (sharding_tree, sharding_tree_rep)
+        in_sharding = (None, sharding_tree, sharding_tree_rep)
         vmet = jax.jit(vmet, in_shardings=in_sharding, out_shardings=out_sharding)
 
-    s = vmet(primals_samples.at(primals).samples, tangents)
+    s = vmet(ham, primals_samples.at(primals).samples, tangents)
     return reduce(s)
 
 
@@ -345,6 +350,10 @@ class OptimizeVI:
             mesh = Mesh(devices, ("x",))
             self.named_sharding = NamedSharding(mesh, PartitionSpec("x"))
             self.named_sharding_rep = NamedSharding(mesh, PartitionSpec())
+            # NOTE, place the likelihood once for all steps instead of per call
+            likelihood = jax.device_put(
+                likelihood, self._likelihood_shardings(likelihood)
+            )
 
         if mirror_samples is False:
             raise NotImplementedError()
@@ -444,12 +453,15 @@ class OptimizeVI:
             self.intermediate_samples_path.parent.mkdir(parents=True, exist_ok=True)
 
     def _likelihood_shardings(self, residual):
-        # keep leaves already spread over the sampling devices, replicate the rest
-        devices = self.named_sharding.device_set
+        # keep leaves already spread over the sampling devices, replicate the
+        # rest; jit needs the same device order, not merely the same devices
+        devices = tuple(self.named_sharding.mesh.devices.flat)
         return tree_map(
             lambda x: (
                 x.sharding
-                if isinstance(x, jax.Array) and x.sharding.device_set == devices
+                if isinstance(x, jax.Array)
+                and isinstance(x.sharding, NamedSharding)
+                and tuple(x.sharding.mesh.devices.flat) == devices
                 else self.named_sharding_rep
             ),
             residual,
@@ -599,6 +611,9 @@ class OptimizeVI:
         constants=(),
         **kwargs,
     ) -> optimize.OptimizeResults:
+        if self.named_sharding is not None:
+            # NOTE, a position committed to one device clashes with the likelihood
+            samples = samples.at(jax.device_put(samples.pos, self.named_sharding_rep))
         fun_and_grad = Partial(
             self.kl_value_and_grad, primals_samples=samples, **kwargs
         )

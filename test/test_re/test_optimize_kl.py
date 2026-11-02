@@ -401,12 +401,11 @@ DEVICE_NONLINEARLY_UPDATE_KWARGS = dict(
 
 def _optimize_kl_resample(lh, devices, **kwargs):
     sk_init, sk = random.split(random.PRNGKey(43))
+    defaults = dict(position_or_samples=lh.init(sk_init), n_samples=len(jax.devices()))
     samples, _ = jft.optimize_kl(
         likelihood=lh,
-        position_or_samples=lh.init(sk_init),
         key=sk,
         n_total_iterations=1,
-        n_samples=len(jax.devices()),
         draw_linear_kwargs=DEVICE_DRAW_LINEAR_KWARGS,
         nonlinearly_update_kwargs=DEVICE_NONLINEARLY_UPDATE_KWARGS,
         kl_kwargs=dict(minimize_kwargs=dict(maxiter=2)),
@@ -414,18 +413,21 @@ def _optimize_kl_resample(lh, devices, **kwargs):
         odir=None,
         residual_map="vmap",
         devices=devices,
-        **kwargs,
+        **(defaults | kwargs),
     )
     return samples
 
 
 def _assert_samples_allclose(a, b):
     aallclose = partial(assert_allclose, rtol=1e-5, atol=1e-5)
-    tree_map(aallclose, a.samples, b.samples)
+    assert len(a) == len(b)
+    if len(a):  # MAP runs have no samples
+        tree_map(aallclose, a.samples, b.samples)
     tree_map(aallclose, a.pos, b.pos)
 
 
-def test_optimize_kl_device_likelihood_not_captured():
+@pmp("jit", (True, False))
+def test_optimize_kl_device_likelihood_not_captured(jit):
     devices = jax.devices()
     if not len(devices) > 1:
         pytest.skip("Need more than one device for test.")
@@ -433,19 +435,19 @@ def test_optimize_kl_device_likelihood_not_captured():
     lh = jft.Gaussian(random.normal(random.PRNGKey(42), (n,)))
     if not hasattr(jax.config, "jax_captured_constants_warn_bytes"):
         pytest.skip("JAX without jax_captured_constants_warn_bytes")
-    samples_single_device = _optimize_kl_resample(lh, None)
+    samples_single_device = _optimize_kl_resample(lh, None, jit=jit)
     warn_bytes = jax.config.jax_captured_constants_warn_bytes
     jax.config.update("jax_captured_constants_warn_bytes", lh.data.nbytes // 2)
     try:
         with warnings.catch_warnings():
             warnings.filterwarnings("error", message="A large amount of constants")
-            samples_multiple_devices = _optimize_kl_resample(lh, devices)
+            samples_multiple_devices = _optimize_kl_resample(lh, devices, jit=jit)
     finally:
         jax.config.update("jax_captured_constants_warn_bytes", warn_bytes)
     _assert_samples_allclose(samples_single_device, samples_multiple_devices)
 
 
-@pmp("placement", ("single_device", "sharded"))
+@pmp("placement", ("single_device", "sharded", "sharded_reversed"))
 def test_optimize_kl_device_likelihood_placement(placement):
     devices = jax.devices()
     if not len(devices) > 1:
@@ -454,20 +456,24 @@ def test_optimize_kl_device_likelihood_placement(placement):
     if placement == "single_device":
         placed = jax.device_put(data, devices[0])
     else:
-        placed = jax.device_put(data, NamedSharding(Mesh(devices, ("x",)), P("x")))
-    pos = jft.Gaussian(data).init(random.PRNGKey(43))
-    keys = random.split(random.PRNGKey(44), len(devices))
-    # only the sampling steps: the KL minimization never supported such data
-    samples = []
-    for lh, devs in ((jft.Gaussian(data), None), (jft.Gaussian(placed), devices)):
-        opt_vi = jft.OptimizeVI(lh, 1, residual_map="vmap", devices=devs)
-        smpls, _ = opt_vi.draw_linear_samples(pos, keys, **DEVICE_DRAW_LINEAR_KWARGS)
-        updated, _ = opt_vi.nonlinearly_update_samples(
-            smpls, **DEVICE_NONLINEARLY_UPDATE_KWARGS
-        )
-        samples.append((smpls, updated))
-    for single_device, multiple_devices in zip(*samples):
-        _assert_samples_allclose(single_device, multiple_devices)
+        mesh = Mesh(devices if placement == "sharded" else devices[::-1], ("x",))
+        placed = jax.device_put(data, NamedSharding(mesh, P("x")))
+    samples_single_device = _optimize_kl_resample(jft.Gaussian(data), None)
+    samples_multiple_devices = _optimize_kl_resample(jft.Gaussian(placed), devices)
+    _assert_samples_allclose(samples_single_device, samples_multiple_devices)
+
+
+@pmp("n_samples", (0, 4))
+def test_optimize_kl_device_committed_position(n_samples):
+    devices = jax.devices()
+    if not len(devices) > 1:
+        pytest.skip("Need more than one device for test.")
+    lh = jft.Gaussian(random.normal(random.PRNGKey(42), (8 * len(devices),)))
+    pos = jax.device_put(lh.init(random.PRNGKey(44)), devices[0])
+    kw = dict(position_or_samples=pos, n_samples=n_samples)
+    samples_single_device = _optimize_kl_resample(lh, None, **kw)
+    samples_multiple_devices = _optimize_kl_resample(lh, devices, **kw)
+    _assert_samples_allclose(samples_single_device, samples_multiple_devices)
 
 
 def _residual_with_option(likelihood, *args, method, **kwargs):
