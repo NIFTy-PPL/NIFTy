@@ -754,6 +754,43 @@ class CorrelatedFieldMaker:
         self._target_grids.append(grid)
         self._parameter_tree.update(ma.domain)
 
+    def add_fluctuations_custom(
+        self,
+        shape,
+        distances,
+        amplitude_factory,
+        prefix="",
+        harmonic_type="fourier",
+    ):
+        """Add a custom amplitude spectrum without additional normalization.
+
+        ``amplitude_factory(grid, prefix)`` must return a :class:`Model` with
+        a mapping domain of standard-normal latent parameters. Its output must
+        be a nonnegative amplitude for each unique harmonic mode length, in
+        the same volume convention as :class:`NonParametricAmplitude`, with
+        entry zero set to ``grid.total_volume``. The supplied prefix includes
+        the maker's prefix and should be used for parameter names.
+
+        A factory can compose existing amplitude models. Normalization and
+        power-to-amplitude conversion are the factory's responsibility. Common zero-mode handling
+        and harmonic transforms are still performed by :meth:`finalize`.
+        """
+        grid = make_grid(shape, distances, harmonic_type)
+        amplitude = amplitude_factory(grid, self._prefix + prefix)
+        if not isinstance(amplitude, Model):
+            raise TypeError("amplitude_factory must return a Model")
+        if not isinstance(amplitude.domain, Mapping):
+            raise TypeError("Custom amplitude model must have a mapping domain")
+        expected_shape = grid.harmonic_grid.mode_lengths.shape
+        if amplitude.target.shape != expected_shape:
+            raise ValueError(
+                f"Custom amplitude must have shape {expected_shape}; "
+                f"got {amplitude.target.shape}"
+            )
+        self._fluctuations.append(amplitude)
+        self._target_grids.append(grid)
+        self._parameter_tree.update(amplitude.domain)
+
     def set_amplitude_total_offset(
         self, offset_mean: float, offset_std: Union[tuple, Callable]
     ):
