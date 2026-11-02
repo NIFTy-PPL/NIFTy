@@ -174,9 +174,12 @@ def _make_data_operator(likelihood, position, metric_jit):
     data_zeros = tree_map(
         lambda s: jnp.zeros(s.shape, dtype=s.dtype), likelihood.lsm_tangents_shape
     )
-    # Work in the realified data space: LSM is the adjoint of RSM under the real
-    # inner product Re<z, w>, so RSM o LSM is real-symmetric there, also for
-    # complex or mixed real/complex data.
+    # Work in the realified data space. JAX transposes w.r.t. the real bilinear
+    # form Re(y^T x) and `_functional_conj` turns that into the adjoint under
+    # Re<z, w>, so LSM is the Re<z, w>-adjoint of RSM for any R-linear Jacobian
+    # (non-holomorphic forwards included). Stacking (Re, Im) is an isometry onto
+    # (R^2n, dot), hence RSM o LSM is real-symmetric here, also for mixed
+    # real/complex data.
     data_flat, data_unravel = jax.flatten_util.ravel_pytree(_realify(data_zeros))
 
     def data_op(x, *, position):
@@ -580,8 +583,8 @@ def estimate_evidence_lower_bound(
         data-space operator LSM^T LSM with f=log1p. "auto" selects the smaller
         of data- and signal-space dimensions (falls back to "signal" if
         data-space shapes are unavailable). Complex data leaves are split into
-        (Re, Im) pairs and count as two real degrees of freedom. Default is
-        "signal".
+        (Re, Im) pairs and count as two real degrees of freedom; the latent
+        parameters themselves must be real. Default is "signal".
     slq_order : int
         Lanczos order for SLQ (only used when trace_log_method="slq").
     slq_num_samples : int

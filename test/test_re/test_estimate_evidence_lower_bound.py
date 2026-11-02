@@ -819,8 +819,10 @@ def _make_complex_likelihood_and_samples(
 
 
 @pmp("mixed", [False, True])
-def test_elbo_complex_data_operator_symmetric_matches_metric(mixed):
-    n_latent, n_vis, n_real = 200, 40, 30
+@pmp("n_latent", [200, 50])
+def test_elbo_complex_data_operator_symmetric_matches_metric(n_latent, mixed):
+    # 50 latents are fewer than the 80 or 110 data dofs, so the tail is tested.
+    n_vis, n_real = 40, 30
     likelihood, samples = _make_complex_likelihood_and_samples(
         n_latent, n_vis, mixed=mixed, n_real=n_real
     )
