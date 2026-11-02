@@ -19,7 +19,7 @@ from .likelihood import Likelihood
 from .logger import logger
 from .num.lanczos import _slq_gauss_radau
 from .optimize_kl import _StandardHamiltonian as StandardHamiltonian
-from .tree_math.vector_math import size, vdot
+from .tree_math.vector_math import vdot
 
 _DEFAULT_SLQ_ORDER = 64
 _DEFAULT_SLQ_NUM_SAMPLES = 8
@@ -151,25 +151,46 @@ def _ravel_metric(metric, position, dtype, metric_jit):
     return linop, met, shp.size
 
 
-def _make_data_operator(likelihood, position, dtype, metric_jit):
+def _realify(tree):
+    """Represent every complex leaf as a stacked (real, imag) pair."""
+    return tree_map(
+        lambda x: jnp.stack((x.real, x.imag)) if jnp.iscomplexobj(x) else x, tree
+    )
+
+
+def _n_real_dofs(shapes):
+    return sum(
+        s.size * (2 if jnp.issubdtype(s.dtype, jnp.complexfloating) else 1)
+        for s in jax.tree_util.tree_leaves(shapes)
+    )
+
+
+def _make_data_operator(likelihood, position, metric_jit):
     if likelihood.lsm_tangents_shape is None:
         raise ValueError("lsm_tangents_shape is required for data-space projection.")
 
     data_zeros = tree_map(
         lambda s: jnp.zeros(s.shape, dtype=s.dtype), likelihood.lsm_tangents_shape
     )
-    data_flat, data_unravel = jax.flatten_util.ravel_pytree(data_zeros)
+    # Work in the realified data space: LSM is the adjoint of RSM under the real
+    # inner product Re<z, w>, so RSM o LSM is real-symmetric there, also for
+    # complex or mixed real/complex data.
+    data_flat, data_unravel = jax.flatten_util.ravel_pytree(_realify(data_zeros))
 
     def data_op(x, *, position):
-        u = data_unravel(x)
+        u = tree_map(
+            lambda r, z: r[0] + 1j * r[1] if jnp.iscomplexobj(z) else r,
+            data_unravel(x),
+            data_zeros,
+        )
         v = likelihood.left_sqrt_metric(position, u)
         w = likelihood.right_sqrt_metric(position, v)
-        return _ravel(w)
+        return _ravel(_realify(w))
 
     metric_jit = _parse_jit(metric_jit)
     data_op = partial(metric_jit(data_op), position=position)
 
-    linop = _make_linop(data_op, 2 * (data_flat.size,), dtype)
+    linop = _make_linop(data_op, 2 * (data_flat.size,), data_flat.dtype)
     return linop, data_op, data_flat.size
 
 
@@ -556,7 +577,9 @@ def estimate_evidence_lower_bound(
         metric in signal space with f=log. "data" uses the implicit
         data-space operator LSM^T LSM with f=log1p. "auto" selects the smaller
         of data- and signal-space dimensions (falls back to "signal" if
-        data-space shapes are unavailable). Default is "signal".
+        data-space shapes are unavailable). Complex data leaves are split into
+        (Re, Im) pairs and count as two real degrees of freedom. Default is
+        "signal".
     slq_order : int
         Lanczos order for SLQ (only used when trace_log_method="slq").
     slq_num_samples : int
@@ -681,7 +704,7 @@ def estimate_evidence_lower_bound(
         metric, samples.pos, dtype=likelihood.target.dtype, metric_jit=metric_jit
     )
     n_data_points = (
-        size(likelihood.lsm_tangents_shape)
+        _n_real_dofs(likelihood.lsm_tangents_shape)
         if likelihood.lsm_tangents_shape is not None
         else metric_size
     )
@@ -711,10 +734,7 @@ def estimate_evidence_lower_bound(
     if use_data_space:
         op_label = "data-space"
         op_linop, op_matvec, op_size = _make_data_operator(
-            likelihood,
-            samples.pos,
-            dtype=likelihood.target.dtype,
-            metric_jit=metric_jit,
+            likelihood, samples.pos, metric_jit=metric_jit
         )
         eigenvalue_shift = 0.0
         solver_shift = 1.0
