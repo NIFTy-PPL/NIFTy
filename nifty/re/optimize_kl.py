@@ -17,7 +17,7 @@ import numpy as np
 from jax import numpy as jnp
 from jax import random
 from jax.sharding import Mesh, NamedSharding, PartitionSpec
-from jax.tree_util import Partial, tree_map
+from jax.tree_util import Partial, tree_flatten, tree_map, tree_unflatten
 
 
 from . import optimize
@@ -143,6 +143,28 @@ def _kl_met(
 
     s = vmet(primals_samples.at(primals).samples, tangents)
     return reduce(s)
+
+
+def _split_arrays(tree):
+    """Splits `tree` into a hashable static part and a list of its arrays."""
+    leaves, treedef = tree_flatten(tree)
+    is_arr = [isinstance(x, (jax.Array, np.ndarray)) for x in leaves]
+    static = tuple(None if a else x for a, x in zip(is_arr, leaves))
+    return (treedef, static), [x if a else None for a, x in zip(is_arr, leaves)]
+
+
+def _map_residual(residual_map, in_axes, kwargs_static, kwargs_arrays, residual, *a):
+    # NOTE, `tree_flatten` never yields `None` leaves, so `None` marks the arrays
+    treedef, static = kwargs_static
+    leaves = [s if x is None else x for s, x in zip(static, kwargs_arrays)]
+    # NOTE, use `Partial` in favor of `partial` to allow the (potentially)
+    # re-jitting `residual_map` to trace the kwargs
+    residual = Partial(residual, **tree_unflatten(treedef, leaves))
+    return residual_map(residual, in_axes=in_axes)(*a)
+
+
+def _negate_odd(x):
+    return x.at[1::2].set(-x[1::2])
 
 
 SMPL_MODE_TYP = Literal[
@@ -405,6 +427,16 @@ class OptimizeVI:
         self.nonlinearly_update_residual = _nonlinearly_update_residual
         self.residual_map = residual_map
         self.get_status_message = _get_status_message
+        self._map_residual = _map_residual
+        if self.named_sharding is not None:
+            # NOTE, jit once so that JAX reuses the compiled sampling programs
+            shrd = self.named_sharding
+            self._map_residual = jax.jit(
+                _map_residual, static_argnums=(0, 1, 2), out_shardings=shrd
+            )
+            # out_shardings tells JAX not to move all samples to a single device
+            self._concatenate_zip = jax.jit(concatenate_zip, out_shardings=shrd)
+            self._negate_odd = jax.jit(_negate_odd, out_shardings=shrd)
 
         self.intermediate_samples_path = None
         if intermediate_samples_path is not None:
@@ -424,98 +456,73 @@ class OptimizeVI:
         )
 
     def draw_linear_samples(self, primals, keys, **kwargs):
-        # NOTE, use `Partial` in favor of `partial` to allow the (potentially)
-        # re-jitting `residual_map` to trace the kwargs
-        kwargs = hide_strings(kwargs)
+        kwargs_static, kwargs_arrays = _split_arrays(hide_strings(kwargs))
+        n_samples = len(keys)
+        mirror_in_place = False
+        residual, pos = self.draw_linear_residual, primals
+        if self.named_sharding is not None:
+            mirror_in_place = n_samples == self.named_sharding.mesh.size / 2
+            if mirror_in_place:
+                keys = jnp.repeat(keys, 2, axis=0)
+            keys = jax.device_put(keys, self.named_sharding)
+            # NOTE, place every input explicitly: the placement decides where the
+            # program runs and is part of its cache key, e.g. the first `pos` is
+            # not yet on the devices but the KL-optimized ones are
+            residual = jax.device_put(residual, self._likelihood_shardings(residual))
+            pos, kwargs_arrays = jax.device_put(
+                (pos, kwargs_arrays), self.named_sharding_rep
+            )
 
-        def sampler(residual, primals, keys):
-            residual = Partial(residual, **kwargs)
-            return self.residual_map(residual, in_axes=(None, 0))(primals, keys)
-
-        if self.named_sharding is None:
-            smpls, smpls_states = sampler(self.draw_linear_residual, primals, keys)
+        smpls, smpls_states = self._map_residual(
+            self.residual_map,
+            (None, 0),
+            kwargs_static,
+            kwargs_arrays,
+            residual,
+            pos,
+            keys,
+        )
+        if mirror_in_place:
+            smpls = tree_map(self._negate_odd, smpls)
+            keys = keys[::2]  # undo jnp.repeat
+        elif self.named_sharding is not None:
+            smpls = self._concatenate_zip(smpls, -smpls)
+        else:
             # zip samples such that the mirrored-counterpart always comes right
             # after the original sample
             smpls = concatenate_zip(smpls, -smpls)
-        else:
-            n_samples = len(keys)
-            if n_samples == self.named_sharding.mesh.size / 2:
-                keys = jnp.repeat(keys, 2, axis=0)
-            keys = jax.device_put(keys, self.named_sharding)
-
-            # zip samples such that the mirrored-counterpart always comes right
-            # after the original sample. out_shardings is need for telling JAX
-            # not to move all samples to a single device.
-            @partial(jax.jit, out_shardings=self.named_sharding)
-            def concatenate_zip_pmap(*arrays):
-                return tree_map(
-                    lambda *x: jnp.stack(x, axis=1).reshape((-1,) + x[0].shape[1:]),
-                    *arrays,
-                )
-
-            @partial(jax.jit, out_shardings=self.named_sharding)
-            def _special_mirror_samples(samples):
-                return samples.at[1::2].set(-samples[1::2])
-
-            in_shardings = (
-                self._likelihood_shardings(self.draw_linear_residual),
-                tree_map(lambda x: self.named_sharding_rep, primals),
-                self.named_sharding,
-            )
-            out_shardings = (
-                tree_map(lambda x: self.named_sharding, primals),
-                self.named_sharding,
-            )
-            sampler = jax.jit(
-                sampler,
-                in_shardings=in_shardings,
-                out_shardings=out_shardings,
-            )
-
-            smpls, smpls_states = sampler(self.draw_linear_residual, primals, keys)
-            if n_samples == self.named_sharding.mesh.size / 2:
-                smpls = tree_map(_special_mirror_samples, smpls)
-                keys = keys[::2]  # undo jnp.repeat
-            else:
-                smpls = concatenate_zip_pmap(smpls, -smpls)
 
         smpls = Samples(pos=primals, samples=smpls, keys=keys)
         return smpls, smpls_states
 
     def nonlinearly_update_samples(self, samples: Samples, **kwargs):
-        # NOTE, use `Partial` in favor of `partial` to allow the (potentially)
-        # re-jitting `residual_map` to trace the kwargs
-        kwargs = hide_strings(kwargs)
+        kwargs_static, kwargs_arrays = _split_arrays(hide_strings(kwargs))
         assert len(samples.keys) == len(samples) // 2
         metric_sample_key = concatenate_zip(*((samples.keys,) * 2))
         sgn = jnp.ones(len(samples.keys))
         sgn = concatenate_zip(sgn, -sgn)
-
-        def curver(residual, *args):
-            residual = Partial(residual, **kwargs)
-            return self.residual_map(residual, in_axes=(None, 0, 0, 0))(*args)
-
-        if self.named_sharding is not None:
-            metric_sample_key = jax.device_put(metric_sample_key, self.named_sharding)
-            sgn = jax.device_put(sgn, self.named_sharding)
-            sharding_tree = tree_map(lambda x: self.named_sharding, samples.pos)
-            sharding_tree_rep = tree_map(lambda x: self.named_sharding_rep, samples.pos)
-            out_sharding = (sharding_tree, self.named_sharding)
-            in_sharding = (
-                self._likelihood_shardings(self.nonlinearly_update_residual),
-                sharding_tree_rep,
-                sharding_tree,
-                self.named_sharding,
-                self.named_sharding,
-            )
-            curver = jax.jit(
-                curver, in_shardings=in_sharding, out_shardings=out_sharding
-            )
-
-        smpls, smpls_states = curver(
+        residual, pos, smpls = (
             self.nonlinearly_update_residual,
             samples.pos,
             samples._samples,
+        )
+        if self.named_sharding is not None:  # see `draw_linear_samples`
+            residual = jax.device_put(residual, self._likelihood_shardings(residual))
+            pos, kwargs_arrays = jax.device_put(
+                (pos, kwargs_arrays), self.named_sharding_rep
+            )
+            smpls, metric_sample_key, sgn = jax.device_put(
+                (smpls, metric_sample_key, sgn), self.named_sharding
+            )
+
+        smpls, smpls_states = self._map_residual(
+            self.residual_map,
+            (None, 0, 0, 0),
+            kwargs_static,
+            kwargs_arrays,
+            residual,
+            pos,
+            smpls,
             metric_sample_key,
             sgn,
         )

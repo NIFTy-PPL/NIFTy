@@ -488,6 +488,25 @@ def test_optimize_kl_device_custom_residual_with_static_option(hook):
     _assert_samples_allclose(samples_single_device, samples_multiple_devices)
 
 
+@pmp("hook", ("draw_linear_residual", "nonlinearly_update_residual"))
+def test_optimize_kl_device_sampling_traced_once(hook):
+    devices = jax.devices()
+    if not len(devices) > 1:
+        pytest.skip("Need more than one device for test.")
+    lh = jft.Gaussian(random.normal(random.PRNGKey(42), (8 * len(devices),)))
+    n_traces = 0
+
+    def residual(*args, **kwargs):
+        nonlocal n_traces
+        n_traces += 1  # only runs while JAX traces the sharded sampling program
+        return getattr(jft, hook)(lh, *args, **kwargs)
+
+    custom = {f"_{hook}": residual}
+    opt_vi = jft.OptimizeVI(lh, 3, residual_map="vmap", devices=devices, **custom)
+    _optimize_kl_resample(lh, devices, _optimize_vi=opt_vi)
+    assert n_traces == 1
+
+
 if __name__ == "__main__":
     test_concatenate_zip(1, (5, 12), 3)
     test_optimize_kl_sample_consistency(
