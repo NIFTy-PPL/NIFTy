@@ -789,3 +789,167 @@ def test_elbo_radau_requires_exact_upper_endpoint():
             output_directory=None,
             verbose=False,
         )
+
+
+def _make_complex_likelihood_and_samples(
+    n_latent, n_vis, *, mixed=False, n_real=30, seed=0, dtype=np.complex128
+):
+    # numpy RNG keeps the responses independent of the JAX SLQ probe keys.
+    rng = np.random.default_rng(seed)
+    rdtype = np.finfo(dtype).dtype
+    dom = jft.Vector({"x": jft.ShapeWithDtype((n_latent,), rdtype)})
+    A = rng.normal(size=(n_vis, n_latent)) + 1j * rng.normal(size=(n_vis, n_latent))
+    A = jnp.asarray(A / np.sqrt(n_latent), dtype=dtype)
+    likelihood = jft.Gaussian(jnp.zeros(n_vis, dtype=dtype)).amend(
+        lambda p: A @ p["x"], domain=dom
+    )
+    if mixed:
+        B = jnp.asarray(
+            rng.normal(size=(n_real, n_latent)) / np.sqrt(n_latent), dtype=rdtype
+        )
+        likelihood = (
+            jft.Gaussian(jnp.zeros(n_real, dtype=rdtype)).amend(lambda p: B @ p["x"], domain=dom)
+            + likelihood
+        )
+    pos = jft.Vector({"x": jnp.zeros(n_latent, dtype=rdtype)})
+    residuals = jft.Vector(
+        {"x": jnp.asarray(rng.normal(size=(2, n_latent)), dtype=rdtype)}
+    )
+    return likelihood, jft.Samples(pos=pos, samples=residuals)
+
+
+@pmp("mixed", [False, True])
+@pmp("n_latent", [200, 50])
+def test_elbo_complex_data_operator_symmetric_matches_metric(n_latent, mixed):
+    # 50 latents are fewer than the 80 or 110 data dofs, so the tail is tested.
+    n_vis, n_real = 40, 30
+    likelihood, samples = _make_complex_likelihood_and_samples(
+        n_latent, n_vis, mixed=mixed, n_real=n_real
+    )
+    elbo_mod = importlib.import_module("nifty.re.evidence_lower_bound")
+
+    linop, _, size = elbo_mod._make_data_operator(
+        likelihood, samples.pos, metric_jit=False
+    )
+    data_op = elbo_mod._explicify(linop)
+    assert linop.dtype == np.float64
+    assert size == 2 * n_vis + (n_real if mixed else 0)
+    assert data_op.shape == (size, size)
+    assert_allclose(data_op, data_op.T, atol=1e-12)
+
+    ravel = lambda x: jax.flatten_util.ravel_pytree(x)[0]
+    metric = np.column_stack(
+        [
+            ravel(likelihood.metric(samples.pos, jft.Vector({"x": jnp.asarray(e)})))
+            for e in np.identity(n_latent)
+        ]
+    )
+    data_eigs = np.sort(np.linalg.eigvalsh(data_op))[::-1]
+    metric_eigs = np.sort(np.linalg.eigvalsh(metric))[::-1]
+    k = min(n_latent, size)
+    assert_allclose(data_eigs[:k], metric_eigs[:k], atol=1e-10)
+    assert_allclose(data_eigs[k:], 0.0, atol=1e-10)
+
+
+@pmp("mixed", [False, True])
+def test_elbo_complex_data_space_matches_signal_space(mixed):
+    likelihood, samples = _make_complex_likelihood_and_samples(200, 40, mixed=mixed)
+    common = dict(metric_jit=False, output_directory=None, verbose=False)
+
+    exact = {
+        space: jft.estimate_evidence_lower_bound(
+            likelihood, samples, 1, compute_all=True, trace_log_space=space, **common
+        )[0]
+        for space in ("signal", "data")
+    }
+    assert np.all(np.isfinite(exact["data"]))
+    assert_allclose(exact["data"], exact["signal"], rtol=1e-10)
+
+    slq = {
+        space: jft.estimate_evidence_lower_bound(
+            likelihood,
+            samples,
+            5,
+            trace_log_method="slq",
+            trace_log_space=space,
+            slq_num_samples=16,
+            slq_key=0,
+            **common,
+        )
+        for space in ("signal", "data")
+    }
+    assert np.all(np.isfinite(slq["data"][0]))
+    se = np.hypot(slq["signal"][1]["trace_log_se"], slq["data"][1]["trace_log_se"])
+    assert_allclose(slq["data"][0], slq["signal"][0], atol=3 * se)
+
+
+def test_elbo_complex_data_space_save_and_resume(tmp_path):
+    n_vis = 40
+    likelihood, samples = _make_complex_likelihood_and_samples(200, n_vis)
+    output_directory = tmp_path / "eig"
+    common = dict(n_batches=2, trace_log_space="data", metric_jit=True, verbose=False)
+
+    elbo_a, _ = jft.estimate_evidence_lower_bound(
+        likelihood, samples, 6, output_directory=str(output_directory), **common
+    )
+
+    eigvals = np.load(output_directory / "metric_data_eigenvalues.npy")
+    eigvecs = np.load(output_directory / "metric_data_eigenvectors.npy")
+    assert np.isrealobj(eigvals) and np.isrealobj(eigvecs)
+    assert eigvecs.shape == (2 * n_vis, eigvals.size)
+
+    elbo_b, _ = jft.estimate_evidence_lower_bound(
+        likelihood,
+        samples,
+        6,
+        resume_eigenvalues=eigvals,
+        resume_eigenvectors=eigvecs,
+        **common,
+    )
+    assert_allclose(elbo_a, elbo_b)
+
+
+@pmp("n_latent, space", [(15, "signal"), (25, "data")])
+def test_elbo_auto_counts_complex_dofs_twice(tmp_path, n_latent, space):
+    # 10 visibilities are 20 real dofs: fewer latents than that keeps "signal".
+    likelihood, samples = _make_complex_likelihood_and_samples(n_latent, 10)
+
+    jft.estimate_evidence_lower_bound(
+        likelihood,
+        samples,
+        1,
+        trace_log_space="auto",
+        output_directory=str(tmp_path),
+        metric_jit=False,
+        verbose=False,
+    )
+
+    other = "data" if space == "signal" else "signal"
+    assert (tmp_path / f"metric_{space}_eigenvalues.npy").exists()
+    assert not (tmp_path / f"metric_{other}_eigenvalues.npy").exists()
+
+
+def test_elbo_single_precision_under_x64():
+    # Solvers hand float64 vectors to both operators; the model must still see
+    # float32 latents and complex64 data.
+    likelihood, samples = _make_complex_likelihood_and_samples(
+        60, 12, mixed=True, dtype=np.complex64
+    )
+    common = dict(metric_jit=True, output_directory=None, verbose=False)
+    exact, slq = {}, {}
+    for space in ("signal", "data"):
+        exact[space] = jft.estimate_evidence_lower_bound(
+            likelihood, samples, 1, compute_all=True, trace_log_space=space, **common
+        )[0]
+        slq[space] = jft.estimate_evidence_lower_bound(
+            likelihood,
+            samples,
+            3,
+            trace_log_method="slq",
+            trace_log_space=space,
+            slq_num_samples=8,
+            slq_key=0,
+            **common,
+        )[0]
+        assert np.all(np.isfinite(exact[space])) and np.all(np.isfinite(slq[space]))
+    assert_allclose(exact["data"], exact["signal"], rtol=1e-4)
