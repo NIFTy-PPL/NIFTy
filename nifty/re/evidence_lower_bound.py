@@ -142,7 +142,9 @@ def _ravel_metric(metric, position, dtype, metric_jit):
     shape = 2 * (shp.size,)
 
     def met(x, *, position):
-        return _ravel(metric(position, unravel(x)))
+        # Solvers hand in float64 vectors under x64; unravel at the position's
+        # own precision so float32 models work.
+        return _ravel(metric(position, unravel(jnp.asarray(x, dtype=shp.dtype))))
 
     metric_jit = _parse_jit(metric_jit)
     met = partial(metric_jit(met), position=position)
@@ -180,7 +182,7 @@ def _make_data_operator(likelihood, position, metric_jit):
     def data_op(x, *, position):
         u = tree_map(
             lambda r, z: r[0] + 1j * r[1] if jnp.iscomplexobj(z) else r,
-            data_unravel(x),
+            data_unravel(jnp.asarray(x, dtype=data_flat.dtype)),
             data_zeros,
         )
         v = likelihood.left_sqrt_metric(position, u)

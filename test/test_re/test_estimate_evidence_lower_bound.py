@@ -792,24 +792,29 @@ def test_elbo_radau_requires_exact_upper_endpoint():
 
 
 def _make_complex_likelihood_and_samples(
-    n_latent, n_vis, *, mixed=False, n_real=30, seed=0
+    n_latent, n_vis, *, mixed=False, n_real=30, seed=0, dtype=np.complex128
 ):
     # numpy RNG keeps the responses independent of the JAX SLQ probe keys.
     rng = np.random.default_rng(seed)
-    dom = jft.Vector({"x": jft.ShapeWithDtype((n_latent,), float)})
+    rdtype = np.finfo(dtype).dtype
+    dom = jft.Vector({"x": jft.ShapeWithDtype((n_latent,), rdtype)})
     A = rng.normal(size=(n_vis, n_latent)) + 1j * rng.normal(size=(n_vis, n_latent))
-    A = jnp.asarray(A / np.sqrt(n_latent))
-    likelihood = jft.Gaussian(jnp.zeros(n_vis, dtype=complex)).amend(
+    A = jnp.asarray(A / np.sqrt(n_latent), dtype=dtype)
+    likelihood = jft.Gaussian(jnp.zeros(n_vis, dtype=dtype)).amend(
         lambda p: A @ p["x"], domain=dom
     )
     if mixed:
-        B = jnp.asarray(rng.normal(size=(n_real, n_latent)) / np.sqrt(n_latent))
+        B = jnp.asarray(
+            rng.normal(size=(n_real, n_latent)) / np.sqrt(n_latent), dtype=rdtype
+        )
         likelihood = (
-            jft.Gaussian(jnp.zeros(n_real)).amend(lambda p: B @ p["x"], domain=dom)
+            jft.Gaussian(jnp.zeros(n_real, dtype=rdtype)).amend(lambda p: B @ p["x"], domain=dom)
             + likelihood
         )
-    pos = jft.Vector({"x": jnp.zeros(n_latent)})
-    residuals = jft.Vector({"x": jnp.asarray(rng.normal(size=(2, n_latent)))})
+    pos = jft.Vector({"x": jnp.zeros(n_latent, dtype=rdtype)})
+    residuals = jft.Vector(
+        {"x": jnp.asarray(rng.normal(size=(2, n_latent)), dtype=rdtype)}
+    )
     return likelihood, jft.Samples(pos=pos, samples=residuals)
 
 
@@ -920,3 +925,29 @@ def test_elbo_auto_counts_complex_dofs_twice(tmp_path, n_latent, space):
     other = "data" if space == "signal" else "signal"
     assert (tmp_path / f"metric_{space}_eigenvalues.npy").exists()
     assert not (tmp_path / f"metric_{other}_eigenvalues.npy").exists()
+
+
+def test_elbo_single_precision_under_x64():
+    # Solvers hand float64 vectors to both operators; the model must still see
+    # float32 latents and complex64 data.
+    likelihood, samples = _make_complex_likelihood_and_samples(
+        60, 12, mixed=True, dtype=np.complex64
+    )
+    common = dict(metric_jit=True, output_directory=None, verbose=False)
+    exact, slq = {}, {}
+    for space in ("signal", "data"):
+        exact[space] = jft.estimate_evidence_lower_bound(
+            likelihood, samples, 1, compute_all=True, trace_log_space=space, **common
+        )[0]
+        slq[space] = jft.estimate_evidence_lower_bound(
+            likelihood,
+            samples,
+            3,
+            trace_log_method="slq",
+            trace_log_space=space,
+            slq_num_samples=8,
+            slq_key=0,
+            **common,
+        )[0]
+        assert np.all(np.isfinite(exact[space])) and np.all(np.isfinite(slq[space]))
+    assert_allclose(exact["data"], exact["signal"], rtol=1e-4)
