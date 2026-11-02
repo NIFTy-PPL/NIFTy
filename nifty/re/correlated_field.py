@@ -617,8 +617,6 @@ class CorrelatedFieldMaker:
         Enßlin, Torsten, `<https://arxiv.org/abs/2002.05218>`_
         `<http://dx.doi.org/10.1038/s41550-021-01548-0>`_
         """
-        grid = make_grid(shape, distances, harmonic_type)
-
         flu = fluctuations
         if isinstance(flu, (tuple, list)):
             flu = lognormal_prior(*flu)
@@ -645,18 +643,21 @@ class CorrelatedFieldMaker:
             te = f"invalid `asperity` specified; got '{type(asperity)}'"
             raise TypeError(te)
 
-        npa = NonParametricAmplitude(
-            grid=grid,
-            fluctuations=flu,
-            loglogavgslope=slp,
-            flexibility=flx,
-            asperity=asp,
-            prefix=self._prefix + prefix,
-            kind=non_parametric_kind,
+        self.add_fluctuations_custom(
+            shape,
+            distances,
+            amplitude_factory=lambda grid, prefix: NonParametricAmplitude(
+                grid=grid,
+                prefix=prefix,
+                fluctuations=flu,
+                loglogavgslope=slp,
+                flexibility=flx,
+                asperity=asp,
+                kind=non_parametric_kind,
+            ),
+            prefix=prefix,
+            harmonic_type=harmonic_type,
         )
-        self._fluctuations.append(npa)
-        self._target_grids.append(grid)
-        self._parameter_tree.update(npa.domain)
 
     def add_fluctuations_matern(
         self,
@@ -723,8 +724,6 @@ class CorrelatedFieldMaker:
         Enßlin, Torsten, `<https://arxiv.org/abs/2105.13483>`_
         `<https://doi.org/10.1371/journal.pone.0275011>`_
         """
-        grid = make_grid(shape, distances, harmonic_type)
-
         if isinstance(scale, (tuple, list)):
             scale = lognormal_prior(*scale)
         elif not callable(scale):
@@ -741,18 +740,21 @@ class CorrelatedFieldMaker:
             te = f"invalid `loglogslope` specified; got '{type(loglogslope)}'"
             raise TypeError(te)
 
-        ma = MaternAmplitude(
-            grid=grid,
-            scale=scale,
-            cutoff=cutoff,
-            loglogslope=loglogslope,
-            prefix=self._prefix + prefix,
-            kind=non_parametric_kind,
-            renormalize_amplitude=renormalize_amplitude,
+        self.add_fluctuations_custom(
+            shape,
+            distances,
+            amplitude_factory=lambda grid, prefix: MaternAmplitude(
+                grid=grid,
+                prefix=prefix,
+                scale=scale,
+                cutoff=cutoff,
+                loglogslope=loglogslope,
+                kind=non_parametric_kind,
+                renormalize_amplitude=renormalize_amplitude,
+            ),
+            prefix=prefix,
+            harmonic_type=harmonic_type,
         )
-        self._fluctuations.append(ma)
-        self._target_grids.append(grid)
-        self._parameter_tree.update(ma.domain)
 
     def add_fluctuations_custom(
         self,
@@ -772,8 +774,9 @@ class CorrelatedFieldMaker:
         the maker's prefix and should be used for parameter names.
 
         A factory can compose existing amplitude models. Normalization and
-        power-to-amplitude conversion are the factory's responsibility. Common zero-mode handling
-        and harmonic transforms are still performed by :meth:`finalize`.
+        power-to-amplitude conversion are the factory's responsibility. Common
+        zero-mode handling and harmonic transforms are still performed by
+        :meth:`finalize`.
         """
         grid = make_grid(shape, distances, harmonic_type)
         amplitude = amplitude_factory(grid, self._prefix + prefix)
