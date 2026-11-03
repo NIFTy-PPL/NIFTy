@@ -786,7 +786,9 @@ class CorrelatedFieldMaker:
         expected_shape = grid.harmonic_grid.mode_lengths.shape
         if amplitude.target.shape != expected_shape:
             raise ValueError(
-                f"Custom amplitude must have shape {expected_shape}; "
+                "Custom amplitude model must return one value per unique "
+                "harmonic mode length; "
+                f"expected output shape {expected_shape}, "
                 f"got {amplitude.target.shape}"
             )
         raw_amplitude = amplitude
