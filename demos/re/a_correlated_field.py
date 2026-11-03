@@ -367,6 +367,68 @@ vary_parameter(
     "cutoff", [(10.0, 1.0), (10.0, 3.16), (10.0, 100.0)], matern=True, **cf_args_matern
 )
 
+# ## A Custom Amplitude Spectrum
+#
+# A factory receives the internally constructed grid and the combined maker and
+# component prefix. It returns a Model with standard-normal latent parameters
+# and one amplitude (not power) per unique harmonic mode length.
+# Here we sample a Gaussian amplitude spectrum with lognormal scale and cutoff
+# priors. The scale sets the expected spatial fluctuation RMS, excluding the
+# constant offset.
+# The factory handles normalization; add_fluctuations_custom does not normalize
+# the spectrum and overwrites its zero-mode entry with grid.total_volume.
+
+# +
+def gaussian_amplitude_factory(grid, prefix):
+    modes = grid.harmonic_grid.mode_lengths
+    multiplicity = grid.harmonic_grid.mode_multiplicity
+    # These are means and standard deviations in physical parameter space.
+    scale_prior = jft.LogNormalPrior(mean=1.0, std=0.2, name=prefix + "scale")
+    cutoff_prior = jft.LogNormalPrior(mean=0.05, std=0.015, name=prefix + "cutoff")
+
+    def amplitude(parameters):
+        scale = scale_prior(parameters)
+        cutoff = cutoff_prior(parameters)
+        spectrum = jnp.exp(-0.5 * (modes / cutoff) ** 2)
+        # Count every harmonic coefficient when normalizing nonzero modes.
+        norm = jnp.sqrt(jnp.sum(multiplicity[1:] * spectrum[1:] ** 2))
+        return scale * grid.total_volume * spectrum / norm
+
+    return jft.Model(
+        amplitude,
+        domain=scale_prior.domain | cutoff_prior.domain,
+        white_init=True,
+    )
+
+
+custom_maker = jft.CorrelatedFieldMaker("custom_")
+custom_maker.set_amplitude_total_offset(0.0, (0.1, 0.01))
+custom_maker.add_fluctuations_custom(
+    npix, distances, gaussian_amplitude_factory, prefix="gaussian_"
+)
+custom_field = custom_maker.finalize()
+custom_amplitude = custom_maker.fluctuations[0]
+custom_modes = custom_amplitude.grid.harmonic_grid.mode_lengths
+positions = np.arange(npix) * distances
+
+fig, (field_ax, spectrum_ax) = plt.subplots(1, 2, figsize=(10, 3), layout="tight")
+for _ in range(realisations):
+    key, sample_key = jax.random.split(key)
+    parameters = custom_field.init(sample_key)
+    field_ax.plot(positions, custom_field(parameters), linewidth=1)
+    # Exclude the zero mode from the logarithmic axes.
+    spectrum_ax.loglog(
+        custom_modes[1:],
+        custom_amplitude(parameters)[1:],
+        linewidth=1,
+    )
+field_ax.set(title="Custom Field Realizations", xlabel="Position")
+spectrum_ax.set(
+    title="Custom Amplitude Spectra", xlabel="Mode length", ylabel="Amplitude"
+)
+plt.show()
+# -
+
 # ## Theory of the Correlated Field Model
 #
 # - Want to infer a signal $s$, and have a (multivariate Gaussian) prior $\mathcal{G}(s,S)$
