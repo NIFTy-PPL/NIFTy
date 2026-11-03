@@ -390,8 +390,6 @@ class MaternAmplitude(Model):
         if self.kind.lower() == "power":
             spectrum = jnp.sqrt(spectrum)
         spectrum = scl * (jnp.sqrt(self.grid.total_volume) / norm) * spectrum
-        spectrum = spectrum.at[0].set(self.grid.total_volume)
-
         return spectrum
 
 
@@ -512,7 +510,6 @@ class NonParametricAmplitude(Model):
             amplitude = (
                 flu * (jnp.sqrt(self.grid.total_volume) / norm) * jnp.sqrt(spectrum)
             )
-        amplitude = amplitude.at[0].set(self.grid.total_volume)
         return amplitude
 
 
@@ -769,14 +766,16 @@ class CorrelatedFieldMaker:
         ``amplitude_factory(grid, prefix)`` must return a :class:`Model` with
         a mapping domain of standard-normal latent parameters. Its output must
         be a nonnegative amplitude for each unique harmonic mode length, in
-        the same volume convention as :class:`NonParametricAmplitude`, with
-        entry zero set to ``grid.total_volume``. The supplied prefix includes
+        the same volume convention as :class:`NonParametricAmplitude`.
+        The returned model is wrapped so that its zero-mode entry is always
+        overwritten with ``grid.total_volume`` when evaluated; the factory
+        does not need to set this entry. The supplied prefix includes
         the maker's prefix and should be used for parameter names.
 
         A factory can compose existing amplitude models. Normalization and
         power-to-amplitude conversion are the factory's responsibility. Common
-        zero-mode handling and harmonic transforms are still performed by
-        :meth:`finalize`.
+        zero-mode assignment is performed here, while the field's offset and
+        harmonic transforms are handled by :meth:`finalize`.
         """
         grid = make_grid(shape, distances, harmonic_type)
         amplitude = amplitude_factory(grid, self._prefix + prefix)
@@ -790,6 +789,13 @@ class CorrelatedFieldMaker:
                 f"Custom amplitude must have shape {expected_shape}; "
                 f"got {amplitude.target.shape}"
             )
+        raw_amplitude = amplitude
+        amplitude = Model(
+            lambda p: raw_amplitude(p).at[0].set(grid.total_volume),
+            domain=raw_amplitude.domain,
+            target=raw_amplitude.target,
+            init=raw_amplitude.init,
+        )
         self._fluctuations.append(amplitude)
         self._target_grids.append(grid)
         self._parameter_tree.update(amplitude.domain)
