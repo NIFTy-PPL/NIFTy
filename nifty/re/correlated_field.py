@@ -769,7 +769,8 @@ class CorrelatedFieldMaker:
         the same volume convention as :class:`NonParametricAmplitude`.
         The returned model is wrapped so that its zero-mode entry is always
         overwritten with ``grid.total_volume`` when evaluated; the factory
-        does not need to set this entry. The supplied prefix includes
+        does not need to set this entry. The wrapper exposes the grid through
+        ``fluctuations[-1].grid``. The supplied prefix includes
         the maker's prefix and should be used for parameter names.
 
         A factory can compose existing amplitude models. Normalization and
@@ -798,6 +799,7 @@ class CorrelatedFieldMaker:
             target=raw_amplitude.target,
             init=raw_amplitude.init,
         )
+        amplitude.grid = grid
         self._fluctuations.append(amplitude)
         self._target_grids.append(grid)
         self._parameter_tree.update(amplitude.domain)
