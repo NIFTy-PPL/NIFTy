@@ -838,6 +838,13 @@ class _ShardedGenerate:
     :class:`~nifty.re.gaussian_process.GraphGP`."""
 
     def __init__(self, graph: ShardedGraph, mesh: Mesh, *, cuda: bool, radial_bins):
+        import graphgp as ggp
+
+        if not hasattr(ggp, "refine_step"):
+            raise ImportError(
+                "the sharded graphgp generation needs `graphgp.refine_step` "
+                "(graphgp branch `refine-level` until it is released)"
+            )
         self.g, self.mesh, self.cuda = graph, mesh, bool(cuda)
         if self.cuda:
             import graphgp_cuda
@@ -854,41 +861,24 @@ class _ShardedGenerate:
         self.axis = mesh.axis_names[0]
         self.radial_bins = radial_bins
 
-    @staticmethod
-    def _factors(cov, nbr_pts, pts, valid):
-        """Mean weights (M, k) and std (M,) of the level's points given their
-        neighbours (graphgp's math); padded points get the identity."""
+    def _update(self, ext, xi, cov_vals, ext_points, tabs):
+        """New values (M,) of the level's points from the extended array `ext`:
+        one ``graphgp.refine_step`` with the level's points as targets (padded
+        points are marked invalid and return 0)."""
         import graphgp as ggp
 
-        k = nbr_pts.shape[1]
-        joint = jnp.concatenate([nbr_pts, pts[:, None, :]], axis=1)
-        K = jax.vmap(ggp.compute_cov_matrix, in_axes=(None, 0, 0))(cov, joint, joint)
-        K = jnp.where((valid > 0)[:, None, None], K, jnp.eye(k + 1, dtype=K.dtype))
-        Lc = jnp.linalg.cholesky(K)
-        mean_vec = jnp.linalg.solve(Lc[:, :k, :k].transpose(0, 2, 1), Lc[:, k, :k][..., None]).squeeze(-1)
-        return mean_vec, Lc[:, k, k]
-
-    def _update(self, ext, xi, cov_vals, ext_points, tabs):
-        """New values (M,) of the level's points from the extended array `ext`
-        (the neighbours' coordinates and values are gathered first, so that the
-        kernels only see M x k arrays)."""
         own, nbr, pts, valid, exp, src, pos, slot, lvl = tabs
-        nbr_pts = ext_points[nbr]
-        nbr_vals = ext[nbr]
-        if self.cuda:
-            import graphgp_cuda
-
-            M, k = nbr.shape
-            # behind a barrier: XLA otherwise folds the index pattern into a constant per level group
-            flat = lax.optimization_barrier(jnp.arange(M * k, dtype=jnp.int32)).reshape(M, k)
-            # sources: the gathered neighbours (so the kernel's cotangent is M x k, not the extended
-            # array); padded points are skipped by the kernel and return 0
-            return graphgp_cuda.refine_step(
-                nbr_pts.reshape(M * k, -1), nbr_vals.reshape(M * k), pts, flat, xi[own], self.radial_bins, cov_vals,
-                valid=valid,
-            )
-        mean_vec, std = self._factors((self.radial_bins, cov_vals), nbr_pts, pts, valid)
-        return jnp.sum(mean_vec * nbr_vals, axis=1) + std * xi[own]
+        cov = (self.radial_bins, cov_vals)
+        if not self.cuda:
+            return ggp.refine_step(ext_points, ext, pts, nbr, xi[own], cov, valid=valid)
+        # CUDA kernel: the gathered neighbours are the sources, so that its cotangent is M x k
+        # (it zero-fills an array of the size of its sources on every call), not the extended array
+        M, k = nbr.shape
+        # behind a barrier: XLA otherwise folds the index pattern into a constant per level group
+        flat = lax.optimization_barrier(jnp.arange(M * k, dtype=jnp.int32)).reshape(M, k)
+        return ggp.refine_step(
+            ext_points[nbr].reshape(M * k, -1), ext[nbr].reshape(M * k), pts, flat, xi[own], cov, valid=valid, cuda=True
+        )
 
     @staticmethod
     def _set(ext, new, tabs):
