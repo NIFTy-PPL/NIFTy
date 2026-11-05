@@ -828,6 +828,9 @@ def build_sharded_graph(points, mesh: Mesh, *, n0: int = 512, k: int = 16, cuda:
 
 
 # ---------------------------------------------------------------------------- generation on the mesh
+_WARNED_NO_REFINE_STEP = False
+
+
 class _ShardedGenerate:
     """Generation of a graphgp GP from a :class:`ShardedGraph` on a mesh
     (``xi`` block-sharded along its leading axis, covariance table replicated);
@@ -836,6 +839,18 @@ class _ShardedGenerate:
 
     def __init__(self, graph: ShardedGraph, mesh: Mesh, *, cuda: bool, radial_bins):
         self.g, self.mesh, self.cuda = graph, mesh, bool(cuda)
+        if self.cuda:
+            import graphgp_cuda
+
+            if not hasattr(graphgp_cuda, "refine_step"):
+                global _WARNED_NO_REFINE_STEP
+                if not _WARNED_NO_REFINE_STEP:
+                    logger.warning(
+                        "the installed graphgp_cuda has no `refine_step` kernel; the sharded generation "
+                        "falls back to the pure JAX refinement step (slower, more memory per level)"
+                    )
+                    _WARNED_NO_REFINE_STEP = True
+                self.cuda = False
         self.axis = mesh.axis_names[0]
         self.radial_bins = radial_bins
 
@@ -864,12 +879,13 @@ class _ShardedGenerate:
             import graphgp_cuda
 
             M, k = nbr.shape
-            lv = jnp.where(valid > 0, 1, 0).astype(jnp.int32)
             # behind a barrier: XLA otherwise folds the index pattern into a constant per level group
             flat = lax.optimization_barrier(jnp.arange(M * k, dtype=jnp.int32)).reshape(M, k)
-            return graphgp_cuda.refine_level(
-                nbr_pts.reshape(M * k, -1), pts, flat, lv, jnp.ones((1,), jnp.int32), self.radial_bins, cov_vals,
-                nbr_vals.reshape(M * k), xi[own], ext[own],
+            # sources: the gathered neighbours (so the kernel's cotangent is M x k, not the extended
+            # array); padded points are skipped by the kernel and return 0
+            return graphgp_cuda.refine_step(
+                nbr_pts.reshape(M * k, -1), nbr_vals.reshape(M * k), pts, flat, xi[own], self.radial_bins, cov_vals,
+                valid=valid,
             )
         mean_vec, std = self._factors((self.radial_bins, cov_vals), nbr_pts, pts, valid)
         return jnp.sum(mean_vec * nbr_vals, axis=1) + std * xi[own]
