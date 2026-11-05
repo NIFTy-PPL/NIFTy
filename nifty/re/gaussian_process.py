@@ -245,9 +245,14 @@ class GraphGP(KernelGP):
 
     @staticmethod
     def build_graph(points, *, n0: int, k: int, cuda: bool = False, mesh=None):
-        """``graphgp.build_graph`` on ``points`` of shape ``(..., dim)`` with the
-        dtypes of the CUDA kernels (float32 points, int32 neighbours). With a
-        `mesh` the graph is built on the devices and returned as a
+        """``graphgp.build_graph`` on ``points`` of shape ``(..., dim)``. The
+        precision of the points is the precision of the graph: the neighbour
+        search runs in it, the graph stores the points in it, and graphgp
+        evaluates distances (hence covariances) in it. Pass the points in the
+        precision of the field; single-precision points under a
+        double-precision field make graphgp's JAX parts differ from its CUDA
+        kernels at 1e-7. Neighbours and indices are stored as int32. With
+        a `mesh` the graph is built on the devices and returned as a
         :class:`~nifty.re.graphgp_sharded.ShardedGraph` (``points`` may also be
         a global ``graphgp.Graph`` to convert)."""
         import graphgp as ggp
@@ -258,17 +263,14 @@ class GraphGP(KernelGP):
             if hasattr(points, "neighbors") and hasattr(points, "offsets"):
                 return sharded_graph_from_graph(points, mesh.shape[mesh.axis_names[0]])
             return build_sharded_graph(points, mesh, n0=n0, k=k, cuda=cuda)
-        points = np.asarray(points, dtype=np.float32).reshape(-1, np.shape(points)[-1])
+        points = np.asarray(points)
+        points = points.reshape(-1, points.shape[-1])
         n0 = min(int(n0), points.shape[0])
-        if cuda:
-            graph = ggp.build_graph(jnp.asarray(points), n0=n0, k=int(k), cuda=True)
-        else:
-            with jax.enable_x64(False):
-                graph = ggp.build_graph(jnp.asarray(points), n0=n0, k=int(k), cuda=False)
+        graph = ggp.build_graph(jnp.asarray(points), n0=n0, k=int(k), cuda=bool(cuda))
         indices = graph.indices
         if indices is not None:
             indices = indices.astype(jnp.int32)
-        return ggp.Graph(graph.points.astype(jnp.float32), graph.neighbors.astype(jnp.int32), graph.offsets, indices)
+        return ggp.Graph(graph.points, graph.neighbors.astype(jnp.int32), graph.offsets, indices)
 
     @property
     def points(self):

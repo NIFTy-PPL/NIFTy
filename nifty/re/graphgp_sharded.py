@@ -132,7 +132,7 @@ def _pad_rows(rows, width, fill):
 def sharded_graph_from_graph(graph, n_shards: int, n_points: Optional[int] = None, *, group_by="log2") -> ShardedGraph:
     """The tables of :class:`ShardedGraph` for a global ``graphgp.Graph`` (with
     ``indices``, the user order) on ``n_shards`` contiguous blocks (host side)."""
-    points = np.asarray(graph.points, dtype=np.float32)
+    points = np.asarray(graph.points)  # in the precision of the graph
     neighbors = np.asarray(graph.neighbors)
     offsets = tuple(int(o) for o in graph.offsets)
     if graph.indices is None:
@@ -205,7 +205,7 @@ def sharded_graph_from_graph(graph, n_shards: int, n_points: Optional[int] = Non
         own = _pad_rows(own_rows, M, junk)
         valid = np.zeros((n_shards, M), dtype=np.float64)
         nb_ext = np.full((n_shards, M, k), junk, dtype=np.int64)
-        pt = np.zeros((n_shards, M, d), dtype=np.float32)
+        pt = np.zeros((n_shards, M, d), dtype=points.dtype)
         for s, r in enumerate(own_rows):
             valid[s, : len(r)] = 1.0
             g = r + s * B
@@ -250,7 +250,7 @@ def sharded_graph_from_graph(graph, n_shards: int, n_points: Optional[int] = Non
         start += size
 
     # extended coordinates and generation levels
-    ext_points = np.zeros((n_shards, junk + 1, d), dtype=np.float32)
+    ext_points = np.zeros((n_shards, junk + 1, d), dtype=points.dtype)
     ext_level = np.full((n_shards, junk + 1), L, dtype=np.int64)
     halo_tab = np.full((n_shards, H), -1, dtype=np.int64)
     for s in range(n_shards):
@@ -279,37 +279,6 @@ def sharded_graph_from_graph(graph, n_shards: int, n_points: Optional[int] = Non
 
 
 # ---------------------------------------------------------------------------- the device build
-def _query_radius_jax(points, split_dims, queries, max_indices, square_radii, *, k):
-    """Radius-limited k-nearest search of external `queries` with graphgp's
-    tree traversal (``graphgp.tree._traverse_tree`` takes the initial square
-    radius; the update rule is graphgp's ``_single_query_neighbors``). Pure
-    JAX; ``-1`` for unfilled slots. Fallback for graphgp versions whose
-    ``query_neighbors`` has no ``max_square_distances``."""
-    from graphgp.tree import _traverse_tree
-
-    n = points.shape[0]
-    ext = jnp.concatenate([points, queries.astype(points.dtype)], axis=0)
-    split_ext = jnp.concatenate([split_dims, jnp.zeros(queries.shape[0], split_dims.dtype)])
-
-    def single(query_index, max_index, r2):
-        def update_func(node, state, _):
-            neighbors, sq = state
-            d2 = jnp.sum(jnp.square(ext[query_index] - ext[node]))
-            m = jnp.argmax(sq)
-            neighbors, sq = lax.cond(
-                d2 < sq[m], lambda _: (neighbors.at[m].set(node), sq.at[m].set(d2)), lambda _: (neighbors, sq), None
-            )
-            return (neighbors, sq), jnp.max(sq)
-
-        state = (-jnp.ones(k, dtype=jnp.int32), jnp.full(k, r2, ext.dtype))
-        (neighbors, _) = _traverse_tree(ext, split_ext, query_index, max_index, update_func, state, r2)
-        return neighbors
-
-    query_indices = n + jnp.arange(queries.shape[0], dtype=jnp.int32)
-    with jax.enable_x64(False):  # graphgp's traversal mixes 32 and 64 bit under x64
-        return jax.vmap(single)(query_indices, max_indices.astype(jnp.int32), square_radii.astype(points.dtype))
-
-
 def _query_points(points, split_dims, queries, max_indices, radii, *, k, cuda=False):
     """The ``k`` nearest tree points with position below `max_indices` and
     closer than `radii` of the external `queries` (coordinates, ``(Q, d)``):
@@ -319,32 +288,24 @@ def _query_points(points, split_dims, queries, max_indices, radii, *, k, cuda=Fa
     anything cheap (the unbounded search of a far query sweeps the owner's
     boundary region). Uses ``graphgp.tree.query_neighbors(...,
     max_square_distances)`` (CUDA kernel with `cuda`, else pure JAX; about 8x
-    slower, 0.17 s per 2^18 queries on an A100); with an older graphgp the
-    radius search runs on graphgp's traversal directly. Returns tree positions
-    (``-1`` where fewer exist) and distances, sorted by distance."""
-    import inspect
-
+    slower, 0.17 s per 2^18 queries on an A100) in the precision of the
+    points. Returns tree positions (``-1`` where fewer exist) and distances,
+    sorted by distance."""
     from graphgp.tree import query_neighbors
 
+    n = points.shape[0]
+    queries = queries.astype(points.dtype)
+    ext = jnp.concatenate([points, queries], axis=0)
+    split_ext = jnp.concatenate([split_dims, jnp.zeros(queries.shape[0], split_dims.dtype)])
+    query_indices = n + jnp.arange(queries.shape[0], dtype=split_dims.dtype)
     r2 = jnp.square(radii).astype(points.dtype)
-    if "max_square_distances" in inspect.signature(query_neighbors).parameters:
-        n = points.shape[0]
-        ext = jnp.concatenate([points, queries.astype(points.dtype)], axis=0)
-        split_ext = jnp.concatenate([split_dims, jnp.zeros(queries.shape[0], split_dims.dtype)])
-        query_indices = n + jnp.arange(queries.shape[0], dtype=split_dims.dtype)
-        if cuda:
-            hits = query_neighbors(ext, split_ext, query_indices, max_indices.astype(split_dims.dtype), r2, k=k, cuda=True)
-        else:
-            with jax.enable_x64(False):  # graphgp's pure-JAX traversal mixes 32 and 64 bit under x64
-                hits = query_neighbors(ext, split_ext, query_indices.astype(jnp.int32), max_indices.astype(jnp.int32), r2, k=k, cuda=False)
-    else:  # graphgp without the radius argument: pure JAX on graphgp's traversal
-        hits = _query_radius_jax(points, split_dims, queries, max_indices, r2, k=k)
+    hits = query_neighbors(ext, split_ext, query_indices, max_indices.astype(split_dims.dtype), r2, k=k, cuda=cuda)
     hits = jnp.asarray(hits).astype(jnp.int32)
     # unfilled slots are -1; the root is visited even for max_index 0
     valid = (hits >= 0) & (hits < max_indices[:, None])
     hits = jnp.where(valid, hits, -1)
-    d2 = jnp.sum(jnp.square(points[jnp.maximum(hits, 0)].astype(jnp.float64) - queries[:, None, :].astype(jnp.float64)), axis=-1)
-    dist = jnp.where(valid, jnp.sqrt(d2), jnp.inf).astype(jnp.float32)
+    d2 = jnp.sum(jnp.square(points[jnp.maximum(hits, 0)] - queries[:, None, :]), axis=-1)
+    dist = jnp.where(valid, jnp.sqrt(d2), jnp.inf)
     dist, hits = lax.sort((dist, hits), dimension=1, num_keys=2)
     return hits, dist
 
@@ -360,38 +321,32 @@ def _tree_level(pos):
 
 # ---------------------------------------------------------------------------- per-device local graphs
 def _local_graph(pts, n0_s: int, k: int, *, cuda: bool):
-    """graphgp's tree and preceding neighbours of one block (on its device):
-    tree points, split dims, tree position -> block position, neighbours in
-    tree positions (dummies for the initial points) and ``r_k``."""
+    """graphgp's tree and preceding neighbours of one block (on its device), in
+    the precision of the points: tree points, split dims, tree position ->
+    block position, neighbours in tree positions (dummies for the initial
+    points), ``r_k`` and the distances to the neighbours."""
     from graphgp.tree import build_tree, query_preceding_neighbors
 
-    pts = jnp.asarray(pts, dtype=jnp.float32)
-    if cuda:
-        pts_t, split_dims, idx = build_tree(pts, cuda=True)
-        nbr = query_preceding_neighbors(pts_t, split_dims, n0=n0_s, k=k, cuda=True)
-    else:
-        with jax.enable_x64(False):  # graphgp's pure-JAX tree builder needs 32 bit
-            pts_t, split_dims, idx = build_tree(pts, cuda=False)
-            nbr = query_preceding_neighbors(pts_t, split_dims, n0=n0_s, k=k, cuda=False)
+    pts = jnp.asarray(pts)
+    pts_t, split_dims, idx = build_tree(pts, cuda=cuda)
+    nbr = query_preceding_neighbors(pts_t, split_dims, n0=n0_s, k=k, cuda=cuda)
     if isinstance(nbr, tuple):
         nbr = nbr[0]
     nbr = jnp.concatenate([jnp.zeros((n0_s, k), jnp.int32), jnp.asarray(nbr).astype(jnp.int32)], axis=0)
-    # distances to the local neighbours in chunks: the (B, k, d) float64 temporaries of one pass are
-    # 10 GB at 25 M points per device (nside 128 x 516 bins on 4 GPUs OOM'd in the merge, 2026-10-29)
-    pts_f = pts_t.astype(jnp.float32)
+    # distances to the local neighbours in chunks: the (B, k, d) temporaries of one pass are 10 GB in
+    # double precision at 25 M points per device
     chunk = 2**20
     pad = (-pts.shape[0]) % chunk
     nbr_p = jnp.concatenate([nbr, jnp.zeros((pad, k), nbr.dtype)]) if pad else nbr
-    pts_p = jnp.concatenate([pts_f, jnp.zeros((pad, pts_f.shape[1]), pts_f.dtype)]) if pad else pts_f
+    pts_p = jnp.concatenate([pts_t, jnp.zeros((pad, pts_t.shape[1]), pts_t.dtype)]) if pad else pts_t
 
     def chunk_dist(args):
         nb, p = args
-        diff = pts_f[nb].astype(jnp.float64) - p[:, None, :].astype(jnp.float64)
-        return jnp.sqrt(jnp.sum(jnp.square(diff), axis=-1)).astype(jnp.float32)
+        return jnp.sqrt(jnp.sum(jnp.square(pts_t[nb] - p[:, None, :]), axis=-1))
 
-    nbr_dist = lax.map(chunk_dist, (nbr_p.reshape(-1, chunk, k), pts_p.reshape(-1, chunk, pts_f.shape[1]))).reshape(-1, k)[: pts.shape[0]]
-    r_k = jnp.where(jnp.arange(pts.shape[0]) < n0_s, 0.0, nbr_dist.max(axis=1).astype(jnp.float64))
-    return pts_f, split_dims.astype(jnp.int32), idx.astype(jnp.int32), nbr, r_k, nbr_dist
+    nbr_dist = lax.map(chunk_dist, (nbr_p.reshape(-1, chunk, k), pts_p.reshape(-1, chunk, pts_t.shape[1]))).reshape(-1, k)[: pts.shape[0]]
+    r_k = jnp.where(jnp.arange(pts.shape[0]) < n0_s, 0.0, nbr_dist.max(axis=1))
+    return pts_t, split_dims.astype(jnp.int32), idx.astype(jnp.int32), nbr, r_k, nbr_dist
 
 
 def _stack(mesh, arrays):
@@ -433,7 +388,10 @@ def _build_device_graph(points, mesh: Mesh, *, n0: int, k: int, cuda: bool = Tru
     n_shards`` per block)."""
     ax = mesh.axis_names[0]
     S = mesh.shape[ax]
-    points = np.asarray(points, dtype=np.float32).reshape(-1, np.shape(points)[-1])
+    # the precision of the points is the precision of the build (trees, searches, distances) and of
+    # the tables; ids and positions are int32
+    points = np.asarray(points)
+    points = points.reshape(-1, points.shape[-1])
     N, d = points.shape
     if N % S:
         raise ValueError(f"{N} points are not divisible into {S} shards")
@@ -460,13 +418,12 @@ def _build_device_graph(points, mesh: Mesh, *, n0: int, k: int, cuda: bool = Tru
     idx = _stack(mesh, [l[2] for l in local])  # tree position -> block position
     nbr_loc = _stack(mesh, [l[3] for l in local])  # (S, B, k) tree positions
     r_k = _stack(mesh, [l[4] for l in local])
-    nbr_dist = _stack(mesh, [l[5] for l in local])  # (S, B, k) float32 distances to the local neighbours
+    nbr_dist = _stack(mesh, [l[5] for l in local])  # (S, B, k) distances to the local neighbours
     jax.block_until_ready(r_k)
     log(f"{S} local graphs of {B} points (n0 {n0_s}, k {k})")
     smap = partial(shard_map, mesh=mesh, check_vma=False)
 
     level = _tree_level(jnp.arange(B))
-    f32 = jnp.float32
     qchunk = 2**18  # queries per batch of the tree traversal
 
     def batched_query(pts_t, split_dims, q, max_index, qr, kq):
@@ -485,8 +442,8 @@ def _build_device_graph(points, mesh: Mesh, *, n0: int, k: int, cuda: bool = Tru
         return hits.reshape(-1, kq)[:n_q], dist.reshape(-1, kq)[:n_q]
 
     def payload_of(pts_t, r_k):
-        """Coordinates, tree level and search radius of my points, (B, d + 2) float32."""
-        return jnp.concatenate([pts_t, level[:, None].astype(f32), r_k[:, None].astype(f32)], axis=1)
+        """Coordinates, tree level and search radius of my points, (B, d + 2) in the points' precision."""
+        return jnp.concatenate([pts_t, level[:, None].astype(pts_t.dtype), r_k[:, None].astype(pts_t.dtype)], axis=1)
 
     def unpack(recv, rows):
         q = recv[rows, :d]
@@ -526,13 +483,13 @@ def _build_device_graph(points, mesh: Mesh, *, n0: int, k: int, cuda: bool = Tru
         q, max_index, qr = unpack(recv, safe)
         hits, dist = batched_query(pts_t, split_dims, q, jnp.where(valid, max_index, 0), jnp.where(valid, qr, 0.0), k)
         hit_ids = jnp.where(hits >= 0, sidx * B + idx[jnp.maximum(hits, 0)], -1).astype(jnp.int32)  # global user ids
-        answer = jnp.concatenate([jnp.where(valid, rows, -1).astype(jnp.int32)[:, None], hit_ids, lax.bitcast_convert_type(dist.astype(f32), jnp.int32)], axis=1)  # (Q, 1 + 2k) int32 (no int64 promotion under x64)
-        back = lax.ppermute(answer, ax, perm=[(j, (j + t) % S) for j in range(S)])  # to the owner of the rows
+        answer = (jnp.concatenate([jnp.where(valid, rows, -1).astype(jnp.int32)[:, None], hit_ids], axis=1), dist)  # (Q, 1 + k) int32, (Q, k)
+        back, back_dist = lax.ppermute(answer, ax, perm=[(j, (j + t) % S) for j in range(S)])  # to the owner of the rows
         rows_b = back[:, 0]
         valid_b = rows_b >= 0
         safe_b = jnp.where(valid_b, rows_b, 0)
-        ids_t = jnp.where(valid_b[:, None], back[:, 1 : 1 + k], -1)
-        dist_t = jnp.where(valid_b[:, None], lax.bitcast_convert_type(back[:, 1 + k :], f32), jnp.inf)
+        ids_t = jnp.where(valid_b[:, None], back[:, 1:], -1)
+        dist_t = jnp.where(valid_b[:, None], back_dist, jnp.inf)
         all_ids = jnp.concatenate([best_ids[safe_b], ids_t], axis=1)  # (Q, 2k)
         all_dist = jnp.where(all_ids >= 0, jnp.concatenate([best_dist[safe_b], dist_t], axis=1), jnp.inf)
         neg, sel = lax.top_k(-all_dist, k)
@@ -690,7 +647,7 @@ def _device_graph_to_graph(dg: _DeviceGraph):
     neighbors = pos[nbr[order[n0:]]]
     import graphgp as ggp
 
-    return ggp.Graph(jnp.asarray(dg.points[order], dtype=jnp.float32), jnp.asarray(neighbors, dtype=jnp.int32), offsets, jnp.asarray(order, dtype=jnp.int32))
+    return ggp.Graph(jnp.asarray(dg.points[order]), jnp.asarray(neighbors, dtype=jnp.int32), offsets, jnp.asarray(order, dtype=jnp.int32))
 
 
 # ---------------------------------------------------------------------------- compact tables on the devices

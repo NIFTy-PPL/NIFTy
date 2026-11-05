@@ -510,3 +510,33 @@ def test_icr_structure_shared(sharded):
     m.add_fluctuations(jft.ICRSpace(grid, n_bins=256, structure=structure), fluctuations=(1.0, 0.1), loglogavgslope=(-3.0, 0.5), prefix="a")
     cf = m.finalize(mesh=mesh)
     assert cf.gps[0]._levels[0].invids is structure.levels[0].invids
+
+
+@pytest.mark.skipif("graphgp" not in _models(), reason="needs graphgp")
+@pytest.mark.parametrize("sharded", [False, True])
+def test_graphgp_precision_follows_the_points(sharded):
+    """The precision of the given points is the precision of the graph: it is
+    built and stored in it (no single-precision copies of double-precision
+    points, no rounding), and a graph that is passed in is used as it is."""
+    from jax.sharding import Mesh, NamedSharding, PartitionSpec as P
+
+    def point_dtypes(gp):
+        g = gp.graph
+        if gp.mesh is None:
+            return {g.points.dtype}
+        return {g.ext_points.dtype, g.initial_points.dtype} | {a.dtype for a in g.pts}
+
+    pts = _sky_points()
+    mesh = Mesh(np.array(jax.devices()), ("x",)) if sharded else None
+    put = (lambda a: jax.device_put(a, NamedSharding(mesh, P("x")))) if sharded else (lambda a: a)
+    double = jft.GraphGP(put(pts), _Kernel(), n0=64, k=6, cuda=False, mesh=mesh)
+    assert point_dtypes(double) == {np.dtype(np.float64)}
+    np.testing.assert_array_equal(double.points, pts)  # the given points, not rounded copies
+    single = jft.GraphGP(put(pts.astype(np.float32)), _Kernel(), n0=64, k=6, cuda=False, mesh=mesh)
+    assert point_dtypes(single) == {np.dtype(np.float32)}
+    again = jft.GraphGP(single.graph, _Kernel(), shape=pts.shape[:-1], cuda=False, mesh=mesh)
+    assert point_dtypes(again) == {np.dtype(np.float32)}
+    p = jft.random_like(jax.random.PRNGKey(0), double.domain)
+    for gp in (double, single):
+        f = gp(gp.shard(p) if sharded else p)
+        assert f.dtype == np.float64 and np.isfinite(np.asarray(f)).all()
