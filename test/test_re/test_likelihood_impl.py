@@ -144,6 +144,25 @@ lh_init_true = (
         },
         partial(random_draw, dtype=float, method=random.exponential),
     ),
+    *(
+        (
+            partial(jft.NoncentralChiSquared, k=k, n=512),
+            {
+                "data": lambda key, shape: tree_map(
+                    lambda x: 0.01 + 3.0 * x,
+                    random_draw(key, shape, float, random.exponential),
+                ),
+                "sigma2": lambda key, shape: tree_map(
+                    lambda x: 0.5 + x,
+                    random_draw(key, shape, float, random.exponential),
+                ),
+            },
+            lambda key, shape: tree_map(
+                lambda x: 5.0 * x, random_draw(key, shape, float, random.exponential)
+            ),
+        )
+        for k in (1, 2, 5, 22)
+    ),
 )
 lh_init_approx = (
     (
