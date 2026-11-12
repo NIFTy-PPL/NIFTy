@@ -17,6 +17,10 @@ Change categories:
   - Extend `estimate_evidence_lower_bound` with stochastic Lanczos quadrature
     for the trace-log, signal- and data-space evaluation, optional Radau
     diagnostics, and an analytic Gaussian-prior contribution.
+  - Add the `NoncentralChiSquared` likelihood for data that are sums of `k`
+    squared Gaussian components with known variance (noncentral chi-squared,
+    any integer `k >= 1`), including Fisher metric and transformation, and
+    `make_ncx2_logpdf`, a JAX log-density of the noncentral chi-squared.
 - Changes
   - Consolidate the public Lanczos and stochastic log-determinant routines with
     the SLQ implementation used by the ELBO estimator so all entry points share
