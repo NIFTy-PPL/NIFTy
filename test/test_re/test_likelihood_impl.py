@@ -486,3 +486,27 @@ def test_transformation_metric_consistency(seed, shape, lh_init):
 
 if __name__ == "__main__":
     test_gaussian_vs_vcgaussian_consistency(42, (5,))
+
+
+@pmp(
+    "lh, fisher",
+    (
+        (jft.VariableCovarianceGaussian(jnp.ones(100) * (1 + 1j)), 4.0 * 100),
+        (jft.VariableCovarianceStudentT(jnp.ones(100), 3.0), 2 * 3 / 6 * 100),
+    ),
+)
+def test_variable_covariance_rejects_broadcast_scale(lh, fisher):
+    # ift/nifty#467: a scalar scale entered the log-normalization only once
+    n, x = 100, jnp.log(2.0)
+    scalar = lh.amend(lambda x: (jnp.zeros(n), jnp.exp(x)))
+    for call in (scalar, partial(scalar.metric, tangents=x)):
+        with pytest.raises(ValueError, match="scale"):
+            call(x)
+    if isinstance(lh, jft.VariableCovarianceGaussian):
+        with pytest.raises(ValueError, match="scale"):
+            scalar.transformation(x)
+    with pytest.raises(ValueError, match="scale"):
+        lh.energy((jnp.zeros((2, n)), jnp.ones(n)))
+
+    full = lh.amend(lambda x: (jnp.zeros(n), jnp.broadcast_to(jnp.exp(x), (n,))))
+    assert_allclose(full.metric(x, 1.0), fisher)

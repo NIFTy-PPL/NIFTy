@@ -29,6 +29,12 @@ Change categories:
     `{prefix}_eigenvalues.npy` and `{prefix}_eigenvectors.npy` to
     `{prefix}_signal_eigenvalues.npy` and `{prefix}_signal_eigenvectors.npy`,
     or the corresponding `_data` names for data-space calculations.
+  - `VariableCovarianceGaussian` and `VariableCovarianceStudentT` raise a
+    `ValueError` if the scale does not have the data's shape or the mean does
+    not broadcast to it. Before, a broadcast scale, e.g. one shared noise
+    scale, entered the log-normalization only once instead of once per data
+    point, such that energy and metric were silently wrong (#467). Broadcast
+    the scale explicitly in the forward model instead.
 
 # NIFTy.cl
 - New features

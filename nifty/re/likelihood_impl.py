@@ -251,6 +251,21 @@ class Poissonian(Likelihood):
         return 2.0 * primals**0.5
 
 
+def _check_shapes(primals, data):
+    # A smaller scale or a larger mean than the data would miscount the
+    # log-normalization, see ift/nifty#467
+    d = [jnp.shape(x) for x in jax.tree.leaves(data)]
+    m = [jnp.shape(x) for x in jax.tree.leaves(primals[0])]
+    s = [jnp.shape(x) for x in jax.tree.leaves(primals[1])]
+    if s != d or any(jnp.broadcast_shapes(a, b) != b for a, b in zip(m, d)):
+        ve = (
+            f"scale {s} must have the data's shape {d} and mean {m} must"
+            " broadcast to it; broadcast explicitly, e.g. with"
+            " `jnp.broadcast_to`, in the forward model"
+        )
+        raise ValueError(ve)
+
+
 class VariableCovarianceGaussian(Likelihood):
     """Gaussian likelihood of the data with a variable covariance
 
@@ -262,7 +277,8 @@ class VariableCovarianceGaussian(Likelihood):
 
     Notes
     -----
-    **The likelihood acts on a tuple of (mean, std_inv)**.
+    **The likelihood acts on a tuple of (mean, std_inv)**; `std_inv` must have
+    the data's shape.
 
     See :class:`Likelihood` for details on the properties.
     """
@@ -280,17 +296,20 @@ class VariableCovarianceGaussian(Likelihood):
         super().__init__(domain=shp, lsm_tangents_shape=shp)
 
     def energy(self, primals):
+        _check_shapes(primals, self.data)
         res = (self.data - primals[0]) * primals[1]
         fct = 1 + self.iscomplex
         return 0.5 * vdot(res, res).real - sum(fct * tree_map(jnp.log, primals[1]))
 
     def metric(self, primals, tangents):
+        _check_shapes(primals, self.data)
         fct = 2 * (1 + self.iscomplex)
         prim_std_inv_sq = primals[1] ** 2
         res = (prim_std_inv_sq * tangents[0], fct * tangents[1] / prim_std_inv_sq)
         return type(primals)(res)
 
     def left_sqrt_metric(self, primals, tangents):
+        _check_shapes(primals, self.data)
         fct = jnp.sqrt(2) ** (1 + self.iscomplex)
         res = (primals[1] * tangents[0], fct * tangents[1] / primals[1])
         return type(primals)(res)
@@ -302,6 +321,7 @@ class VariableCovarianceGaussian(Likelihood):
         A global transformation to Euclidean space does not exist. A local
         approximation invoking the residual is used instead.
         """
+        _check_shapes(primals, self.data)
         # TODO: test by drawing synthetic data that actually follows the
         # noise-cov and then average over it
         fct = 1 + self.iscomplex
@@ -327,7 +347,8 @@ class VariableCovarianceStudentT(Likelihood):
 
     Notes
     -----
-    **The likelihood acts on a tuple of (mean, std)**.
+    **The likelihood acts on a tuple of (mean, std)**; `std` must have
+    the data's shape.
 
     See :class:`Likelihood` for details on the properties.
     """
@@ -343,11 +364,13 @@ class VariableCovarianceStudentT(Likelihood):
         super().__init__(domain=shp, lsm_tangents_shape=shp)
 
     def energy(self, primals):
+        _check_shapes(primals, self.data)
         t = _standard_t((self.data - primals[0]) / primals[1], self.dof)
         t += sum(tree_map(jnp.log, primals[1]))
         return t
 
     def metric(self, primals, tangent):
+        _check_shapes(primals, self.data)
         res = (
             tangent[0] * (self.dof + 1) / (self.dof + 3) / primals[1] ** 2,
             tangent[1] * 2 * self.dof / (self.dof + 3) / primals[1] ** 2,
@@ -355,6 +378,7 @@ class VariableCovarianceStudentT(Likelihood):
         return type(primals)(res)
 
     def left_sqrt_metric(self, primals, tangents):
+        _check_shapes(primals, self.data)
         cov = (
             (self.dof + 1) / (self.dof + 3) / primals[1] ** 2,
             2 * self.dof / (self.dof + 3) / primals[1] ** 2,
