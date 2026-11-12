@@ -444,6 +444,144 @@ def test_correlated_field_sharded_matches_unsharded(kind):
 
 
 @_needs_devices
+def test_correlated_field_sharded_factors_with_one_kernel_factor():
+    """`finalize(mesh=, sharded_factors=)` for an ICR factor times a harmonic
+    one: naming the ICR factor is the default, an empty list generates it on
+    one device with every block replicated; both equal the unsharded field."""
+    from jax.sharding import Mesh
+    from jax.sharding import PartitionSpec as P
+
+    mesh = Mesh(np.array(jax.devices()), ("x",))
+    grid = jft.HPLogRGrid(nside=4, r_min_shape=4, r_min=1.0, r_max=10.0, nside0=1)
+    icr, reg = jft.ICRSpace(grid, n_bins=256), jft.RegularSpace((6,), 0.5)
+    cf = _maker([icr, reg]).finalize()
+    default = _maker([icr, reg]).finalize(mesh=mesh)
+    named = _maker([icr, reg]).finalize(mesh=mesh, sharded_factors=[0])
+    unsharded = _maker([icr, reg]).finalize(mesh=mesh, sharded_factors=[])
+    assert named.gps[0].mesh == mesh and named.shardings == default.shardings
+    assert unsharded.gps[0].mesh is None and unsharded.sharding.spec == P()
+    for specs in unsharded.shardings.values():
+        assert all(s.spec == P() for s in (specs if isinstance(specs, list) else [specs]))
+    p = jft.random_like(jax.random.PRNGKey(0), cf.domain)
+    f = jax.jit(lambda cf, p: cf(p))(cf, p)
+    w = jax.random.normal(jax.random.PRNGKey(3), f.shape)
+    g = jax.jit(jax.grad(lambda cf, p: jnp.sum(w * cf(p)), argnums=1))(cf, p)
+    for cfs in (named, unsharded):
+        ps = cfs.shard(p)
+        fs = jax.jit(lambda cf, p: cf(p))(cfs, ps)
+        assert fs.sharding.is_equivalent_to(cfs.sharding, fs.ndim)
+        assert_allclose(fs, f, rtol=1e-9, atol=1e-10)
+        gs = jax.jit(jax.grad(lambda cf, p: jnp.sum(w * cf(p)), argnums=1))(cfs, ps)
+        for key in g:
+            for a, b in zip(jax.tree_util.tree_leaves(gs[key]), jax.tree_util.tree_leaves(g[key])):
+                assert_allclose(a, b, rtol=1e-8, atol=1e-10, err_msg=key)
+    assert np.all(np.isfinite(jax.jit(lambda cf, p: cf(p))(unsharded, unsharded.init(jax.random.PRNGKey(7)))))
+
+
+def _unshardable_axis_space():
+    """An exact graphgp factor with too few points to be sharded."""
+    values = np.linspace(0.0, 1.0, 3).reshape(-1, 1)
+    return jft.GraphGPSpace(values, n0=2, k=2, cuda=False, r_min=1e-2, r_max=10.0, n_bins=64)
+
+
+def _sharded_points_space(grid, mesh):
+    """A graphgp factor with its points on the mesh; graphgp is needed only to build its field."""
+    return jft.GraphGPSpace(jft.grid_points(grid, mesh=mesh), n0=32, k=6, n_bins=256, cuda=False)
+
+
+@_needs_devices
+def test_correlated_field_shards_only_the_named_factors():
+    """`finalize(mesh=, sharded_factors=[0])`: a kernel factor on the mesh
+    times a kernel factor that cannot be sharded equals the unsharded field,
+    values and gradients; the blocks without the sharded factor's axis are
+    replicated. Without the list the mesh goes to every kernel factor."""
+    pytest.importorskip("graphgp")  # a field takes one multigrid factor: the second kernel factor is a graphgp one
+    from jax.sharding import Mesh
+    from jax.sharding import PartitionSpec as P
+
+    mesh = Mesh(np.array(jax.devices()), ("x",))
+    grid = jft.HPLogRGrid(nside=4, r_min_shape=4, r_min=1.0, r_max=10.0, nside0=1)
+    sky, axis = jft.ICRSpace(grid, n_bins=256), _unshardable_axis_space()
+    cf = _maker([sky, axis]).finalize()
+    cfs = _maker([sky, axis]).finalize(mesh=mesh, sharded_factors=[0])
+    assert [gp.mesh is not None for gp in cfs.gps] == [True, False]
+    for name, zero_mode_factors, _ in cfs.blocks:
+        specs = cfs.shardings[name]
+        specs = [s.spec for s in (specs if isinstance(specs, list) else [specs])]
+        if 0 in zero_mode_factors:
+            assert all(spec == P() for spec in specs), name
+        else:
+            assert any(spec and spec[0] == "x" for spec in specs), name
+    p = jft.random_like(jax.random.PRNGKey(0), cf.domain)
+    ps = cfs.shard(p)
+    f, fs = jax.jit(lambda cf, p: cf(p))(cf, p), jax.jit(lambda cf, p: cf(p))(cfs, ps)
+    assert fs.shape == f.shape == sky.shape + axis.shape
+    assert fs.sharding.is_equivalent_to(cfs.sharding, fs.ndim)
+    assert_allclose(fs, f, rtol=1e-9, atol=1e-10)
+    w = jax.random.normal(jax.random.PRNGKey(3), f.shape)
+    g = jax.jit(jax.grad(lambda cf, p: jnp.sum(w * cf(p)), argnums=1))(cf, p)
+    gs = jax.jit(jax.grad(lambda cf, p: jnp.sum(w * cf(p)), argnums=1))(cfs, ps)
+    for key in g:
+        for a, b in zip(jax.tree_util.tree_leaves(gs[key]), jax.tree_util.tree_leaves(g[key])):
+            assert_allclose(a, b, rtol=1e-8, atol=1e-10, err_msg=key)
+    with pytest.raises(ValueError):
+        _maker([sky, axis]).finalize(mesh=mesh)
+
+
+@_needs_devices
+def test_correlated_field_inferred_mesh_shards_only_factors_with_sharded_points():
+    """`finalize()` with the mesh taken from the sharded points of one factor
+    generates that factor on the mesh and the other kernel factor on one
+    device: the same field as naming the factor."""
+    pytest.importorskip("graphgp")  # only the points of a graphgp factor can be sharded
+    from jax.sharding import Mesh
+
+    mesh = Mesh(np.array(jax.devices()), ("x",))
+    grid = jft.HPLogRGrid(nside=4, r_min_shape=4, r_min=1.0, r_max=10.0, nside0=1)
+    sky, axis = _sharded_points_space(grid, mesh), _unshardable_axis_space()
+    inferred = _maker([sky, axis]).finalize()
+    named = _maker([sky, axis]).finalize(mesh=mesh, sharded_factors=[0])
+    assert inferred.mesh == mesh
+    assert [gp.mesh is not None for gp in inferred.gps] == [True, False]
+    assert inferred.shardings == named.shardings
+    p = inferred.shard(jft.random_like(jax.random.PRNGKey(0), inferred.domain))
+    f = jax.jit(lambda cf, p: cf(p))
+    assert_allclose(f(inferred, p), f(named, p), rtol=1e-12, atol=1e-12)
+
+
+def test_sharded_factors_refusals():
+    """`sharded_factors` needs a mesh and names kernel-based factors only; a
+    factor with sharded points cannot be left out."""
+    from jax.sharding import Mesh
+
+    mesh = Mesh(np.array(jax.devices()), ("x",))
+    grid = jft.HPLogRGrid(nside=4, r_min_shape=4, r_min=1.0, r_max=10.0, nside0=1)
+    icr, reg = jft.ICRSpace(grid, n_bins=256), jft.RegularSpace((6,), 0.5)
+    with pytest.raises(ValueError, match="needs a mesh"):
+        _maker([icr, reg]).finalize(sharded_factors=[0])
+    with pytest.raises(ValueError, match="not a kernel-based space"):
+        _maker([icr, reg]).finalize(mesh=mesh, sharded_factors=[1])
+    with pytest.raises(ValueError, match="names factor 2"):
+        _maker([icr, reg]).finalize(mesh=mesh, sharded_factors=[2])
+    with pytest.raises(ValueError, match="are sharded"):
+        _maker([_sharded_points_space(grid, mesh), reg]).finalize(mesh=mesh, sharded_factors=[])
+
+
+def test_sharded_factors_default():
+    """Without a list, a given mesh goes to every kernel-based factor, a mesh
+    taken from sharded points only to the factors whose points are sharded."""
+    from jax.sharding import Mesh
+    from nifty.re.correlated_field import _sharded_factors
+
+    mesh = Mesh(np.array(jax.devices()), ("x",))
+    grid = jft.HPLogRGrid(nside=4, r_min_shape=4, r_min=1.0, r_max=10.0, nside0=1)
+    spaces = [_sharded_points_space(grid, mesh), jft.ICRSpace(grid, n_bins=256), jft.RegularSpace((6,), 0.5)]
+    assert _sharded_factors(spaces, mesh, None, mesh_was_inferred=False) == (0, 1)
+    assert _sharded_factors(spaces, mesh, None, mesh_was_inferred=True) == (0,)
+    assert _sharded_factors(spaces[1:], None, None, mesh_was_inferred=True) == ()
+
+
+@_needs_devices
 def test_correlated_field_sharded_graphgp_same_graph():
     """With the same (global) graph the sharded graphgp field equals the unsharded one."""
     pytest.importorskip("graphgp")

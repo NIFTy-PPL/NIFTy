@@ -1073,6 +1073,29 @@ def _parse_space(shape, distances, harmonic_type) -> Space:
     return RegularSpace(grid.shape, grid.distances)
 
 
+def _sharded_factors(spaces, mesh, sharded_factors, mesh_was_inferred):
+    """Indices of the factors generated on `mesh`, see :meth:`CorrelatedFieldMaker.finalize`."""
+    kernel_factors = [i for i, s in enumerate(spaces) if isinstance(s, KernelSpace)]
+    points_on_mesh = [i for i, s in enumerate(spaces) if getattr(s, "mesh", None) is not None]
+    if sharded_factors is None:
+        if mesh is None:
+            return ()
+        return tuple(points_on_mesh if mesh_was_inferred else kernel_factors)
+    if mesh is None:
+        raise ValueError("`sharded_factors` needs a mesh: pass `mesh` or sharded points")
+    sharded_factors = tuple(operator.index(i) for i in sharded_factors)
+    for i in sharded_factors:
+        if not 0 <= i < len(spaces):
+            raise ValueError(f"`sharded_factors` names factor {i}, the field has {len(spaces)}")
+        if i not in kernel_factors:
+            raise ValueError(f"factor {i} ({type(spaces[i]).__name__}) is not a kernel-based space; only those are generated on a mesh")
+    left_out = [i for i in points_on_mesh if i not in sharded_factors]
+    if left_out:
+        # GraphGP takes the mesh of sharded points by itself
+        raise ValueError(f"the points of factor(s) {left_out} are sharded, so they are generated on their mesh; name them in `sharded_factors`")
+    return sharded_factors
+
+
 class CorrelatedFieldMaker:
     """Construction helper for hierarchical correlated field models.
 
@@ -1415,7 +1438,7 @@ class CorrelatedFieldMaker:
 
         return power
 
-    def finalize(self, *, mesh=None) -> CorrelatedField:
+    def finalize(self, *, mesh=None, sharded_factors=None) -> CorrelatedField:
         """Finishes off the model construction process and returns the
         constructed operator.
 
@@ -1427,6 +1450,14 @@ class CorrelatedFieldMaker:
         sharded alike (``shardings``, ``shard``, ``init`` of the returned
         field). If the points of a :class:`GraphGPSpace` are already a sharded
         ``jax.Array``, their mesh is used when `mesh` is None.
+
+        `sharded_factors` lists the factors generated on the mesh, by their
+        index in the order they were added; the other kernel-based factors
+        are generated on one device and their excitations are replicated. By
+        default these are all kernel-based factors for a given `mesh` and,
+        for a mesh taken from sharded points, the factors whose own points
+        are sharded. A factor with sharded points is always generated on its
+        mesh and has to be listed.
 
         The field is the outer product of the factors added with
         :meth:`add_fluctuations` (or :meth:`add_fluctuations_matern`),
@@ -1448,24 +1479,26 @@ class CorrelatedFieldMaker:
         for name, _, shapes in excitation_blocks(self._spaces, self._prefix):
             swd = [ShapeWithDtype(sh) for sh in shapes]
             self._parameter_tree[name] = swd[0] if len(swd) == 1 else swd
-        if mesh is None:
+        mesh_was_inferred = mesh is None
+        if mesh_was_inferred:
             for i, space in enumerate(self._spaces):
                 m = getattr(space, "mesh", None)
                 if m is not None:
                     mesh = m
                     logger.info(
                         f"CorrelatedFieldMaker.finalize: mesh inferred from the sharded points of factor {i} "
-                        f"({type(space).__name__}): {mesh.shape[mesh.axis_names[0]]} devices along '{mesh.axis_names[0]}'; the field is generated on this mesh"
+                        f"({type(space).__name__}): {mesh.shape[mesh.axis_names[0]]} devices along '{mesh.axis_names[0]}'; the factors with sharded points are generated on this mesh"
                     )
                     break
         if mesh is not None and len(mesh.axis_names) != 1:
             raise ValueError("mesh must be one-dimensional")
+        sharded_factors = _sharded_factors(self._spaces, mesh, sharded_factors, mesh_was_inferred)
         kernels, gps = [], []
-        for space, amp in zip(self._spaces, self._fluctuations):
+        for i, (space, amp) in enumerate(zip(self._spaces, self._fluctuations)):
             if isinstance(space, KernelSpace):
                 kernel = space.spectral_kernel(amp)
                 kernels.append(kernel)
-                gps.append(build_gp(space, kernel, mesh=mesh))
+                gps.append(build_gp(space, kernel, mesh=mesh if i in sharded_factors else None))
             else:
                 kernels.append(None)
                 gps.append(None)
