@@ -351,6 +351,53 @@ def test_models_are_pytrees_without_inlined_constants(name):
     assert len(traces) == 1
 
 
+def _legacy_field():
+    m = jft.CorrelatedFieldMaker("cf")
+    m.set_amplitude_total_offset(offset_mean=0.0, offset_std=(1.0, 1e-6))
+    m.add_fluctuations((16,), distances=0.5, fluctuations=(2.0, 1e-6), loglogavgslope=(-3.0, 1e-6), flexibility=None, prefix="s0")
+    return m.finalize()
+
+
+def _matern_field():
+    m = jft.CorrelatedFieldMaker("cf")
+    m.set_amplitude_total_offset(offset_mean=0.0, offset_std=(1.0, 1e-6))
+    m.add_fluctuations_matern(jft.RegularSpace((16,), 0.5), scale=(1.5, 1e-6), cutoff=(0.2, 1e-6), loglogslope=(-4.0, 1e-6), renormalize_amplitude=True)
+    return m.finalize()
+
+
+def _field_builders():
+    out = {name: (lambda spaces=spaces: _maker(spaces()).finalize()) for name, spaces in _spaces_for_adjoint().items()}
+    out["regular"] = lambda: _maker([jft.RegularSpace((16,), 0.5)]).finalize()
+    out["spherical"] = lambda: _maker([jft.SphericalSpace(2)]).finalize()
+    out["legacy-arguments"] = _legacy_field
+    out["matern"] = _matern_field
+    return out
+
+
+@pmp("name", list(_field_builders()))
+def test_independently_built_fields_pass_through_one_jitted_function(name):
+    """Two fields built from the same inputs are pytrees whose structures
+    compare to a boolean, so a jitted function that has traced the first
+    accepts the second; neither is traced more than once."""
+    if name == "spherical":
+        pytest.importorskip("jaxbind")
+    build = _field_builders()[name]
+    first, second = build(), build()
+    same_structure = jax.tree_util.tree_structure(first) == jax.tree_util.tree_structure(second)
+    assert isinstance(same_structure, bool)
+    p = jft.random_like(jax.random.PRNGKey(0), first.domain)
+    traces = []
+
+    @jax.jit
+    def f(cf, p):
+        traces.append(1)
+        return cf(p)
+
+    for cf in (first, second, first, second):
+        assert_allclose(f(cf, p), cf(p), rtol=1e-12, atol=1e-12)
+    assert len(traces) <= 2
+
+
 _needs_devices = pytest.mark.skipif(jax.device_count() < 2, reason="needs several devices (XLA_FLAGS=--xla_force_host_platform_device_count=4)")
 
 

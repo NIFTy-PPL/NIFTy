@@ -298,6 +298,19 @@ def make_grid(
     return grid
 
 
+@dataclasses.dataclass(frozen=True, eq=False)
+class _StaticGrid:
+    """Holder of a grid as static pytree metadata of a model or space.
+
+    JAX compares the metadata of two pytrees with ``==`` when it looks up a
+    trace. The grids are tuples that hold arrays, for which that comparison
+    raises. The holder is compared by identity instead: a model built a
+    second time from the same inputs is traced anew.
+    """
+
+    grid: Union[tuple, None]
+
+
 def _remove_slope(rel_log_mode_dist, x):
     sc = rel_log_mode_dist / rel_log_mode_dist[-1]
     return x - x[-1] * sc
@@ -335,7 +348,7 @@ class MaternAmplitude(Model):
         `<https://doi.org/10.1371/journal.pone.0275011>`_
         """
 
-        self.grid = grid
+        self._grid = _StaticGrid(grid)
         self.cutoff = WrappedCall(cutoff, name=prefix + "cutoff")
         self.loglogslope = WrappedCall(loglogslope, name=prefix + "loglogslope")
         self.scale = (
@@ -357,6 +370,10 @@ class MaternAmplitude(Model):
         domain = reduce(operator.or_, [m.domain for m in models if m is not None])
 
         super().__init__(domain=domain, white_init=True)
+
+    @property
+    def grid(self):
+        return self._grid.grid
 
     def __call__(self, primals: Mapping) -> jnp.ndarray:
         if self.scale is None:
@@ -430,7 +447,7 @@ class NonParametricAmplitude(Model):
         Enßlin, Torsten, `<https://arxiv.org/abs/2002.05218>`_
         `<http://dx.doi.org/10.1038/s41550-021-01548-0>`_
         """
-        self.grid = grid
+        self._grid = _StaticGrid(grid)
         log_vol = grid.harmonic_grid.log_volume
         self.kind = kind.lower()
 
@@ -481,6 +498,10 @@ class NonParametricAmplitude(Model):
         domain = reduce(operator.or_, [m.domain for m in models if m is not None])
 
         super().__init__(domain=domain, white_init=True)
+
+    @property
+    def grid(self):
+        return self._grid.grid
 
     def __call__(self, primals: Mapping) -> jnp.ndarray:
         mode_multiplicity = self.grid.harmonic_grid.mode_multiplicity
@@ -632,7 +653,11 @@ class Space(metaclass=ModelMeta):
     def __init__(self, shape, excitation_shapes, grid):
         self.shape = tuple(int(s) for s in shape)
         self.excitation_shapes = tuple(tuple(int(s) for s in sh) for sh in excitation_shapes)
-        self.grid = grid
+        self._grid = _StaticGrid(grid)
+
+    @property
+    def grid(self):
+        return self._grid.grid
 
     @property
     def structured(self) -> bool:
