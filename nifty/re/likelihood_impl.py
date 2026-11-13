@@ -331,6 +331,7 @@ class VariableCovarianceGaussian(Likelihood):
         return type(primals)(res)
 
     def normalized_residual(self, primals):
+        _check_shapes(primals, self.data)
         return (self.data - primals[0]) * primals[1]
 
 
@@ -357,8 +358,12 @@ class VariableCovarianceStudentT(Likelihood):
 
     def __init__(self, data, dof):
         # TODO: make configurable whether `std_inv` or `std` is passed
+        # A larger `dof` would count residuals more than once, see #467
+        if len(jax.tree.leaves(dof)) > 1 and (
+            jax.tree.structure(dof) != jax.tree.structure(data)
+        ):
+            raise ValueError("a non-scalar `dof` tree must match the data's tree")
         for f, x in zip(jax.tree.leaves(dof), jax.tree.leaves(data)):
-            # A larger `dof` would count residuals more than once, see #467
             if jnp.broadcast_shapes(jnp.shape(f), jnp.shape(x)) != jnp.shape(x):
                 ve = f"dof {jnp.shape(f)} must broadcast to the data's {jnp.shape(x)}"
                 raise ValueError(ve)
@@ -391,6 +396,7 @@ class VariableCovarianceStudentT(Likelihood):
         return type(primals)(res)
 
     def normalized_residual(self, primals):
+        _check_shapes(primals, self.data)
         return (
             (self.data - primals[0])
             / primals[1]
