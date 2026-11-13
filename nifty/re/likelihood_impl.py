@@ -252,16 +252,15 @@ class Poissonian(Likelihood):
 
 
 def _check_shapes(primals, data):
-    # A smaller scale or a larger mean than the data would miscount the
-    # log-normalization, see ift/nifty#467
+    # A broadcast mean or scale would miscount the log-normalization or break
+    # the metric of an amended likelihood, see ift/nifty#467
     d = [jnp.shape(x) for x in jax.tree.leaves(data)]
     m = [jnp.shape(x) for x in jax.tree.leaves(primals[0])]
     s = [jnp.shape(x) for x in jax.tree.leaves(primals[1])]
-    if s != d or any(jnp.broadcast_shapes(a, b) != b for a, b in zip(m, d)):
+    if m != d or s != d:
         ve = (
-            f"scale {s} must have the data's shape {d} and mean {m} must"
-            " broadcast to it; broadcast explicitly, e.g. with"
-            " `jnp.broadcast_to`, in the forward model"
+            f"mean {m} and scale {s} must have the data's shape {d}; broadcast"
+            " them explicitly, e.g. with `jnp.broadcast_to`, in the forward model"
         )
         raise ValueError(ve)
 
@@ -277,8 +276,8 @@ class VariableCovarianceGaussian(Likelihood):
 
     Notes
     -----
-    **The likelihood acts on a tuple of (mean, std_inv)**; `std_inv` must have
-    the data's shape.
+    **The likelihood acts on a tuple of (mean, std_inv)**, each of the data's
+    shape.
 
     See :class:`Likelihood` for details on the properties.
     """
@@ -347,8 +346,8 @@ class VariableCovarianceStudentT(Likelihood):
 
     Notes
     -----
-    **The likelihood acts on a tuple of (mean, std)**; `std` must have
-    the data's shape.
+    **The likelihood acts on a tuple of (mean, std)**, each of the data's
+    shape. `dof` must broadcast to the data's shape.
 
     See :class:`Likelihood` for details on the properties.
     """
@@ -358,6 +357,11 @@ class VariableCovarianceStudentT(Likelihood):
 
     def __init__(self, data, dof):
         # TODO: make configurable whether `std_inv` or `std` is passed
+        for f, x in zip(jax.tree.leaves(dof), jax.tree.leaves(data)):
+            # A larger `dof` would count residuals more than once, see #467
+            if jnp.broadcast_shapes(jnp.shape(f), jnp.shape(x)) != jnp.shape(x):
+                ve = f"dof {jnp.shape(f)} must broadcast to the data's {jnp.shape(x)}"
+                raise ValueError(ve)
         self.data = data
         self.dof = dof
         shp = tree_map(ShapeWithDtype.from_leave, (data, data))
