@@ -6,6 +6,7 @@ from .lanczos import (
     stochastic_logdet_from_lanczos,
     stochastic_lq_logdet,
 )
+from .ncx2_jax import make_ncx2_logpdf
 from .stats_distributions import (
     interpolator,
     invgamma_invprior,

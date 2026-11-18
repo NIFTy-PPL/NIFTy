@@ -35,6 +35,7 @@ from .likelihood_impl import (
     VariableCovarianceStudentT,
 )
 from .logger import logger
+from .ncx2_likelihood import NoncentralChiSquared
 from .minisanity import minisanity, reduced_residual_stats
 from .misc import hvp, interpolate, wrap, wrap_left
 from .model import Initializer, Model, VModel, WrappedCall, ClipModel
