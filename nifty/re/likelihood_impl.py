@@ -251,6 +251,20 @@ class Poissonian(Likelihood):
         return 2.0 * primals**0.5
 
 
+def _check_shapes(primals, data):
+    # A broadcast mean or scale would miscount the log-normalization or break
+    # the metric of an amended likelihood, see ift/nifty#467
+    d = [jnp.shape(x) for x in jax.tree.leaves(data)]
+    m = [jnp.shape(x) for x in jax.tree.leaves(primals[0])]
+    s = [jnp.shape(x) for x in jax.tree.leaves(primals[1])]
+    if m != d or s != d:
+        ve = (
+            f"mean {m} and scale {s} must have the data's shape {d}; broadcast"
+            " them explicitly, e.g. with `jnp.broadcast_to`, in the forward model"
+        )
+        raise ValueError(ve)
+
+
 class VariableCovarianceGaussian(Likelihood):
     """Gaussian likelihood of the data with a variable covariance
 
@@ -262,7 +276,8 @@ class VariableCovarianceGaussian(Likelihood):
 
     Notes
     -----
-    **The likelihood acts on a tuple of (mean, std_inv)**.
+    **The likelihood acts on a tuple of (mean, std_inv)**, each of the data's
+    shape.
 
     See :class:`Likelihood` for details on the properties.
     """
@@ -280,17 +295,20 @@ class VariableCovarianceGaussian(Likelihood):
         super().__init__(domain=shp, lsm_tangents_shape=shp)
 
     def energy(self, primals):
+        _check_shapes(primals, self.data)
         res = (self.data - primals[0]) * primals[1]
         fct = 1 + self.iscomplex
         return 0.5 * vdot(res, res).real - sum(fct * tree_map(jnp.log, primals[1]))
 
     def metric(self, primals, tangents):
+        _check_shapes(primals, self.data)
         fct = 2 * (1 + self.iscomplex)
         prim_std_inv_sq = primals[1] ** 2
         res = (prim_std_inv_sq * tangents[0], fct * tangents[1] / prim_std_inv_sq)
         return type(primals)(res)
 
     def left_sqrt_metric(self, primals, tangents):
+        _check_shapes(primals, self.data)
         fct = jnp.sqrt(2) ** (1 + self.iscomplex)
         res = (primals[1] * tangents[0], fct * tangents[1] / primals[1])
         return type(primals)(res)
@@ -302,6 +320,7 @@ class VariableCovarianceGaussian(Likelihood):
         A global transformation to Euclidean space does not exist. A local
         approximation invoking the residual is used instead.
         """
+        _check_shapes(primals, self.data)
         # TODO: test by drawing synthetic data that actually follows the
         # noise-cov and then average over it
         fct = 1 + self.iscomplex
@@ -312,6 +331,7 @@ class VariableCovarianceGaussian(Likelihood):
         return type(primals)(res)
 
     def normalized_residual(self, primals):
+        _check_shapes(primals, self.data)
         return (self.data - primals[0]) * primals[1]
 
 
@@ -327,7 +347,8 @@ class VariableCovarianceStudentT(Likelihood):
 
     Notes
     -----
-    **The likelihood acts on a tuple of (mean, std)**.
+    **The likelihood acts on a tuple of (mean, std)**, each of the data's
+    shape. `dof` must broadcast to the data's shape.
 
     See :class:`Likelihood` for details on the properties.
     """
@@ -337,17 +358,28 @@ class VariableCovarianceStudentT(Likelihood):
 
     def __init__(self, data, dof):
         # TODO: make configurable whether `std_inv` or `std` is passed
+        # A larger `dof` would count residuals more than once, see #467
+        if len(jax.tree.leaves(dof)) > 1 and (
+            jax.tree.structure(dof) != jax.tree.structure(data)
+        ):
+            raise ValueError("a non-scalar `dof` tree must match the data's tree")
+        for f, x in zip(jax.tree.leaves(dof), jax.tree.leaves(data)):
+            if jnp.broadcast_shapes(jnp.shape(f), jnp.shape(x)) != jnp.shape(x):
+                ve = f"dof {jnp.shape(f)} must broadcast to the data's {jnp.shape(x)}"
+                raise ValueError(ve)
         self.data = data
         self.dof = dof
         shp = tree_map(ShapeWithDtype.from_leave, (data, data))
         super().__init__(domain=shp, lsm_tangents_shape=shp)
 
     def energy(self, primals):
+        _check_shapes(primals, self.data)
         t = _standard_t((self.data - primals[0]) / primals[1], self.dof)
         t += sum(tree_map(jnp.log, primals[1]))
         return t
 
     def metric(self, primals, tangent):
+        _check_shapes(primals, self.data)
         res = (
             tangent[0] * (self.dof + 1) / (self.dof + 3) / primals[1] ** 2,
             tangent[1] * 2 * self.dof / (self.dof + 3) / primals[1] ** 2,
@@ -355,6 +387,7 @@ class VariableCovarianceStudentT(Likelihood):
         return type(primals)(res)
 
     def left_sqrt_metric(self, primals, tangents):
+        _check_shapes(primals, self.data)
         cov = (
             (self.dof + 1) / (self.dof + 3) / primals[1] ** 2,
             2 * self.dof / (self.dof + 3) / primals[1] ** 2,
@@ -363,6 +396,7 @@ class VariableCovarianceStudentT(Likelihood):
         return type(primals)(res)
 
     def normalized_residual(self, primals):
+        _check_shapes(primals, self.data)
         return (
             (self.data - primals[0])
             / primals[1]
